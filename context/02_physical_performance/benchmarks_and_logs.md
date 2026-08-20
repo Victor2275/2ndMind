@@ -23,11 +23,11 @@
 To sustain 7 days of active movement at 215 lbs, glycogen and protein synthesis are paramount.
 
 **Daily Habits:**
-- **[nutrition:: Protein]**: 170g - 200g daily.
-- **[nutrition:: Creatine]**: 5g daily (for maximum power output and recovery).
-- **[nutrition:: Hydration]**: 0.5 to 1.0 Gallon daily.
-- **[nutrition:: Pre-Workout]**: Light meal with carbs 1-2 hours before water/PERG.
-- **[nutrition:: Post-Workout]**: Large meal/Greek yogurt at dining hall for glycogen replenishment.
+- **Protein**: 170g - 200g daily.
+- **Creatine**: 5g daily (for maximum power output and recovery).
+- **Hydration**: 0.5 to 1.0 Gallon daily.
+- **Pre-Workout**: Light meal with carbs 1-2 hours before water/PERG.
+- **Post-Workout**: Large meal/Greek yogurt at dining hall for glycogen replenishment.
 
 **Lower Back Rehab Protocol:**
 *(Perform these daily or post-practice to prevent lower back shear during rotation.)*
