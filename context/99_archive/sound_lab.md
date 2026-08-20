@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Full physics lab report on speed of sound and Fourier analysis of sound signals.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Lab Report 2: Sound Waves and Fourier Transforms**
 
 Physics 4BL, Spring 2026, April 21  

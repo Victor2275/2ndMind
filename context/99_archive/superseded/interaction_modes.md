@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Source file merged into 00_meta/ai_directives.md — not authoritative on its own.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # Domain Interaction Modes
 
 **Instructions for AI:** Calibrate your tone, depth, and analytical framework based on the specific domain of the user's prompt. 

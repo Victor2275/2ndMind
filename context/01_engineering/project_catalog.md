@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: engineering
+stability: volatile
+summary: 4 projects with stack, architecture, lessons, and links.
+read_when: Portfolio, resume bullets, or "what have you built" questions.
+---
+
 # Project Catalog
 
 ## Tier 1: Flagship Projects

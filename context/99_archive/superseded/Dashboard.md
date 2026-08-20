@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Dead Obsidian Dataview dashboard — Obsidian was removed from this project, not authoritative.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # 2ndMind Dashboard
 
 This dashboard aggregates data across the 2ndMind context repository using Obsidian Dataview. 

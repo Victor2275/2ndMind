@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: physical
+stability: volatile
+summary: Dragon boat PRs, SPM targets, nutrition baseline, back rehab protocol.
+read_when: Training, nutrition, recovery, or performance questions.
+---
+
 # Benchmarks and Logs
 
 ## 1. Core Goal and Objective

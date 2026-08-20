@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Full physics lab report on geometric and wave optics (refraction, lenses, diffraction).
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Characterization of Geometric and Wave Optics Using Physical Methods and Digital Imaging**
 
 Physics 4BL, Spring 2026, May 15  

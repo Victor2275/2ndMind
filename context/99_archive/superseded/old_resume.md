@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Superseded resume draft with a conflicting GPA (3.89) — not authoritative, see resume.md.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Victor Gusev**
 
 (925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/Victor2275](https://github.com/Victor2275)

@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: physical
+stability: stable
+summary: Weekly training split, strength program, technique focus, taper protocol.
+read_when: Programming workouts or planning around training load.
+---
+
 # Training Blocks and Active Periodization
 
 ## 1. The "Everyday" Schedule & Load Management

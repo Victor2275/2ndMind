@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Superseded architecture map of the vault — replaced by README.md, do not trust.
+read_when: Only when explicitly asked for this specific document.
+---
+
 context/  
 ├── 00_meta/                      # [Merged: system + master]  
 │   ├── core_profile.md           # Identity, communication guardrails, tone calibration  

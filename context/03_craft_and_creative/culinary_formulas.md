@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: craft
+stability: stable
+summary: Culinary skill level, target cuisines, dining-hall and home-cooking modes.
+read_when: Cooking, baking, recipe, or nutrition-execution questions.
+---
+
 # Culinary Formulas and Logs
 
 ## 1. Culinary Profile

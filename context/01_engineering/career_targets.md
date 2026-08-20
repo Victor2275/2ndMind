@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: engineering
+stability: stable
+summary: Target roles, company tiers, locations, graduation timeline.
+read_when: Career strategy, job targeting, role fit questions.
+---
+
 # Career Targets
 
 ## Timeline & Education

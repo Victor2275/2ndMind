@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Full physics lab report on RC/RLC circuit time and frequency response via ESP32.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Lab Report 3: Measured RLC Circuit Behaviors via ESP32**
 
 Physics 4BL, Spring 2026, May 1  

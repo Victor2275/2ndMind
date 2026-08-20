@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: engineering
+stability: volatile
+summary: All 26 courses with terms and grades, plus 5 physics lab summaries.
+read_when: Academic background, prerequisite knowledge, transcript questions.
+---
+
 # Coursework and Labs
 
 ## Degree Progress

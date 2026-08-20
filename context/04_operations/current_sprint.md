@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: operations
+stability: volatile
+summary: This week's goals, operating rules, and academic tracker.
+read_when: Always — anything about current priorities or scheduling.
+---
+
 # Current Sprint: 1-Week Horizon
 
 ## 1. Active Sprint Goals

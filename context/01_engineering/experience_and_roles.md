@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: engineering
+stability: volatile
+summary: 4 professional and leadership roles with dates and contributions.
+read_when: Resume work, interview prep, experience questions.
+---
+
 # Professional Experience and Roles
 
 ### June 2026 – August 2026 Software Engineering Intern @ Dimaag.ai

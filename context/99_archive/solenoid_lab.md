@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Full physics lab report on a solenoid-based magnetic bit reader (hard-disk analog).
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Lab Report 5: Verification of Magnetic Inductance Using Solenoid Bit Reader**
 
 Physics 4BL, Spring 2026, June 5  

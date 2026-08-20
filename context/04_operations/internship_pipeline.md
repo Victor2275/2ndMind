@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: operations
+stability: volatile
+summary: Application strategy, pipeline parameters, automated tracking system.
+read_when: Internship applications, cover letters, interview prep.
+---
+
 # Internship Pipeline & Career Ops
 
 ## 1. Application Strategy (The "1 + 4" Rule)

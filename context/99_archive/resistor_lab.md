@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Full physics lab report characterizing resistor and LED I-V curves with an ESP32.
+read_when: Only when explicitly asked for this specific document.
+---
+
 # **Characterizing Linear and Non-Linear Circuit Elements: I-V Relationships in Resistors and LEDs**
 
 Physics 4BL, Spring 2026, April 10  

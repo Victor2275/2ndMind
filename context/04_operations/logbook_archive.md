@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: operations
+stability: volatile
+summary: Past sprint summaries and a parking lot of future automation ideas.
+read_when: Reviewing history or picking up a parked idea.
+---
+
 # Logbook Archive & Future Automations
 
 ## 1. Past Sprint Summaries

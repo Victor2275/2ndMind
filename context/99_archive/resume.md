@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: archive
+stability: stable
+summary: Generated-view resume; not the canonical source for experience or project data.
+read_when: Only when explicitly asked for this specific document.
+---
+
 > **Not canonical.** Source of truth is `01_engineering/experience_and_roles.md` and
 > `01_engineering/project_catalog.md`. Regenerate this file from those; do not edit it directly.
 

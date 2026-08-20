@@ -1,3 +1,11 @@
+---
+updated: 2026-08-20
+domain: craft
+stability: stable
+summary: CAD stack, 3D printing setup, makerspace access, the Turret capstone.
+read_when: CAD, 3D printing, hardware fabrication questions.
+---
+
 # Fabrication and CAD
 
 ## 1. Overarching Capstone Goal
