@@ -6,7 +6,7 @@ Lab Section 6, Table 4
 **Ethan Chang, Victor Gusev, Savanah Elias**  
 ---
 
-# **1\. Abstract**
+# **1. Abstract**
 
 This experiment investigated the relationship between voltage, current, and resistance by testing Ohm’s Law and examining non-linear circuit elements. Using an ESP32 microcontroller and a potentiometer-controlled circuit, voltage measurements were collected across a 1 kΩ resistor and several colored LEDs. These measurements were then used to calculate current and create current–voltage (IV) curves for each circuit element tested.
 
@@ -14,41 +14,41 @@ For the resistor, the IV curve showed a linear relationship between current and 
 
 Overall, the results support Ohm’s Law for resistors and show LED’s semiconductor properties made apparent from voltages differing in significant values.
 
-# **2\. Introduction**
+# **2. Introduction**
 
-This report will explain the relationship between voltage, resistance, and current and give a relative idea how one might test expected values. Understanding the relationship between voltage, current, and resistance is fundamental to the study of electrical circuits and modern electronics.  Current refers to the amount of charge that flows per unit time, measured in Amps for our purposes. Voltage is the force that pushes those charges, electrons, and is measured in Volts. Resistance is property of materials defined by their ability to oppose the flow of electric current, with the units of ohms. The overall equation that exemplifies linearity within the relationship given to us by Ohm's Law: Voltage \= Current \* Resistance (Serway 575). However, not all circuit elements obey this linear behavior, particularly semiconductor devices such as light-emitting diodes (LEDs).
+This report will explain the relationship between voltage, resistance, and current and give a relative idea how one might test expected values. Understanding the relationship between voltage, current, and resistance is fundamental to the study of electrical circuits and modern electronics.  Current refers to the amount of charge that flows per unit time, measured in Amps for our purposes. Voltage is the force that pushes those charges, electrons, and is measured in Volts. Resistance is property of materials defined by their ability to oppose the flow of electric current, with the units of ohms. The overall equation that exemplifies linearity within the relationship given to us by Ohm's Law: Voltage = Current * Resistance (Serway 575). However, not all circuit elements obey this linear behavior, particularly semiconductor devices such as light-emitting diodes (LEDs).
 
 Now when looking more closely at the actual experiment we are seeing how voltages differ when read from a 1 kΩ resistor and then versus 3 different colored LEDs and calculating current using an ESP32 microcontroller-based setup. The ESP32 measures only voltage, so we use a known resistor to determine current through the circuit. Some of the LEDs appear to glow brighter than others when attached to the breadboard when the original resistor was and as the potentiometer that was also attached was adjusted from zero to its max, the values then recorded to produce IV curves. These observations can be explained by the presence of differing band gaps for each LED. The band gap is the space between the valence band and the conduction band for a material where electrons do not freely exist, they must either stay in the valence band or move through the band gap to make it to the conduction band. In order for those electrons to travel between the bands they require a certain amount of energy, in this case given by the voltage provided in the circuit. The LEDs that did not glow as bright revealed a larger band gap not as easily overcome, leading to the characteristic non-linear IV curve observed in LEDs.
 
 The goal of this experiment is to verify Ohm’s Law for a resistive element and to compare this behavioral result with components of non-linear results. We hypothesize that the resistor will give a linear IV graph with a constant resistance, while the LEDs will display non-linear behavior with distinct voltage thresholds that vary by color.
 
-# **3\. Methods**
+# **3. Methods**
 
 ## **3.1 Experimental Setup**
 
 The experimental setup for this lab consisted of an ESP32 microcontroller, a breadboard circuit, a multimeter, a waveform generator, and an oscilloscope. Of these items, the ESP32 was used to record analog voltage data through its analogRead function while the multimeter was used to generate calibration data points for later analysis. The base circuit used in this experiment included two 1 kΩ resistors connected in series with data being taken from a position along the circuit between the voltage controller and first fixed 1 kΩ resistor via a connection to the ESP32’s input pin. Initially, a potentiometer was used to vary the voltage source by sweeping four passes through the full range of input voltages. For diode resistance characterization, the second resistor of the setup was replaced by a red, green, and then blue LED and the potentiometer sweeping procedure was implemented once again (Figure 1). 
 
 ![][image1]  
-Figure 1\. Potentiometer Test Circuit Diagram
+Figure 1. Potentiometer Test Circuit Diagram
 
 However, in later trials, the potentiometer was replaced by a waveform generator producing ramping waves so as to minimize the human error associated with turning the potentiometer’s knob by hand as well as create a consistently varying input voltages (Figure 2).
 
 ![][image2]  
-Figure 2\. Waveform Generator Test Circuit Diagram
+Figure 2. Waveform Generator Test Circuit Diagram
 
 ## **3.2 Voltage Calibration Procedure**
 
-A two point calibration was used to convert raw ESP32 integer data to voltage values. To do this, the potentiometer was first set to a lower voltage setting where it would return an integer reading of approximately 1000\. Using the multimeter, the actual voltage corresponding to this value was recorded. Similarly, the second calibration point was taken in the same manner but at a higher integer reading of approximately 3000\. Once both calibration values and their corresponding actual voltages were obtained, equation (1) was used to calculate the calibration slope while equation (2) was used to find the linear offset. 
+A two point calibration was used to convert raw ESP32 integer data to voltage values. To do this, the potentiometer was first set to a lower voltage setting where it would return an integer reading of approximately 1000. Using the multimeter, the actual voltage corresponding to this value was recorded. Similarly, the second calibration point was taken in the same manner but at a higher integer reading of approximately 3000. Once both calibration values and their corresponding actual voltages were obtained, equation (1) was used to calculate the calibration slope while equation (2) was used to find the linear offset. 
 
-m \= (V2Real \- V1Real) / (V2ESP \- V1ESP)                                                 (1)
+m = (V2Real - V1Real) / (V2ESP - V1ESP)                                                 (1)
 
-b \= V2Real \- ( m \* V2ESP )                                                          (2)
+b = V2Real - ( m * V2ESP )                                                          (2)
 
 Using these values, the uncertainty of the slope and offset were also found by equation (3) and (4) respectively.
 
-δm \= m√((δV1 / (V1 \+ V2)2) \+  (δV2 / (V1 \+ V2)2))                                    (3)
+δm = m√((δV1 / (V1 + V2)2) +  (δV2 / (V1 + V2)2))                                    (3)
 
-δb \= √ (( δV )2 \+ ( VESP \* δm )2)                                                 (4)
+δb = √ (( δV )2 + ( VESP * δm )2)                                                 (4)
 
  Combined, these values resulted in a linear conversion that was applied to all subsequent data sets to convert integer readings to voltage values. 
 
@@ -62,19 +62,19 @@ In the second configuration, the potentiometer was replaced with a waveform gene
 
 All data analysis was performed in Jupyter Notebook using Python and its NumPy and Matplotlib libraries. Once CSV files were imported and the raw data was converted into voltage values via equation (5), the current through the circuit was calculated using Ohm’s law (6) by applying the measured voltage across the known 1 kΩ resistor. Because the two resistors were connected in series, the current was assumed to be identical throughout all components.
 
-VReal \= m \* VESP \+ b                                                         (5)
+VReal = m * VESP + b                                                         (5)
 
-I \= V / R                                                                (6)
+I = V / R                                                                (6)
 
 Current to voltage curves were then created by plotting voltage on the x-axis and current on the y-axis. For the resistor trials, because of their linear nature, a linear regression was used via NumPy’s polyfit function to determine the slope of the IV relationship with the error being taken as the square root of the associated covariance matrix. The experimental resistance was thus calculated to be the inverse of this slope (7) with its error being calculated via equation (8). For the LED trials, IV curves were plotted, but a linear regression was not used as, while there are internal resistors, LEDs do not obey Ohm’s Law. As such, the scatter plots were used to determine the forward voltage.
 
-R \= 1 / m                                                                 (7)
+R = 1 / m                                                                 (7)
 
-δR \= δm / m2                                                             (8)
+δR = δm / m2                                                             (8)
 
 Additionally, the forward voltage values for each LED were compared to their corresponding wavelengths whose values were obtained via standard LED wavelength ranges. A plot of wavelength to forward voltage was then generated to examine the relationship between these two values. All analysis was applied across each data set.
 
-# **4\. Analysis, Results, and Discussion**
+# **4. Analysis, Results, and Discussion**
 
 ## **4.1.1 Calculations (Resistor)**
 
@@ -84,7 +84,7 @@ To calculate the results of the resistors, a scatter plot of the data was create
 
 When taking the resistance of the resistor using the potentiometer, the resistance was calculated to be 1051.4 ± 2.4 Ohms, and the waveform generator data gave us a resistance of 1035.5 ± 1.21 Ohms. The graphs are shown below (Figure 3).  
 ![][image3]![][image4]  
-Figure 3\. IV Curve for Resistors via Potentiometer and Wave Form Generators
+Figure 3. IV Curve for Resistors via Potentiometer and Wave Form Generators
 
 ##  **4.1.3 Discussion (Resistor)**
 
@@ -100,13 +100,13 @@ Each Forward voltage and Resistance is listed with each graph, where P represent
 ![][image5]![][image6]  
 ![][image7]![][image8]  
 ![][image9]![][image10]![][image11]![][image12]  
-Figure 5\. Red, Green, and Blue IV curves and their forward voltage to wavelength plots for potentiometer and waveform generator
+Figure 5. Red, Green, and Blue IV curves and their forward voltage to wavelength plots for potentiometer and waveform generator
 
 ##  **4.2.3 Discussion (LEDs)**
 
 The curves follow a sort of “s” shaped curve, which makes sense as these LEDs are not resistors, but instead diodes. This means that the resistance values don’t make much sense, as it isn’t a resistor. However, for both the potentiometer and wave form generator, we see the forward voltage increases in the order red, green, blue. This can also be seen in the wavelength vs voltage graph, which shows as wavelength increases, forward voltage decreases. This graph is not very fitted, most likely because there are only 3 data points and not exact wavelengths. To improve this experiment in the future, it would be beneficial to measure the wavelength of the light for the wavelength vs forward voltage, as well as get more datapoints (i.e more LEDs).
 
-# **5\. Conclusion**
+# **5. Conclusion**
 
 Within reasonable uncertainty, the results of this experiment ultimately confirm the initial hypothesis that the 1 kΩ resistor would exhibit a linear current-voltage graph and that the LEDs would demonstrate a non linear behavior with an inverse relationship between the forward voltage and wavelength. 
 
@@ -120,11 +120,11 @@ In the future, data acquisition and analysis may be made more precise through th
 
 Overall, despite some unaccounted for sources of error within the experimental setup, the data resulting from this lab suggests validity of Ohm’s Law for resistors as well as the theoretical behaviors for LEDs.  
 
-# **6\. References**
+# **6. References**
 
-Serway, Raymond A., et al. “Motion in One Direction.” Physics for Scientists and Engineers, Cengage Brooks/Cole, 2014\`
+Serway, Raymond A., et al. “Motion in One Direction.” Physics for Scientists and Engineers, Cengage Brooks/Cole, 2014`
 
-# **7\. Appendix**
+# **7. Appendix**
 
 [image1]: ../assets/labs/resistor_lab_image1.png
 

@@ -1,29 +1,29 @@
 context/  
-├── 00\_meta/                      \# \[Merged: system \+ master\]  
-│   ├── core\_profile.md           \# Identity, communication guardrails, tone calibration  
-│   └── compiled\_master.md        \# Single aggregated file generated for uploads  
+├── 00_meta/                      # [Merged: system + master]  
+│   ├── core_profile.md           # Identity, communication guardrails, tone calibration  
+│   └── compiled_master.md        # Single aggregated file generated for uploads  
 │  
-├── 01\_engineering/               \# \[Merged: technical \+ education\]  
-│   ├── coursework\_and\_labs.md    \# Syllabi, academic theory, lab experiments  
-│   ├── project\_catalog.md        \# Codebases, simulation pipelines, hackathon builds  
-│   ├── technical\_standards.md    \# Preferred languages, configs, and dev environments  
-│   └── career\_targets.md         \# Target roles, search criteria, and timeline  
+├── 01_engineering/               # [Merged: technical + education]  
+│   ├── coursework_and_labs.md    # Syllabi, academic theory, lab experiments  
+│   ├── project_catalog.md        # Codebases, simulation pipelines, hackathon builds  
+│   ├── technical_standards.md    # Preferred languages, configs, and dev environments  
+│   └── career_targets.md         # Target roles, search criteria, and timeline  
 │  
-├── 02\_physical\_performance/      \# \[Renamed from: athletic\]  
-│   ├── training\_blocks.md        \# Active periodization, weekly lifting/erg splits  
-│   └── benchmarks\_and\_logs.md    \# Telemetry, split PRs, stroke mechanics notes  
+├── 02_physical_performance/      # [Renamed from: athletic]  
+│   ├── training_blocks.md        # Active periodization, weekly lifting/erg splits  
+│   └── benchmarks_and_logs.md    # Telemetry, split PRs, stroke mechanics notes  
 │  
-├── 03\_craft\_and\_creative/        \# \[Renamed from: hobby\]  
-│   ├── culinary\_formulas.md      \# Precision baking formulas, baker's percentages, logs  
-│   ├── fabrication\_and\_cad.md    \# 3D printer tolerances, Fusion 360/Blender workflows  
-│   └── brand\_and\_voice.md        \# Design guidelines, HEX palettes, writing samples  
+├── 03_craft_and_creative/        # [Renamed from: hobby]  
+│   ├── culinary_formulas.md      # Precision baking formulas, baker's percentages, logs  
+│   ├── fabrication_and_cad.md    # 3D printer tolerances, Fusion 360/Blender workflows  
+│   └── brand_and_voice.md        # Design guidelines, HEX palettes, writing samples  
 │  
-└── 04\_operations/                \# \[Renamed from: scheduling\]  
-│  ├── current\_sprint.md         \# 30-day priorities, active blockers, weekly time-blocks  
-│  └── logbook\_archive.md        \# Distilled notes from past sprints and milestones  
+└── 04_operations/                # [Renamed from: scheduling]  
+│  ├── current_sprint.md         # 30-day priorities, active blockers, weekly time-blocks  
+│  └── logbook_archive.md        # Distilled notes from past sprints and milestones  
 │  
 │  
-└── 99\_archive/    
+└── 99_archive/    
    ├── resume.pdf  
    └── transcript.pdf  
    └── other archives

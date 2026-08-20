@@ -1,6 +1,6 @@
 # **Victor Gusev**
 
-(925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/victor2275](https://github.com/Victor2275)
+(925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/Victor2275](https://github.com/Victor2275)
 
 **Education**  
 **University of California, Los Angeles (UCLA)**	Expected Graduation: June 2028  
@@ -22,7 +22,7 @@ B.S. in Computer Science and Engineering 	GPA: 3.64 / 4.00
 
 * Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment. 
 
-* Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at \>12 mph with sub-decimeter trajectory accuracy
+* Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
 
 * Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs 
 
@@ -57,4 +57,4 @@ B.S. in Computer Science and Engineering 	GPA: 3.64 / 4.00
 
 * Developed file parsing pipeline to load and replay real competition mazes
 
-* GitHub: [github.com/victor2275/micromousesim](https://github.com/Victor2275/MicroMouseSim) 
+* GitHub: [github.com/Victor2275/micromousesim](https://github.com/Victor2275/MicroMouseSim) 

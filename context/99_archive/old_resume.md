@@ -1,13 +1,13 @@
 # **Victor Gusev**
 
-(925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/victor2275](https://github.com/Victor2275)
+(925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/Victor2275](https://github.com/Victor2275)
 
 **Education**  
 **University of California, Los Angeles (UCLA)**	Expected Graduation: June 2028  
 B.S. in Computer Science and Engineering 	                                                                          GPA: 3.89/4.00
 
 **Technical Skills**  
-**Programming Languages:** Java, Python, C, C++, JS/React, C\#, Assembly, Elisp  
+**Programming Languages:** Java, Python, C, C++, JS/React, C#, Assembly, Elisp  
 **Software & Tools:** Git, GitHub, Linux, Unity, Java Graphics, File I/O, Debugging  
 **Concepts:** Data Structures, Algorithms, Object-Oriented Design, Software Construction  
 **Robotics:** PID Control, LiDAR, Computer Vision (Limelight), Sensor Integration
@@ -35,7 +35,7 @@ B.S. in Computer Science and Engineering 	                                      
 
 * Developed file parsing pipeline to load and replay real competition mazes
 
-* GitHub: [github.com/victor2275/micromousesim](https://github.com/Victor2275/MicroMouseSim) 
+* GitHub: [github.com/Victor2275/micromousesim](https://github.com/Victor2275/MicroMouseSim) 
 
 **5 Second Rule** | Unity
 

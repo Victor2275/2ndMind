@@ -8,7 +8,7 @@
 ## 2. Personal Identity & Portfolio
 - **Persona:** Specialized Robotics Engineer.
 - **Links:** 
-  - GitHub: [victor2275](https://github.com/victor2275)
+  - GitHub: [Victor2275](https://github.com/Victor2275)
   - Resume: `Victor_Gusev_Resume.pdf`
 - **Future Assets:** Needs a centralized personal website/portfolio designed in Figma.
 

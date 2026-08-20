@@ -1,5 +1,3 @@
-x
-
 # Coursework and Labs
 
 ## Degree Progress
