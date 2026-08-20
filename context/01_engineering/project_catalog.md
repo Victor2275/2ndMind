@@ -31,9 +31,8 @@
 **Details**: Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement, combat, abilities, and enemy AI.
 **Links**: [Itch.io](https://mcalmic.itch.io/5-second-rule)
 
-## Sensitive / Private Projects
-*(Projects with IP or privacy concerns are documented here in an abridged format. Do not prompt for deeper details on these without explicit instruction.)*
-- **Dimaag.ai**: Contains sensitive content; project details are abridged in the resume and kept confidential.
+## Confidentiality Notes
+- **Dimaag.ai**: The technical architecture and contributions documented in `experience_and_roles.md` (PPO training pipelines, LiDAR raycasting, Isaac Lab, sim-to-real validation, tracking accuracy) are shareable — safe to use in resumes, interviews, and portfolio material. Some Dimaag.ai business and product details beyond that documented technical scope remain confidential and are deliberately not recorded anywhere in this vault. If a question requires specifics not found here, say so rather than speculating.
 
 ## Hardware & CAD Models
 - None documented yet. FIRST Robotics might have models added in the future.

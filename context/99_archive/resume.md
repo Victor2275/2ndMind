@@ -1,3 +1,6 @@
+> **Not canonical.** Source of truth is `01_engineering/experience_and_roles.md` and
+> `01_engineering/project_catalog.md`. Regenerate this file from those; do not edit it directly.
+
 # **Victor Gusev**
 
 (925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/Victor2275](https://github.com/Victor2275)
