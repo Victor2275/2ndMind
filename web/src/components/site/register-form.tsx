@@ -67,7 +67,7 @@ export function RegisterForm() {
         </button>
         <p className="text-xs text-muted-foreground">
           Then <span className="text-foreground">remove PASSKEY_REGISTRATION_SECRET</span> and
-          restart. This page must return 403 afterwards.
+          restart. This page must 404 afterwards, and /api/auth/register must return 403.
         </p>
       </div>
     );
