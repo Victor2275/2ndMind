@@ -28,7 +28,7 @@ read_when: Portfolio, resume bullets, or "what have you built" questions.
 **Status**: Archived | **Date**: 2024
 **Tech Stack**: React, Firebase Firestore, Gemini API
 **Architecture**: Educational web app linking student interfaces to a teacher dashboard via Firebase. Gemini API generates task breakdowns. Features reward system and emotion logging.
-**Lessons Learned / Post-Mortem**: Beginning to understand how to use AI workflows, as well as working in a small team of non-technical people.
+**Lessons Learned / Post-Mortem**: Began to understand how to use AI workflows, as well as working in a small team of non-technical people.
 **Links**: [GitHub](https://github.com/Victor2275/HOTHproject)
 
 ## Tier 2: Hackathons, Tools, and Jam Builds
