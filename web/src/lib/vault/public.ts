@@ -1,6 +1,6 @@
 import "server-only";
 
-import { loadExperience, loadLabs, loadProjects } from "./load";
+import { loadExperience, loadLabs, loadProfile, loadProjects } from "./load";
 import type { Experience, Lab, Project } from "./schemas";
 
 /**
@@ -60,6 +60,7 @@ export type PublicLab = {
   stack: string[];
   heroImage: string;
   imageCount: number;
+  figures: string[];
   bullets: string[];
   body: string;
 };
@@ -98,6 +99,18 @@ export function toPublicExperience(e: Experience): PublicExperience {
   };
 }
 
+/**
+ * Vault figures are named `<lab>_lab_image<N>.png`, so the full set is derivable from the
+ * hero image plus the count. Doing it here keeps the naming convention in one place, and
+ * a test asserts every derived filename actually exists on disk.
+ */
+export function labFigures(heroImage: string, imageCount: number): string[] {
+  const match = heroImage.match(/^(.*?)(\d+)(\.[a-z]+)$/i);
+  if (!match) return [heroImage];
+  const [, base, , ext] = match;
+  return Array.from({ length: imageCount }, (_, i) => `${base}${i + 1}${ext}`);
+}
+
 export function toPublicLab(l: Lab): PublicLab {
   return {
     slug: l.slug,
@@ -111,6 +124,7 @@ export function toPublicLab(l: Lab): PublicLab {
     stack: l.stack,
     heroImage: l.hero_image,
     imageCount: l.image_count,
+    figures: labFigures(l.hero_image, l.image_count),
     bullets: l.bullets,
     body: l.body,
   };
@@ -129,8 +143,40 @@ export const PUBLIC_EXPERIENCE_KEYS = [
 
 export const PUBLIC_LAB_KEYS = [
   "slug", "title", "summary", "course", "term", "date", "collaborators",
-  "tags", "stack", "heroImage", "imageCount", "bullets", "body",
+  "tags", "stack", "heroImage", "imageCount", "figures", "bullets", "body",
 ] as const;
+
+/**
+ * The subset the projects grid needs. The grid is a Client Component, so anything handed
+ * to it is serialised into the RSC payload and shipped to the browser whether or not it
+ * is rendered. Passing full entries sent every project body over the wire; this type is
+ * the fix, and a test asserts `body` stays out of it.
+ */
+export type ProjectCard = Pick<
+  PublicProject,
+  "slug" | "title" | "summary" | "tier" | "status" | "year" | "category" | "stack"
+>;
+
+export const PROJECT_CARD_KEYS = [
+  "slug", "title", "summary", "tier", "status", "year", "category", "stack",
+] as const;
+
+export function toProjectCard(p: PublicProject): ProjectCard {
+  return {
+    slug: p.slug,
+    title: p.title,
+    summary: p.summary,
+    tier: p.tier,
+    status: p.status,
+    year: p.year,
+    category: p.category,
+    stack: p.stack,
+  };
+}
+
+export function projectCards(): ProjectCard[] {
+  return publicProjects().map(toProjectCard);
+}
 
 export function publicProjects(): PublicProject[] {
   return loadProjects().filter((p) => p.public).map(toPublicProject);
@@ -142,4 +188,52 @@ export function publicExperience(): PublicExperience[] {
 
 export function publicLabs(): PublicLab[] {
   return loadLabs().filter((l) => l.public).map(toPublicLab);
+}
+
+export type PublicProfile = {
+  name: string;
+  persona: string;
+  degree: string;
+  school: string;
+  schoolShort: string;
+  academicStage: string;
+  admitted: string;
+  graduation: string;
+  fastTrack: boolean;
+  gpa: number;
+  gpaScale: number;
+  contact: { email: string; phone: string; github: string; linkedin: string };
+};
+
+export const PUBLIC_PROFILE_KEYS = [
+  "name", "persona", "degree", "school", "schoolShort", "academicStage",
+  "admitted", "graduation", "fastTrack", "gpa", "gpaScale", "contact",
+] as const;
+
+/**
+ * Victor publishes his GPA but not per-course grades, and all four contact channels are
+ * public by his decision. `timezone`, `primary_os`, and `post_graduation` are deliberately
+ * withheld — they are vault context, not portfolio content.
+ */
+export function publicProfile(): PublicProfile {
+  const p = loadProfile();
+  return {
+    name: p.name,
+    persona: p.persona,
+    degree: p.degree,
+    school: p.school,
+    schoolShort: p.school_short,
+    academicStage: p.academic_stage,
+    admitted: p.admitted,
+    graduation: p.graduation,
+    fastTrack: p.fast_track,
+    gpa: p.gpa,
+    gpaScale: p.gpa_scale,
+    contact: {
+      email: p.contact.email,
+      phone: p.contact.phone,
+      github: p.contact.github,
+      linkedin: p.contact.linkedin,
+    },
+  };
 }

@@ -23,8 +23,3 @@ Led weekly competitive math training for 15-25 students.
 
 - Coordinated assistant coaches and designed problem-solving curricula.
 - Developed leadership and technical communication skills.
-
-## Notes
-
-`resume_variants` is empty because this role has not appeared on a CV. It is strong
-leadership evidence; add bullets here to make it eligible.

@@ -26,7 +26,3 @@ bullets: []
 
 Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement,
 combat, abilities, and enemy AI.
-
-## Notes
-
-`resume_variants` is empty because no polished resume bullets exist for this project yet.

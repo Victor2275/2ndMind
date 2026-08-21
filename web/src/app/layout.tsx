@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SiteFooter } from "@/components/site/site-footer";
+import { SiteHeader } from "@/components/site/site-header";
+import { publicProfile } from "@/lib/vault/public";
+
 import "./globals.css";
 
 /*
@@ -49,6 +53,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const profile = publicProfile();
+
   return (
     <html
       lang="en"
@@ -56,7 +62,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`dark ${bricolage.variable} ${instrument.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <SiteHeader name={profile.name} />
+        <div className="flex flex-1 flex-col">{children}</div>
+        <SiteFooter profile={profile} />
       </body>
     </html>
   );

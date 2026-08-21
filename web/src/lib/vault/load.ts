@@ -7,9 +7,11 @@ import { parseEntry } from "./parse";
 import {
   experienceSchema,
   labSchema,
+  profileSchema,
   projectSchema,
   type Experience,
   type Lab,
+  type Profile,
   type Project,
 } from "./schemas";
 
@@ -23,7 +25,10 @@ import {
 export const VAULT_ROOT = path.join(process.cwd(), "..", "context");
 const ENG = path.join(VAULT_ROOT, "01_engineering");
 
-function loadDir<T>(dir: string, schema: Parameters<typeof parseEntry<T>>[1]): (T & { body: string })[] {
+function loadDir<T extends { slug: string }>(
+  dir: string,
+  schema: Parameters<typeof parseEntry<T>>[1],
+): (T & { body: string })[] {
   if (!fs.existsSync(dir)) {
     throw new Error(`vault directory missing: ${dir}`);
   }
@@ -33,9 +38,8 @@ function loadDir<T>(dir: string, schema: Parameters<typeof parseEntry<T>>[1]): (
     .map((f) => {
       const raw = fs.readFileSync(path.join(dir, f), "utf8");
       const entry = parseEntry(raw, schema, `${path.basename(dir)}/${f}`);
-      const slug = (entry as { slug: string }).slug;
-      if (slug !== f.replace(/\.md$/, "")) {
-        throw new Error(`${dir}/${f}: slug "${slug}" does not match filename`);
+      if (entry.slug !== f.replace(/\.md$/, "")) {
+        throw new Error(`${dir}/${f}: slug "${entry.slug}" does not match filename`);
       }
       return entry;
     });
@@ -57,4 +61,9 @@ export function loadLabs(): Lab[] {
   return loadDir(path.join(ENG, "labs"), labSchema).sort((a, b) =>
     b.date.localeCompare(a.date),
   );
+}
+
+export function loadProfile(): Profile {
+  const file = path.join(VAULT_ROOT, "00_meta", "core_profile.md");
+  return parseEntry(fs.readFileSync(file, "utf8"), profileSchema, "00_meta/core_profile.md");
 }

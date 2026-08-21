@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import { loadExperience } from "../load";
 import {
+  labFigures,
+  PROJECT_CARD_KEYS,
+  projectCards,
   PUBLIC_EXPERIENCE_KEYS,
   PUBLIC_LAB_KEYS,
   PUBLIC_PROJECT_KEYS,
@@ -116,5 +119,43 @@ describe("public pages never import a private loader", () => {
   it("the vault root resolves outside the web app", () => {
     expect(fs.existsSync(VAULT_ROOT)).toBe(true);
     expect(VAULT_ROOT).not.toContain(path.join("web", "context"));
+  });
+});
+
+describe("lab figures", () => {
+  it("derives the full figure set from the hero image and count", () => {
+    expect(labFigures("solenoid_lab_image1.png", 3)).toEqual([
+      "solenoid_lab_image1.png",
+      "solenoid_lab_image2.png",
+      "solenoid_lab_image3.png",
+    ]);
+  });
+
+  it("falls back to the hero image when the name has no index", () => {
+    expect(labFigures("cover.png", 5)).toEqual(["cover.png"]);
+  });
+
+  it("every derived figure exists in the vault assets directory", () => {
+    // image_count is hand-entered in frontmatter; this catches a wrong number before it
+    // renders as a broken image on the public site.
+    const assets = path.join(VAULT_ROOT, "assets", "labs");
+    const missing: string[] = [];
+    for (const lab of publicLabs()) {
+      for (const file of lab.figures) {
+        if (!fs.existsSync(path.join(assets, file))) missing.push(`${lab.slug}: ${file}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("client component payload", () => {
+  it("never hands a project body to the client grid", () => {
+    // Anything passed to a Client Component is serialised into the RSC payload and shipped,
+    // rendered or not. Bodies are large and belong only on the server-rendered deep dives.
+    for (const card of projectCards()) {
+      expect(card).not.toHaveProperty("body");
+      expect(Object.keys(card).sort()).toEqual([...PROJECT_CARD_KEYS].sort());
+    }
   });
 });

@@ -85,3 +85,29 @@ export type Project = z.infer<typeof projectSchema> & { body: string };
 export type Experience = z.infer<typeof experienceSchema> & { body: string };
 export type Lab = z.infer<typeof labSchema> & { body: string };
 export type VaultEntry = Project | Experience | Lab;
+
+/** 00_meta/core_profile.md — the canonical identity record. */
+export const profileSchema = baseFrontmatter.extend({
+  name: z.string().min(1),
+  persona: z.string().min(1),
+  degree: z.string().min(1),
+  school: z.string().min(1),
+  school_short: z.string().min(1),
+  academic_stage: z.string().min(1),
+  admitted: partialDate,
+  graduation: partialDate,
+  fast_track: z.boolean(),
+  gpa: z.number().positive(),
+  gpa_scale: z.number().positive(),
+  timezone: z.string().min(1),
+  primary_os: z.string().min(1),
+  post_graduation: z.string().min(1),
+  contact: z.object({
+    email: z.email(),
+    phone: z.string().min(1),
+    github: z.url(),
+    linkedin: z.url(),
+  }),
+});
+
+export type Profile = z.infer<typeof profileSchema> & { body: string };

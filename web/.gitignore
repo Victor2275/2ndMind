@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Lab figures copied from ../context/assets by scripts/sync-lab-assets.mjs
+/public/labs/
