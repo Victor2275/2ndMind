@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { SignInForm } from "@/components/site/signin-form";
-import { getSession } from "@/lib/auth/dal";
+import { getSession, isAuthConfigured } from "@/lib/auth/dal";
 
 export const metadata = {
   title: "Sign in",
@@ -19,7 +19,9 @@ function safeNext(value: string | undefined): string {
 export default async function SignInPage({ searchParams }: PageProps<"/signin">) {
   const params = await searchParams;
   const next = safeNext(typeof params.next === "string" ? params.next : undefined);
-  const unconfigured = params.error === "unconfigured";
+  // Trust the environment over the query string: proxy.ts sets ?error=unconfigured, but a
+  // direct visit to /signin on a broken deploy has no such marker and must still explain.
+  const unconfigured = params.error === "unconfigured" || !isAuthConfigured();
 
   if (await getSession()) redirect(next);
 

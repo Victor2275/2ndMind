@@ -33,6 +33,19 @@ the wrong defect.
 
 **How to reverse.** Don't.
 
+### D-021 · A misconfigured deployment explains itself instead of crashing
+
+**Decision.** `isAuthConfigured()` is separate from `getSession()`, and `/signin` renders a
+"Not configured" notice rather than throwing.
+
+**Why.** Found by probing the live deploy: with `SESSION_SECRET` unset, `/signin` returned
+**500**. The sign-in page is exactly where someone looks when auth is broken, so it was the
+one page that must not be the page that crashes. `/private` was already failing closed
+correctly; only the explanation was missing.
+
+**How to reverse.** Don't — but note the rule it encodes: auth failures fail closed, and
+configuration failures stay legible.
+
 ### D-019 · Private pages read the vault over the API, not the filesystem
 
 **Decision.** `/private/*` fetches vault files through the GitHub Contents API even though
@@ -66,6 +79,16 @@ re-running enrolment and pasting new values into Vercel.
 **Enrolment is closed by default.** `PASSKEY_REGISTRATION_SECRET` must be both set and
 supplied. An open registration endpoint on a deployment with no credential configured would
 hand the private site to whoever found it first.
+
+**Enrolment is a page, not a script.** `/signin/register` runs the ceremony through
+`@simplewebauthn/browser`. The first draft of this was a console snippet in a markdown file;
+that was fragile enough to be a bad answer, and hand-rolling base64url in a copy-pasted
+script is exactly where this goes wrong silently. The page 404s when the gate is shut.
+
+**No recovery flow, deliberately.** Lose the device and you re-open the gate and re-enrol.
+Since Victor controls the environment variables, that path is always available to him and to
+nobody else — which is a better property than any recovery mechanism a single-user app could
+offer. Written up in `REGISTER_PASSKEY.md`.
 
 **How to reverse.** Move the credential into Neon (`DATABASE_URL` already exists for
 athletics) and store the counter alongside it. The ceremony code does not change.

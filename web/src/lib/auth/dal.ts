@@ -20,7 +20,22 @@ import { SESSION_COOKIE, verifySession, type SessionPayload } from "./session";
  * layout and three components asking independently cost one verification.
  */
 
+/**
+ * True when the environment can support sign-in at all. Kept separate from `getSession` so
+ * a misconfigured deployment renders an explanation instead of a 500 — the sign-in page is
+ * exactly where someone looks when auth is broken, so it must not be the page that crashes.
+ */
+export function isAuthConfigured(): boolean {
+  try {
+    sessionSecret();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const getSession = cache(async (): Promise<SessionPayload | null> => {
+  if (!isAuthConfigured()) return null;
   const store = await cookies();
   return verifySession(store.get(SESSION_COOKIE)?.value, sessionSecret());
 });
