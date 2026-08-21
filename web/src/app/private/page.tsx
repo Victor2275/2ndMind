@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { FreshnessPanel } from "@/components/site/freshness-panel";
+import { loadFreshness } from "@/lib/vault/freshness";
 import { getLabelledBullet, getFrontmatterField } from "@/lib/vault/frontmatter";
 import { GOAL_LABELS } from "@/lib/sprint-goals";
 import { readVaultFile, recentCommits } from "@/lib/vault/write";
@@ -18,6 +20,16 @@ export default async function DashboardPage() {
     readVaultFile("context/04_operations/current_sprint.md"),
     recentCommits(6),
   ]);
+
+  // Read from disk, not the GitHub API: this is 34 files, and one API call each would turn
+  // a dashboard render into 34 round trips against a rate limit.
+  let freshness: ReturnType<typeof loadFreshness> | null = null;
+  try {
+    freshness = loadFreshness();
+  } catch {
+    // A missing vault directory is a deployment fault, not a reason to lose the dashboard.
+    freshness = null;
+  }
 
   const sprint = results[0].status === "fulfilled" ? results[0].value.content : null;
   const commits = results[1].status === "fulfilled" ? results[1].value : [];
@@ -125,6 +137,8 @@ export default async function DashboardPage() {
           </p>
         </Link>
       </section>
+
+      {freshness && <FreshnessPanel report={freshness} />}
 
       {commits.length > 0 && (
         <section className="mt-10">

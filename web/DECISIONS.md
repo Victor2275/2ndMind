@@ -19,6 +19,165 @@ useful part.
 
 ## 2026-08-21
 
+### D-031 · Athletics degrades to an explanation when `DATABASE_URL` is absent
+
+**Decision.** `/private/athletics` renders a short "no database connected" page rather than
+throwing. `isDatabaseConfigured()` is a separate function from `db()`.
+
+**Why.** The same shape as D-021, applied before it could bite: the page someone opens to
+find out why athletics is broken must not be the page that crashes on it. Verified by
+loading the route with the variable unset — 200, self-explaining — and again with the
+variable set but the tables missing, which renders the migration hint.
+
+**How to reverse.** Delete `isDatabaseConfigured` and let `db()` throw.
+
+---
+
+### D-030 · Estimated 1RM is capped at 12 reps
+
+**Decision.** `estimateOneRepMax` returns null above 12 reps rather than extrapolating.
+
+**Why.** Epley drifts badly at high rep counts. Uncapped, a set of 20 light reps outranks a
+genuine heavy single and sits at the top of the strength board forever — a wrong number that
+looks plausible, which is the worst kind.
+
+**How to reverse.** Raise or remove `E1RM_REP_CAP` in `lib/athletics/prs.ts`. A different
+formula (Brzycki, Lombardi) would be a better fix than a higher cap.
+
+---
+
+### D-029 · Warmup sets are stored but never ranked
+
+**Decision.** Every set from an import is written, including warmups; `isWorkingSet()`
+excludes `warmup` and `drop` from records.
+
+**Why.** Throwing them away at import would be lossy and irreversible — session volume and
+history would be wrong forever. Counting them toward a PR would be wrong in the other
+direction, and a single mistyped warmup would set a permanent fake record.
+
+**How to reverse.** Change `isWorkingSet` to return true. The data is all still there.
+
+---
+
+### D-028 · The database layer is tested against real Postgres, in WASM
+
+**Decision.** `@electric-sql/pglite` (dev dependency) runs the committed migration SQL and
+the real queries in the test suite. Query functions take the handle as a parameter so the
+same code runs on PGlite and on Neon.
+
+**Why.** A mocked query builder asserts that the code called the mock, which is worth very
+little — it would have accepted the numeric-as-string bug in D-027 without complaint. This
+costs nothing, needs no server, and runs offline, which matters for the Taiwan trip.
+
+**Cost.** About 17 seconds of the suite, from spinning up a fresh database per test.
+
+**How to reverse.** Drop the dependency and delete `athletics/__tests__/queries.test.ts`.
+Keep the parameter-passing shape regardless; it is good design independent of testing.
+
+---
+
+### D-027 · Numeric columns are declared `mode: "number"`
+
+**Decision.** `numeric("weight_lbs", { …, mode: "number" })` on every numeric column.
+
+**Why.** Postgres `numeric` arrives as a *string* by default in node-postgres, to protect
+precision. Under string comparison `"95" > "155"` is true, so a warmup would outrank every
+working set and every PR would be quietly wrong. A test asserts `typeof` is number and that
+the max of a real stored session is 155.
+
+**How to reverse.** Drop the mode and convert at each call site — but then every comparison
+becomes a place to forget.
+
+---
+
+### D-026 · Imports are idempotent through a derived `external_id`
+
+**Decision.** Each imported session gets `hevy:<ISO timestamp>:<title-slug>`, uniquely
+indexed. Sets are written only for workouts the insert actually created.
+
+**Why.** A Hevy export is cumulative — every export contains the entire history — so the
+natural workflow is re-importing a growing file. Without this, the second import doubles
+everything, and the damage shows up only as inflated PRs and volume, with no error anywhere.
+The second half matters as much as the first: skipping the workout row but still appending
+its sets would duplicate the sets against the original session.
+
+Manual entries leave `external_id` null, and Postgres treats nulls as distinct in a unique
+index, so hand-logged sessions never collide.
+
+**How to reverse.** Drop the unique index. Do not, unless imports become one-shot.
+
+---
+
+### D-025 · Personal records are computed on read, never stored
+
+**Decision.** No `records` table. `strengthRecords()` and `ergRecords()` run over every
+stored set on each page load.
+
+**Why.** A stored record is a cached answer with no invalidation story: correct a mistyped
+weight and the PR keeps reading high forever, silently. At this scale — a few thousand sets
+— recomputing is free.
+
+**How to reverse.** Add a materialised table if the set count ever makes this slow. It will
+not at one athlete's volume.
+
+---
+
+### D-024 · Training data lives in Postgres, not in the markdown vault
+
+**Decision.** Athletics is the one feature backed by a database (Neon free tier).
+
+**Why.** Everything else in 2ndMind is prose that a human writes and reads. Training data is
+tabular and queried *across* rows — "best set of Bench Press at five reps" is a group-by. A
+Hevy export is thousands of set rows, which no markdown file should hold. The rest of the
+site is unaffected and builds without `DATABASE_URL`.
+
+**Privacy.** Health data is the category that must never be public. No public route imports
+`lib/db` or `lib/athletics`, and the public build runs with no database configured at all.
+
+**How to reverse.** Nothing else depends on it; delete the routes, the two lib folders, and
+the dependency. The vault's `benchmarks_and_logs.md` remains the hand-written record.
+
+---
+
+### D-023 · `outputFileTracingRoot` is what puts the vault in the serverless bundle
+
+**Decision.** `next.config.ts` sets `outputFileTracingRoot` to the repo root and excludes
+`context/99_archive/**`. It sets no `outputFileTracingIncludes`.
+
+**Why.** Measured rather than assumed, because the first version of this config was wrong in
+two ways. With no config, **zero** vault markdown files are traced into `/private` — the
+freshness widget would have thrown ENOENT in production while working perfectly locally.
+Widening the root alone fixes it: Next's analysis of the `readdirSync` in `vault/load.ts`
+then pulls the tree in by itself, making the `includes` entries redundant. And an explicit
+`include` *beats* an `exclude`, so adding one made the 10 archive files impossible to leave
+behind — the build kept shipping superseded resumes and transcripts into the function.
+
+**How to reverse.** Remove both keys and the freshness panel loses its data source in
+production only, which is the hardest kind of regression to notice. Verify any change by
+reading `.next/server/app/private/page.js.nft.json` and counting traced `.md` files: 34 is
+correct, 44 means the archive came along, 0 means it is broken.
+
+---
+
+### D-022 · The freshness audit reads the filesystem, narrowing D-019
+
+**Decision.** `loadFreshness()` walks `context/` on disk. D-019's rule — private pages read
+the vault over the GitHub API — still holds for every *editable* file.
+
+**Why.** Freshness inspects 34 files to read one frontmatter field from each. Over the API
+that is 34 round trips per dashboard render, against a rate limit, to compute something that
+changes once a day.
+
+**Cost, stated plainly.** After a write through the site, the panel shows the pre-edit date
+until Vercel redeploys. That self-corrects in a couple of minutes, because a vault write is
+a commit and a commit triggers a deploy — but it is a real window where the dashboard and
+the vault disagree.
+
+**How to reverse.** Swap `readVaultFiles()` for API reads, and add caching, or the dashboard
+becomes unusably slow.
+
+---
+
 ### D-020 · Vault writes validate the path before anything else
 
 **Decision.** `assertVaultPath` rejects traversal, backslashes, non-`context/` prefixes, and

@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "predev": "node scripts/sync-lab-assets.mjs",
-    "prebuild": "node scripts/sync-lab-assets.mjs"
+    "prebuild": "node scripts/sync-lab-assets.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -43,6 +45,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.5",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",

@@ -15,6 +15,7 @@ const NAV = [
   { href: "/private", label: "Dashboard" },
   { href: "/private/sprint", label: "Sprint" },
   { href: "/private/logbook", label: "Logbook" },
+  { href: "/private/athletics", label: "Athletics" },
 ];
 
 export default async function PrivateLayout({ children }: LayoutProps<"/private">) {

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -37,6 +37,10 @@ Ships **2026-09-20**, the day UCLA fall term begins.
    and the whole project fails.
 4. **Writes go through the GitHub Contents API**, not the filesystem. Vercel functions have an
    ephemeral read-only FS and no git binary. One commit per save; last-write-wins on conflict.
+   *Reads* of single editable files go the same way; the one exception is the freshness audit,
+   which walks 34 files on disk rather than making 34 API calls (DECISIONS.md D-022).
+   That bulk read only works because `next.config.ts` widens the file-tracing root — see
+   D-023, which was verified by counting traced files in the build output, not by assumption.
 5. **Every write bumps the file's `updated:` frontmatter** so freshness stays honest without
    relying on discipline.
 
@@ -109,8 +113,40 @@ will live in pure logic, not in browser choreography. Required coverage:
 - resume variant filtering (each variant includes and excludes the right entries)
 - the public-field whitelist
 - workout CSV parsing and PR derivation
+- freshness thresholds, including parity with `scripts/audit_freshness.py`
+- the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`.
+Run with `npm test`. Typecheck with `npm run typecheck`. **200 tests across 13 files** as of
+2026-08-21.
+
+### The database tests are not mocked
+
+`@electric-sql/pglite` is Postgres compiled to WASM. The suite runs the *committed migration
+SQL* into a fresh in-memory database per test, then exercises the real queries. This is why
+query functions take the handle as their first argument instead of importing a singleton.
+
+It matters because the interesting bugs here are ones a mock cannot see: `numeric` columns
+arriving as strings (so `"95" > "155"`), a re-import appending duplicate sets to an existing
+session, `sum()` returning null for a bodyweight-only workout. Each of those has a test that
+fails without its fix.
+
+## Athletics is the only database-backed feature
+
+Everything else is markdown. Training data is tabular and queried across rows, so it lives in
+Neon Postgres via Drizzle: `workouts` and `workout_sets`, migrations committed under
+`drizzle/`, applied with `npm run db:migrate`.
+
+Three rules hold it together, each with a decision entry:
+
+- **Records are derived on read, never stored** (D-025). A stored PR has no invalidation
+  story and reads high forever after a correction.
+- **Imports are idempotent** (D-026). Hevy exports are cumulative, so re-importing is the
+  normal workflow, not an accident.
+- **Warmups are stored but never ranked** (D-029).
+
+Health data is the category that must never become public. No public route imports
+`lib/db` or `lib/athletics`, and the public build has no `DATABASE_URL` at all.
+
 
 ## Style guide — DECISION NEEDED
 

@@ -11,8 +11,8 @@ read_when: Always — anything about current priorities or scheduling.
 ## 1. Active Sprint Goals
 *Identify top 3 priorities across all domains for the week here.*
 - **Engineering / Career:** Ship the 2ndMind public site. Live at
-  https://victorgusev.vercel.app since 2026-08-21. Resume generator done (three variants,
-  print-to-PDF). Next: auth + vault writes, then the private dashboard.
+  https://victorgusev.vercel.app since 2026-08-21. Resume generator, passkey auth, vault
+  writes, freshness audit, and athletics all done. Next: Work/Academics stubs (Days 30-32).
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -23,16 +23,19 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 7-12 — public site, breadth section, analytics, SEO, deployed
 - [x] Days 13-15 — resume generator, three variants, print-to-PDF
 - [x] Days 16-20 — passkey auth, vault writes, sprint editor, logbook, dashboard
-- [ ] Days 21-29 — private dashboard, freshness widget, athletics (Neon + Drizzle)
+- [x] Days 21-29 — freshness widget, athletics (Neon + Drizzle, Hevy import, PRs)
 - [ ] Days 30-32 — Work/Academics/Calendar stubs, buffer
 
-**Blocking on Victor, before 2026-08-29:** the private site is built and deployed but
-switched off until its environment variables exist. Follow `web/REGISTER_PASSKEY.md`:
-mint the fine-grained GitHub PAT (repo `2ndMind`, Contents: read/write), set
-`SESSION_SECRET`, and enrol a passkey on both localhost and the live site. The Neon account
-is not needed until Days 21-29.
+**Local setup is done:** passkey enrolled, GitHub PAT set, Neon connected, athletics
+tables migrated. Verified end to end against the real database on 2026-08-21.
 
-**Cut rule:** if Days 16-20 are not done by 2026-09-08, drop the workout CSV import first.
+**Blocking on Victor, before 2026-08-29:** production is still switched off. Vercel has none
+of the environment variables — `/signin` on the live site reports "Not configured". Set
+`SESSION_SECRET` (a different one from local), `GITHUB_TOKEN`, `NEXT_PUBLIC_SITE_URL`, and
+`DATABASE_URL` in Vercel, redeploy, then enrol a second passkey against the live origin per
+`web/REGISTER_PASSKEY.md` — a passkey is bound to the origin it was created on.
+
+**Cut rule:** spent. Days 16-20 and 21-29 both landed early; the CSV import shipped.
 
 **Retiring `/sprint-review`:** the web sprint editor now exists at `/private/sprint`. The
 slash command comes out once Victor has signed in and used the editor once.
