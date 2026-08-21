@@ -228,16 +228,21 @@ describe("lab figures", () => {
     expect(labFigures("cover.png", 5)).toEqual(["cover.png"]);
   });
 
-  it("every derived figure exists in the vault assets directory", () => {
-    // image_count is hand-entered in frontmatter; this catches a wrong number before it
-    // renders as a broken image on the public site.
-    const assets = path.join(VAULT_ROOT, "assets", "labs");
+  it("every project figure exists in web/public", () => {
+    // figure_count is hand-entered in frontmatter. This catches a wrong number before it
+    // renders as a broken image on the public site. Paths are /public-relative, and the
+    // lab assets get there via scripts/sync-lab-assets.mjs on predev/prebuild.
+    const pub = path.join(process.cwd(), "public");
     const missing: string[] = [];
-    for (const lab of publicLabs()) {
-      for (const file of lab.figures) {
-        if (!fs.existsSync(path.join(assets, file))) missing.push(`${lab.slug}: ${file}`);
+    let checked = 0;
+    for (const project of publicProjects()) {
+      for (const file of project.figures) {
+        checked++;
+        if (!fs.existsSync(path.join(pub, file))) missing.push(`${project.slug}: ${file}`);
       }
     }
+    expect(checked, "no project declares figures — this test would pass vacuously").
+      toBeGreaterThan(0);
     expect(missing).toEqual([]);
   });
 });
@@ -248,7 +253,10 @@ describe("client component payload", () => {
     // rendered or not. Bodies are large and belong only on the server-rendered deep dives.
     for (const card of projectCards()) {
       expect(card).not.toHaveProperty("body");
-      expect(Object.keys(card).sort()).toEqual([...PROJECT_CARD_KEYS].sort());
+      // `image` is optional — absent means the card draws a generated placeholder.
+      expect(Object.keys(card).sort()).toEqual(
+        PROJECT_CARD_KEYS.filter((k) => k in card).sort(),
+      );
     }
   });
 });

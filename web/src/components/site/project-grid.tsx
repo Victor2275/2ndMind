@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { ProjectFigure } from "@/components/site/project-figure";
 import type { ProjectCard } from "@/lib/vault/public";
 import { cn } from "@/lib/utils";
 
@@ -56,8 +57,24 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             key={p.slug}
             href={`/projects/${p.slug}`}
             style={{ animationDelay: `${i * 60}ms` }}
-            className="rise card-scan group flex flex-col rounded-lg border border-border bg-card/70 p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="rise card-scan group flex flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
+            <div className="relative aspect-16/9 w-full shrink-0 overflow-hidden border-b border-border bg-background/40">
+              <ProjectFigure
+                slug={p.slug}
+                title={p.title}
+                image={p.image}
+                priority={i < 2}
+                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              />
+              {p.draft && (
+                <span className="absolute right-2 top-2 rounded border border-border bg-background/85 px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur-sm">
+                  Write-up pending
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col p-5">
             <div className="flex items-baseline justify-between gap-3">
               <h2
                 className={cn(
@@ -99,6 +116,7 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             >
               Read more &rarr;
             </span>
+            </div>
           </Link>
         ))}
       </div>

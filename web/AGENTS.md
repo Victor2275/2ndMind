@@ -13,6 +13,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Read `context.md` in this directory before doing anything here. It states the scope,
 architecture, and non-negotiables.
 
+Read `DECISIONS.md` before changing anything that looks deliberate. Every non-obvious choice
+is logged there with its reason and how to reverse it. If Victor asks for something to be
+undone, look it up first — several entries bundle a bug fix with a style choice and say
+explicitly which half must survive a reversal. Add an entry for every decision you make.
+
 Two rules that are easy to violate by accident:
 
 1. **Public routes must never import a private loader or read a non-whitelisted field.**

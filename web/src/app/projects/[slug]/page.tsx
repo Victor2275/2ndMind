@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import Image from "next/image";
+
+import { ProjectFigure } from "@/components/site/project-figure";
 import { Prose } from "@/components/site/prose";
 import { Badge } from "@/components/ui/badge";
 import { publicProjects } from "@/lib/vault/public";
@@ -33,6 +36,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     { label: "Year", value: String(project.year) },
     { label: "Category", value: project.category },
     ...(project.event ? [{ label: "Built at", value: project.event }] : []),
+    ...(project.groupSize ? [{ label: "Team", value: `${project.groupSize} people` }] : []),
   ];
 
   return (
@@ -46,6 +50,23 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
 
       <h1 className="mt-6 text-4xl font-extrabold tracking-tight">{project.title}</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">{project.summary}</p>
+
+      {project.draft && (
+        <p className="mt-6 rounded-md border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Write-up pending.</span> This build is
+          real; the description below is scaffolding and will be replaced.
+        </p>
+      )}
+
+      <div className="relative mt-8 aspect-16/9 w-full overflow-hidden rounded-lg border border-border bg-card/70">
+        <ProjectFigure
+          slug={project.slug}
+          title={project.title}
+          image={project.image}
+          priority
+          className="object-cover"
+        />
+      </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {meta.map((m) => (
@@ -112,6 +133,31 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       <section className="mt-12">
         <Prose>{project.body}</Prose>
       </section>
+
+      {project.figures.length > 1 && (
+        <section className="mt-12">
+          <h2 className="text-lg font-bold tracking-tight">Figures</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {project.figures.map((file, i) => (
+              <figure key={file} className="space-y-1.5">
+                <div className="group/fig relative aspect-4/3 overflow-hidden rounded-md border border-border bg-background/60 transition-colors duration-300 hover:border-primary/60">
+                  <Image
+                    src={file}
+                    alt={`${project.title}, figure ${i + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 240px"
+                    className="object-contain p-1.5 transition-transform duration-500 ease-out group-hover/fig:scale-110"
+                    loading={i < 3 ? "eager" : "lazy"}
+                  />
+                </div>
+                <figcaption className="tabular font-mono text-[0.62rem] text-muted-foreground">
+                  Fig. {i + 1}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

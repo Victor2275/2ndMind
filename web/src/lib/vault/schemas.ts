@@ -55,6 +55,21 @@ export const projectSchema = baseFrontmatter.extend({
   tags: z.array(z.string()).default([]),
   stack: z.array(z.string()).default([]),
   event: z.string().optional(),
+  /**
+   * Hero image, as a path under web/public (e.g. "/labs/solenoid_lab_image1.png").
+   * Absent means the card renders a generated placeholder instead. `figure_count` > 1
+   * means the file is the first of a numbered sequence and the page shows a gallery.
+   */
+  image: z.string().startsWith("/").optional(),
+  figure_count: z.number().int().positive().optional(),
+  /** Group work: shown as "N-person team" so solo work is not implied. */
+  group_size: z.number().int().min(2).optional(),
+  /**
+   * Scaffolding awaiting real content. Draft entries render on the site (so layout can be
+   * reviewed) but are excluded from resume output, because a resume bullet reading
+   * PLACEHOLDER is the kind of thing that reaches a recruiter exactly once.
+   */
+  draft: z.boolean().default(false),
 });
 
 export const experienceSchema = baseFrontmatter.extend({

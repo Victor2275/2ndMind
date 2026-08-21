@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "About" },
   { href: "/projects", label: "Projects" },
-  { href: "/labs", label: "Labs" },
 ];
 
 export function SiteHeader({ name }: { name: string }) {

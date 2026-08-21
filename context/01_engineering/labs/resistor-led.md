@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: stable
 summary: I-V characterization of a 1 kΩ resistor and colored LEDs using an ESP32.
@@ -17,7 +17,7 @@ report: ../../99_archive/resistor_lab.md
 hero_image: resistor_lab_image1.png
 image_count: 12
 resume_variants: []
-public: true
+public: false
 bullets:
   - >-
     Characterized linear and non-linear circuit elements by generating I-V curves for a 1 kΩ resistor and multiple colored LEDs using an ESP32 and a potentiometer-controlled circuit

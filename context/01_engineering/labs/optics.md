@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: stable
 summary: Critical angle, refractive index, and laser wavelength measured with prisms, lenses, and double-slit diffraction.
@@ -17,7 +17,7 @@ report: ../../99_archive/optics_lab.md
 hero_image: optics_lab_image1.png
 image_count: 15
 resume_variants: []
-public: true
+public: false
 bullets:
   - >-
     Measured critical angles, refractive indices, and laser wavelength using prisms, lenses, and double-slit diffraction captured with an ESP32 camera

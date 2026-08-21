@@ -11,6 +11,9 @@ read_when: Working anywhere inside web/.
 Per `context/00_meta/ai_directives.md` §6, every new software project is initialized with a
 `context.md` stating expectations. This is that file.
 
+Design and architecture decisions are logged in `DECISIONS.md`, each with its reason and
+reversal steps. Add to it rather than explaining a choice only in a commit message.
+
 ## What this is
 
 Two surfaces over one markdown vault:

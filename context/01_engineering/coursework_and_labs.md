@@ -63,7 +63,6 @@ read_when: Academic background, prerequisite knowledge, transcript questions.
 | [Sound Waves and Fourier Transforms](labs/sound.md) | 2026-04-21 | Speed of sound via phase-shift analysis, plus Fourier decomposition of complex signals. | ESP32 |
 | [RC and RLC Circuit Behavior Measured via ESP32](labs/rlc.md) | 2026-05-01 | ESP32 used as an oscilloscope substitute to characterize RC and RLC transient and frequency response. | ESP32 |
 | [Geometric and Wave Optics via Physical Methods and Digital Imaging](labs/optics.md) | 2026-05-15 | Critical angle, refractive index, and laser wavelength measured with prisms, lenses, and double-slit diffraction. | ESP32 Camera |
-| [Magnetic Inductance Verification Using a Solenoid Bit Reader](labs/solenoid.md) | 2026-06-05 | Macro-scale hard-disk-reader analog decoding falling magnetic bits at 100% accuracy. | ESP32, LM358N op-amp, 387-turn copper coil |
 
 Full reports live in `99_archive/`; figures in `assets/labs/`.
 <!-- END:labs -->

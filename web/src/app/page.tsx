@@ -31,6 +31,8 @@ export default function AboutPage() {
   const experience = publicExperience().filter((e) => e.bullets.length > 0);
   const projects = publicProjects();
   const pursuits = publicPursuits();
+  // Projects are sorted tier then year, so the first entry is the strongest recent build.
+  const featured = projects[0];
 
   const facts = [
     { label: "Degree", value: profile.degree },
@@ -239,17 +241,17 @@ export default function AboutPage() {
         </Link>
 
         <Link
-          href="/labs"
+          href={`/projects/${featured.slug}`}
           className="rise card-scan group rounded-lg border border-border bg-card/70 p-6"
           style={{ animationDelay: "320ms" }}
         >
-          <h2 className="text-base font-semibold transition-colors group-hover:text-primary">
-            Labs
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            ESP32 instrumentation work from Physics 4BL — data acquisition, signal
-            processing, and a working hard-disk-reader analog.
+          <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
+            Most recent build
           </p>
+          <h2 className="mt-2 text-base font-semibold transition-colors group-hover:text-primary">
+            {featured.title}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">{featured.summary}</p>
         </Link>
       </section>
     </main>

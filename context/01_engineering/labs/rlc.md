@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: stable
 summary: ESP32 used as an oscilloscope substitute to characterize RC and RLC transient and frequency response.
@@ -17,7 +17,7 @@ report: ../../99_archive/rlc_lab.md
 hero_image: rlc_lab_image1.png
 image_count: 16
 resume_variants: [robotics]
-public: true
+public: false
 bullets:
   - >-
     Built an ESP32-based data acquisition system as an oscilloscope substitute to characterize RC and RLC transient and frequency response

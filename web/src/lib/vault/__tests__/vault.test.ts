@@ -24,9 +24,38 @@ describe("the real vault loads", () => {
   });
 
   it("parses every lab", () => {
+    // Four coursework labs, all public: false. The solenoid bit reader was promoted to a
+    // project (see DECISIONS.md D-014) because it is a self-directed build, not an
+    // assigned experiment. The other four stay in the vault as academic record.
     const labs = loadLabs();
-    expect(labs.length).toBe(5);
-    expect(labs.map((l) => l.slug)).toContain("solenoid");
+    expect(labs.length).toBe(4);
+    expect(labs.every((l) => !l.public)).toBe(true);
+  });
+
+  it("keeps the solenoid bit reader as a project", () => {
+    const project = loadProjects().find((p) => p.slug === "solenoid-bit-reader");
+    expect(project, "solenoid was promoted to projects/ and must still parse").toBeTruthy();
+    expect(project?.figure_count).toBeGreaterThan(1);
+    expect(project?.resume_variants).toContain("robotics");
+  });
+});
+
+describe("draft entries", () => {
+  it("never carry resume variants", () => {
+    // Drafts render on the site so layout can be reviewed, but a resume bullet reading
+    // PLACEHOLDER reaches a recruiter exactly once. See DECISIONS.md D-014.
+    for (const p of loadProjects().filter((p) => p.draft)) {
+      expect(p.resume_variants, `${p.slug} is a draft with resume variants`).toEqual([]);
+    }
+  });
+
+  it("are the only projects allowed to say PLACEHOLDER", () => {
+    for (const p of loadProjects().filter((p) => !p.draft)) {
+      const text = [p.summary, ...p.bullets, p.body].join(" ");
+      expect(text, `${p.slug} contains placeholder text but is not marked draft`).not.toMatch(
+        /PLACEHOLDER/i,
+      );
+    }
   });
 });
 

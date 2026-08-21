@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: volatile
 summary: Generated index of professional and leadership roles. Canonical data lives in experience/.

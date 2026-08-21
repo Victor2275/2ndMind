@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: engineering
 stability: stable
 summary: Speed of sound via phase-shift analysis, plus Fourier decomposition of complex signals.
@@ -17,7 +17,7 @@ report: ../../99_archive/sound_lab.md
 hero_image: sound_lab_image1.png
 image_count: 10
 resume_variants: []
-public: true
+public: false
 bullets:
   - >-
     Measured the speed of sound via phase-shift analysis and applied Fourier transforms to decompose complex acoustic signals and identify material properties of unknown media

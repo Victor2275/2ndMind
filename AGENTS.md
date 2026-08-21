@@ -33,6 +33,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Applications, cover letters, interview prep | `context/04_operations/internship_pipeline.md` |
 | Past sprints, parked automation ideas | `context/04_operations/logbook_archive.md` |
 | The website, the web app, deploying it | `web/context.md` |
+| Why the site looks/works the way it does; undoing a choice | `web/DECISIONS.md` |
 
 ## Rules for reading this vault
 
