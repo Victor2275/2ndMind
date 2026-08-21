@@ -31,6 +31,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | This week's priorities, scheduling | `context/04_operations/current_sprint.md` |
 | Applications, cover letters, interview prep | `context/04_operations/internship_pipeline.md` |
 | Past sprints, parked automation ideas | `context/04_operations/logbook_archive.md` |
+| The website, the web app, deploying it | `web/context.md` |
 
 ## Rules for reading this vault
 
@@ -39,6 +40,9 @@ if the question is broad. It is not affordable to touch `99_archive/`.
   summaries in `context/01_engineering/coursework_and_labs.md` are sufficient for every normal
   question.
 - **Never read `context/assets/`.** Binary images only.
+- **Never glob `web/`.** That is the Next.js app that renders this vault as a website. It
+  carries its own `AGENTS.md` and `context.md` — read those instead. `web/node_modules/`
+  will swamp any search that reaches it.
 - **Check the `updated:` frontmatter field.** A file marked `stability: volatile` whose
   `updated:` date is more than ~14 days old should be treated as suspect — say so rather than
   presenting it as current fact.
@@ -67,4 +71,6 @@ context/
 ├── 04_operations/            sprints, internship pipeline, logbook
 ├── assets/labs/               extracted lab report images (binary)
 └── 99_archive/                full lab reports, transcripts, superseded docs
+
+web/                          Next.js app — public portfolio + private second brain
 ```
