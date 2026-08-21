@@ -22,18 +22,20 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 1-6 — vault refactor, typed parser, public-field whitelist
 - [x] Days 7-12 — public site, breadth section, analytics, SEO, deployed
 - [x] Days 13-15 — resume generator, three variants, print-to-PDF
-- [ ] Days 16-20 — WebAuthn auth + GitHub Contents API vault writes + sprint editor
+- [x] Days 16-20 — passkey auth, vault writes, sprint editor, logbook, dashboard
 - [ ] Days 21-29 — private dashboard, freshness widget, athletics (Neon + Drizzle)
 - [ ] Days 30-32 — Work/Academics/Calendar stubs, buffer
 
-**Blocking on Victor, before 2026-08-29:** create the Neon account and mint the
-fine-grained GitHub PAT (repo `2ndMind`, Contents: read/write). Both are network-dependent
-and gate Days 16-20. Setup steps are in `web/.env.example`.
+**Blocking on Victor, before 2026-08-29:** the private site is built and deployed but
+switched off until its environment variables exist. Follow `web/REGISTER_PASSKEY.md`:
+mint the fine-grained GitHub PAT (repo `2ndMind`, Contents: read/write), set
+`SESSION_SECRET`, and enrol a passkey on both localhost and the live site. The Neon account
+is not needed until Days 21-29.
 
 **Cut rule:** if Days 16-20 are not done by 2026-09-08, drop the workout CSV import first.
 
-**Retiring `/sprint-review`:** the slash command stays until the web sprint editor lands in
-Days 16-20, then goes.
+**Retiring `/sprint-review`:** the web sprint editor now exists at `/private/sprint`. The
+slash command comes out once Victor has signed in and used the editor once.
 
 ## 2. Operational Rules & Boundaries
 - **The Weekly Purge:** At the start of every sprint, any blocker or to-do that has rolled over twice must be: (1) Hard-scheduled into a calendar block, (2) Delegated to an AI, or (3) Ruthlessly deleted. No endless piling up.
