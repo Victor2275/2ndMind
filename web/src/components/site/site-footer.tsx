@@ -8,7 +8,7 @@ export function SiteFooter({ profile }: { profile: PublicProfile }) {
   ];
 
   return (
-    <footer className="mt-24 border-t border-border/70">
+    <footer className="mt-24 border-t border-border/60">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono text-xs text-muted-foreground">
           {profile.name} &middot; {profile.schoolShort} {profile.degree}
@@ -18,7 +18,7 @@ export function SiteFooter({ profile }: { profile: PublicProfile }) {
             <a
               key={l.label}
               href={l.href}
-              className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+              className="link-wipe text-xs text-muted-foreground transition-colors hover:text-primary"
             >
               {l.label}
             </a>

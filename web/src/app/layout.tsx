@@ -61,7 +61,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // V1 is dark-only. Removing this class is how light mode gets enabled in V2.
       className={`dark ${bricolage.variable} ${instrument.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      {/* No background here on purpose — globals.css paints the ground on <html>
+          so body's ::before/::after atmosphere layers can sit above it. */}
+      <body className="min-h-full flex flex-col text-foreground">
         <SiteHeader name={profile.name} />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter profile={profile} />

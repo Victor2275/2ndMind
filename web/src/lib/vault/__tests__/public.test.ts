@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadExperience } from "../load";
+import { loadExperience, loadLabs } from "../load";
 import {
   labFigures,
   PROJECT_CARD_KEYS,
@@ -14,6 +14,7 @@ import {
   publicExperience,
   publicLabs,
   publicProjects,
+  stripInternalSections,
 } from "../public";
 import { VAULT_ROOT } from "../load";
 
@@ -84,6 +85,46 @@ describe("private data never reaches a public projection", () => {
     expect(serialized).not.toMatch(/\((?:A|B|C|D|F)[+-]?\)/);
   });
 
+
+  it("never publishes a collaborator's name", () => {
+    // The labs are group work and the vault records who Victor worked with, but those are
+    // private individuals who did not agree to appear on a public portfolio. The names stay
+    // in frontmatter for the record and are replaced by a group size on the site.
+    const names = loadLabs().flatMap((l) => l.collaborators);
+    expect(names.length, "fixture missing: no lab records collaborators").toBeGreaterThan(0);
+    for (const name of new Set(names)) {
+      expect(serialized, `collaborator name "${name}" reached public output`).not.toContain(
+        name,
+      );
+    }
+  });
+
+  it("strips the internal Notes section out of every body", () => {
+    // `## Notes` holds relative links into 99_archive and reminders to self. Bodies render
+    // verbatim, so anything left there is published.
+    expect(serialized).not.toContain("99_archive");
+    expect(serialized).not.toContain("## Notes");
+  });
+});
+
+describe("stripInternalSections", () => {
+  it("removes a Notes section and everything under it", () => {
+    const body = "## Abstract\nReal content.\n\n## Notes\nInternal pointer.\n";
+    expect(stripInternalSections(body)).toBe("## Abstract\nReal content.");
+  });
+
+  it("keeps sections that follow Notes", () => {
+    const body = "## Notes\nInternal.\n\n## Results\nPublished.\n";
+    expect(stripInternalSections(body)).toBe("\n## Results\nPublished.");
+  });
+
+  it("leaves a body with no Notes section untouched", () => {
+    const body = "## Abstract\nOnly this.";
+    expect(stripInternalSections(body)).toBe(body);
+  });
+});
+
+describe("public projection odds and ends", () => {
   it("honours public: false if it is ever set", () => {
     // Nothing is private today; this asserts the filter is actually wired up so that
     // flipping the flag on an entry works the first time it is needed.

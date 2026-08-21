@@ -33,7 +33,7 @@ export default async function LabPage({ params }: PageProps<"/labs/[slug]">) {
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <Link
         href="/labs"
-        className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
+        className="link-wipe font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
       >
         &larr; Labs
       </Link>
@@ -41,9 +41,12 @@ export default async function LabPage({ params }: PageProps<"/labs/[slug]">) {
       <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">{lab.title}</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">{lab.summary}</p>
 
-      <dl className="mt-8 grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+      <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {meta.map((m) => (
-          <div key={m.label} className="bg-background p-3">
+          <div
+            key={m.label}
+            className="rounded-lg border border-border bg-card/70 p-3 transition-colors duration-300 hover:border-primary/50"
+          >
             <dt className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">
               {m.label}
             </dt>
@@ -66,8 +69,7 @@ export default async function LabPage({ params }: PageProps<"/labs/[slug]">) {
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">
-        Group lab, co-authored with{" "}
-        <span className="text-foreground">{lab.collaborators.join(", ")}</span>.
+        {lab.groupSize}-person group lab. The work described below is mine.
       </p>
 
       {lab.bullets.length > 0 && (
@@ -95,13 +97,13 @@ export default async function LabPage({ params }: PageProps<"/labs/[slug]">) {
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {lab.figures.map((file, i) => (
             <figure key={file} className="space-y-1.5">
-              <div className="relative aspect-[4/3] overflow-hidden rounded border border-border bg-accent">
+              <div className="group/fig relative aspect-4/3 overflow-hidden rounded-md border border-border bg-background/60 transition-colors duration-300 hover:border-primary/60">
                 <Image
                   src={`/labs/${file}`}
                   alt={`${lab.title}, figure ${i + 1}`}
                   fill
                   sizes="(max-width: 640px) 50vw, 240px"
-                  className="object-contain p-1.5"
+                  className="object-contain p-1.5 transition-transform duration-500 ease-out group-hover/fig:scale-110"
                   loading={i < 3 ? "eager" : "lazy"}
                 />
               </div>

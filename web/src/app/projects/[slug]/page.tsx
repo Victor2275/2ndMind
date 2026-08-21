@@ -39,7 +39,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <Link
         href="/projects"
-        className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
+        className="link-wipe font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
       >
         &larr; Projects
       </Link>
@@ -47,9 +47,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       <h1 className="mt-6 text-4xl font-extrabold tracking-tight">{project.title}</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">{project.summary}</p>
 
-      <dl className="mt-8 grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+      <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {meta.map((m) => (
-          <div key={m.label} className="bg-background p-3">
+          <div
+            key={m.label}
+            className="rounded-lg border border-border bg-card/70 p-3 transition-colors duration-300 hover:border-primary/50"
+          >
             <dt className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">
               {m.label}
             </dt>
@@ -82,7 +85,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             <a
               key={key}
               href={href}
-              className="rounded border border-primary/40 px-3 py-1.5 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10"
+              className="rounded-md border border-primary/40 px-3.5 py-1.5 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
             >
               {LINK_LABELS[key] ?? key} &rarr;
             </a>

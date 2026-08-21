@@ -36,10 +36,10 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
               onClick={() => setFilter(c)}
               aria-pressed={active}
               className={cn(
-                "rounded-full border px-3 py-1 font-mono text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                "rounded-full border px-3.5 py-1.5 font-mono text-xs transition-all duration-250 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                 active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                  ? "border-primary bg-primary text-primary-foreground shadow-[0_0_18px_-4px_var(--primary)]"
+                  : "border-border text-muted-foreground hover:-translate-y-0.5 hover:border-primary/60 hover:text-foreground",
               )}
             >
               {c} <span className="tabular opacity-60">{counts[c] ?? 0}</span>
@@ -48,17 +48,20 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
         })}
       </div>
 
-      <div className="mt-8 grid gap-px border border-border bg-border sm:grid-cols-2">
-        {shown.map((p) => (
+      {/* Re-keying on the filter restarts the stagger, so switching categories
+          replays the reveal instead of swapping content in place. */}
+      <div key={filter} className="mt-8 grid gap-4 sm:grid-cols-2">
+        {shown.map((p, i) => (
           <Link
             key={p.slug}
             href={`/projects/${p.slug}`}
-            className="group flex flex-col bg-background p-6 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+            style={{ animationDelay: `${i * 60}ms` }}
+            className="rise card-scan group flex flex-col rounded-lg border border-border bg-card/70 p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <div className="flex items-baseline justify-between gap-3">
               <h2
                 className={cn(
-                  "font-semibold tracking-tight group-hover:text-primary",
+                  "font-semibold tracking-tight transition-colors group-hover:text-primary",
                   p.tier === 1 ? "text-lg" : "text-base",
                 )}
               >
@@ -89,6 +92,13 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
                 </span>
               )}
             </div>
+
+            <span
+              aria-hidden
+              className="mt-4 font-mono text-xs text-primary opacity-0 transition-all duration-300 group-hover:opacity-100"
+            >
+              Read more &rarr;
+            </span>
           </Link>
         ))}
       </div>

@@ -45,12 +45,25 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 | Styling | Tailwind v4 + shadcn/ui |
 | Fonts | Self-hosted in `src/app/fonts/` — see below |
 | Database | Neon Postgres + Drizzle |
-| Auth | Clerk, passkey |
+| Auth | Self-hosted WebAuthn (`@simplewebauthn`) — single user, no vendor |
 | Vault I/O | `@octokit/rest`, `gray-matter`, `zod` |
 | Tests | Vitest + Testing Library |
 | Host | Vercel Hobby, `vercel.app` subdomain |
 
 Budget is **$0**. Everything above must stay on a free tier.
+
+## Auth is self-hosted, not Clerk
+
+Original plan was Clerk passkey auth. Checked their pricing on 2026-08-20 while writing account
+setup instructions: passkeys are Pro-only ($20-25/mo), not on the free Hobby plan, and it's an
+ongoing cost, not one-time — well outside the $0 (max $5) budget. `@clerk/nextjs` has been
+removed.
+
+There is exactly one user, forever. That makes Clerk's actual job — multi-tenant identity,
+org management, session UI for arbitrary sign-ups — pure overhead here. Auth is a WebAuthn
+ceremony (`@simplewebauthn/server` + `@simplewebauthn/browser`) against one row in the Neon DB
+holding Victor's registered credential, plus a signed session cookie. No vendor, no recurring
+cost, no dashboard to configure. Built in Days 16-20 alongside the vault-write flow.
 
 ## Fonts are self-hosted on purpose
 
@@ -65,10 +78,20 @@ faces live in `src/app/fonts/` and load via `next/font/local`. Source files came
 
 ## Theme
 
-Dark only in V1, per `context/00_meta/brand_and_voice.md`: warm near-black ground, gold
-primary, rose secondary. The dark palette lives in `:root` and `.dark` mirrors it, so adding
-light mode in V2 means redefining `:root` and nothing else. `<html>` carries a hardcoded
-`dark` class.
+Dark only in V1, per `context/00_meta/brand_and_voice.md`: teal primary, rose secondary,
+peach as the single warm note, on grounds derived from the palette's own slate teal. The
+dark palette lives in `:root` and `.dark` mirrors it, so adding light mode in V2 means
+redefining `:root` and nothing else. `<html>` carries a hardcoded `dark` class.
+
+The ground is deliberately not a flat fill: `<html>` paints the base colour and `body`'s
+`::before`/`::after` layer three drifting radial pools plus an SVG-noise grain over it.
+That is also why `body` must stay background-less — giving it an opaque background buries
+both layers.
+
+Motion is centralised as two custom utilities in `globals.css` rather than repeated Tailwind
+chains: `card-scan` (lift, teal glow, and a trace sweeping across the card the way a scope
+refreshes) and `link-wipe` (underline growing from the leading edge). Both, and the ambient
+drift, collapse under `prefers-reduced-motion`.
 
 ## Testing expectations
 

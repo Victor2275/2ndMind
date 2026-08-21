@@ -16,7 +16,24 @@ import type { Experience, Lab, Project } from "./schemas";
  *   - updated/domain/stability/read_when   vault housekeeping metadata
  *   - confidential_scope        the Dimaag.ai boundary note itself
  *   - report                    a path into 99_archive, which is never served
+ *   - collaborators             real names of private individuals; see below
  */
+
+/**
+ * `## Notes` is the vault's convention for internal plumbing — relative links into
+ * 99_archive, reminders about where figures live, notes-to-self about frontmatter.
+ * It is written for a reader with the repo checked out, and means nothing to a hiring
+ * manager. Bodies render verbatim on public pages, so the section is dropped here
+ * rather than by hand in each file, which would only hold until the next file is added.
+ */
+export function stripInternalSections(body: string): string {
+  // Two things this has to get right: `\r?\n`, because vault files are CRLF on Windows and
+  // a bare \n silently matches nothing; and no `m` flag, so `$` means end-of-input rather
+  // than end-of-line.
+  return body
+    .replace(/(?:^|\r?\n)##[ \t]+Notes[ \t]*\r?\n[\s\S]*?(?=\r?\n##[ \t]|$)/gi, "")
+    .trimEnd();
+}
 
 export type PublicProject = {
   slug: string;
@@ -55,7 +72,7 @@ export type PublicLab = {
   course: string;
   term: string;
   date: string;
-  collaborators: string[];
+  groupSize: number;
   tags: string[];
   stack: string[];
   heroImage: string;
@@ -79,7 +96,7 @@ export function toPublicProject(p: Project): PublicProject {
     links: p.links ?? {},
     ...(p.event ? { event: p.event } : {}),
     bullets: p.bullets,
-    body: p.body,
+    body: stripInternalSections(p.body),
   };
 }
 
@@ -95,7 +112,7 @@ export function toPublicExperience(e: Experience): PublicExperience {
     seasonal: e.seasonal ?? false,
     links: e.links ?? {},
     bullets: e.bullets,
-    body: e.body,
+    body: stripInternalSections(e.body),
   };
 }
 
@@ -119,14 +136,14 @@ export function toPublicLab(l: Lab): PublicLab {
     course: l.course,
     term: l.term,
     date: l.date,
-    collaborators: l.collaborators,
+    groupSize: l.collaborators.length + 1,
     tags: l.tags,
     stack: l.stack,
     heroImage: l.hero_image,
     imageCount: l.image_count,
     figures: labFigures(l.hero_image, l.image_count),
     bullets: l.bullets,
-    body: l.body,
+    body: stripInternalSections(l.body),
   };
 }
 
@@ -142,7 +159,7 @@ export const PUBLIC_EXPERIENCE_KEYS = [
 ] as const;
 
 export const PUBLIC_LAB_KEYS = [
-  "slug", "title", "summary", "course", "term", "date", "collaborators",
+  "slug", "title", "summary", "course", "term", "date", "groupSize",
   "tags", "stack", "heroImage", "imageCount", "figures", "bullets", "body",
 ] as const;
 
