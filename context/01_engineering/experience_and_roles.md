@@ -2,31 +2,18 @@
 updated: 2026-08-20
 domain: engineering
 stability: volatile
-summary: 4 professional and leadership roles with dates and contributions.
+summary: Generated index of professional and leadership roles. Canonical data lives in experience/.
 read_when: Resume work, interview prep, experience questions.
 ---
 
+> **Generated file — do not edit.** Source of truth is `experience/`.
+> Regenerate with `python scripts/build_indexes.py`.
+
 # Professional Experience and Roles
 
-### June 2026 – August 2026 Software Engineering Intern @ Dimaag.ai
-- **Role:** Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles.
-- **Key Contributions**:
-  - Implemented PPO training pipelines, 2D LiDAR raycasting, and domain randomization in NVIDIA Isaac Lab.
-  - Validated policies across simulators and physical hardware (tracking >12 mph with sub-decimeter accuracy).
-  - Integrated LLM tooling for automated documentation, test case generation, and log parsing.
-
-### August 2021 – May 2025 Robotics Programming Lead @ FIRST Robotics
-- **Role:** Led software development for a 15–20 member team building semi-autonomous robots.
-- **Key Contributions**:
-  - Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization.
-  - Engineered autonomous routines propelling the team to FIRST World Championships (Top 5% of regionals).
-  - Safely deployed and tested software on physical hardware.
-
-### August 2021 – June 2025 Head Coach @ MathCounts
-- **Role:** Led weekly competitive math training for 15-25 students.
-- **Key Contributions**:
-  - Coordinated assistant coaches and designed problem-solving curricula.
-  - Developed leadership and technical communication skills.
-
-### 2022 – 2025 (Seasonal) Lifeguard
-- **Role:** Certified in CPR, First Aid, and lifesaving techniques.
+| Role | Organization | Type | Start | End | On CV |
+|---|---|---|---|---|---|
+| [Software Engineering Intern](experience/dimaag.md) | Dimaag.ai | internship | 2026-06 | 2026-08 | robotics, ml, swe |
+| [Lifeguard](experience/lifeguard.md) | Seasonal | other | 2022 | 2025 | no |
+| [Robotics Programming Lead](experience/first-robotics.md) | FIRST Robotics | leadership | 2021-08 | 2025-05 | robotics, ml, swe |
+| [Head Coach](experience/mathcounts.md) | MathCounts | leadership | 2021-08 | 2025-06 | no |

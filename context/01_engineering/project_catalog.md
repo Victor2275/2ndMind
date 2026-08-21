@@ -2,45 +2,36 @@
 updated: 2026-08-20
 domain: engineering
 stability: volatile
-summary: 4 projects with stack, architecture, lessons, and links.
+summary: Generated index of all projects. Canonical data lives in projects/.
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 ---
 
+> **Generated file — do not edit.** Source of truth is `projects/`.
+> Regenerate with `python scripts/build_indexes.py`.
+
 # Project Catalog
 
-## Tier 1: Flagship Projects
+## Tier 1
 
-### Proof
-**Status**: Active | **Date**: 2026
-**Tech Stack**: React, MongoDB, Cheerio (Web Scraping), Gemini API, Socket.io
-**Architecture**: Full-stack progressive web app (PWA) with MongoDB/React. Real-time cross-device sync via Socket.io. Gemini API handles extracting and restructuring recipe data from scraped URLs.
-**Lessons Learned / Post-Mortem**: Still in progress, no post-mortem yet.
-**Links**: [Live App](https://proof-cdvj.onrender.com)
+| Project | Status | Year | Category | Stack | Links |
+|---|---|---|---|---|---|
+| [Proof](projects/proof.md) | active | 2026 | software | React, MongoDB, Cheerio, Gemini API, Socket.io | [Live](https://proof-cdvj.onrender.com) |
+| [Micromouse Simulator](projects/micromouse-simulator.md) | archived | 2024 | robotics | Java, Java Graphics | [GitHub](https://github.com/Victor2275/MicroMouseSim) |
+| [TaskAble](projects/taskable.md) | archived | 2024 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
 
-### Micromouse Simulator
-**Status**: Archived | **Date**: 2024
-**Tech Stack**: Java, Java Graphics
-**Architecture**: Maze-solving simulator featuring Flood Fill pathfinding algorithm and a graphical visualization engine. Uses a file parsing pipeline to load competition mazes.
-**Lessons Learned / Post-Mortem**: Learned various algorithms to solve mazes, and learned how to iterate and understand big O.
-**Links**: [GitHub](https://github.com/Victor2275/MicroMouseSim)
+## Tier 2
 
-### TaskAble (Hackathon: UCLA HOTH)
-**Status**: Archived | **Date**: 2024
-**Tech Stack**: React, Firebase Firestore, Gemini API
-**Architecture**: Educational web app linking student interfaces to a teacher dashboard via Firebase. Gemini API generates task breakdowns. Features reward system and emotion logging.
-**Lessons Learned / Post-Mortem**: Began to understand how to use AI workflows, as well as working in a small team of non-technical people.
-**Links**: [GitHub](https://github.com/Victor2275/HOTHproject)
-
-## Tier 2: Hackathons, Tools, and Jam Builds
-
-### 5 Second Rule
-**Status**: Archived | **Date**: 2024
-**Tech Stack**: Unity, C#
-**Details**: Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement, combat, abilities, and enemy AI.
-**Links**: [Itch.io](https://mcalmic.itch.io/5-second-rule)
+| Project | Status | Year | Category | Stack | Links |
+|---|---|---|---|---|---|
+| [5 Second Rule](projects/five-second-rule.md) | archived | 2024 | software | Unity, C# | [Itch.io](https://mcalmic.itch.io/5-second-rule) |
 
 ## Confidentiality Notes
-- **Dimaag.ai**: The technical architecture and contributions documented in `experience_and_roles.md` (PPO training pipelines, LiDAR raycasting, Isaac Lab, sim-to-real validation, tracking accuracy) are shareable — safe to use in resumes, interviews, and portfolio material. Some Dimaag.ai business and product details beyond that documented technical scope remain confidential and are deliberately not recorded anywhere in this vault. If a question requires specifics not found here, say so rather than speculating.
+
+- **Dimaag.ai**: see `experience/dimaag.md`, field `confidential_scope`. The
+  documented technical scope is shareable; anything beyond it is deliberately not
+  recorded in this vault. Say so rather than speculating.
 
 ## Hardware & CAD Models
-- None documented yet. FIRST Robotics might have models added in the future.
+
+- None documented yet. The Turret (see `03_craft_and_creative/fabrication_and_cad.md`)
+  is the intended first entry. FIRST Robotics models may be added later.

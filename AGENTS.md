@@ -22,8 +22,8 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Target roles, companies, locations, timeline | `context/01_engineering/career_targets.md` |
 | Languages, tooling, OS, code standards | `context/01_engineering/technical_standards.md` |
 | Courses, grades, academic background, labs | `context/01_engineering/coursework_and_labs.md` |
-| Jobs, internships, leadership roles | `context/01_engineering/experience_and_roles.md` |
-| Projects, portfolio, "what have you built" | `context/01_engineering/project_catalog.md` |
+| Jobs, internships, leadership roles | `context/01_engineering/experience/` (fast index: `experience_and_roles.md`) |
+| Projects, portfolio, "what have you built" | `context/01_engineering/projects/` (fast index: `project_catalog.md`) |
 | Dragon boat, erg, PRs, nutrition, recovery | `context/02_physical_performance/benchmarks_and_logs.md` |
 | Workout programming, weekly split, tapering | `context/02_physical_performance/training_blocks.md` |
 | Cooking, baking, recipes, dining hall | `context/03_craft_and_creative/culinary_formulas.md` |
@@ -46,9 +46,11 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 - **Check the `updated:` frontmatter field.** A file marked `stability: volatile` whose
   `updated:` date is more than ~14 days old should be treated as suspect — say so rather than
   presenting it as current fact.
-- **Canonical sources:** career facts come from `experience_and_roles.md` and
-  `project_catalog.md`, never from `99_archive/resume.md` — that file is a generated view and
-  explicitly marks itself non-canonical.
+- **Canonical sources:** career facts come from the per-entry files in
+  `01_engineering/projects/` and `01_engineering/experience/` — one file per project or role,
+  structured data in frontmatter. `project_catalog.md` and `experience_and_roles.md` are
+  **generated indexes**: read them for a one-file overview, never edit them. Same for
+  `99_archive/resume.md`. After changing any entry, run `python scripts/build_indexes.py`.
 - **Dimaag.ai:** the technical specifics in `experience_and_roles.md` (PPO, Isaac Lab, LiDAR
   raycasting, sim-to-real validation, tracking accuracy) are shareable — use them freely.
   Anything beyond that documented scope is not recorded in this vault; say so rather than
@@ -65,7 +67,9 @@ update the file, bump its `updated:` field to today, and say what you changed.
 ```
 context/
 ├── 00_meta/                  identity + behavioral directives
-├── 01_engineering/           academics, projects, experience, standards
+├── 01_engineering/           academics, standards, career targets
+│   ├── projects/             one file per project (canonical)
+│   └── experience/           one file per role (canonical)
 ├── 02_physical_performance/  dragon boat training and benchmarks
 ├── 03_craft_and_creative/    cooking, CAD, fabrication
 ├── 04_operations/            sprints, internship pipeline, logbook
