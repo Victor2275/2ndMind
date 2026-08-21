@@ -362,3 +362,87 @@
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Resume
+   --------------------------------------------------------------------------- */
+
+.resume-heading {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+}
+
+/* Print is the deliverable, not an afterthought: the PDF Victor sends to recruiters is
+   this page through the browser's own print dialog. Everything below exists so that file
+   comes out as a clean black-on-white document with selectable text — resume parsers read
+   text, not screenshots, which rules out rasterising the dark theme. */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* The ambient gradient and grain layers would render as a grey wash over the page. */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  .resume-sheet {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  /* Every themed colour resolves to near-black; muted text stays legibly darker than the
+     screen version, because grey that reads well on #0a161b prints as illegible haze. */
+  .resume-sheet,
+  .resume-sheet * {
+    color: #000 !important;
+  }
+
+  .resume-sheet .text-muted-foreground {
+    color: #333 !important;
+  }
+
+  .resume-heading {
+    color: #000 !important;
+    border-bottom-color: #999 !important;
+  }
+
+  .resume-sheet li::before {
+    color: #000 !important;
+  }
+
+  /* Links print as plain text — a blue underline on paper is noise, and the URL is
+     already spelled out in the contact line. */
+  .resume-sheet a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Never split an entry across the page boundary; a bullet list orphaned from its job
+     title is the single most common print bug in a generated resume. */
+  .resume-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

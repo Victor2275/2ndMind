@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "About" },
   { href: "/projects", label: "Projects" },
+  { href: "/resume/robotics", label: "Resume" },
 ];
 
 export function SiteHeader({ name }: { name: string }) {
@@ -15,10 +16,10 @@ export function SiteHeader({ name }: { name: string }) {
 
   // "/" only matches itself; every other entry also owns its detail pages.
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+    href === "/" ? pathname === "/" : pathname.startsWith(href.split("/").slice(0, 2).join("/"));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md print:hidden">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href="/"

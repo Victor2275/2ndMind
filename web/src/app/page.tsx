@@ -85,7 +85,17 @@ export default function AboutPage() {
             and the embedded instrumentation underneath them.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+          <div className="mt-6">
+            <Link
+              href="/resume/robotics"
+              className="inline-flex items-center gap-2 rounded-md border border-primary/50 px-4 py-2 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
+            >
+              View resume
+              <span aria-hidden>&rarr;</span>
+            </Link>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
             {contacts.map((c) => (
               <a
                 key={c.label}

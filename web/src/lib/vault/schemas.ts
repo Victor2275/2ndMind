@@ -146,3 +146,32 @@ export const profileSchema = baseFrontmatter.extend({
 });
 
 export type Profile = z.infer<typeof profileSchema> & { body: string };
+
+/**
+ * 01_engineering/resume_config.md — the connective tissue the entries do not carry.
+ * Which roles and projects appear on a variant comes from each entry's `resume_variants`,
+ * never from here.
+ */
+export const resumeConfigSchema = baseFrontmatter.extend({
+  skills: z
+    .array(
+      z.object({
+        group: z.string().min(1),
+        variants: z.array(resumeVariant).min(1),
+        items: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .min(1),
+  coursework: z.array(z.string().min(1)).min(1),
+  variants: z
+    .array(
+      z.object({
+        id: resumeVariant,
+        label: z.string().min(1),
+        headline: z.string().min(1),
+      }),
+    )
+    .length(3),
+});
+
+export type ResumeConfig = z.infer<typeof resumeConfigSchema> & { body: string };

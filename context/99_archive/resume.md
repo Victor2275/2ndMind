@@ -1,71 +1,174 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-21
 domain: archive
 stability: stable
-summary: Generated-view resume; not the canonical source for experience or project data.
+summary: Generated resume, all three variants. Not canonical for any entry.
 read_when: Only when explicitly asked for this specific document.
 ---
 
-> **Not canonical.** Source of truth is `01_engineering/experience_and_roles.md` and
-> `01_engineering/project_catalog.md`. Regenerate this file from those; do not edit it directly.
+> **Generated file — do not edit.** Source of truth is `01_engineering/{projects,experience,labs}/`.
+> Regenerate with `python scripts/build_indexes.py`.
 
-# **Victor Gusev**
+# Victor Gusev
 
-(925) 588 1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com)  | [linkedin.com/in/victorgusev/](https://www.linkedin.com/in/victorgusev/)  | [github.com/Victor2275](https://github.com/Victor2275)
+(925) 588-1919 | [gusev0219@gmail.com](mailto:gusev0219@gmail.com) | [LinkedIn](https://www.linkedin.com/in/victorgusev/) | [GitHub](https://github.com/Victor2275)
 
-**Education**  
-**University of California, Los Angeles (UCLA)**	Expected Graduation: June 2028  
-B.S. in Computer Science and Engineering 	GPA: 3.64 / 4.00  
-*Coursework:* Algorithms, Object-Oriented Design, Programming Languages, Probability, Logic Design                                                              
+## Robotics variant
 
-**Technical Skills**  
-**Programming Languages:** Python, Java, C, C++, JavaScript, Assembly  
-**Robotics & AI:** ROS, NVIDIA Isaac Lab, PyTorch, PID Control, LiDAR, Computer Vision, Sensor Integration  
-**Frameworks & Web:** React, Node.js, Express, Socket.io, MongoDB   
-**Software, Tools & Hardware:** Git, Docker, Linux, Solidworks, 3D Printing 
+*Autonomous systems — reinforcement-learning planners, LiDAR and vision pipelines, and the embedded instrumentation underneath them.*
 
-**Experience**  
-**Software Engineering Intern |** *[Dimaag.ai*](http://Dimaag.ai)	June 2026 – August 2026
+### Education
 
-* Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths  
+**University of California, Los Angeles** - B.S. Computer Science and Engineering  
+Expected June 2028 - GPA 3.64 / 4.00  
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
 
-* Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab 
+### Technical Skills
 
-* Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment. 
+**Programming Languages:** Python, C++, C, Java, JavaScript, TypeScript, Assembly  
+**Robotics & Embedded:** ROS, NVIDIA Isaac Lab, ESP32, PID Control, LiDAR, Sensor Integration, Computer Vision  
+**Machine Learning:** PyTorch, Reinforcement Learning, PPO, Domain Randomization, Sim-to-Real  
+**Tools & Hardware:** Git, Docker, Linux, SolidWorks, 3D Printing  
 
-* Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
+### Experience
 
-* Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs 
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
 
-**Robotics Programming Lead | ***[FIRST Robotics Program*](https://www.firstinspires.org/)	August 2021 – May 2025
+- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
+- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
+- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
 
-* Led software development for a 15–20 member robotics team, building semi-autonomous competition robots
+**Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
 
-* Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization  
-* Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
+- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
+- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
+- Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
 
-* Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors.
+### Projects
 
-**Projects**  
-**Proof** | React, MongoDB, Web Scraping, Gemini API
+**Solenoid Bit Reader** | *Physics 4BL* - 2026
 
-* Architected a full-stack progressive web application (PWA) with MongoDB and React to version-control recipe iterations and manage real-time inventory states
+- Built a macro-scale hard-disk-reader analog — a 387-turn copper coil on a high-permeability iron core, read by an ESP32 — decoding falling binary magnetic bits via Faraday's Law of Induction
+- Amplified sensor output 20x with an LM358N op-amp to fit the ESP32 ADC's 0-3.3V window, and calibrated bit-time windows against gravitational acceleration to establish the system's 40 mm resolution limit
+- Achieved 100% decoding accuracy across all binary test sequences using a start-bit clock synchronization scheme
 
-* Integrated the Gemini API and web scraping (Cheerio) to autonomously extract, intelligently restructure, and import recipes directly from raw URLs 
+**Micromouse Simulator** | *robotics* - 2024
 
-* Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms   
-* Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments.
+- Designed a full maze-solving simulator for Micromouse competitions using Java
+- Implemented Flood Fill pathfinding algorithm to autonomously solve unknown mazes
+- Built a graphical visualization engine using Java Graphics to animate traversal and decisions
+- Developed file parsing pipeline to load and replay real competition mazes
 
-* Link: [https://proof-cdvj.onrender.com](https://proof-cdvj.onrender.com) 
+---
 
-**Micromouse Simulator** | Java, Graphics, File Parsing
+## Machine Learning variant
 
-* Designed a full maze-solving simulator for Micromouse competitions using Java
+*Reinforcement learning applied to physical systems, from PPO training pipelines in simulation through validated hardware deployment.*
 
-* Implemented Flood Fill pathfinding algorithm to autonomously solve unknown mazes
+### Education
 
-* Built a graphical visualization engine using Java Graphics to animate traversal and decisions
+**University of California, Los Angeles** - B.S. Computer Science and Engineering  
+Expected June 2028 - GPA 3.64 / 4.00  
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
 
-* Developed file parsing pipeline to load and replay real competition mazes
+### Technical Skills
 
-* GitHub: [github.com/Victor2275/micromousesim](https://github.com/Victor2275/MicroMouseSim) 
+**Programming Languages:** Python, C++, C, Java, JavaScript, TypeScript, Assembly  
+**Robotics & Embedded:** ROS, NVIDIA Isaac Lab, ESP32, PID Control, LiDAR, Sensor Integration, Computer Vision  
+**Machine Learning:** PyTorch, Reinforcement Learning, PPO, Domain Randomization, Sim-to-Real  
+**Web & Backend:** React, Node.js, Express, Socket.io, MongoDB, Next.js  
+**Tools & Hardware:** Git, Docker, Linux, SolidWorks, 3D Printing  
+
+### Experience
+
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
+
+- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
+- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
+- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
+
+**Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
+
+- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
+- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
+- Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
+
+### Projects
+
+**Proof** | *software* - 2026
+
+- Architected a full-stack progressive web application (PWA) with MongoDB and React to version-control recipe iterations and manage real-time inventory states
+- Integrated the Gemini API and web scraping (Cheerio) to autonomously extract, intelligently restructure, and import recipes directly from raw URLs
+- Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms
+- Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments
+
+**TaskAble** | *UCLA HOTH* - 2024
+
+- Built an educational web app linking student interfaces to a teacher dashboard through Firebase Firestore, developed with a small team during UCLA HOTH
+- Integrated the Gemini API to generate task breakdowns that decompose assignments into manageable steps for students
+- Implemented a reward system and emotion logging to track student engagement alongside task completion
+
+---
+
+## Software Engineering variant
+
+*Full-stack systems with real-time synchronization and AI-assisted data pipelines, built and tested end to end.*
+
+### Education
+
+**University of California, Los Angeles** - B.S. Computer Science and Engineering  
+Expected June 2028 - GPA 3.64 / 4.00  
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
+
+### Technical Skills
+
+**Programming Languages:** Python, C++, C, Java, JavaScript, TypeScript, Assembly  
+**Web & Backend:** React, Node.js, Express, Socket.io, MongoDB, Next.js  
+**Tools & Hardware:** Git, Docker, Linux, SolidWorks, 3D Printing  
+
+### Experience
+
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
+
+- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
+- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
+- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
+
+**Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
+
+- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
+- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
+- Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
+
+### Projects
+
+**Proof** | *software* - 2026
+
+- Architected a full-stack progressive web application (PWA) with MongoDB and React to version-control recipe iterations and manage real-time inventory states
+- Integrated the Gemini API and web scraping (Cheerio) to autonomously extract, intelligently restructure, and import recipes directly from raw URLs
+- Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms
+- Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments
+
+**Micromouse Simulator** | *robotics* - 2024
+
+- Designed a full maze-solving simulator for Micromouse competitions using Java
+- Implemented Flood Fill pathfinding algorithm to autonomously solve unknown mazes
+- Built a graphical visualization engine using Java Graphics to animate traversal and decisions
+- Developed file parsing pipeline to load and replay real competition mazes
+
+**TaskAble** | *UCLA HOTH* - 2024
+
+- Built an educational web app linking student interfaces to a teacher dashboard through Firebase Firestore, developed with a small team during UCLA HOTH
+- Integrated the Gemini API to generate task breakdowns that decompose assignments into manageable steps for students
+- Implemented a reward system and emotion logging to track student engagement alongside task completion
+
+---

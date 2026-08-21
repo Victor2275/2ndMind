@@ -19,6 +19,48 @@ useful part.
 
 ## 2026-08-21
 
+### D-017 · The resume is generated from the vault, in two languages
+
+**Decision.** `/resume/[variant]` renders from `web/src/lib/resume.ts`; `99_archive/resume.md`
+is written by `scripts/build_indexes.py`. Both select entries by each entry's own
+`resume_variants` field. A test asserts the two agree.
+
+**Why.** Victor asked for a genuinely generated resume, not a maintained document — bullets
+already live in canonical entries and a hand-written copy guarantees drift. The vault must
+also stay readable without running the web app, which is why the Python copy exists at all.
+The duplication is the cost of that, and the drift test is what makes it safe.
+
+**How to reverse.** Delete `build_resume` from `build_indexes.py` and the
+"archived copy agrees with the site" describe block. The site is unaffected.
+
+### D-016 · Print styling, not a PDF library
+
+**Decision.** The PDF comes from the browser's own print dialog, driven by an `@media print`
+block. No PDF generation dependency.
+
+**Why.** $0 budget, and browser "Save as PDF" produces **selectable text** — which is what
+resume parsers read. A rasterised dark-theme screenshot would be unparseable by the ATS
+systems these applications go through. Victor also said he would export the PDF manually.
+
+**Consequences worth knowing.** Everything themed is forced to near-black; muted greys that
+read well on `#0a161b` print as illegible haze, so they are darkened to `#333`. Links print
+without underlines because the URLs are already spelled out in the contact line.
+`.resume-block` sets `break-inside: avoid` so a bullet list is never orphaned from its job
+title across a page boundary.
+
+**How to reverse.** Delete the `@media print` block in `globals.css`.
+
+### D-015 · RLC lab dropped from the robotics resume variant
+
+**Decision.** `labs/rlc.md` had `resume_variants: [robotics]`; now `[]`.
+
+**Why.** Consistency with D-014. Having argued that assigned coursework is padding on the
+portfolio, leaving it on the resume would be incoherent — and the solenoid project already
+covers ESP32 instrumentation, better and with a self-directed result.
+
+**How to reverse.** Put `robotics` back in that file's `resume_variants` and rerun
+`python scripts/build_indexes.py`.
+
 ### D-014 · Labs cut to one entry, promoted to a project
 
 **Decision.** Four of the five Physics 4BL labs (optics, RLC, sound, resistor/LED) are now

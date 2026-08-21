@@ -10,11 +10,13 @@ import {
   profileSchema,
   projectSchema,
   pursuitSchema,
+  resumeConfigSchema,
   type Experience,
   type Lab,
   type Profile,
   type Project,
   type Pursuit,
+  type ResumeConfig,
 } from "./schemas";
 
 /**
@@ -68,6 +70,15 @@ export function loadLabs(): Lab[] {
 export function loadPursuits(): Pursuit[] {
   const dir = path.join(VAULT_ROOT, "03_craft_and_creative", "pursuits");
   return loadDir(dir, pursuitSchema).sort((a, b) => a.order - b.order);
+}
+
+export function loadResumeConfig(): ResumeConfig {
+  const file = path.join(ENG, "resume_config.md");
+  return parseEntry(
+    fs.readFileSync(file, "utf8"),
+    resumeConfigSchema,
+    "01_engineering/resume_config.md",
+  );
 }
 
 export function loadProfile(): Profile {

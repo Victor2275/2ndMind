@@ -16,7 +16,7 @@ stack: [ESP32]
 report: ../../99_archive/rlc_lab.md
 hero_image: rlc_lab_image1.png
 image_count: 16
-resume_variants: [robotics]
+resume_variants: []
 public: false
 bullets:
   - >-

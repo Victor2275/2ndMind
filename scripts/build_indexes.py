@@ -176,13 +176,138 @@ def replace_marked(path: Path, marker: str, body: str) -> str:
     return f"{head}\n{body}\n{tail}"
 
 
+def fmt_resume_date(value) -> str:
+    """2026-06 -> June 2026. A bare year passes through."""
+    text = str(value)
+    parts = text.split("-")
+    if len(parts) < 2:
+        return text
+    month = dt.date(int(parts[0]), int(parts[1]), 1)
+    return month.strftime("%B %Y")
+
+
+def resume_entries(entries: list[dict], variant: str, org_key: str, date_fn) -> list[dict]:
+    out = []
+    for e in entries:
+        if variant not in (e.get("resume_variants") or []):
+            continue
+        if not e.get("bullets"):
+            continue
+        if e.get("draft"):
+            continue
+        out.append(
+            {
+                "title": e["title"],
+                "org": e.get(org_key) or e.get("category") or "",
+                "dates": date_fn(e),
+                "bullets": e["bullets"],
+            }
+        )
+    return out
+
+
+def build_resume(config: dict) -> str:
+    """All three resume variants as one archived reference document.
+
+    The site renders these from web/src/lib/resume.ts; this is the vault's copy so an AI
+    reading the vault alone still sees the resume. A test in the web app asserts the two
+    agree on which entries each variant contains, which is what keeps the duplicate
+    implementation honest.
+    """
+    today = dt.date.today().isoformat()
+    profile = load_single(ROOT / "context" / "00_meta" / "core_profile.md")
+    projects = load_entries(ENG / "projects")
+    experience = load_entries(ENG / "experience")
+    labs = load_entries(ENG / "labs")
+
+    out = [
+        "---",
+        f"updated: {today}",
+        "domain: archive",
+        "stability: stable",
+        "summary: Generated resume, all three variants. Not canonical for any entry.",
+        "read_when: Only when explicitly asked for this specific document.",
+        "---",
+        "",
+        GENERATED_BANNER.format(src="01_engineering/{projects,experience,labs}"),
+        "",
+        f"# {profile['name']}",
+        "",
+        "{} | [{}](mailto:{}) | [LinkedIn]({}) | [GitHub]({})".format(
+            profile["contact"]["phone"],
+            profile["contact"]["email"],
+            profile["contact"]["email"],
+            profile["contact"]["linkedin"],
+            profile["contact"]["github"],
+        ),
+        "",
+    ]
+
+    for variant in config["variants"]:
+        vid = variant["id"]
+        out += [f"## {variant['label']} variant", "", f"*{variant['headline']}*", ""]
+
+        out += [
+            "### Education",
+            "",
+            f"**{profile['school']}** - {profile['degree']}  ",
+            "Expected {} - GPA {:.2f} / {:.2f}  ".format(
+                fmt_resume_date(profile["graduation"]),
+                profile["gpa"],
+                profile["gpa_scale"],
+            ),
+            "*Coursework:* " + ", ".join(config["coursework"]),
+            "",
+            "### Technical Skills",
+            "",
+        ]
+        for group in config["skills"]:
+            if vid in group["variants"]:
+                out.append(f"**{group['group']}:** " + ", ".join(group["items"]) + "  ")
+        out.append("")
+
+        roles = resume_entries(
+            experience,
+            vid,
+            "org",
+            lambda e: "{} - {}".format(
+                fmt_resume_date(e["date_start"]), fmt_resume_date(e["date_end"])
+            ),
+        )
+        builds = resume_entries(projects, vid, "event", lambda e: str(e["year"]))
+        builds += resume_entries(labs, vid, "course", lambda e: fmt_resume_date(e["date"]))
+        builds.sort(key=lambda x: x["dates"], reverse=True)
+
+        for heading, group in (("Experience", roles), ("Projects", builds)):
+            if not group:
+                continue
+            out += [f"### {heading}", ""]
+            for entry in group:
+                out += [f"**{entry['title']}** | *{entry['org']}* - {entry['dates']}", ""]
+                out += [f"- {b}" for b in entry["bullets"]]
+                out.append("")
+
+        out.append("---")
+        out.append("")
+
+    return "\n".join(out).rstrip() + "\n"
+
+
+def load_single(path: Path) -> dict:
+    raw = path.read_text(encoding="utf-8")
+    _, fm, _ = raw.split("---", 2)
+    return yaml.safe_load(fm)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify without writing")
     args = parser.parse_args()
 
     coursework = ENG / "coursework_and_labs.md"
+    resume_config = load_single(ENG / "resume_config.md")
     targets = {
+        ROOT / "context" / "99_archive" / "resume.md": build_resume(resume_config),
         ENG / "project_catalog.md": build_projects(load_entries(ENG / "projects")),
         ENG / "experience_and_roles.md": build_experience(load_entries(ENG / "experience")),
         coursework: replace_marked(
