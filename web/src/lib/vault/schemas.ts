@@ -81,6 +81,26 @@ export const labSchema = baseFrontmatter.extend({
   image_count: z.number().int().nonnegative(),
 });
 
+/**
+ * 03_craft_and_creative/pursuits/ — the publishable framing of what Victor does outside
+ * coursework. Deliberately a separate entity from the training and craft logs it summarises:
+ * those hold bodyweight, nutrition targets, and a back rehab protocol, none of which may
+ * ever reach a public bundle. Keeping the portfolio framing in its own file means the public
+ * site never has to read the private one and hope the allowlist holds.
+ */
+export const pursuitSchema = baseFrontmatter.extend({
+  ...entryFields,
+  order: z.number().int().positive(),
+  kicker: z.string().min(1),
+  discipline: z.string().min(1),
+  facts: z
+    .array(z.object({ label: z.string().min(1), value: z.string().min(1) }))
+    .default([]),
+  carryover: z.string().min(1),
+});
+
+export type Pursuit = z.infer<typeof pursuitSchema> & { body: string };
+
 export type Project = z.infer<typeof projectSchema> & { body: string };
 export type Experience = z.infer<typeof experienceSchema> & { body: string };
 export type Lab = z.infer<typeof labSchema> & { body: string };

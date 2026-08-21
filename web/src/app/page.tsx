@@ -2,7 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { publicExperience, publicProfile, publicProjects } from "@/lib/vault/public";
+import {
+  publicExperience,
+  publicProfile,
+  publicProjects,
+  publicPursuits,
+} from "@/lib/vault/public";
 
 export const metadata = {
   title: "About",
@@ -25,6 +30,7 @@ export default function AboutPage() {
   const profile = publicProfile();
   const experience = publicExperience().filter((e) => e.bullets.length > 0);
   const projects = publicProjects();
+  const pursuits = publicPursuits();
 
   const facts = [
     { label: "Degree", value: profile.degree },
@@ -148,6 +154,63 @@ export default function AboutPage() {
                   </li>
                 ))}
               </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Breadth. Framed by what each pursuit carries back into engineering, so it reads
+          as range rather than as a list of hobbies. */}
+      <section className="mt-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 className="text-xl font-bold tracking-tight">Outside the lab</h2>
+          <p className="max-w-[42ch] text-sm text-muted-foreground">
+            Three things I do seriously, and what each one taught me that shows up in the
+            work above.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {pursuits.map((p, i) => (
+            <article
+              key={p.slug}
+              style={{ animationDelay: `${240 + i * 70}ms` }}
+              className="rise card-scan group flex flex-col rounded-lg border border-border bg-card/70 p-5"
+            >
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
+                {p.kicker}
+              </p>
+              <h3 className="mt-2 text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
+                {p.title}
+              </h3>
+
+              <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                {p.facts.map((f) => (
+                  <div key={f.label}>
+                    <dt className="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground">
+                      {f.label}
+                    </dt>
+                    <dd className="tabular mt-0.5 font-mono text-sm text-foreground">
+                      {f.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              <ul className="mt-4 flex-1 space-y-1.5 text-sm text-muted-foreground">
+                {p.bullets.map((b) => (
+                  <li
+                    key={b}
+                    className="relative pl-4 before:absolute before:left-0 before:text-primary/60 before:content-['—']"
+                  >
+                    {b}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-5 border-t border-border pt-4 text-sm text-muted-foreground/90 italic">
+                {p.carryover}
+              </p>
             </article>
           ))}
         </div>

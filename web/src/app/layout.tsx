@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -43,13 +44,32 @@ const plexMono = localFont({
   display: "swap",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.vercel.app";
+const DESCRIPTION =
+  "Robotics and computer vision engineer. B.S. Computer Science and Engineering, UCLA.";
+
 export const metadata: Metadata = {
+  // Without metadataBase, Next emits relative OG URLs and link previews break on the
+  // platforms recruiters actually paste into.
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Victor Gusev",
     template: "%s · Victor Gusev",
   },
-  description:
-    "Robotics and computer vision engineer. B.S. Computer Science and Engineering, UCLA.",
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "Victor Gusev",
+    title: "Victor Gusev",
+    description: DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: { card: "summary_large_image", title: "Victor Gusev", description: DESCRIPTION },
+  robots: { index: true, follow: true },
+};
+
+export const viewport = {
+  themeColor: "#0a161b",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -67,6 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader name={profile.name} />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter profile={profile} />
+        <Analytics />
       </body>
     </html>
   );

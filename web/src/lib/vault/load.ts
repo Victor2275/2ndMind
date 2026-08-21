@@ -9,10 +9,12 @@ import {
   labSchema,
   profileSchema,
   projectSchema,
+  pursuitSchema,
   type Experience,
   type Lab,
   type Profile,
   type Project,
+  type Pursuit,
 } from "./schemas";
 
 /**
@@ -61,6 +63,11 @@ export function loadLabs(): Lab[] {
   return loadDir(path.join(ENG, "labs"), labSchema).sort((a, b) =>
     b.date.localeCompare(a.date),
   );
+}
+
+export function loadPursuits(): Pursuit[] {
+  const dir = path.join(VAULT_ROOT, "03_craft_and_creative", "pursuits");
+  return loadDir(dir, pursuitSchema).sort((a, b) => a.order - b.order);
 }
 
 export function loadProfile(): Profile {

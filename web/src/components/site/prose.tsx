@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
  */
 export function Prose({ children }: { children: string }) {
   return (
-    <div className="max-w-[68ch] space-y-4 text-sm leading-relaxed text-muted-foreground">
+    <div className="max-w-[68ch] space-y-4 text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -42,6 +42,23 @@ export function Prose({ children }: { children: string }) {
           strong: ({ children }) => (
             <strong className="font-semibold text-foreground">{children}</strong>
           ),
+          // Wide content scrolls inside its own box; the page body must never scroll sideways.
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-md border border-border bg-card/70 p-3 text-xs">
+              {children}
+            </pre>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-left text-xs">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-border px-3 py-2 font-medium text-foreground">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => <td className="border-b border-border/50 px-3 py-2">{children}</td>,
         }}
       >
         {children}

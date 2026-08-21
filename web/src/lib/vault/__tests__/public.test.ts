@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadExperience, loadLabs } from "../load";
+import { loadExperience, loadLabs, loadPursuits } from "../load";
 import {
   labFigures,
   PROJECT_CARD_KEYS,
@@ -11,9 +11,11 @@ import {
   PUBLIC_EXPERIENCE_KEYS,
   PUBLIC_LAB_KEYS,
   PUBLIC_PROJECT_KEYS,
+  PUBLIC_PURSUIT_KEYS,
   publicExperience,
   publicLabs,
   publicProjects,
+  publicPursuits,
   stripInternalSections,
 } from "../public";
 import { VAULT_ROOT } from "../load";
@@ -44,6 +46,56 @@ describe("public projections expose exactly the allowlisted fields", () => {
   it("labs", () => {
     for (const l of publicLabs()) {
       expect(Object.keys(l).sort()).toEqual([...PUBLIC_LAB_KEYS].sort());
+    }
+  });
+
+  it("pursuits", () => {
+    const pursuits = publicPursuits();
+    expect(pursuits.length).toBeGreaterThan(0);
+    for (const p of pursuits) {
+      expect(Object.keys(p).sort()).toEqual([...PUBLIC_PURSUIT_KEYS].sort());
+      // Bodies say which private file the framing came from. They stay in the repo.
+      expect(p).not.toHaveProperty("body");
+    }
+  });
+});
+
+describe("health and training data never becomes public", () => {
+  /**
+   * The pursuits entries summarise files holding bodyweight, calorie and protein targets,
+   * and a lower-back rehab protocol. Victor said he is comfortable storing health data in
+   * the cloud; that is not the same as publishing it on a portfolio read by recruiters.
+   * These assertions are the line between the two.
+   */
+  const serialized = JSON.stringify(publicPursuits());
+
+  it("publishes no bodyweight, nutrition, or rehab detail", () => {
+    for (const term of [
+      "215",
+      "lbs",
+      "protein",
+      "Protein",
+      "creatine",
+      "Creatine",
+      "rehab",
+      "Pallof",
+      "glute",
+      "hamstring",
+      "psoas",
+      "drag factor",
+      "Drag Factor",
+    ]) {
+      expect(serialized, `"${term}" reached public pursuit output`).not.toContain(term);
+    }
+  });
+
+  it("does not read the private training file to build the public section", () => {
+    // Pursuits are their own vault entity precisely so the public path never opens
+    // benchmarks_and_logs.md. If that ever changes, this is the test that should fail.
+    const pursuitFiles = loadPursuits();
+    expect(pursuitFiles.length).toBe(3);
+    for (const p of pursuitFiles) {
+      expect(p.carryover.length).toBeGreaterThan(20);
     }
   });
 });

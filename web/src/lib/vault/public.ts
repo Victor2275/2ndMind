@@ -1,7 +1,7 @@
 import "server-only";
 
-import { loadExperience, loadLabs, loadProfile, loadProjects } from "./load";
-import type { Experience, Lab, Project } from "./schemas";
+import { loadExperience, loadLabs, loadProfile, loadProjects, loadPursuits } from "./load";
+import type { Experience, Lab, Project, Pursuit } from "./schemas";
 
 /**
  * Projections from vault entries to the shapes public pages are allowed to render.
@@ -205,6 +205,43 @@ export function publicExperience(): PublicExperience[] {
 
 export function publicLabs(): PublicLab[] {
   return loadLabs().filter((l) => l.public).map(toPublicLab);
+}
+
+/**
+ * Pursuits carry no body on the public side. Their bodies are notes about which private
+ * file the framing was drawn from and what should replace it later — useful in the repo,
+ * meaningless and slightly odd on a portfolio.
+ */
+export type PublicPursuit = {
+  slug: string;
+  title: string;
+  kicker: string;
+  discipline: string;
+  summary: string;
+  facts: { label: string; value: string }[];
+  bullets: string[];
+  carryover: string;
+};
+
+export const PUBLIC_PURSUIT_KEYS = [
+  "slug", "title", "kicker", "discipline", "summary", "facts", "bullets", "carryover",
+] as const;
+
+export function toPublicPursuit(p: Pursuit): PublicPursuit {
+  return {
+    slug: p.slug,
+    title: p.title,
+    kicker: p.kicker,
+    discipline: p.discipline,
+    summary: p.summary,
+    facts: p.facts.map((f) => ({ label: f.label, value: f.value })),
+    bullets: p.bullets,
+    carryover: p.carryover,
+  };
+}
+
+export function publicPursuits(): PublicPursuit[] {
+  return loadPursuits().filter((p) => p.public).map(toPublicPursuit);
 }
 
 export type PublicProfile = {
