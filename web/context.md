@@ -48,7 +48,7 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 | Styling | Tailwind v4 + shadcn/ui |
 | Fonts | Self-hosted in `src/app/fonts/` — see below |
 | Database | Neon Postgres + Drizzle |
-| Auth | Self-hosted WebAuthn (`@simplewebauthn`) — single user, no vendor |
+| Auth | Self-hosted WebAuthn (`@simplewebauthn`), credential in env, no database |
 | Vault I/O | `@octokit/rest`, `gray-matter`, `zod` |
 | Tests | Vitest + Testing Library |
 | Host | Vercel Hobby, `vercel.app` subdomain |
@@ -102,6 +102,9 @@ drift, collapse under `prefers-reduced-motion`.
 tests, no end-to-end suite** — the deadline does not allow both, and the bugs in this codebase
 will live in pure logic, not in browser choreography. Required coverage:
 
+- session signing and verification (forgery, tampering, expiry)
+- frontmatter edits, including CRLF files and regex-metacharacter labels
+- vault write path validation
 - vault frontmatter parsers and zod schemas
 - resume variant filtering (each variant includes and excludes the right entries)
 - the public-field whitelist

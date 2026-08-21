@@ -19,6 +19,57 @@ useful part.
 
 ## 2026-08-21
 
+### D-020 · Vault writes validate the path before anything else
+
+**Decision.** `assertVaultPath` rejects traversal, backslashes, non-`context/` prefixes, and
+non-`.md` files — in that order.
+
+**Why.** A fine-grained PAT with "Contents: read and write" covers **every file in the repo**,
+not just the vault. That includes `web/` and `.github/workflows/`. Path validation is the only
+thing between a bug in a form handler and an arbitrary repo write, including a workflow file
+that would then run with the repo's own permissions. Shape is checked before prefix so a
+backslash path reports as traversal rather than as "outside the vault", which would point at
+the wrong defect.
+
+**How to reverse.** Don't.
+
+### D-019 · Private pages read the vault over the API, not the filesystem
+
+**Decision.** `/private/*` fetches vault files through the GitHub Contents API even though
+the repo is checked out beside the app.
+
+**Why.** Two reasons. Vercel's runtime filesystem contains only what the build traced, and
+dynamically-constructed paths are not traced — so `fs.readFileSync` would work locally and
+404 in production. And after a write, the local copy is stale by definition; the API is the
+thing that just changed.
+
+**Cost.** Every private page load is a network round trip. Acceptable for one user; if it
+ever isn't, cache per-request rather than reverting to the filesystem.
+
+### D-018 · Passkey auth with no database
+
+**Decision.** The enrolled credential lives in two environment variables
+(`PASSKEY_CREDENTIAL_ID`, `PASSKEY_PUBLIC_KEY`). Sessions are HMAC-signed cookies built on
+Web Crypto. There is no user table and no auth vendor.
+
+**Why.** Following D-006 (Clerk gates passkeys behind $20-25/mo). With exactly one user, the
+stored values are not secret — the private key never leaves the authenticator — so a database
+buys nothing here. Web Crypto rather than a JWT library because `proxy.ts` may run on an edge
+runtime with no Node `crypto`, and an HMAC over JSON is the whole requirement.
+
+**What this design gives up.** Signature counters, which detect a cloned authenticator, need
+somewhere to persist. Platform passkeys (Touch ID, Windows Hello) report counter 0 and never
+increment, so there is nothing to compare — which is the only reason this works. **A hardware
+key that does increment would need real storage.** Rotating or adding a device means
+re-running enrolment and pasting new values into Vercel.
+
+**Enrolment is closed by default.** `PASSKEY_REGISTRATION_SECRET` must be both set and
+supplied. An open registration endpoint on a deployment with no credential configured would
+hand the private site to whoever found it first.
+
+**How to reverse.** Move the credential into Neon (`DATABASE_URL` already exists for
+athletics) and store the counter alongside it. The ceremony code does not change.
+
 ### D-017 · The resume is generated from the vault, in two languages
 
 **Decision.** `/resume/[variant]` renders from `web/src/lib/resume.ts`; `99_archive/resume.md`
@@ -166,9 +217,10 @@ taste. Only `#30525C` was dark enough to build grounds from, so the page and car
 that hue driven down in lightness — this keeps surfaces the same temperature as the accents
 instead of fighting them.
 
-**Open question.** The supplied image labels a *pink* swatch `#30525C`, which is a dark
-slate teal. The hex codes were treated as authoritative. If the pink was intended, this
-decision needs revisiting.
+**Resolved 2026-08-21.** The supplied image labelled a *pink* swatch `#30525C`, which is a
+dark slate teal, so the hex codes were treated as authoritative over the swatch colours.
+Victor confirmed the result: "I like the current palette, keep using what is currently
+there." The palette is settled — do not reopen it without being asked.
 
 **How to reverse.** `git show a81dee8:web/src/app/globals.css` has the gold palette intact.
 
