@@ -19,6 +19,69 @@ useful part.
 
 ## 2026-08-21
 
+### D-035 · Checklist editing lives in its own module, not in `frontmatter.ts`
+
+**Decision.** `lib/vault/checklist.ts` holds the `- [ ]` item reader and writers.
+`frontmatter.ts` stays about frontmatter and generic section edits.
+
+**Why.** Checklists are one markdown convention, not a property of every vault file. Keeping
+them apart means `frontmatter.ts` does not grow a second vocabulary. Both modules repeat the
+same two guards on purpose — `\r?\n` for CRLF files, `(?![\s\S])` rather than `$` for
+end-of-input — and each has its own tests for them.
+
+**How to reverse.** Merge the file back; nothing else depends on the split.
+
+---
+
+### D-034 · The Calendar page has no calendar
+
+**Decision.** `/private/calendar` states plainly that live sync is out of scope for V1 and
+shows the operating rules from the sprint file instead.
+
+**Why.** Google Calendar reads need an OAuth consent screen Google must review before it
+works beyond a test account, plus refresh-token storage and rotation. That is days of work
+for a read-only view of an app already open in another tab, and it would be the only part of
+2ndMind that can lock itself out without warning. A page that says so is more useful than a
+page pretending to be finished.
+
+**How to reverse.** V2 candidate. If it happens, an `.ics` subscription URL is a fraction of
+the work of OAuth and covers reading.
+
+---
+
+### D-033 · The Work page is not an application tracker
+
+**Decision.** `/private/work` renders pipeline strategy and career targets. It does not log
+or count applications.
+
+**Why.** `internship_pipeline.md` records that a background script already scans Gmail and
+maintains a master Google Sheet, and explicitly asks AI assistants to leave that data entry
+alone. A second tracker would be a competing source of truth for facts the sheet already
+owns — the exact failure this vault exists to prevent.
+
+**How to reverse.** If the sheet is ever retired, this is where its replacement goes.
+
+---
+
+### D-032 · The academic tracker edits the sprint file in place
+
+**Decision.** Tracker items are `- [ ]` rows under `## 3. Academic Tracker` in
+`current_sprint.md`. Adding, ticking, and removing each commit that one file. Adding reuses a
+blank placeholder row before appending.
+
+**Why.** The tracker already existed there as prose. Moving it to Postgres would split "what
+am I working on" across two stores; keeping it in markdown means it still reads correctly
+with no site at all, which is the property that makes this a vault and not an app.
+
+A test reads the **real** `current_sprint.md` and asserts the section is found and everything
+outside it stays byte-identical, so renaming or re-numbering the heading fails loudly in CI
+instead of silently doing nothing in the UI.
+
+**How to reverse.** Point the actions at a different file and heading; the pure functions
+take both as parameters.
+
+---
+
 ### D-031 · Athletics degrades to an explanation when `DATABASE_URL` is absent
 
 **Decision.** `/private/athletics` renders a short "no database connected" page rather than

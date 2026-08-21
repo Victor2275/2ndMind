@@ -12,7 +12,8 @@ read_when: Always — anything about current priorities or scheduling.
 *Identify top 3 priorities across all domains for the week here.*
 - **Engineering / Career:** Ship the 2ndMind public site. Live at
   https://victorgusev.vercel.app since 2026-08-21. Resume generator, passkey auth, vault
-  writes, freshness audit, and athletics all done. Next: Work/Academics stubs (Days 30-32).
+  writes, freshness audit, athletics, and the remaining private surfaces all done. V1 is
+  complete; next is the V2 scope conversation.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -24,10 +25,11 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 13-15 — resume generator, three variants, print-to-PDF
 - [x] Days 16-20 — passkey auth, vault writes, sprint editor, logbook, dashboard
 - [x] Days 21-29 — freshness widget, athletics (Neon + Drizzle, Hevy import, PRs)
-- [ ] Days 30-32 — Work/Academics/Calendar stubs, buffer
+- [x] Days 30-32 — Work, Academics (tracker), Calendar, Hobbies. **V1 complete.**
 
-**Local setup is done:** passkey enrolled, GitHub PAT set, Neon connected, athletics
-tables migrated. Verified end to end against the real database on 2026-08-21.
+**V1 shipped 2026-08-21**, four weeks ahead of the 2026-09-18 code deadline. Public
+portfolio, resume generator, passkey auth, vault writes, freshness audit, athletics with
+Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
 **Blocking on Victor, before 2026-08-29:** production is still switched off. Vercel has none
 of the environment variables — `/signin` on the live site reports "Not configured". Set
@@ -37,8 +39,8 @@ of the environment variables — `/signin` on the live site reports "Not configu
 
 **Cut rule:** spent. Days 16-20 and 21-29 both landed early; the CSV import shipped.
 
-**Retiring `/sprint-review`:** the web sprint editor now exists at `/private/sprint`. The
-slash command comes out once Victor has signed in and used the editor once.
+**Retiring `/sprint-review`:** the web sprint editor exists at `/private/sprint`. The slash
+command comes out once Victor confirms he has used the editor at least once — still open.
 
 ## 2. Operational Rules & Boundaries
 - **The Weekly Purge:** At the start of every sprint, any blocker or to-do that has rolled over twice must be: (1) Hard-scheduled into a calendar block, (2) Delegated to an AI, or (3) Ruthlessly deleted. No endless piling up.
