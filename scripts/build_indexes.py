@@ -144,14 +144,50 @@ def build_experience(entries: list[dict]) -> str:
     return "\n".join(out)
 
 
+def build_labs_section(entries: list[dict]) -> str:
+    """Rows for the marked labs block inside coursework_and_labs.md."""
+    out = [
+        "| Lab | Date | Focus | Hardware |",
+        "|---|---|---|---|",
+    ]
+    for e in sorted(entries, key=lambda x: str(x.get("date", ""))):
+        out.append(
+            "| [{title}]({path}) | {date} | {summary} | {stack} |".format(
+                title=e["title"],
+                path=e["_path"],
+                date=e.get("date", "—"),
+                summary=e.get("summary", "—"),
+                stack=", ".join(e.get("stack", [])) or "—",
+            )
+        )
+    out.append("")
+    out.append("Full reports live in `99_archive/`; figures in `assets/labs/`.")
+    return "\n".join(out)
+
+
+def replace_marked(path: Path, marker: str, body: str) -> str:
+    """Swap the content between <!-- BEGIN:marker --> and <!-- END:marker -->."""
+    text = path.read_text(encoding="utf-8")
+    begin, end = f"<!-- BEGIN:{marker} -->", f"<!-- END:{marker} -->"
+    if begin not in text or end not in text:
+        raise SystemExit(f"{path} is missing the {marker} markers")
+    head = text[: text.index(begin) + len(begin)]
+    tail = text[text.index(end) :]
+    return f"{head}\n{body}\n{tail}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify without writing")
     args = parser.parse_args()
 
+    coursework = ENG / "coursework_and_labs.md"
     targets = {
         ENG / "project_catalog.md": build_projects(load_entries(ENG / "projects")),
         ENG / "experience_and_roles.md": build_experience(load_entries(ENG / "experience")),
+        coursework: replace_marked(
+            coursework, "labs", build_labs_section(load_entries(ENG / "labs"))
+        ),
     }
 
     stale = []

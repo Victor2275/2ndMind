@@ -56,8 +56,14 @@ read_when: Academic background, prerequisite knowledge, transcript questions.
 
 ## Lab Experiments
 
-- **[Optics Lab](../99_archive/optics_lab.md)**: Examined geometric and wave optics using physical methods and digital imaging. Measured critical angles, refractive indices, and laser wavelengths using prisms, lenses, and double slit diffraction with an ESP32 camera.
-- **[Resistor and LED Lab](../99_archive/resistor_lab.md)**: Characterized linear and non-linear circuit elements by testing Ohm's Law and generating I-V curves. Used an ESP32 microcontroller to demonstrate the linear resistance of a 1 kΩ resistor and the non-linear behavior of varied colored LEDs.
-- **[RLC Circuit Lab](../99_archive/rlc_lab.md)**: Investigated time-dependent and frequency-dependent behavior of RC and RLC circuits using an ESP32 data acquisition system. Analyzed exponential charging for time constants and resonance curves for underdamped oscillatory responses.
-- **[Solenoid Magnetic Inductance Lab](../99_archive/solenoid_lab.md)**: Developed a macro-scale analog of a hard disk drive reader using a copper coil and ESP32 microcontroller. Successfully decoded falling binary magnetic bits via Faraday's Law of Induction and kinematic modeling.
-- **[Sound Waves and Fourier Transforms Lab](../99_archive/sound_lab.md)**: Measured the speed of sound via phase shift analysis and analyzed complex sound signals using Fourier transforms. Demonstrated the relationships between wave speed, frequency, and wavelength to identify material properties of unknown mediums.
+<!-- BEGIN:labs -->
+| Lab | Date | Focus | Hardware |
+|---|---|---|---|
+| [Linear and Non-Linear Circuit Elements: I-V Curves in Resistors and LEDs](labs/resistor-led.md) | 2026-04-10 | I-V characterization of a 1 kΩ resistor and colored LEDs using an ESP32. | ESP32, Potentiometer |
+| [Sound Waves and Fourier Transforms](labs/sound.md) | 2026-04-21 | Speed of sound via phase-shift analysis, plus Fourier decomposition of complex signals. | ESP32 |
+| [RC and RLC Circuit Behavior Measured via ESP32](labs/rlc.md) | 2026-05-01 | ESP32 used as an oscilloscope substitute to characterize RC and RLC transient and frequency response. | ESP32 |
+| [Geometric and Wave Optics via Physical Methods and Digital Imaging](labs/optics.md) | 2026-05-15 | Critical angle, refractive index, and laser wavelength measured with prisms, lenses, and double-slit diffraction. | ESP32 Camera |
+| [Magnetic Inductance Verification Using a Solenoid Bit Reader](labs/solenoid.md) | 2026-06-05 | Macro-scale hard-disk-reader analog decoding falling magnetic bits at 100% accuracy. | ESP32, LM358N op-amp, 387-turn copper coil |
+
+Full reports live in `99_archive/`; figures in `assets/labs/`.
+<!-- END:labs -->

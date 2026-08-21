@@ -15,9 +15,18 @@ stack: [React, Firebase Firestore, Gemini API]
 event: UCLA HOTH
 links:
   github: https://github.com/Victor2275/HOTHproject
-resume_variants: []
+resume_variants: [swe, ml]
 public: true
-bullets: []
+bullets:
+  - >-
+    Built an educational web app linking student interfaces to a teacher dashboard through
+    Firebase Firestore, developed with a small team during UCLA HOTH
+  - >-
+    Integrated the Gemini API to generate task breakdowns that decompose assignments into
+    manageable steps for students
+  - >-
+    Implemented a reward system and emotion logging to track student engagement alongside
+    task completion
 ---
 
 # TaskAble
@@ -33,8 +42,3 @@ API generates task breakdowns. Features reward system and emotion logging.
 
 Began to understand how to use AI workflows, as well as working in a small team of
 non-technical people.
-
-## Notes
-
-`resume_variants` is empty because no polished resume bullets exist for this project yet —
-it has never appeared on a CV. Write bullets here to make it eligible for one.
