@@ -27,6 +27,34 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 21-29 — freshness widget, athletics (Neon + Drizzle, Hevy import, PRs)
 - [x] Days 30-32 — Work, Academics (tracker), Calendar, Hobbies. **V1 complete.**
 
+### V2 — scoped 2026-08-21
+
+Priority is Victor's: fix V1's findings and make it faster and cleaner before adding
+features. Four ship before term, two during. Full plan and reasoning in `web/DECISIONS.md`
+D-036 to D-039.
+
+- [ ] **0 · Foundation** (10-14h) — cache and time-out vault reads; Postgres becomes the
+      store for anything written often, so saves are immediate and do not commit or deploy.
+- [ ] **1 · Redesign** (16-20h) — legibility and density, teal to dark magenta, active tab,
+      sweep plays once, freshness as a notification, real mobile layout.
+- [ ] **2 · Structured logging** (14-18h) — six categories with their own fields, logged
+      from a phone in under fifteen seconds, searchable. Voice input via Web Speech.
+- [ ] **3 · Today** (8-10h) — one screen: classes, what is due, what you chose to do.
+- [ ] **4 · Calendar** (10-14h, during term) — Google and Canvas private iCal feeds. No
+      OAuth, no cost.
+- [ ] **5 · Athletics with real data** (12-16h, during term) — manual entry first, charts,
+      bodyweight, rehab checklist, weight-adjusted split.
+- [ ] **6 · AI, narrowly scoped** (10-14h, last) — summarise the week, draft sprint goals,
+      every vault write approved as a diff.
+
+**Time budget:** ~4h/day until 2026-09-20, then ~4h/week. Six features is 80-106h against
+~76h before term, which is why only 0-3 are pre-term. Taiwan 08-29 to 09-07 is assumed to
+be zero work.
+
+**Biggest structural change:** everything actionable becomes one task model (D-037). Sprint
+goals, the academic tracker, daily to-dos, and Canvas assignments stop being four separate
+lists.
+
 **V1 shipped 2026-08-21**, four weeks ahead of the 2026-09-18 code deadline. Public
 portfolio, resume generator, passkey auth, vault writes, freshness audit, athletics with
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.

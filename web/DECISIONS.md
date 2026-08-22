@@ -17,6 +17,78 @@ useful part.
 
 ---
 
+## 2026-08-21 · V2 scope
+
+### D-039 · Log fields are proposed from the vault, then edited
+
+**Decision.** I draft three or four fields per log category from what the vault already
+records — SPM and drag factor for erg work, course and grade for academics — and Victor
+strikes out what is wrong.
+
+**Why.** Victor chose this over specifying fields from scratch. Starting from the vault means
+the fields match the vocabulary already in use, so a logged erg piece and the PR table talk
+about the same quantities.
+
+**How to reverse.** Fields live in one schema module per category; changing them is a
+migration, not a rewrite.
+
+---
+
+### D-038 · Voice input is worth building — Android confirmed
+
+**Decision.** Quick-log screens get Web Speech API dictation.
+
+**Why.** I had assumed iPhone and was ready to drop this: Safari on iOS has no Web Speech
+API, and the iOS keyboard's own dictation button already covers every text field for free.
+Victor logs from Android/Chrome, where the API exists. About an hour of work.
+
+**How to reverse.** Feature-detect and fall back to a plain field — which is also what any
+future iPhone would get.
+
+---
+
+### D-037 · Everything actionable is one task model
+
+**Decision.** Sprint goals, the academic tracker, daily to-dos, and Canvas assignments become
+rows in one `tasks` table, each with a source and a due date. The homepage filters to today
+and this week.
+
+**Why.** V2 was about to ship a fourth place to look for "what should I be doing". Victor
+named "too complex to use" as the thing that would make him abandon the project, so four
+competing lists is not a style question, it is the failure mode. Nothing is deleted: sprint
+goals become tasks tagged as goals, tracker items become tasks with a course.
+
+**Cost.** This partly supersedes D-032, which put tracker items in `current_sprint.md`. Those
+rows move to Postgres. The markdown tracker section stays readable but stops being the
+editable source.
+
+**How to reverse.** The task source column makes the origin of every row recoverable, so
+splitting them back out is a query, not an archaeology exercise.
+
+---
+
+### D-036 · High-frequency writes go to Postgres, not the vault
+
+**Decision.** Anything logged often — daily entries, tasks, workouts — is written to Postgres
+and saved immediately. The vault keeps prose that is written rarely and read by AI agents.
+
+**Why.** Finding F2: every vault write is a commit and a deploy, so ticking three boxes was
+three commits, three builds, and a plausible route to Vercel's Hobby ceiling. Victor asked
+for immediate saves (Q77) and accepted logs living outside the vault (Q76).
+
+**The tension, stated.** Victor also wants the site to create vault files (Q80), which can
+never be instant — a GitHub round trip is 1–2 seconds. Resolution: two visibly different
+actions. Logging is silent and instant; writing to the vault shows a publishing state,
+because it is editing the permanent record.
+
+**Deferred.** Syncing Postgres logs back into vault summaries is V3 by Victor's own call
+(Q76).
+
+**How to reverse.** The vault write path is untouched and still used for prose, so reverting
+means pointing the log actions back at it and accepting the commit-per-save cost again.
+
+---
+
 ## 2026-08-21
 
 ### D-035 · Checklist editing lives in its own module, not in `frontmatter.ts`
