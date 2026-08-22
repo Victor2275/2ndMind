@@ -19,6 +19,78 @@ useful part.
 
 ## 2026-08-21 · V2 scope
 
+### D-050 · One Postgres per test file, truncated between tests
+
+**Decision.** `src/test/pg.ts` builds one PGlite instance per file and `TRUNCATE ... RESTART
+IDENTITY CASCADE`s between tests.
+
+**Why.** The first version made a fresh database and re-ran every migration for *each* test.
+With three database test files running concurrently it took 88–155s and, once, failed three
+tests that passed on a re-run. A suite that is flaky teaches you to ignore red, which is worse
+than having no suite. Now **7s**, and deterministic.
+
+The table list is parsed out of the migration SQL rather than hand-written, because a
+hand-written list silently stops truncating a table added later.
+
+**How to reverse.** Go back to per-test instances. Do not.
+
+---
+
+### D-049 · Dictation is feature-detected with `useSyncExternalStore`
+
+**Decision.** The dictate button reads support through `useSyncExternalStore` with a server
+snapshot of `false`, and renders nothing when the API is absent.
+
+**Why.** Two constraints met at once. `window` does not exist on the server, so detecting
+during render would break hydration; setting state in an effect is what the React lint rule
+warns about and causes a cascading render. `useSyncExternalStore` is built for exactly this —
+external, non-reactive state — and gives a clean server snapshot.
+
+Rendering nothing rather than a disabled button is deliberate: Safari on iOS has no Web Speech
+API, and a control that visibly does nothing is worse than no control.
+
+**How to reverse.** Feature-detect however you like, but do not set state in an effect.
+
+---
+
+### D-048 · Log entries are one table with JSONB fields
+
+**Decision.** `log_entries` holds all six categories: a `category`, an `occurredAt`, a `note`,
+and per-category fields in `jsonb`. `searchText` is denormalised on write.
+
+**Why.** The alternative was a column per field across every category — mostly nulls, and a
+migration every time Victor wants a field changed. D-039 promises that changing fields is
+cheap, and a migration per edit is not cheap.
+
+`searchText` is written by `createEntry` rather than by callers, for the same reason
+`bumpUpdated` lives in `writeVaultFile`: an entry whose caller forgot would exist but never be
+findable again.
+
+Search uses `plainto_tsquery`, not `to_tsquery` — the latter raises a syntax error on a bare
+`&`, so a stray character in the search box would 500 the page. A test covers that.
+
+**How to reverse.** Promote hot fields to real columns; the JSONB stays for the rest.
+
+---
+
+### D-047 · Categories are data, and the form is generated from them
+
+**Decision.** `lib/log/categories.ts` declares six categories and their fields. One
+`LogForm` renders any of them; the summary line, the search index and the validation all read
+the same definitions.
+
+**Why.** Six bespoke forms would be six places to change when Victor edits the fields, and
+D-039 committed to that being a one-file edit. Tests assert the structural invariants that
+matter — unique field names, options on every select, and **no category longer than eight
+fields**, because the constraint from Q16 is that a log must be fillable in fifteen seconds.
+
+Deliberately absent: any mood or energy scale. Victor put that in V3, and a 1–5 filled in from
+habit rather than reflection is worse than nothing. A test pins that too.
+
+**How to reverse.** Edit the array. That is the whole point.
+
+---
+
 ### D-046 · The freshness walk is memoised at module scope
 
 **Decision.** `loadFreshness` caches the 34-file disk read in a module-level variable.

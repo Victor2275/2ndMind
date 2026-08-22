@@ -12,8 +12,6 @@ import {
   restoreTask,
   setTaskDone,
 } from "@/lib/tasks/queries";
-import { appendToSection, todayISO } from "@/lib/vault/frontmatter";
-import { readVaultFile, writeVaultFile } from "@/lib/vault/write";
 
 /**
  * Task and goal actions.
@@ -27,16 +25,9 @@ import { readVaultFile, writeVaultFile } from "@/lib/vault/write";
  * read by AI agents.
  */
 
-const LOGBOOK = "context/04_operations/logbook_archive.md";
-
 function describe(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("DATABASE_URL")) return message;
-  if (message.includes("GITHUB_TOKEN")) return message;
-  if (message.includes("did not respond within")) return message;
-  if (message.includes("Bad credentials")) {
-    return "GitHub rejected the token. It may have expired — mint a new fine-grained PAT.";
-  }
   if (message.includes("relation") && message.includes("does not exist")) {
     return "The tasks table is missing. Run `npm run db:migrate`.";
   }
@@ -167,44 +158,6 @@ export async function saveSprintGoals(
     refresh();
     // No commit, no deploy: goals are tasks now, and this is a row update.
     return { ok: true, message: `Saved ${goals.length} goal(s).` };
-  } catch (error) {
-    return { ok: false, message: describe(error) };
-  }
-}
-
-/**
- * The logbook still writes to the vault, deliberately. It is prose written once a day and
- * read by AI agents for context — exactly what the vault is for — and one commit per day is
- * not the write volume that made D-036 necessary.
- */
-export async function appendLogbookEntry(
-  _prev: ActionState | null,
-  formData: FormData,
-): Promise<ActionState> {
-  await requireSession();
-
-  const entry = String(formData.get("entry") ?? "");
-  if (entry.trim() === "") return { ok: false, message: "Write something first." };
-
-  try {
-    const { content } = await readVaultFile(LOGBOOK);
-    const today = todayISO();
-    const bullets = entry
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => `- ${line.replace(/^[-*]\s*/, "")}`)
-      .join("\n");
-
-    const updated = appendToSection(
-      content,
-      "1. Past Sprint Summaries",
-      `### ${today}\n\n${bullets}`,
-    );
-    const result = await writeVaultFile(LOGBOOK, updated, `logbook: entry for ${today}`);
-
-    revalidatePath("/private");
-    return { ok: true, message: `Logged as ${result.commit.slice(0, 7)}.`, url: result.url };
   } catch (error) {
     return { ok: false, message: describe(error) };
   }

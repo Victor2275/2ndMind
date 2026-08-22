@@ -39,8 +39,9 @@ D-036 to D-039.
 - [x] **1 · Redesign** — done 2026-08-21. Magenta palette, active tab, single-shot sweep,
       freshness as a badge, shared page shell with collapsible reference prose, scrolling
       nav on narrow screens.
-- [ ] **2 · Structured logging** (14-18h) — six categories with their own fields, logged
-      from a phone in under fifteen seconds, searchable. Voice input via Web Speech.
+- [x] **2 · Structured logging** — done 2026-08-21. Six categories, fields generated from
+      one definition file, full-text search over everything, dictation on Android, soft
+      delete with undo. Replaces the old free-text logbook.
 - [ ] **3 · Today** (8-10h) — one screen: classes, what is due, what you chose to do.
 - [ ] **4 · Calendar** (10-14h, during term) — Google and Canvas private iCal feeds. No
       OAuth, no cost.

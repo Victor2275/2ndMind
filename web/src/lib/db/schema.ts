@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   serial,
@@ -126,3 +127,37 @@ export const tasks = pgTable(
 
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+
+/**
+ * Log entries — structured daily logging (feature 2).
+ *
+ * One table, six categories, per-category fields in JSONB. The alternative was a column for
+ * every field across every category, which would be mostly nulls and would need a migration
+ * each time Victor wants a field changed — and D-039 promises that changing fields is cheap.
+ *
+ * `searchText` is denormalised on write so search never has to reach into JSON at query time.
+ */
+export const logEntries = pgTable(
+  "log_entries",
+  {
+    id: serial("id").primaryKey(),
+    /** One of CATEGORY_KEYS. Not an enum: adding a category should not need a migration. */
+    category: text("category").notNull(),
+    /** When it happened, which is not always when it was typed. */
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    note: text("note").notNull().default(""),
+    /** Category-specific fields, shaped by `lib/log/categories.ts`. */
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+    searchText: text("search_text").notNull().default(""),
+    /** Soft delete, so a mis-tap is recoverable. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("log_entries_occurred_at_idx").on(t.occurredAt),
+    index("log_entries_category_idx").on(t.category),
+  ],
+);
+
+export type LogEntry = typeof logEntries.$inferSelect;
+export type NewLogEntry = typeof logEntries.$inferInsert;

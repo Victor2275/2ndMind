@@ -13,8 +13,7 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/private", label: "Today" },
-  // Points at the existing logbook until feature 2 replaces it with structured logging.
-  { href: "/private/logbook", label: "Log" },
+  { href: "/private/log", label: "Log" },
   { href: "/private/athletics", label: "Athletics" },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },

@@ -1,12 +1,7 @@
 // @vitest-environment node
-import fs from "node:fs";
-import path from "node:path";
-
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import * as schema from "@/lib/db/schema";
+import { resetTestDb } from "@/test/pg";
 import {
   countOpen,
   createTask,
@@ -23,23 +18,10 @@ import {
   type Db,
 } from "../queries";
 
-/** Every committed migration, in order — the same DDL production gets. */
-const MIGRATIONS = fs
-  .readdirSync(path.join(process.cwd(), "drizzle"))
-  .filter((f) => f.endsWith(".sql"))
-  .sort()
-  .map((f) => fs.readFileSync(path.join(process.cwd(), "drizzle", f), "utf8"));
-
 let db: Db;
 
 beforeEach(async () => {
-  const client = new PGlite();
-  for (const migration of MIGRATIONS) {
-    for (const statement of migration.split("--> statement-breakpoint")) {
-      if (statement.trim()) await client.exec(statement);
-    }
-  }
-  db = drizzle(client, { schema }) as unknown as Db;
+  db = (await resetTestDb()) as unknown as Db;
 });
 
 const at = (iso: string) => new Date(iso);
