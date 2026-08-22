@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-22
 domain: engineering
 stability: volatile
 summary: Generated index of all projects. Canonical data lives in projects/.

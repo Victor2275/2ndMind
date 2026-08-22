@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { Agenda } from "@/components/site/agenda";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
@@ -15,6 +16,7 @@ import {
   listDueBy,
   listTasks,
 } from "@/lib/tasks/queries";
+import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +140,36 @@ async function Tasks() {
   );
 }
 
+/**
+ * Today's schedule, from the Google feed.
+ *
+ * Its own Suspense boundary so a slow or broken calendar never delays the tasks — the two
+ * have nothing to do with each other and should not share a failure.
+ */
+async function Today() {
+  if (!isCalendarConfigured()) return null;
+
+  const { start } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+  const end = new Date(start.getTime() + 86_400_000);
+  const google = await loadGoogle(start, end);
+
+  if (google.error) {
+    return (
+      <Panel title="Schedule">
+        <p className="text-sm text-destructive">{google.error}</p>
+      </Panel>
+    );
+  }
+  // Nothing on today is not worth a panel saying so — the day is simply free.
+  if (google.events.length === 0) return null;
+
+  return (
+    <Panel title="Schedule" meta={`${google.events.length} today`}>
+      <Agenda events={google.events} />
+    </Panel>
+  );
+}
+
 /** Reads memoised disk data, so this costs nothing after the first request. */
 function Freshness() {
   // The call is what can throw (a missing vault directory on a misconfigured deploy), not
@@ -165,6 +197,12 @@ export default function TodayPage() {
         title="Today"
         actions={<Freshness />}
       />
+
+      <Suspense fallback={null}>
+        <div className="mt-6">
+          <Today />
+        </div>
+      </Suspense>
 
       <Suspense
         fallback={

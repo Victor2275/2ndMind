@@ -19,6 +19,81 @@ useful part.
 
 ## 2026-08-21 · V2 scope
 
+### D-054 · Vitest hook timeout raised to 30s
+
+**Decision.** `hookTimeout: 30_000` in `vitest.config.mts`.
+
+**Why.** The first `beforeEach` in each database test file boots PGlite and runs every
+migration; three such files run in parallel workers, and under that load the first hook was
+measured at ~16s, past vitest's 10s default. It surfaced as three "Hook timed out" failures
+that passed on a re-run — the same flakiness D-050 fixed, from a different cause.
+
+Raised rather than masked: the work genuinely takes that long once per file, and every
+subsequent hook is a TRUNCATE taking milliseconds. Verified with two consecutive clean runs.
+
+**How to reverse.** Lower it and the suite goes back to failing intermittently on a cold run.
+
+---
+
+### D-053 · The agenda shows the whole feed, unfiltered
+
+**Decision.** `/private/calendar` lists every event in the Google feed. No classification, no
+course-code filter.
+
+**Why.** Victor's calendar is one general calendar — 182 events covering classes, practice and
+personal life, of which only about 40 carry anything resembling a course code. A regex
+deciding what is a "class" would drop a real one the moment it is titled without a code, and a
+silently missing class is worse than a cluttered list. Asked, and he chose showing everything.
+
+**How to reverse.** Filter in `Schedule`. If it ever happens, mark rather than hide, so a
+misclassification is cosmetic.
+
+---
+
+### D-052 · Canvas import is a button, not a scheduled job
+
+**Decision.** Assignments are pulled into the task table when Victor presses *Import Canvas*.
+
+**Why.** A nightly sync needs a paid tier, which he ruled out. A free-plan cron would also be
+the one part of this able to fail silently at 3am with nobody watching — and there is still no
+error reporting (finding F6). A button is honest about when the data was last pulled.
+
+The action calls `updateTag("calendar")` before fetching, because otherwise it would re-read
+the 15-minute cache and appear to do nothing.
+
+**How to reverse.** Move the body into a route handler and point a cron at it, once something
+watches for failures.
+
+---
+
+### D-051 · Calendar comes from private iCal URLs, via ical.js
+
+**Decision.** Both feeds are read from the secret iCal URLs Google Calendar and Canvas publish
+(`GOOGLE_CALENDAR_KEY`, `CANVAS_CALENDAR` — Victor's own names, kept rather than renamed to
+match the plan). Parsing uses `ical.js`.
+
+**Why.** No OAuth, no consent screen Google must review, no refresh-token rotation, and no
+cost — the objection D-034 raised against calendar sync in V1 does not apply to a feed URL.
+The URL *is* the credential, so it lives in the environment and never reaches the browser.
+
+`ical.js` rather than something hand-rolled, because the real feed has 37 recurring rules with
+`UNTIL`/`BYDAY`, one VTIMEZONE, nested VALARM blocks and 50 all-day entries. A homemade RRULE
+expander gets DST wrong, and the symptom is a class that silently stops appearing.
+
+Two details that cost time: `TimezoneService.register` takes `(component, name?)`, not
+`(name, component)` — reversed, it type-checks in plain JS and registers nothing, putting
+every event seven hours out. And occurrences are capped at 400 per rule, which the real feed
+needed: it contains an unbounded monthly recurrence that otherwise expands to 2058.
+
+**Known limitation, not a defect.** As of 2026-08-22 the Canvas feed is empty (211 bytes, zero
+events) and Victor's Fall 2026 classes are not yet in Google Calendar — the recurring classes
+in the feed are Fall 2025 and have ended. The pipeline is correct and will fill in; the UI says
+so rather than looking broken.
+
+**How to reverse.** Unset the variables; every page keeps working without them.
+
+---
+
 ### D-050 · One Postgres per test file, truncated between tests
 
 **Decision.** `src/test/pg.ts` builds one PGlite instance per file and `TRUNCATE ... RESTART
