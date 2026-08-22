@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-22
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -130,22 +130,36 @@ arriving as strings (so `"95" > "155"`), a re-import appending duplicate sets to
 session, `sum()` returning null for a bodyweight-only workout. Each of those has a test that
 fails without its fix.
 
-## Athletics is the only database-backed feature
+## Postgres holds what markdown cannot
 
-Everything else is markdown. Training data is tabular and queried across rows, so it lives in
-Neon Postgres via Drizzle: `workouts` and `workout_sets`, migrations committed under
-`drizzle/`, applied with `npm run db:migrate`.
+Everything not listed here is markdown. Four tables live in Neon via Drizzle, with migrations
+committed under `drizzle/` and applied with `npm run db:migrate`:
 
-Three rules hold it together, each with a decision entry:
+- `workouts` / `workout_sets` — training data, tabular and queried across rows.
+- `tasks` — one model for everything actionable (D-037).
+- `log_entries` — structured daily logging, per-category fields in JSONB.
+- `bodyweight_entries` / `rehab_completions` — feature 5 (D-058, D-059).
+
+Rules that hold the athletics side together, each with a decision entry:
 
 - **Records are derived on read, never stored** (D-025). A stored PR has no invalidation
   story and reads high forever after a correction.
 - **Imports are idempotent** (D-026). Hevy exports are cumulative, so re-importing is the
   normal workflow, not an accident.
-- **Warmups are stored but never ranked** (D-029).
+- **Warmups are stored but never ranked** (D-029) — yet they *do* count toward volume, which
+  is a deliberate asymmetry, not an oversight (D-060).
+- **Splits are weight-adjusted with Concept2's formula** (D-057). The vault's one athletic
+  goal is a weight-adjusted split, so raw splits alone cannot answer whether it is close.
 
-Health data is the category that must never become public. No public route imports
-`lib/db` or `lib/athletics`, and the public build has no `DATABASE_URL` at all.
+The programme itself is not in the database and not in code. SPM targets, the rehab protocol,
+the weekly split and the goal are parsed out of `context/02_physical_performance/` on each
+request (D-056), so editing the vault changes the site with no deploy. Every parser returns
+empty rather than throwing, and every panel names the heading it looked for — a parse miss has
+to read as a parse miss, not as an empty box.
+
+Health data is the category that must never become public — bodyweight above all. No public
+route imports `lib/db` or `lib/athletics`, the public build has no `DATABASE_URL` at all, and
+the built client chunks are scanned after each change with a positive control.
 
 
 ## Style guide — DECISION NEEDED

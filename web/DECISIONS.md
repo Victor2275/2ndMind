@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-22
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,139 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-08-22 · Athletics depth (feature 5)
+
+### D-063 · The `db:migrate` script loads `.env.local` itself
+
+**Decision.** `node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate`.
+
+**Why.** `drizzle-kit` does not read `.env.local` the way Next does, so `npm run db:migrate`
+failed with an empty `url` even with the variable sitting right there in the file. Every
+migration therefore needed a remembered incantation, which is exactly the kind of friction
+that ends with migrations not being run.
+
+**How to reverse.** Put `"drizzle-kit migrate"` back and set `DATABASE_URL` in the shell first.
+
+### D-062 · The Los Angeles offset is computed, not hard-coded
+
+**Decision.** `zoneOffsetMinutes(now, timeZone)` in `lib/tasks/queries.ts`, replacing the
+`const LA_OFFSET_MINUTES = 420` repeated in three pages.
+
+**Why.** 420 is only correct while Los Angeles is on daylight time. It would have gone wrong
+on **2026-11-01**, during term — and quietly: "today" would have begun at 11pm the night
+before, filing every late-evening task and log entry under tomorrow for the whole of winter.
+The new function formats the instant in the zone and reads it back as UTC, which is the only
+way to get a real offset without shipping a timezone database.
+
+**How to reverse.** Pass a literal offset to `dayBounds` again. Do not — the constant is wrong
+for five months of the year.
+
+### D-061 · Charts are server-rendered SVG, not `recharts`
+
+**Decision.** `components/site/chart.tsx` draws `TrendChart` and `BarChart` by hand. `recharts`
+stays unused in `package.json`.
+
+**Why.** These are one `<polyline>` each. Using the library would add a client boundary and a
+charting runtime to a page that currently arrives as finished HTML, turning a streamed render
+into one that waits for hydration — the exact regression D-045 was written to prevent.
+
+**How to reverse.** `recharts` is already installed; replace the two components. Accept that
+the athletics page then ships JavaScript to draw its charts.
+
+### D-060 · Warmup sets count toward volume but never toward a record
+
+**Decision.** `weeklyVolume` deliberately does not apply `isWorkingSet`; `strengthRecords`,
+`ergRecords` and `flagSpm` all do.
+
+**Why.** Victor was asked directly and said volume should include warmups — they are load the
+body absorbed. A record set by a warmup, though, is not a record. This was V1 finding F10,
+where the two rules were inconsistent by accident rather than on purpose; they are now
+inconsistent on purpose, which is different, and the test says so.
+
+**How to reverse.** Add `if (!isWorkingSet(effort)) continue;` to `weeklyVolume`.
+
+### D-059 · The rehab checklist is its own table, not `tasks`
+
+**Decision.** `rehab_completions`, keyed `(completed_on, slug)`.
+
+**Why.** D-037 merged everything actionable into `tasks` so there would be one list to read.
+Four rehab items every day is ~1,400 rows a year, which would bury the thing D-037 was
+protecting. A daily-recurring checklist is a different shape from a to-do: it is never "done",
+only "done today".
+
+**How to reverse.** Insert four `tasks` rows a day with `source: "rehab"` and delete this
+table. Expect the task list to become unreadable within a fortnight.
+
+### D-058 · Bodyweight is a table, and it is health data
+
+**Decision.** `bodyweight_entries`, one row per day, `date` rather than `timestamp`.
+
+**Why.** It is the second input to every weight-adjusted split on the site, so "the weight
+closest to this piece" has to be an indexed lookup rather than a scan through JSONB. `date`
+because a weigh-in belongs to a morning, not an instant — storing days as timestamps is what
+forces the noon-UTC trick used elsewhere here, and it breaks the first time Victor travels.
+
+One reading per day, upserted: weighing twice in a morning is normal, and two rows would put
+two contradictory points on one day of the chart.
+
+**Privacy.** This is the field Victor named as never publishable. No public route imports the
+schema, and the built client chunks were scanned — the only hits were the form's own UI copy.
+
+**How to reverse.** Drop the table and delete `adjusted.ts`; the site falls back to raw splits.
+
+### D-057 · Splits are weight-adjusted with Concept2's formula
+
+**Decision.** `factor = (bodyweight_lbs / 270) ^ 0.222`, applied to time.
+
+**Why.** The vault states exactly one athletic goal — "sub-2:00 **weight-adjusted** 500m
+split" — so a site showing only raw splits could not answer whether he is close to it. At
+215 lb the two differ by about seven seconds.
+
+The direction is worth stating because it is the opposite of the intuitive reading: the
+adjustment discounts *lighter* athletes, so **putting on mass makes this goal harder**. Both
+the raw and the adjusted line are charted for that reason — an adjusted line alone would let
+a lighter month read as a faster month. There is a test pinning the direction specifically.
+
+The number the page leads with is the **required raw split**, because "sub-2:00 adjusted" is
+not something anyone can pace to on a monitor and "2:06.2" is.
+
+**How to reverse.** Show `splitPer500S` only and drop the Adjusted column.
+
+### D-056 · The protocol is parsed from the vault, not written in code
+
+**Decision.** SPM targets, the rehab protocol, the weekly split and the goal are read from
+`context/02_physical_performance/` at request time by `lib/athletics/protocol.ts`.
+
+**Why.** All four already live in the vault. A copy in TypeScript would drift: Victor edits
+the markdown, the site keeps showing last month's programme, and nothing says which is right.
+Parsing means editing the vault *is* editing the app — no code change, no deploy.
+
+The cost is that reformatting those files can stop a section parsing. Every parser returns
+empty rather than throwing, and every panel says "not found in the vault, from this heading"
+rather than rendering an empty box — so a parse miss reads as a parse miss. Tests run against
+the real vault files, which is what would actually catch a reformat.
+
+Parsing is line-based, not one large regex: the vault is CRLF, `$` under `m` does not match
+before a `\r`, and multi-line patterns have already caused silent bugs in this repo.
+
+**How to reverse.** Hard-code the four structures in `protocol.ts` and delete the vault reads.
+The panels stop tracking the vault.
+
+### D-055 · The week's plan is compared to logged sessions coarsely, on purpose
+
+**Decision.** `weekReview` reports whether a day has *any* session, never which planned item
+was done. Future days are never "missed".
+
+**Why.** Nothing in the data links a logged workout to a line of the programme. Matching on
+the title would mark a rest-day walk as "Team Land Practice, complete" — a confident wrong
+answer, which is worse here than an honest coarse one. And a review that shows the whole week
+red on a Monday morning is the fastest way to make this view ignored.
+
+**How to reverse.** Match `PlannedDay.items` against workout titles and report per item.
+Expect false positives.
 
 ---
 

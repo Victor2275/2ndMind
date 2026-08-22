@@ -11,6 +11,12 @@ import {
   importWorkouts,
   logWorkout,
   recentWorkouts,
+  recordBodyweight,
+  deleteBodyweight,
+  listBodyweight,
+  rehabCompletionsBetween,
+  toggleRehab,
+  workoutDates,
   type Db,
 } from "../queries";
 
@@ -225,5 +231,116 @@ describe("deleteWorkout", () => {
     expect(await countWorkouts(db)).toBe(0);
     // Orphaned sets would keep inflating PRs invisibly.
     expect(await allEfforts(db)).toEqual([]);
+  });
+});
+
+describe("bodyweight", () => {
+  it("stores one reading per day and overwrites a re-weigh", async () => {
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 215 });
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 214.5, note: "evening" });
+
+    const readings = await listBodyweight(db);
+    expect(readings).toHaveLength(1);
+    expect(readings[0].weightLbs).toBe(214.5);
+  });
+
+  it("returns oldest first, which is the order every chart wants", async () => {
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 215 });
+    await recordBodyweight(db, { measuredOn: "2026-08-18", weightLbs: 213 });
+    await recordBodyweight(db, { measuredOn: "2026-08-19", weightLbs: 214 });
+
+    expect((await listBodyweight(db)).map((r) => r.measuredOn)).toEqual([
+      "2026-08-18",
+      "2026-08-19",
+      "2026-08-20",
+    ]);
+  });
+
+  it("keeps decimals — numeric arrives as a number, not a string", async () => {
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 214.75 });
+    const [reading] = await listBodyweight(db);
+    expect(typeof reading.weightLbs).toBe("number");
+    expect(reading.weightLbs).toBe(214.75);
+  });
+
+  it("deletes one day without touching the others", async () => {
+    await recordBodyweight(db, { measuredOn: "2026-08-19", weightLbs: 214 });
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 215 });
+    await deleteBodyweight(db, "2026-08-20");
+
+    expect((await listBodyweight(db)).map((r) => r.measuredOn)).toEqual(["2026-08-19"]);
+  });
+});
+
+describe("rehab completions", () => {
+  it("toggles on and back off", async () => {
+    expect(await toggleRehab(db, "2026-08-20", "glute-bridges")).toBe(true);
+    expect(await toggleRehab(db, "2026-08-20", "glute-bridges")).toBe(false);
+
+    const done = await rehabCompletionsBetween(db, "2026-08-20", "2026-08-20");
+    expect(done.get("2026-08-20")).toBeUndefined();
+  });
+
+  it("keeps the same item on different days apart", async () => {
+    await toggleRehab(db, "2026-08-19", "glute-bridges");
+    await toggleRehab(db, "2026-08-20", "glute-bridges");
+
+    const done = await rehabCompletionsBetween(db, "2026-08-19", "2026-08-20");
+    expect(done.get("2026-08-19")).toEqual(new Set(["glute-bridges"]));
+    expect(done.get("2026-08-20")).toEqual(new Set(["glute-bridges"]));
+  });
+
+  it("groups several items on one day", async () => {
+    await toggleRehab(db, "2026-08-20", "glute-bridges");
+    await toggleRehab(db, "2026-08-20", "pallof-presses");
+
+    const done = await rehabCompletionsBetween(db, "2026-08-20", "2026-08-20");
+    expect(done.get("2026-08-20")).toEqual(new Set(["glute-bridges", "pallof-presses"]));
+  });
+
+  it("bounds the window at both ends", async () => {
+    await toggleRehab(db, "2026-08-10", "glute-bridges");
+    await toggleRehab(db, "2026-08-20", "glute-bridges");
+    await toggleRehab(db, "2026-08-30", "glute-bridges");
+
+    const done = await rehabCompletionsBetween(db, "2026-08-15", "2026-08-25");
+    expect([...done.keys()]).toEqual(["2026-08-20"]);
+  });
+});
+
+describe("workoutDates", () => {
+  it("returns only sessions at or after the cutoff", async () => {
+    await logWorkout(db, {
+      performedAt: new Date("2026-08-01T12:00:00Z"),
+      title: "Old",
+      notes: "",
+      sets: [],
+    });
+    await logWorkout(db, {
+      performedAt: new Date("2026-08-20T12:00:00Z"),
+      title: "Recent",
+      notes: "",
+      sets: [],
+    });
+
+    const dates = await workoutDates(db, new Date("2026-08-10T00:00:00Z"));
+    expect(dates).toHaveLength(1);
+    expect(dates[0].toISOString()).toBe("2026-08-20T12:00:00.000Z");
+  });
+});
+
+describe("stroke rate round trip", () => {
+  it("survives the manual log path, which is the only thing that feeds SPM flagging", async () => {
+    await logWorkout(db, {
+      performedAt: new Date("2026-08-20T12:00:00Z"),
+      title: "Erg",
+      notes: "",
+      sets: [
+        { exercise: "Row (Erg)", setIndex: 0, setType: "normal", distanceM: 500, durationS: 137, spm: 74 },
+      ],
+    });
+
+    const [effort] = await allEfforts(db);
+    expect(effort.spm).toBe(74);
   });
 });

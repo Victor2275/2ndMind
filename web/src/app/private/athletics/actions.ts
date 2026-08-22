@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { readSetsFromForm, type ActionState } from "@/lib/athletics/forms";
 import { parseHevyCsv } from "@/lib/athletics/hevy";
-import { deleteWorkout, importWorkouts, logWorkout } from "@/lib/athletics/queries";
+import {
+  deleteWorkout,
+  importWorkouts,
+  logWorkout,
+  recordBodyweight,
+  toggleRehab,
+} from "@/lib/athletics/queries";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 
@@ -124,6 +130,9 @@ export async function logWorkoutAction(
         reps: s.reps,
         distanceM: s.distanceM,
         durationS: s.durationS,
+        // The column is an integer; a typed "72.5" would otherwise be rejected by Postgres
+        // rather than by the form, which is the wrong place to find out.
+        spm: s.spm === null ? null : Math.round(s.spm),
       })),
     });
 
@@ -155,4 +164,74 @@ export async function deleteWorkoutAction(
   } catch (error) {
     return { ok: false, message: describe(error) };
   }
+}
+
+/**
+ * A bodyweight reading.
+ *
+ * Health data, and the one field Victor named as never publishable — so the same
+ * `requireSession()` rule applies here as everywhere else in this module, and no public
+ * route imports anything that can reach this table.
+ *
+ * The bounds are a typo guard, not a judgement: 700 catches a mis-keyed "2150", 50 catches a
+ * kilogram entered into a pounds field.
+ */
+const MIN_WEIGHT_LBS = 50;
+const MAX_WEIGHT_LBS = 700;
+
+export async function recordBodyweightAction(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+
+  const missing = requireDatabase();
+  if (missing) return missing;
+
+  const day = String(formData.get("measuredOn") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return { ok: false, message: "Pick the day this was measured." };
+  }
+
+  const weight = Number(String(formData.get("weightLbs") ?? "").trim());
+  if (!Number.isFinite(weight) || weight < MIN_WEIGHT_LBS || weight > MAX_WEIGHT_LBS) {
+    return {
+      ok: false,
+      message: `A weight in pounds, between ${MIN_WEIGHT_LBS} and ${MAX_WEIGHT_LBS}.`,
+    };
+  }
+
+  try {
+    await recordBodyweight(db(), {
+      measuredOn: day,
+      weightLbs: Math.round(weight * 100) / 100,
+      note: String(formData.get("note") ?? "").trim(),
+    });
+
+    revalidatePath("/private/athletics");
+    return { ok: true, message: `Recorded ${weight} lb for ${day}.` };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/**
+ * Ticks one rehab item for one day.
+ *
+ * The day is posted with the form rather than read from the server clock. The clock is UTC,
+ * so from 5pm in Los Angeles onward `new Date()` is already tomorrow there — which would file
+ * every evening's rehab under the wrong day. The posted value is the Los Angeles day the page
+ * was rendered for, which is also what the user was looking at when they tapped.
+ */
+export async function toggleRehabAction(formData: FormData): Promise<void> {
+  await requireSession();
+  if (!isDatabaseConfigured()) return;
+
+  const day = String(formData.get("day") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || slug === "") return;
+
+  await toggleRehab(db(), day, slug);
+  revalidatePath("/private/athletics");
+  revalidatePath("/private");
 }

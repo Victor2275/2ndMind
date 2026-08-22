@@ -17,6 +17,8 @@ export const setInputSchema = z.object({
   reps: z.number().int().positive().nullable(),
   distanceM: z.number().positive().nullable(),
   durationS: z.number().int().positive().nullable(),
+  /** Erg only. Without it stored on the set, the vault's SPM targets have nothing to check. */
+  spm: z.number().int().positive().nullable(),
   setType: z.string().trim().default("normal"),
 });
 
@@ -86,6 +88,7 @@ export function readSetsFromForm(formData: FormData): SetInput[] {
           ? parseDistanceToMetres(distanceRaw, typeof unitRaw === "string" ? unitRaw : "m")
           : null,
       durationS: typeof durationRaw === "string" ? parseTimeToSeconds(durationRaw) : null,
+      spm: optionalNumber(formData.getAll("spm")[i] ?? null),
       setType: (formData.getAll("setType")[i] as string) || "normal",
     });
   });

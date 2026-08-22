@@ -1,8 +1,15 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
-import { workoutSets, workouts, type NewWorkoutSet } from "@/lib/db/schema";
+import {
+  bodyweightEntries,
+  rehabCompletions,
+  workoutSets,
+  workouts,
+  type NewWorkoutSet,
+} from "@/lib/db/schema";
 import type * as schema from "@/lib/db/schema";
+import type { BodyweightReading } from "./adjusted";
 import type { ParsedWorkout } from "./hevy";
 import type { Effort } from "./prs";
 
@@ -121,6 +128,7 @@ export async function allEfforts(db: Db): Promise<Effort[]> {
       reps: workoutSets.reps,
       distanceM: workoutSets.distanceM,
       durationS: workoutSets.durationS,
+      spm: workoutSets.spm,
     })
     .from(workoutSets)
     .innerJoin(workouts, eq(workoutSets.workoutId, workouts.id));
@@ -168,4 +176,104 @@ export async function countWorkouts(db: Db): Promise<number> {
 export async function deleteWorkout(db: Db, id: number): Promise<void> {
   // Sets go with it via ON DELETE CASCADE.
   await db.delete(workouts).where(eq(workouts.id, id));
+}
+
+/** Every logged session's local day, for checking the week's plan against reality. */
+export async function workoutDates(db: Db, since: Date): Promise<Date[]> {
+  const rows = await db
+    .select({ performedAt: workouts.performedAt })
+    .from(workouts)
+    .where(gte(workouts.performedAt, since))
+    .orderBy(desc(workouts.performedAt));
+
+  return rows.map((r) => r.performedAt);
+}
+
+/* ---------------------------------------------------------------- bodyweight */
+
+/** Oldest first, which is the order every chart and the `weightOn` lookup want. */
+export async function listBodyweight(db: Db, limit = 400): Promise<BodyweightReading[]> {
+  const rows = await db
+    .select({
+      measuredOn: bodyweightEntries.measuredOn,
+      weightLbs: bodyweightEntries.weightLbs,
+      note: bodyweightEntries.note,
+    })
+    .from(bodyweightEntries)
+    .orderBy(desc(bodyweightEntries.measuredOn))
+    .limit(limit);
+
+  return rows.reverse();
+}
+
+/**
+ * One reading per day, last write wins.
+ *
+ * An upsert rather than an insert because weighing twice in a morning is normal and two rows
+ * for one day would put two contradictory points on the trend line with no way to tell which
+ * was meant.
+ */
+export async function recordBodyweight(
+  db: Db,
+  input: { measuredOn: string; weightLbs: number; note?: string },
+): Promise<void> {
+  await db
+    .insert(bodyweightEntries)
+    .values({
+      measuredOn: input.measuredOn,
+      weightLbs: input.weightLbs,
+      note: input.note ?? "",
+    })
+    .onConflictDoUpdate({
+      target: bodyweightEntries.measuredOn,
+      set: { weightLbs: input.weightLbs, note: input.note ?? "" },
+    });
+}
+
+export async function deleteBodyweight(db: Db, measuredOn: string): Promise<void> {
+  await db.delete(bodyweightEntries).where(eq(bodyweightEntries.measuredOn, measuredOn));
+}
+
+/* --------------------------------------------------------------------- rehab */
+
+/** Slugs ticked on each day in `[from, to]`, keyed by day. */
+export async function rehabCompletionsBetween(
+  db: Db,
+  from: string,
+  to: string,
+): Promise<Map<string, Set<string>>> {
+  const rows = await db
+    .select({ completedOn: rehabCompletions.completedOn, slug: rehabCompletions.slug })
+    .from(rehabCompletions)
+    .where(and(gte(rehabCompletions.completedOn, from), lte(rehabCompletions.completedOn, to)));
+
+  const byDay = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const set = byDay.get(row.completedOn) ?? new Set<string>();
+    set.add(row.slug);
+    byDay.set(row.completedOn, set);
+  }
+  return byDay;
+}
+
+/**
+ * Ticks or un-ticks one protocol item for one day. Returns its state afterwards.
+ *
+ * Delete-then-insert against the unique key rather than a read-modify-write, so a double-tap
+ * on a phone cannot produce two rows.
+ */
+export async function toggleRehab(db: Db, day: string, slug: string): Promise<boolean> {
+  const removed = await db
+    .delete(rehabCompletions)
+    .where(and(eq(rehabCompletions.completedOn, day), eq(rehabCompletions.slug, slug)))
+    .returning({ id: rehabCompletions.id });
+
+  if (removed.length > 0) return false;
+
+  await db
+    .insert(rehabCompletions)
+    .values({ completedOn: day, slug })
+    .onConflictDoNothing();
+
+  return true;
 }

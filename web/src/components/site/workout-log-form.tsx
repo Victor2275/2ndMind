@@ -35,7 +35,7 @@ const LABEL = "font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-f
 function SetRow({ index }: { index: number }) {
   return (
     <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/70 p-3 sm:grid-cols-12">
-      <div className="col-span-2 sm:col-span-4">
+      <div className="col-span-2 sm:col-span-3">
         {index === 0 && <label className={LABEL}>Exercise</label>}
         <input name="exercise" className={`${FIELD} mt-1`} placeholder="Bench Press" />
       </div>
@@ -61,6 +61,12 @@ function SetRow({ index }: { index: number }) {
       <div className="sm:col-span-2">
         {index === 0 && <label className={LABEL}>Time</label>}
         <input name="duration" className={`${FIELD} mt-1`} placeholder="2:17" />
+      </div>
+      <div className="sm:col-span-1">
+        {/* Erg only. Without it here, the vault's stroke-rate targets have nothing to check
+            a piece against — which is why the field earns its width. */}
+        {index === 0 && <label className={LABEL}>SPM</label>}
+        <input name="spm" inputMode="numeric" className={`${FIELD} mt-1`} placeholder="72" />
       </div>
       <div className="sm:col-span-1">
         {index === 0 && <label className={LABEL}>Type</label>}
@@ -135,8 +141,10 @@ export function WorkoutLogForm() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Blank rows are ignored. Weight and reps for lifts; distance and time for erg pieces —
-        a time may be typed as <span className="text-foreground">2:17</span> or as seconds.
+        Blank rows are ignored. Weight and reps for lifts; distance, time and SPM for erg
+        pieces — a time may be typed as <span className="text-foreground">2:17</span> or as
+        seconds. A stroke rate is what lets a piece be checked against the vault&rsquo;s
+        targets.
       </p>
     </form>
   );

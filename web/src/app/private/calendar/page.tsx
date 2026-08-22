@@ -6,14 +6,13 @@ import { PageHeader, Panel } from "@/components/site/page-shell";
 import { Prose } from "@/components/site/prose";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { groupByDay, isCalendarConfigured, loadCalendars } from "@/lib/calendar/load";
-import { dayBounds } from "@/lib/tasks/queries";
+import { dayBounds, zoneOffsetMinutes } from "@/lib/tasks/queries";
 import { readVaultFileCached } from "@/lib/vault/write";
 
 export const dynamic = "force-dynamic";
 
 const SPRINT = "context/04_operations/current_sprint.md";
 const RULES_HEADING = "2. Operational Rules & Boundaries";
-const LA_OFFSET_MINUTES = 420;
 
 /** Pulls one `## Heading` section out of a vault file. `(?![\s\S])` rather than `$`, which
  *  under the `m` flag means end-of-line and would match the empty string. */
@@ -42,7 +41,8 @@ async function Schedule() {
     );
   }
 
-  const { start } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+  const now = new Date();
+  const { start } = dayBounds(now, zoneOffsetMinutes(now));
   const weekEnd = new Date(start.getTime() + 7 * 86_400_000);
   const dayEnd = new Date(start.getTime() + 86_400_000);
 

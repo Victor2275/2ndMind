@@ -15,6 +15,7 @@ import {
   restoreTask,
   setTaskDone,
   upsertExternalTask,
+  zoneOffsetMinutes,
   type Db,
 } from "../queries";
 
@@ -285,5 +286,38 @@ describe("countOpen", () => {
     await deleteTask(db, b.id);
 
     expect(await countOpen(db)).toBe(1);
+  });
+});
+
+describe("zoneOffsetMinutes", () => {
+  it("reports Los Angeles daylight time as +420", () => {
+    expect(zoneOffsetMinutes(new Date("2026-08-22T12:00:00Z"))).toBe(420);
+  });
+
+  it("reports Los Angeles standard time as +480", () => {
+    // The bug this replaced: a hard-coded 420 stayed in use past the November changeover,
+    // which starts "today" at 11pm the night before for the whole of winter term.
+    expect(zoneOffsetMinutes(new Date("2026-12-22T12:00:00Z"))).toBe(480);
+  });
+
+  it("switches on the right date", () => {
+    // DST ends 2026-11-01 at 02:00 local. 08:00 UTC is 01:00 PDT, still daylight time;
+    // 10:00 UTC is 02:00 PST, standard.
+    expect(zoneOffsetMinutes(new Date("2026-11-01T08:00:00Z"))).toBe(420);
+    expect(zoneOffsetMinutes(new Date("2026-11-01T10:00:00Z"))).toBe(480);
+  });
+
+  it("handles a zone east of Greenwich, where the sign flips", () => {
+    expect(zoneOffsetMinutes(new Date("2026-08-22T12:00:00Z"), "Asia/Taipei")).toBe(-480);
+  });
+
+  it("handles UTC itself", () => {
+    expect(zoneOffsetMinutes(new Date("2026-08-22T12:00:00Z"), "UTC")).toBe(0);
+  });
+
+  it("keeps midnight from reading as hour 24", () => {
+    // Some ICU builds format midnight as "24" under hour12:false, which would put the
+    // offset a day out. `hourCycle: "h23"` is what prevents it.
+    expect(zoneOffsetMinutes(new Date("2026-08-22T07:00:00Z"))).toBe(420);
   });
 });

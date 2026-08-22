@@ -60,7 +60,7 @@ function form(rows: Record<string, string>[]): FormData {
   for (const row of rows) {
     // Every row must append to every key, or the parallel arrays fall out of alignment and
     // one row's weight lands on another row's exercise.
-    for (const key of ["exercise", "weight", "reps", "distance", "distanceUnit", "duration", "setType"]) {
+    for (const key of ["exercise", "weight", "reps", "distance", "distanceUnit", "duration", "spm", "setType"]) {
       data.append(key, row[key] ?? "");
     }
   }
@@ -79,6 +79,7 @@ describe("readSetsFromForm", () => {
         reps: 5,
         distanceM: null,
         durationS: null,
+        spm: null,
         setType: "normal",
       },
     ]);
@@ -99,6 +100,18 @@ describe("readSetsFromForm", () => {
     expect(set.distanceM).toBe(5000);
     expect(set.durationS).toBe(1130);
     expect(set.weightLbs).toBeNull();
+  });
+
+  it("reads a stroke rate, which is what the vault SPM targets are checked against", () => {
+    const [set] = readSetsFromForm(
+      form([{ exercise: "Row (Erg)", distance: "500", duration: "2:17", spm: "74" }]),
+    );
+    expect(set.spm).toBe(74);
+  });
+
+  it("leaves the stroke rate null when the field is blank", () => {
+    const [set] = readSetsFromForm(form([{ exercise: "Squat", weight: "225", reps: "3" }]));
+    expect(set.spm).toBeNull();
   });
 
   it("drops blank rows, so spare rows cost nothing", () => {
@@ -129,6 +142,7 @@ describe("readSetsFromForm", () => {
         reps: 1,
         distanceM: null,
         durationS: null,
+        spm: null,
         setType: "normal",
       },
     ]);

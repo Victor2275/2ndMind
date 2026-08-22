@@ -14,6 +14,8 @@ export type Effort = {
   reps: number | null;
   distanceM: number | null;
   durationS: number | null;
+  /** Strokes per minute, erg work only. Checked against the vault's per-distance targets. */
+  spm: number | null;
 };
 
 export type StrengthRecord = {

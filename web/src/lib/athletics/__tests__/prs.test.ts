@@ -22,6 +22,7 @@ function lift(over: Partial<Effort> = {}): Effort {
     reps: 5,
     distanceM: null,
     durationS: null,
+    spm: null,
     ...over,
   };
 }
@@ -35,6 +36,7 @@ function piece(over: Partial<Effort> = {}): Effort {
     reps: null,
     distanceM: 500,
     durationS: 137,
+    spm: null,
     ...over,
   };
 }

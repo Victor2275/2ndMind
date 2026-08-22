@@ -17,6 +17,48 @@ export type TaskSource = "manual" | "goal" | "canvas" | "calendar";
 /** Live rows only. Soft-deleted tasks stay in the table so undo can bring them back. */
 const alive = isNull(tasks.deletedAt);
 
+export const LA = "America/Los_Angeles";
+
+/**
+ * The real UTC offset of a timezone at a given instant, in `getTimezoneOffset` units.
+ *
+ * This replaces a hard-coded `420` that was correct only while Los Angeles is on daylight
+ * time. It would have gone wrong on 1 November 2026 — during term, when this site is used
+ * daily — and the symptom is quiet rather than loud: "today" would begin at 11pm the night
+ * before, so late-evening tasks and logs file under tomorrow.
+ *
+ * Formatting the instant in the zone and reading it back as though it were UTC is the only
+ * way to get this from the platform without a timezone database of our own.
+ */
+export function zoneOffsetMinutes(now: Date, timeZone = LA): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    // `h23` rather than `hour12: false`, which yields "24" for midnight on some ICU builds.
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(now);
+
+  const at = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? "0");
+
+  const asIfUtc = Date.UTC(
+    at("year"),
+    at("month") - 1,
+    at("day"),
+    at("hour"),
+    at("minute"),
+    at("second"),
+  );
+
+  // Positive west of Greenwich, matching `getTimezoneOffset()`: minutes to add to reach UTC.
+  return Math.round((now.getTime() - asIfUtc) / 60_000);
+}
+
 /**
  * Local midnight as a UTC instant, so "today" means Victor's today, not the server's —
  * Vercel runs in UTC, where the day rolls over at 5pm in Los Angeles.

@@ -15,14 +15,13 @@ import {
   listDoneBetween,
   listDueBy,
   listTasks,
+  zoneOffsetMinutes,
 } from "@/lib/tasks/queries";
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 
 export const dynamic = "force-dynamic";
 
-/** Los Angeles, UTC-7 in summer, which getTimezoneOffset reports as +420. */
-const LA_OFFSET_MINUTES = 420;
 
 function toView(task: Task): TaskView {
   return {
@@ -52,7 +51,8 @@ async function load(): Promise<Loaded> {
     return { ...empty, failure: "DATABASE_URL is not set, so tasks cannot load." };
   }
 
-  const { start, end } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+  const now = new Date();
+  const { start, end } = dayBounds(now, zoneOffsetMinutes(now));
 
   try {
     const handle = db();
@@ -149,7 +149,8 @@ async function Tasks() {
 async function Today() {
   if (!isCalendarConfigured()) return null;
 
-  const { start } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+  const now = new Date();
+  const { start } = dayBounds(now, zoneOffsetMinutes(now));
   const end = new Date(start.getTime() + 86_400_000);
   const google = await loadGoogle(start, end);
 

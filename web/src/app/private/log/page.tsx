@@ -8,11 +8,10 @@ import { db, isDatabaseConfigured } from "@/lib/db/client";
 import type { LogEntry } from "@/lib/db/schema";
 import { CATEGORIES, summarise } from "@/lib/log/categories";
 import { categoriesLoggedBetween, entriesBetween, searchEntries } from "@/lib/log/queries";
-import { dayBounds } from "@/lib/tasks/queries";
+import { dayBounds, zoneOffsetMinutes } from "@/lib/tasks/queries";
 
 export const dynamic = "force-dynamic";
 
-const LA_OFFSET_MINUTES = 420;
 
 const DAY = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -44,7 +43,8 @@ async function Console() {
     );
   }
 
-  const { start, end } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+  const now = new Date();
+  const { start, end } = dayBounds(now, zoneOffsetMinutes(now));
 
   // Only the awaits are guarded, not the JSX. React renders the element later, so a
   // try/catch around it would catch nothing — the lint rule is right about this.

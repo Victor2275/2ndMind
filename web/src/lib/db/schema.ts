@@ -1,4 +1,5 @@
 import {
+  date,
   index,
   integer,
   jsonb,
@@ -161,3 +162,68 @@ export const logEntries = pgTable(
 
 export type LogEntry = typeof logEntries.$inferSelect;
 export type NewLogEntry = typeof logEntries.$inferInsert;
+
+/**
+ * Bodyweight (feature 5).
+ *
+ * Its own table rather than another log category, because it is the second input to every
+ * weight-adjusted split on the site — the vault's single stated goal is a *weight-adjusted*
+ * 2:00 500m — and "the weight closest to this piece's date" has to be a cheap indexed lookup,
+ * not a scan that reaches into JSONB.
+ *
+ * `date` rather than `timestamp`: a bodyweight belongs to a morning, not an instant. Storing
+ * a day as a timestamp is what forces the noon-UTC trick used elsewhere in this codebase, and
+ * gets a reading rendered on the wrong day the first time someone travels.
+ *
+ * Health data. It is private by construction — no public route imports this module — and it
+ * is the field Victor named as the one that must never be published.
+ */
+export const bodyweightEntries = pgTable(
+  "bodyweight_entries",
+  {
+    id: serial("id").primaryKey(),
+    /** ISO `YYYY-MM-DD`, in Victor's local day. */
+    measuredOn: date("measured_on", { mode: "string" }).notNull(),
+    weightLbs: numeric("weight_lbs", { precision: 6, scale: 2, mode: "number" }).notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One reading per day. Re-weighing overwrites rather than appending, so a chart cannot
+    // show two contradictory points for the same morning.
+    uniqueIndex("bodyweight_measured_on_idx").on(t.measuredOn),
+  ],
+);
+
+export type BodyweightEntry = typeof bodyweightEntries.$inferSelect;
+
+/**
+ * Rehab protocol completions (feature 5).
+ *
+ * The protocol itself is *not* stored here — it is parsed from
+ * `context/02_physical_performance/benchmarks_and_logs.md` so that editing the vault changes
+ * the checklist with no code change and no migration. This table records only which item was
+ * ticked on which day.
+ *
+ * Deliberately not `tasks`, despite D-037 unifying everything actionable. Four rehab items ×
+ * every day of term is ~1,400 rows a year, and D-037's whole purpose was that the task list
+ * stays short enough to read. A daily-recurring checklist is a different shape from a to-do.
+ */
+export const rehabCompletions = pgTable(
+  "rehab_completions",
+  {
+    id: serial("id").primaryKey(),
+    completedOn: date("completed_on", { mode: "string" }).notNull(),
+    /** Slug of the protocol item, derived from its vault heading. */
+    slug: text("slug").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Toggling is insert-or-delete against this key, which makes a double-tap idempotent
+    // rather than a second row.
+    uniqueIndex("rehab_day_slug_idx").on(t.completedOn, t.slug),
+    index("rehab_completed_on_idx").on(t.completedOn),
+  ],
+);
+
+export type RehabCompletion = typeof rehabCompletions.$inferSelect;

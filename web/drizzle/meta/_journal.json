@@ -22,6 +22,13 @@
       "when": 1787371082556,
       "tag": "0002_log_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787421963605,
+      "tag": "0003_bodyweight_rehab",
+      "breakpoints": true
     }
   ]
 }
