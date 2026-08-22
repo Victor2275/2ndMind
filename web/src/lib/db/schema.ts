@@ -78,3 +78,51 @@ export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
 export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type NewWorkoutSet = typeof workoutSets.$inferInsert;
+
+/**
+ * Tasks — the one model for everything actionable (D-037).
+ *
+ * Before this, "what should I be doing" had four answers: sprint goals in the vault, the
+ * academic tracker in the vault, a daily to-do list, and Canvas assignments. Victor named
+ * "too complex to use" as what would make him abandon the project, so four competing lists
+ * was not a style question.
+ *
+ * `source` is what keeps them distinguishable after the merge: a row still knows whether a
+ * human typed it, whether it came from a calendar feed, or whether it is a weekly goal.
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    /** "manual" | "goal" | "canvas" | "calendar" */
+    source: text("source").notNull().default("manual"),
+    /** "engineering" | "academics" | "athletics" | "work" | "life" — optional, for filtering. */
+    domain: text("domain"),
+    /** Set for coursework, so the academics page can group without a second table. */
+    courseCode: text("course_code"),
+    /**
+     * Stable id from whatever produced this row, so re-reading a calendar feed updates
+     * rather than duplicates. Null for hand-typed tasks, and Postgres treats nulls as
+     * distinct in a unique index, so those never collide with each other.
+     */
+    externalId: text("external_id"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    /**
+     * Soft delete, which is what makes undo possible (Q81). A hard delete would need the
+     * git history to recover, and these rows are not in git.
+     */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    notes: text("notes").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("tasks_external_id_idx").on(t.externalId),
+    index("tasks_due_at_idx").on(t.dueAt),
+    index("tasks_source_idx").on(t.source),
+  ],
+);
+
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;

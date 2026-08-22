@@ -1,5 +1,6 @@
+import { PageHeader, Panel } from "@/components/site/page-shell";
 import { Prose } from "@/components/site/prose";
-import { readVaultFile } from "@/lib/vault/write";
+import { readVaultFileCached } from "@/lib/vault/write";
 
 export const dynamic = "force-dynamic";
 
@@ -24,35 +25,35 @@ export default async function CalendarPage() {
   let failure: string | null = null;
 
   try {
-    rules = section((await readVaultFile(SPRINT)).content, RULES_HEADING);
+    rules = section((await readVaultFileCached(SPRINT)).content, RULES_HEADING);
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }
 
   return (
-    <main className="py-10">
-      <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
-        Time
-      </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Calendar</h1>
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Time"
+        title="Calendar"
+        lede="Feeds land in feature 4. Until then, the rules that actually shape the week."
+      />
 
-      <div className="mt-6 rounded-md border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
-        <p className="font-medium text-foreground">No live sync in V1 — on purpose.</p>
+      <div className="mt-6 rounded-lg border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
+        <p className="font-medium text-foreground">Feeds not connected yet.</p>
         <p className="mt-2 text-muted-foreground">
-          Reading Google Calendar needs an OAuth consent screen that Google must review before
-          it works for anything beyond a test account, plus refresh-token storage and a
-          rotation story. That is days of work for a read-only view of an app already open in
-          another tab, and it would be the only part of 2ndMind that could lock itself out
-          without warning.
+          Classes and assignments arrive in feature 4, read from private iCal URLs that Google
+          Calendar and Canvas each publish — no OAuth, no consent screen, no cost. Assignments
+          become tasks and show up on Today alongside everything else.
         </p>
         <p className="mt-2 text-muted-foreground">
-          What is here instead: the rules that actually shape the week, where they can be read
-          without opening the vault.
+          Set <code className="font-mono text-xs">GOOGLE_CALENDAR_ICS</code> and{" "}
+          <code className="font-mono text-xs">CANVAS_ICS</code> when you have them. Until then,
+          the rules that actually shape the week:
         </p>
       </div>
 
-      <section className="mt-8 rounded-lg border border-border bg-card/70 p-5">
-        <h2 className="mb-4 text-lg font-bold tracking-tight">Operating rules</h2>
+      <div className="mt-6">
+        <Panel title="Operating rules">
         {failure ? (
           <p className="text-sm text-muted-foreground">{failure}</p>
         ) : rules ? (
@@ -63,7 +64,8 @@ export default async function CalendarPage() {
             from the sprint file.
           </p>
         )}
-      </section>
+        </Panel>
+      </div>
     </main>
   );
 }

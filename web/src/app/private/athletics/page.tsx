@@ -1,4 +1,5 @@
 import { HevyImportForm } from "@/components/site/hevy-import-form";
+import { PageHeader } from "@/components/site/page-shell";
 import { WorkoutLogForm } from "@/components/site/workout-log-form";
 import {
   ergRecords,
@@ -17,11 +18,8 @@ const DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" });
 
 function Unconfigured() {
   return (
-    <main className="py-10">
-      <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
-        Athletics
-      </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Training</h1>
+    <main className="pb-16">
+      <PageHeader eyebrow="Athletics" title="Training" />
 
       <div className="mt-6 rounded-lg border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
         <p className="font-medium text-foreground">No database connected.</p>
@@ -174,15 +172,12 @@ export default async function AthleticsPage() {
   const empty = !failure && history.length === 0;
 
   return (
-    <main className="py-10">
-      <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
-        Athletics
-      </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Training</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Records are computed from every stored set each time this page loads, never saved.
-        A stored record would keep reading high after a workout was corrected.
-      </p>
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Athletics"
+        title="Training"
+        lede="Records are computed from every stored set on each load, never saved — a stored record keeps reading high after a workout is corrected."
+      />
 
       {failure && (
         <div className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">

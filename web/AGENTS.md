@@ -18,7 +18,7 @@ is logged there with its reason and how to reverse it. If Victor asks for someth
 undone, look it up first — several entries bundle a bug fix with a style choice and say
 explicitly which half must survive a reversal. Add an entry for every decision you make.
 
-Two rules that are easy to violate by accident:
+Four rules that are easy to violate by accident:
 
 1. **Public routes must never import a private loader or read a non-whitelisted field.**
    The vault at `../context/` holds a GPA, per-course grades, transcripts, and a phone number.
@@ -27,5 +27,13 @@ Two rules that are easy to violate by accident:
 2. **The vault is written through the GitHub Contents API, never `fs.writeFile`.**
    Vercel functions run on an ephemeral read-only filesystem. Filesystem writes work locally
    and fail silently in production.
+3. **Never hard-code anything sensitive in a `"use client"` component.**
+   Client components compile into `/_next/static/chunks/`, served without authentication —
+   confirmed by finding private-page UI copy fetchable by anyone. Private data may reach these
+   components as props at render time; it may not appear in their source, including
+   placeholders, examples, and default values.
+4. **A `"use server"` module may only export async functions.**
+   Exporting a constant from one is a build error, not a lint nit. Non-async shared values go
+   in a plain module — see `lib/sprint-goals.ts`. This has been got wrong twice.
 
 Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`.

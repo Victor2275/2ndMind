@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Octokit } from "@octokit/rest";
+import { unstable_cache, updateTag } from "next/cache";
 
 import { bumpUpdated } from "./frontmatter";
 
@@ -19,6 +20,33 @@ const OWNER = "Victor2275";
 const REPO = "2ndMind";
 const BRANCH = "main";
 
+/**
+ * Every request gets a deadline. Without one, a network problem is not a slow page — it is a
+ * hung one: when the connection dropped mid-session on 2026-08-21, private pages sat for
+ * minutes instead of failing. `fetch` has no default timeout, so this is the only place a
+ * deadline can come from.
+ */
+// 8s rather than 5s: a 5s deadline fired on Victor's connection during normal use, and a
+// timeout that trips on a working-but-slow link is worse than none — it turns a slow page
+// into a broken one. Long enough to ride out a bad moment, short enough to fail before
+// anyone assumes the app has hung.
+const REQUEST_TIMEOUT_MS = 8_000;
+
+function timeoutFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }).catch(
+    (error: unknown) => {
+      // AbortError says "the operation was aborted", which reads like a bug rather than a
+      // network problem. Say what actually happened.
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error(
+          `GitHub did not respond within ${REQUEST_TIMEOUT_MS / 1000}s. Check your connection.`,
+        );
+      }
+      throw error;
+    },
+  );
+}
+
 function client(): Octokit {
   const auth = process.env.GITHUB_TOKEN;
   if (!auth) {
@@ -27,7 +55,7 @@ function client(): Octokit {
         "Contents: read and write. See web/.env.example.",
     );
   }
-  return new Octokit({ auth });
+  return new Octokit({ auth, request: { fetch: timeoutFetch } });
 }
 
 /**
@@ -69,6 +97,36 @@ export async function readVaultFile(path: string): Promise<{ content: string; sh
   };
 }
 
+/** Invalidated whenever anything in the vault is written. */
+export const VAULT_CACHE_TAG = "vault";
+
+/**
+ * Cached read, for rendering.
+ *
+ * A vault file changes only when this app commits to it, and we know exactly when that
+ * happens — so refetching on every page load was pure latency. Measured before this existed:
+ * `/private/academics` spent 761ms on two serial GitHub round trips, against 33ms for the one
+ * private page that makes no network call at all.
+ *
+ * `unstable_cache` rather than the `use cache` directive: `use cache` needs
+ * `cacheComponents: true`, which changes how every dynamic API in the app behaves and
+ * conflicts with the `force-dynamic` these pages rely on. Deprecated but stable, and the
+ * migration is contained to this function.
+ *
+ * The write path deliberately does *not* use this — `writeVaultFile` needs a live blob SHA,
+ * and a cached one would make last-write-wins into last-write-fails.
+ */
+export const readVaultFileCached = unstable_cache(
+  async (path: string) => readVaultFile(path),
+  ["vault-file"],
+  {
+    tags: [VAULT_CACHE_TAG],
+    // A safety net, not the mechanism. Writes invalidate immediately; this only bounds how
+    // long a change made outside the app (a direct git push) stays invisible.
+    revalidate: 300,
+  },
+);
+
 /**
  * Writes a file and returns the commit. The `updated:` frontmatter field is bumped here
  * rather than by the caller, so freshness stays honest without relying on anyone
@@ -103,6 +161,20 @@ export async function writeVaultFile(
     branch: BRANCH,
     ...(sha ? { sha } : {}),
   });
+
+  // Invalidate here rather than in each action, for the same reason `bumpUpdated` lives
+  // here: correctness that depends on every caller remembering will eventually be wrong.
+  //
+  // `updateTag`, not `revalidateTag`. The latter now requires a cache profile, and the
+  // recommended `"max"` means stale-while-revalidate — which would serve the *pre-edit*
+  // content on the very next read, so a save would appear not to have happened. `updateTag`
+  // is the Server Action path for changes that must be visible immediately.
+  try {
+    updateTag(VAULT_CACHE_TAG);
+  } catch {
+    // Throws outside a Server Action — tests, scripts. The write itself already succeeded,
+    // and there is no cache to invalidate in those contexts.
+  }
 
   return {
     commit: response.data.commit.sha ?? "",

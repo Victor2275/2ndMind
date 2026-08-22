@@ -68,41 +68,46 @@
 }
 
 :root {
-  /* grounds — the #30525C hue taken down to near-black, so the accents sit on
-     a surface that shares their temperature rather than fighting it */
-  --background: #0a161b;
-  --surface: #0f2129;
-  --card: #0f2129;
-  --card-foreground: #e8f0f4;
-  --popover: #132832;
-  --popover-foreground: #e8f0f4;
-  --foreground: #e8f0f4;
+  /* grounds — a near-black carrying the magenta hue, so the accent sits on a
+     surface that shares its temperature instead of fighting it */
+  --background: #140a10;
+  --surface: #1e1018;
+  --card: #1e1018;
+  --card-foreground: #f2e9ee;
+  --popover: #26141e;
+  --popover-foreground: #f2e9ee;
+  --foreground: #f2e9ee;
 
-  /* teal — primary accent, 5.8:1 on the ground */
-  --primary: #09a1a1;
-  --primary-foreground: #04171c;
+  /* magenta — primary accent, 5.1:1 on the ground.
+     Victor asked for "a very dark pink/magenta". The *grounds* are where the
+     darkness lives: --primary drives link text, values and labels, and a truly
+     dark magenta (#8c1d52) lands near 2:1 here, which is unreadable. This is as
+     deep as the accent can go and still be legible at body size. */
+  --primary: #d94f93;
+  --primary-foreground: #1a0710;
 
-  /* rose — secondary accent */
-  --secondary: #d396a6;
+  /* steel — secondary accent, from the original six swatches. Cool against the
+     magenta lead, where the old rose would now read as a muddy near-primary. */
+  --secondary: #5484a4;
   --secondary-foreground: #12212a;
 
   /* peach — the one warm note. Eyebrows, tier markers, nothing structural. */
   --highlight: #f6c992;
 
-  --muted: #132832;
-  --muted-foreground: #9db2c2;
-  --accent: #16303a;
-  --accent-foreground: #e8f0f4;
+  --muted: #26141e;
+  --muted-foreground: #b6a2ac;
+  --accent: #2c1620;
+  --accent-foreground: #f2e9ee;
 
-  --destructive: #d9707a;
+  --destructive: #e0616b;
 
-  --border: #24424e;
-  --input: #24424e;
-  --ring: #09a1a1;
+  --border: #3a1f2c;
+  --input: #3a1f2c;
+  --ring: #d94f93;
 
-  /* charts run cool -> warm across the supplied swatches, so a multi-series
-     plot reads as one family instead of six unrelated colors */
-  --chart-1: #09a1a1;
+  /* charts run warm -> cool -> warm across the swatch family, so a multi-series
+     plot reads as one set instead of six unrelated colors */
+  --chart-1: #d94f93;
   --chart-2: #5484a4;
   --chart-3: #acc0d3;
   --chart-4: #d396a6;
@@ -110,50 +115,69 @@
 
   --radius: 0.625rem;
 
-  --sidebar: #0f2129;
-  --sidebar-foreground: #e8f0f4;
-  --sidebar-primary: #09a1a1;
-  --sidebar-primary-foreground: #04171c;
-  --sidebar-accent: #16303a;
-  --sidebar-accent-foreground: #e8f0f4;
-  --sidebar-border: #24424e;
-  --sidebar-ring: #09a1a1;
+  --sidebar: #1e1018;
+  --sidebar-foreground: #f2e9ee;
+  --sidebar-primary: #d94f93;
+  --sidebar-primary-foreground: #1a0710;
+  --sidebar-accent: #2c1620;
+  --sidebar-accent-foreground: #f2e9ee;
+  --sidebar-border: #3a1f2c;
+  --sidebar-ring: #d94f93;
 }
 
 .dark {
-  --background: #0a161b;
-  --surface: #0f2129;
-  --card: #0f2129;
-  --card-foreground: #e8f0f4;
-  --popover: #132832;
-  --popover-foreground: #e8f0f4;
-  --foreground: #e8f0f4;
-  --primary: #09a1a1;
-  --primary-foreground: #04171c;
-  --secondary: #d396a6;
+  /* grounds — a near-black carrying the magenta hue, so the accent sits on a
+     surface that shares its temperature instead of fighting it */
+  --background: #140a10;
+  --surface: #1e1018;
+  --card: #1e1018;
+  --card-foreground: #f2e9ee;
+  --popover: #26141e;
+  --popover-foreground: #f2e9ee;
+  --foreground: #f2e9ee;
+
+  /* magenta — primary accent, 5.1:1 on the ground.
+     Victor asked for "a very dark pink/magenta". The *grounds* are where the
+     darkness lives: --primary drives link text, values and labels, and a truly
+     dark magenta (#8c1d52) lands near 2:1 here, which is unreadable. This is as
+     deep as the accent can go and still be legible at body size. */
+  --primary: #d94f93;
+  --primary-foreground: #1a0710;
+
+  /* steel — secondary accent, from the original six swatches. Cool against the
+     magenta lead, where the old rose would now read as a muddy near-primary. */
+  --secondary: #5484a4;
   --secondary-foreground: #12212a;
+
+  /* peach — the one warm note. Eyebrows, tier markers, nothing structural. */
   --highlight: #f6c992;
-  --muted: #132832;
-  --muted-foreground: #9db2c2;
-  --accent: #16303a;
-  --accent-foreground: #e8f0f4;
-  --destructive: #d9707a;
-  --border: #24424e;
-  --input: #24424e;
-  --ring: #09a1a1;
-  --chart-1: #09a1a1;
+
+  --muted: #26141e;
+  --muted-foreground: #b6a2ac;
+  --accent: #2c1620;
+  --accent-foreground: #f2e9ee;
+
+  --destructive: #e0616b;
+
+  --border: #3a1f2c;
+  --input: #3a1f2c;
+  --ring: #d94f93;
+
+  /* charts run warm -> cool -> warm across the swatch family, so a multi-series
+     plot reads as one set instead of six unrelated colors */
+  --chart-1: #d94f93;
   --chart-2: #5484a4;
   --chart-3: #acc0d3;
   --chart-4: #d396a6;
   --chart-5: #f6c992;
-  --sidebar: #0f2129;
-  --sidebar-foreground: #e8f0f4;
-  --sidebar-primary: #09a1a1;
-  --sidebar-primary-foreground: #04171c;
-  --sidebar-accent: #16303a;
-  --sidebar-accent-foreground: #e8f0f4;
-  --sidebar-border: #24424e;
-  --sidebar-ring: #09a1a1;
+  --sidebar: #1e1018;
+  --sidebar-foreground: #f2e9ee;
+  --sidebar-primary: #d94f93;
+  --sidebar-primary-foreground: #1a0710;
+  --sidebar-accent: #2c1620;
+  --sidebar-accent-foreground: #f2e9ee;
+  --sidebar-border: #3a1f2c;
+  --sidebar-ring: #d94f93;
 }
 
 @layer base {
@@ -263,11 +287,11 @@
    Holding the end position to 100% gives a pause between passes, so the sweep
    reads as a periodic refresh rather than a spinner. */
 @keyframes sweep {
+  /* Both properties D-012 fixed are preserved: the highlight starts and ends fully off the
+     card, and travels the full 260% needed to clear it. The old 55%-then-hold existed only
+     to pause between loops; with a single pass that was dead time at the end of the gesture. */
   0% {
     transform: translateX(-120%);
-  }
-  55% {
-    transform: translateX(260%);
   }
   100% {
     transform: translateX(260%);
@@ -319,7 +343,11 @@
   &:hover::after,
   &:focus-visible::after {
     opacity: 1;
-    animation: sweep 2.4s cubic-bezier(0.4, 0, 0.25, 1) infinite;
+    /* Plays once per hover, not on a loop. Reverses the looping half of D-012 at Victor's
+       request; the corrected keyframes and the off-card base transform stay, because those
+       were the bug fix — without them the highlight parks itself over the card and never
+       exits. `forwards` is what holds it off-card after the single pass. */
+    animation: sweep 0.85s cubic-bezier(0.4, 0, 0.25, 1) forwards;
   }
 }
 

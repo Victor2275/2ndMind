@@ -33,10 +33,12 @@ Priority is Victor's: fix V1's findings and make it faster and cleaner before ad
 features. Four ship before term, two during. Full plan and reasoning in `web/DECISIONS.md`
 D-036 to D-039.
 
-- [ ] **0 · Foundation** (10-14h) — cache and time-out vault reads; Postgres becomes the
-      store for anything written often, so saves are immediate and do not commit or deploy.
-- [ ] **1 · Redesign** (16-20h) — legibility and density, teal to dark magenta, active tab,
-      sweep plays once, freshness as a notification, real mobile layout.
+- [x] **0 · Foundation** — done 2026-08-21. Vault reads cached and time-limited; tasks live
+      in Postgres, so saves are immediate and no longer commit or deploy. Measured: work
+      320->69ms, calendar 377->32ms, academics 761->186ms.
+- [x] **1 · Redesign** — done 2026-08-21. Magenta palette, active tab, single-shot sweep,
+      freshness as a badge, shared page shell with collapsible reference prose, scrolling
+      nav on narrow screens.
 - [ ] **2 · Structured logging** (14-18h) — six categories with their own fields, logged
       from a phone in under fifteen seconds, searchable. Voice input via Web Speech.
 - [ ] **3 · Today** (8-10h) — one screen: classes, what is due, what you chose to do.

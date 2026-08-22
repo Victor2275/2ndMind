@@ -19,6 +19,87 @@ useful part.
 
 ## 2026-08-21 · V2 scope
 
+### D-044 · The academic tracker's vault implementation is deleted, not kept alongside
+
+**Decision.** `checklist.ts`, its 25 tests, `academic-tracker.tsx`, `tracker.ts`, and the
+academics actions are removed. `/private/sprint` and its form go too — goals are edited
+inline on Today now.
+
+**Why.** D-037 merged the tracker into the task model. Leaving the vault version in place
+would have shipped both, which is the exact failure the merge exists to prevent, and keeping
+unused-but-tested modules "in case" is how dead code accumulates. Everything is one `git
+show` away if feature 5's rehab checklist wants it back.
+
+**How to reverse.** `git show b069dcb -- web/src/lib/vault/checklist.ts` and friends.
+
+---
+
+### D-043 · Freshness is a badge, not a panel
+
+**Decision.** The dashboard's full-width freshness section is replaced by a chip in the page
+header that appears **only when something is stale**, expanding to a list on click.
+
+**Why.** Victor's verdict on V1: it "should be here as an alert that something is not fresh,
+almost as a notification. The full bar itself should be removed." The audit is unchanged —
+this reverses only the presentation. A permanent list of 34 healthy files is furniture.
+
+**How to reverse.** `freshness-panel.tsx` in git history; the report shape is identical.
+
+---
+
+### D-042 · Vault reads are cached; the write path is not
+
+**Decision.** `readVaultFileCached` wraps reads in `unstable_cache` tagged `vault`, and
+`writeVaultFile` calls `updateTag` after committing. Actions keep the uncached reader.
+
+**Why.** Measured: private pages spent 300–800ms on serial GitHub round trips, against 33ms
+for the one page making no network call. After caching, best-of-five steady state went
+320→69ms (work), 377→32ms (calendar), 761→186ms (academics).
+
+Three specifics worth keeping:
+- **`unstable_cache`, not `use cache`.** The directive needs `cacheComponents: true`, which
+  changes every dynamic API in the app and conflicts with the `force-dynamic` these pages
+  rely on. Deprecated, but the migration is contained to one function.
+- **`updateTag`, not `revalidateTag`.** The latter now requires a cache profile, and the
+  recommended `"max"` is stale-while-revalidate — which serves the *pre-edit* content on the
+  next read, making a save look like it did nothing.
+- **The write path must not use the cache.** It needs a live blob SHA; a cached one turns
+  last-write-wins into last-write-fails.
+
+**How to reverse.** Call `readVaultFile` directly and delete the tag. Pages get slow again.
+
+---
+
+### D-041 · Every GitHub request has an 8-second deadline
+
+**Decision.** Octokit is constructed with a `fetch` that carries `AbortSignal.timeout`.
+
+**Why.** `fetch` has no default timeout, so a network problem was not a slow page but a hung
+one — when the connection dropped mid-session, pages sat for minutes. 5s was the first value
+and it fired during ordinary use on a working connection, which is worse than no timeout: it
+turns slow into broken. 8s rides out a bad moment and still fails before anyone assumes the
+app has died.
+
+**How to reverse.** Remove the custom fetch. Do not, unless something else bounds the wait.
+
+---
+
+### D-040 · The card sweep plays once (reverses half of D-012)
+
+**Decision.** `infinite` becomes `forwards`, and the keyframes drop the 55%-then-hold that
+existed only to pause between loops. Duration 0.85s.
+
+**Why.** Victor: "once it does the sweep once it should not repeat it when still hovering."
+
+D-012 said explicitly which half of it must survive a reversal, and that instruction is
+followed here: the corrected base transform (resting off-card) and the 260% travel stay,
+because those were the bug fix — without them the highlight parks itself over the card and
+never exits. Only the looping goes.
+
+**How to reverse.** `forwards` → `infinite` and restore the hold keyframe.
+
+---
+
 ### D-039 · Log fields are proposed from the vault, then edited
 
 **Decision.** I draft three or four fields per log category from what the vault already

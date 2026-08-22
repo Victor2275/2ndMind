@@ -1,4 +1,5 @@
-import { VaultDocument } from "@/components/site/vault-document";
+import { PageHeader, Panel } from "@/components/site/page-shell";
+import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
 
 export const dynamic = "force-dynamic";
 
@@ -8,30 +9,43 @@ export const dynamic = "force-dynamic";
  * Deliberately *not* an application tracker. `internship_pipeline.md` records that a
  * background script already scans Gmail and maintains a master Google Sheet, and asks AI
  * assistants to leave that data entry alone. A second tracker here would be a competing
- * source of truth for the same facts, which is the failure mode this whole vault exists to
- * avoid.
+ * source of truth for the same facts, which is what this whole vault exists to avoid.
  */
-export default function WorkPage() {
+export default async function WorkPage() {
+  // Both at once. Awaiting them in sequence was half the cost of this page.
+  const [pipeline, targets] = await Promise.all([
+    loadVaultDoc("context/04_operations/internship_pipeline.md"),
+    loadVaultDoc("context/01_engineering/career_targets.md"),
+  ]);
+
   return (
-    <main className="py-10">
-      <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
-        Career
-      </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight">Work</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Strategy and targets. Application tracking lives in the Google Sheet the mail script
-        maintains — this page does not duplicate it.
-      </p>
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Career"
+        title="Work"
+        lede="Strategy and targets. Applications are tracked in the Google Sheet the mail script maintains — this page does not duplicate it."
+      />
 
-      <section className="mt-8 rounded-lg border border-border bg-card/70 p-5">
-        <h2 className="mb-4 text-lg font-bold tracking-tight">Pipeline</h2>
-        <VaultDocument path="context/04_operations/internship_pipeline.md" />
-      </section>
+      <div className="mt-8 space-y-4">
+        <Panel
+          title="Pipeline"
+          meta={pipeline.updated ? `updated ${pipeline.updated}` : undefined}
+          collapsible
+          defaultOpen
+        >
+          <VaultDocument doc={pipeline} />
+        </Panel>
 
-      <section className="mt-6 rounded-lg border border-border bg-card/70 p-5">
-        <h2 className="mb-4 text-lg font-bold tracking-tight">Targets</h2>
-        <VaultDocument path="context/01_engineering/career_targets.md" />
-      </section>
+        {/* Reference rather than routine: closed by default so the page opens scannable. */}
+        <Panel
+          title="Targets"
+          meta={targets.updated ? `updated ${targets.updated}` : undefined}
+          collapsible
+          defaultOpen={false}
+        >
+          <VaultDocument doc={targets} />
+        </Panel>
+      </div>
     </main>
   );
 }
