@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { PageHeader, Panel } from "@/components/site/page-shell";
+import { SkeletonPanel } from "@/components/site/skeleton";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
 
 export const dynamic = "force-dynamic";
@@ -13,17 +16,10 @@ const DOCS = [
   { title: "Culinary formulas", path: "context/03_craft_and_creative/culinary_formulas.md" },
 ];
 
-export default async function HobbiesPage() {
+async function Documents() {
   const docs = await Promise.all(DOCS.map((d) => loadVaultDoc(d.path)));
 
   return (
-    <main className="pb-16">
-      <PageHeader
-        eyebrow="Craft"
-        title="Hobbies"
-        lede="Ratios, machine settings, and process notes worth not losing."
-      />
-
       <div className="mt-8 space-y-4">
         {DOCS.map((meta, i) => (
           <Panel
@@ -37,6 +33,27 @@ export default async function HobbiesPage() {
           </Panel>
         ))}
       </div>
+  );
+}
+
+export default function HobbiesPage() {
+  return (
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Craft"
+        title="Hobbies"
+        lede="Ratios, machine settings, and process notes worth not losing."
+      />
+      <Suspense
+        fallback={
+          <div className="mt-8 space-y-4">
+            <SkeletonPanel rows={1} />
+            <SkeletonPanel rows={1} />
+          </div>
+        }
+      >
+        <Documents />
+      </Suspense>
     </main>
   );
 }

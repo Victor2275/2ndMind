@@ -113,6 +113,24 @@ export function readVaultFiles(root: string = VAULT_ROOT): VaultFile[] {
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+/**
+ * The file contents are fixed for the life of a deployment — the vault ships inside the
+ * serverless bundle — so reading all 34 of them on every request was pure repeated work.
+ * Module scope is the right cache here: it survives across requests in a warm function and
+ * is discarded automatically when a new deployment starts a new instance, so there is no
+ * invalidation to get wrong.
+ *
+ * Ages are still computed per call, because those change with the clock rather than the
+ * files.
+ */
+let cachedFiles: VaultFile[] | null = null;
+
 export function loadFreshness(today: Date = new Date()): FreshnessReport {
-  return assessFreshness(readVaultFiles(), today);
+  cachedFiles ??= readVaultFiles();
+  return assessFreshness(cachedFiles, today);
+}
+
+/** Test seam: drops the memo so a test can point the walk at a different tree. */
+export function resetFreshnessCache(): void {
+  cachedFiles = null;
 }

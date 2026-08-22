@@ -1,5 +1,8 @@
+import { Suspense } from "react";
+
 import { HevyImportForm } from "@/components/site/hevy-import-form";
 import { PageHeader } from "@/components/site/page-shell";
+import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { WorkoutLogForm } from "@/components/site/workout-log-form";
 import {
   ergRecords,
@@ -153,8 +156,7 @@ function History({ workouts }: { workouts: WorkoutSummary[] }) {
   );
 }
 
-export default async function AthleticsPage() {
-  if (!isDatabaseConfigured()) return <Unconfigured />;
+async function Records() {
 
   let efforts: Awaited<ReturnType<typeof allEfforts>> = [];
   let history: WorkoutSummary[] = [];
@@ -172,13 +174,7 @@ export default async function AthleticsPage() {
   const empty = !failure && history.length === 0;
 
   return (
-    <main className="pb-16">
-      <PageHeader
-        eyebrow="Athletics"
-        title="Training"
-        lede="Records are computed from every stored set on each load, never saved — a stored record keeps reading high after a workout is corrected."
-      />
-
+    <>
       {failure && (
         <div className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
           <p className="font-medium text-foreground">The database is unreachable.</p>
@@ -222,15 +218,41 @@ export default async function AthleticsPage() {
       )}
 
       <section className="mt-12 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card/70 p-5">
+        <div className="rounded-xl border border-border bg-card/60 p-6">
           <h2 className="text-base font-semibold">Import from Hevy</h2>
           <HevyImportForm />
         </div>
-        <div className="rounded-lg border border-border bg-card/70 p-5">
+        <div className="rounded-xl border border-border bg-card/60 p-6">
           <h2 className="text-base font-semibold">Log by hand</h2>
           <WorkoutLogForm />
         </div>
       </section>
+    </>
+  );
+}
+
+export default function AthleticsPage() {
+  if (!isDatabaseConfigured()) return <Unconfigured />;
+
+  return (
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Athletics"
+        title="Training"
+        lede="Records are computed from every stored set on each load, never saved — a stored record keeps reading high after a workout is corrected."
+      />
+      <Suspense
+        fallback={
+          <>
+            <SkeletonStats />
+            <div className="mt-8 space-y-4">
+              <SkeletonPanel rows={3} />
+            </div>
+          </>
+        }
+      >
+        <Records />
+      </Suspense>
     </main>
   );
 }

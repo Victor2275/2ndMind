@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { PageHeader, Panel } from "@/components/site/page-shell";
+import { SkeletonPanel } from "@/components/site/skeleton";
 import { Prose } from "@/components/site/prose";
 import { readVaultFileCached } from "@/lib/vault/write";
 
@@ -20,7 +23,7 @@ function section(content: string, heading: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-export default async function CalendarPage() {
+async function Rules() {
   let rules: string | null = null;
   let failure: string | null = null;
 
@@ -30,6 +33,25 @@ export default async function CalendarPage() {
     failure = error instanceof Error ? error.message : String(error);
   }
 
+  return (
+      <div className="mt-6">
+        <Panel title="Operating rules">
+        {failure ? (
+          <p className="text-sm text-muted-foreground">{failure}</p>
+        ) : rules ? (
+          <Prose>{rules}</Prose>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            The <code className="font-mono text-xs">{RULES_HEADING}</code> section is missing
+            from the sprint file.
+          </p>
+        )}
+        </Panel>
+      </div>
+  );
+}
+
+export default function CalendarPage() {
   return (
     <main className="pb-16">
       <PageHeader
@@ -52,20 +74,9 @@ export default async function CalendarPage() {
         </p>
       </div>
 
-      <div className="mt-6">
-        <Panel title="Operating rules">
-        {failure ? (
-          <p className="text-sm text-muted-foreground">{failure}</p>
-        ) : rules ? (
-          <Prose>{rules}</Prose>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            The <code className="font-mono text-xs">{RULES_HEADING}</code> section is missing
-            from the sprint file.
-          </p>
-        )}
-        </Panel>
-      </div>
+      <Suspense fallback={<div className="mt-6"><SkeletonPanel rows={4} /></div>}>
+        <Rules />
+      </Suspense>
     </main>
   );
 }

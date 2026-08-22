@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { PageHeader, Panel, Stat } from "@/components/site/page-shell";
+import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
 import type { Task } from "@/lib/db/schema";
@@ -7,19 +10,24 @@ import { listTasks } from "@/lib/tasks/queries";
 
 export const dynamic = "force-dynamic";
 
+const toView = (task: Task): TaskView => ({
+  id: task.id,
+  title: task.title,
+  source: task.source,
+  domain: task.domain,
+  courseCode: task.courseCode,
+  dueAt: task.dueAt ? task.dueAt.toISOString() : null,
+  done: task.doneAt !== null,
+});
+
 /**
- * Coursework, and what is outstanding in it.
- *
- * The tracker used to be `- [ ]` rows edited inside `current_sprint.md`. It is the same task
- * table as everything else now (D-037): coursework is a task with a `courseCode`, so "what
- * is due" has one answer instead of three. The markdown section stays in the vault as a
- * readable record but is no longer the editable source.
+ * Outstanding coursework. The tracker used to be `- [ ]` rows edited inside
+ * `current_sprint.md`; it is the same task table as everything else now (D-037), so "what is
+ * due" has one answer instead of three.
  */
-export default async function AcademicsPage() {
+async function Outstanding() {
   let academic: Task[] = [];
   let failure: string | null = null;
-
-  const coursework = loadVaultDoc("context/01_engineering/coursework_and_labs.md");
 
   if (isDatabaseConfigured()) {
     try {
@@ -32,34 +40,17 @@ export default async function AcademicsPage() {
     failure = "DATABASE_URL is not set, so coursework tasks cannot load.";
   }
 
-  const doc = await coursework;
   const overdue = academic.filter((t) => t.dueAt !== null && t.dueAt < new Date()).length;
 
-  const toView = (task: Task): TaskView => ({
-    id: task.id,
-    title: task.title,
-    source: task.source,
-    domain: task.domain,
-    courseCode: task.courseCode,
-    dueAt: task.dueAt ? task.dueAt.toISOString() : null,
-    done: task.doneAt !== null,
-  });
-
   return (
-    <main className="pb-16">
-      <PageHeader
-        eyebrow="Academics"
-        title="Coursework"
-        lede="Midterms and multi-week projects. Canvas still owns the week-to-week deadlines."
-      />
-
+    <>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Open" value={academic.length} />
         <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "warn" : "default"} />
         <Stat label="Graduation" value="Jun 2028" hint="3-year track" />
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-8">
         <Panel title="Outstanding">
           {failure ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
@@ -73,16 +64,53 @@ export default async function AcademicsPage() {
             />
           )}
         </Panel>
-
-        <Panel
-          title="Record"
-          meta={doc.updated ? `updated ${doc.updated}` : undefined}
-          collapsible
-          defaultOpen={false}
-        >
-          <VaultDocument doc={doc} />
-        </Panel>
       </div>
+    </>
+  );
+}
+
+/** Separate boundary: the vault read and the database call should not wait for each other. */
+async function Record() {
+  const doc = await loadVaultDoc("context/01_engineering/coursework_and_labs.md");
+  return (
+    <div className="mt-4">
+      <Panel
+        title="Record"
+        meta={doc.updated ? `updated ${doc.updated}` : undefined}
+        collapsible
+        defaultOpen={false}
+      >
+        <VaultDocument doc={doc} />
+      </Panel>
+    </div>
+  );
+}
+
+export default function AcademicsPage() {
+  return (
+    <main className="pb-16">
+      <PageHeader
+        eyebrow="Academics"
+        title="Coursework"
+        lede="Midterms and multi-week projects. Canvas still owns the week-to-week deadlines."
+      />
+
+      <Suspense
+        fallback={
+          <>
+            <SkeletonStats />
+            <div className="mt-8">
+              <SkeletonPanel rows={3} />
+            </div>
+          </>
+        }
+      >
+        <Outstanding />
+      </Suspense>
+
+      <Suspense fallback={<div className="mt-4"><SkeletonPanel rows={1} /></div>}>
+        <Record />
+      </Suspense>
     </main>
   );
 }

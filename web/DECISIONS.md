@@ -19,6 +19,48 @@ useful part.
 
 ## 2026-08-21 · V2 scope
 
+### D-046 · The freshness walk is memoised at module scope
+
+**Decision.** `loadFreshness` caches the 34-file disk read in a module-level variable.
+
+**Why.** The vault ships inside the serverless bundle, so its contents are fixed for the life
+of a deployment — re-reading every file on every request was repeated work with no possible
+change to find. Module scope is the right cache: it survives across requests in a warm
+function and is discarded automatically when a new deployment starts a new instance, so there
+is no invalidation to get wrong. Ages are still computed per call, since those move with the
+clock rather than the files.
+
+**How to reverse.** Call `readVaultFiles()` directly; `resetFreshnessCache()` already exists
+as the test seam.
+
+---
+
+### D-045 · Loading boundaries and streaming, because the server cannot get faster
+
+**Decision.** A `loading.tsx` under `/private`, and a Suspense boundary around every
+database or GitHub read on Today, Work, Academics, Athletics, Calendar and Hobbies.
+
+**Why.** Victor reported it still felt slow after D-042 made the server measurably faster, so
+I measured the thing I had not: production. `/signin` — a dynamic page with *no* database and
+*no* API call — costs 335–440ms of Vercel function time, against 70ms to connect. That
+overhead is not mine to remove, and it is paid on every navigation because every private page
+is `force-dynamic`.
+
+The mistake was optimising server time when the problem was that **nothing appeared on screen
+while it ran**. With no loading boundary the App Router has nothing to show, so a click left
+the old page sitting there and the app read as frozen rather than busy.
+
+Measured after: TTFB 50–110ms across every private page, and the streaming order is verified
+in the HTML — the shell and skeleton ship at byte ~6.7k, the content arrives at ~30k.
+
+This also matters most exactly when the app feels worst: Neon's free tier suspends after a
+few minutes idle, so the first query after a break is slow. The shell no longer waits for it.
+
+**How to reverse.** Delete `loading.tsx` and unwrap the Suspense boundaries. Do not, unless
+the pages stop being `force-dynamic`.
+
+---
+
 ### D-044 · The academic tracker's vault implementation is deleted, not kept alongside
 
 **Decision.** `checklist.ts`, its 25 tests, `academic-tracker.tsx`, `tracker.ts`, and the

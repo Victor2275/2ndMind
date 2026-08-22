@@ -1,7 +1,11 @@
+import { Suspense } from "react";
+
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
+import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
+import type { Task } from "@/lib/db/schema";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { GOAL_DOMAINS } from "@/lib/sprint-goals";
 import {
@@ -12,7 +16,6 @@ import {
   listTasks,
 } from "@/lib/tasks/queries";
 import { loadFreshness } from "@/lib/vault/freshness";
-import type { Task } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -31,62 +34,62 @@ function toView(task: Task): TaskView {
   };
 }
 
-export default async function TodayPage() {
-  const now = new Date();
-  const { start, end } = dayBounds(now, LA_OFFSET_MINUTES);
+type Loaded = {
+  due: Task[];
+  goals: Task[];
+  someday: Task[];
+  doneToday: Task[];
+  overdue: number;
+  failure: string | null;
+};
 
-  let due: Task[] = [];
-  let goals: Task[] = [];
-  let backlog: Task[] = [];
-  let doneToday: Task[] = [];
-  let failure: string | null = null;
+async function load(): Promise<Loaded> {
+  const empty: Loaded = { due: [], goals: [], someday: [], doneToday: [], overdue: 0, failure: null };
 
-  if (isDatabaseConfigured()) {
-    try {
-      const handle = db();
-      [due, goals, backlog, doneToday] = await Promise.all([
-        listDueBy(handle, end),
-        currentGoals(handle),
-        listTasks(handle, { limit: 50 }),
-        listDoneBetween(handle, start, end),
-      ]);
-    } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
-    }
-  } else {
-    failure = "DATABASE_URL is not set, so tasks cannot load.";
+  if (!isDatabaseConfigured()) {
+    return { ...empty, failure: "DATABASE_URL is not set, so tasks cannot load." };
   }
 
-  // Read from disk, not the API: 34 files, and one API call each would turn a page load
-  // into 34 round trips against a rate limit (D-022).
-  let freshness: ReturnType<typeof loadFreshness> | null = null;
+  const { start, end } = dayBounds(new Date(), LA_OFFSET_MINUTES);
+
   try {
-    freshness = loadFreshness();
-  } catch {
-    freshness = null;
+    const handle = db();
+    const [due, goals, backlog, doneToday] = await Promise.all([
+      listDueBy(handle, end),
+      currentGoals(handle),
+      listTasks(handle, { limit: 50 }),
+      listDoneBetween(handle, start, end),
+    ]);
+
+    return {
+      due,
+      goals,
+      someday: backlog.filter((t) => t.dueAt === null && t.source !== "goal"),
+      doneToday,
+      overdue: due.filter((t) => t.dueAt && t.dueAt < start).length,
+      failure: null,
+    };
+  } catch (error) {
+    return { ...empty, failure: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Everything that needs the database, behind one Suspense boundary.
+ *
+ * Neon's free tier suspends after a few minutes idle, so the first query after a break can
+ * take seconds. Without this the whole page — header, nav, chrome — waits on that. With it,
+ * the shell paints immediately and only this region shows a placeholder.
+ */
+async function Tasks() {
+  const { due, goals, someday, doneToday, overdue, failure } = await load();
 
   const goalValues = Object.fromEntries(
     GOAL_DOMAINS.map((d) => [d.key, goals.find((g) => g.domain === d.key)?.title ?? ""]),
   );
 
-  // Everything without a date, minus the goals — goals have their own panel.
-  const someday = backlog.filter((t) => t.dueAt === null && t.source !== "goal");
-  const overdue = due.filter((t) => t.dueAt && t.dueAt < start).length;
-
   return (
-    <main className="pb-16">
-      <PageHeader
-        eyebrow={new Intl.DateTimeFormat("en-US", {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          timeZone: "America/Los_Angeles",
-        }).format(now)}
-        title="Today"
-        actions={freshness ? <FreshnessBadge report={freshness} /> : undefined}
-      />
-
+    <>
       {failure && (
         <div className="mt-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
           <p className="text-sm font-medium text-foreground">Tasks are unavailable.</p>
@@ -131,6 +134,51 @@ export default async function TodayPage() {
           </Panel>
         )}
       </div>
+    </>
+  );
+}
+
+/** Reads memoised disk data, so this costs nothing after the first request. */
+function Freshness() {
+  // The call is what can throw (a missing vault directory on a misconfigured deploy), not
+  // the render — so only the call is guarded. Wrapping the JSX would catch nothing, since
+  // React renders it later.
+  let report: ReturnType<typeof loadFreshness>;
+  try {
+    report = loadFreshness();
+  } catch {
+    return null;
+  }
+  return <FreshnessBadge report={report} />;
+}
+
+export default function TodayPage() {
+  return (
+    <main className="pb-16">
+      <PageHeader
+        eyebrow={new Intl.DateTimeFormat("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          timeZone: "America/Los_Angeles",
+        }).format(new Date())}
+        title="Today"
+        actions={<Freshness />}
+      />
+
+      <Suspense
+        fallback={
+          <>
+            <SkeletonStats />
+            <div className="mt-8 space-y-4">
+              <SkeletonPanel rows={3} />
+              <SkeletonPanel rows={3} />
+            </div>
+          </>
+        }
+      >
+        <Tasks />
+      </Suspense>
     </main>
   );
 }

@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { PageHeader, Panel } from "@/components/site/page-shell";
+import { SkeletonPanel } from "@/components/site/skeleton";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
 
 export const dynamic = "force-dynamic";
@@ -11,13 +14,38 @@ export const dynamic = "force-dynamic";
  * assistants to leave that data entry alone. A second tracker here would be a competing
  * source of truth for the same facts, which is what this whole vault exists to avoid.
  */
-export default async function WorkPage() {
+async function Documents() {
   // Both at once. Awaiting them in sequence was half the cost of this page.
   const [pipeline, targets] = await Promise.all([
     loadVaultDoc("context/04_operations/internship_pipeline.md"),
     loadVaultDoc("context/01_engineering/career_targets.md"),
   ]);
 
+  return (
+    <div className="mt-8 space-y-4">
+      <Panel
+        title="Pipeline"
+        meta={pipeline.updated ? `updated ${pipeline.updated}` : undefined}
+        collapsible
+        defaultOpen
+      >
+        <VaultDocument doc={pipeline} />
+      </Panel>
+
+      {/* Reference rather than routine: closed by default so the page opens scannable. */}
+      <Panel
+        title="Targets"
+        meta={targets.updated ? `updated ${targets.updated}` : undefined}
+        collapsible
+        defaultOpen={false}
+      >
+        <VaultDocument doc={targets} />
+      </Panel>
+    </div>
+  );
+}
+
+export default function WorkPage() {
   return (
     <main className="pb-16">
       <PageHeader
@@ -26,26 +54,16 @@ export default async function WorkPage() {
         lede="Strategy and targets. Applications are tracked in the Google Sheet the mail script maintains — this page does not duplicate it."
       />
 
-      <div className="mt-8 space-y-4">
-        <Panel
-          title="Pipeline"
-          meta={pipeline.updated ? `updated ${pipeline.updated}` : undefined}
-          collapsible
-          defaultOpen
-        >
-          <VaultDocument doc={pipeline} />
-        </Panel>
-
-        {/* Reference rather than routine: closed by default so the page opens scannable. */}
-        <Panel
-          title="Targets"
-          meta={targets.updated ? `updated ${targets.updated}` : undefined}
-          collapsible
-          defaultOpen={false}
-        >
-          <VaultDocument doc={targets} />
-        </Panel>
-      </div>
+      <Suspense
+        fallback={
+          <div className="mt-8 space-y-4">
+            <SkeletonPanel rows={5} />
+            <SkeletonPanel rows={1} />
+          </div>
+        }
+      >
+        <Documents />
+      </Suspense>
     </main>
   );
 }
