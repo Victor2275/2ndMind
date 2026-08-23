@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-22
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -10,10 +10,9 @@ read_when: Always — anything about current priorities or scheduling.
 
 ## 1. Active Sprint Goals
 *Identify top 3 priorities across all domains for the week here.*
-- **Engineering / Career:** Ship the 2ndMind public site. Live at
-  https://victorgusev.vercel.app since 2026-08-21. Resume generator, passkey auth, vault
-  writes, freshness audit, athletics, and the remaining private surfaces all done. V1 is
-  complete; next is the V2 scope conversation.
+- **Engineering / Career:** 2ndMind is live at https://victorgusev.vercel.app. V1 complete
+  2026-08-21. V2 features 0, 1, 2, 4 and 5 shipped; 3 is largely built; 6 (AI) is the only
+  one not started, and is the one needing a scope decision from Victor.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -42,11 +41,15 @@ D-036 to D-039.
 - [x] **2 · Structured logging** — done 2026-08-21. Six categories, fields generated from
       one definition file, full-text search over everything, dictation on Android, soft
       delete with undo. Replaces the old free-text logbook.
-- [ ] **3 · Today** (8-10h) — one screen: classes, what is due, what you chose to do.
-- [ ] **4 · Calendar** (10-14h, during term) — Google and Canvas private iCal feeds. No
-      OAuth, no cost.
-- [ ] **5 · Athletics with real data** (12-16h, during term) — manual entry first, charts,
-      bodyweight, rehab checklist, weight-adjusted split.
+- [~] **3 · Today** (8-10h) — largely built already: tasks, goals, stats and the schedule
+      section are all live on `/private`. Not formally closed out.
+- [x] **4 · Calendar** — done 2026-08-22. Google and Canvas private iCal feeds via ical.js,
+      agenda for today plus seven days, Canvas assignments importable as tasks. No OAuth, no
+      cost. Two data gaps, neither a defect: the Canvas feed is empty (211 bytes, zero
+      events) and Fall 2026 classes are not yet in Google Calendar.
+- [x] **5 · Athletics depth** — done 2026-08-22. Concept2 weight-adjusted splits against
+      the sub-2:00 goal, bodyweight table, rehab checklist and SPM targets parsed from this
+      vault, week-plan-vs-logged review, server-rendered SVG charts.
 - [ ] **6 · AI, narrowly scoped** (10-14h, last) — summarise the week, draft sprint goals,
       every vault write approved as a diff.
 
@@ -62,16 +65,23 @@ lists.
 portfolio, resume generator, passkey auth, vault writes, freshness audit, athletics with
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
-**Blocking on Victor, before 2026-08-29:** production is still switched off. Vercel has none
-of the environment variables — `/signin` on the live site reports "Not configured". Set
-`SESSION_SECRET` (a different one from local), `GITHUB_TOKEN`, `NEXT_PUBLIC_SITE_URL`, and
-`DATABASE_URL` in Vercel, redeploy, then enrol a second passkey against the live origin per
-`web/REGISTER_PASSKEY.md` — a passkey is bound to the origin it was created on.
+**Open on Victor, in priority order:**
+1. **Enrol a passkey on the production origin** (`victorgusev.vercel.app`). The local one is
+   bound to `localhost` and will not work there. See `web/REGISTER_PASSKEY.md`.
+2. **Set `GOOGLE_CALENDAR_KEY` and `CANVAS_CALENDAR` in Vercel.** They exist in `.env.local`
+   only, so the production calendar page shows "No calendar feeds connected". These URLs are
+   credentials — anyone holding one can read the calendar.
+3. **Confirm Vercel's `DATABASE_URL` is the same Neon database as local.** Migration 0003 was
+   applied to the local one; if production points elsewhere, `/private/athletics` errors
+   there until it is migrated.
+4. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
+   appears on its own once they exist.
 
 **Cut rule:** spent. Days 16-20 and 21-29 both landed early; the CSV import shipped.
 
-**Retiring `/sprint-review`:** the web sprint editor exists at `/private/sprint`. The slash
-command comes out once Victor confirms he has used the editor at least once — still open.
+**Retiring `/sprint-review`:** goal editing now lives on `/private` itself; the separate
+`/private/sprint` route no longer exists. The slash command comes out once Victor confirms
+he has used the editor at least once — still open.
 
 ## 2. Operational Rules & Boundaries
 - **The Weekly Purge:** At the start of every sprint, any blocker or to-do that has rolled over twice must be: (1) Hard-scheduled into a calendar block, (2) Delegated to an AI, or (3) Ruthlessly deleted. No endless piling up.
