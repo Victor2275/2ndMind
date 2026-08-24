@@ -53,6 +53,22 @@ export function formatResumeDate(value: string): string {
   return `${name} ${year}`;
 }
 
+/**
+ * How many bullets an entry may contribute to a printed resume.
+ *
+ * The vault keeps every bullet — the project and experience pages still show all of them.
+ * These caps exist because the resume is a one-page document and, measured, it was not one:
+ * before this the SWE variant printed at 1.33 pages, spilling onto a second sheet that was
+ * about 70% white. Height broke down as Projects 443px against Experience 366px, which is
+ * the wrong way round for a resume and pointed at the projects section as what to trim.
+ *
+ * Experience gets one more than projects because a role is the thing a reader is buying.
+ * Bullets are taken in vault order, so the first bullet in a file is the one that survives —
+ * write the strongest one first.
+ */
+const MAX_EXPERIENCE_BULLETS = 4;
+const MAX_PROJECT_BULLETS = 3;
+
 export function buildResume(variant: ResumeVariant): ResumeDocument {
   const config = loadResumeConfig();
   const profile = publicProfile();
@@ -67,7 +83,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
       title: e.title,
       org: e.org,
       dates: `${formatResumeDate(e.date_start)} – ${formatResumeDate(e.date_end)}`,
-      bullets: e.bullets,
+      bullets: e.bullets.slice(0, MAX_EXPERIENCE_BULLETS),
     }));
 
   // Projects and labs land in one section. A reader does not care which vault directory an
@@ -79,7 +95,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
       title: p.title,
       org: p.event ?? p.category,
       dates: String(p.year),
-      bullets: p.bullets,
+      bullets: p.bullets.slice(0, MAX_PROJECT_BULLETS),
     }));
 
   const labEntries: ResumeEntry[] = loadLabs()
@@ -89,7 +105,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
       title: l.title,
       org: l.course,
       dates: formatResumeDate(l.date),
-      bullets: l.bullets,
+      bullets: l.bullets.slice(0, MAX_PROJECT_BULLETS),
     }));
 
   const projects = [...projectEntries, ...labEntries].sort((a, b) =>

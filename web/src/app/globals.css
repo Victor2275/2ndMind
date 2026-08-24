@@ -468,6 +468,87 @@
     page-break-inside: avoid;
   }
 
+  /* --- Density -----------------------------------------------------------------
+     Screen and paper want opposite things here, so they are tuned separately.
+
+     On screen the sheet breathes: Victor's complaint about V1 was that everything felt
+     "cramped and hard to read", and nothing below touches that. On paper the constraint is
+     absolute — an intern resume is one page, and measured before this block every variant
+     ran over (swe 1.33 pages, ml 1.24, robotics 1.18), spilling onto a second sheet that
+     was ~70% white. A second page that empty reads as carelessness, not as thoroughness.
+
+     Everything here is leading and spacing rather than content. Nothing is hidden, no
+     bullet is truncated, and the text stays selectable so resume parsers still read it. */
+
+  .resume-sheet {
+    font-size: 10.5pt;
+    line-height: 1.3;
+  }
+
+  /* Bullets are where the height actually goes: 20 of them, over half wrapping to a second
+     line. Tightening the leading alone recovers most of a page. */
+  .resume-sheet li {
+    font-size: 9.6pt !important;
+    line-height: 1.26 !important;
+    margin-top: 0.04rem !important;
+  }
+
+  .resume-sheet li::before {
+    /* The screen marker is a faint magenta dot that prints as an almost-invisible speck. */
+    content: "•" !important;
+    font-weight: 700;
+  }
+
+  /* Section rhythm. `mt-7` between five sections is 140px of paper spent on gaps. */
+  .resume-sheet section {
+    margin-top: 0.5rem !important;
+  }
+
+  .resume-sheet section > div,
+  .resume-sheet section > dl {
+    margin-top: 0.2rem !important;
+  }
+
+  /* Between entries within a section. */
+  .resume-sheet section > div > div + div {
+    margin-top: 0.36rem !important;
+  }
+
+  .resume-heading {
+    font-size: 9.2pt !important;
+    letter-spacing: 0.1em !important;
+    padding-bottom: 0.12rem !important;
+    margin-bottom: 0.1rem !important;
+  }
+
+  .resume-sheet h1 {
+    font-size: 19pt !important;
+    line-height: 1.1 !important;
+  }
+
+  /* The headline and contact line sit directly under the name and do not need the screen's
+     generous separation. */
+  .resume-sheet header p {
+    margin-top: 0.2rem !important;
+    font-size: 9.6pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .resume-sheet header p.resume-contact {
+    font-size: 8.8pt !important;
+  }
+
+  /* Entry titles and their date column. */
+  .resume-sheet section p {
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+  }
+
+  .resume-sheet dl > div {
+    font-size: 9.6pt !important;
+    line-height: 1.35 !important;
+  }
+
   main {
     max-width: none !important;
     padding: 0 !important;

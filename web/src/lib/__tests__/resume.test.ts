@@ -182,3 +182,27 @@ describe("the archived copy agrees with the site", () => {
     }
   });
 });
+
+describe("one-page discipline", () => {
+  it("caps bullets per entry, because the resume must fit one page", () => {
+    // Measured before these caps existed: the SWE variant printed at 1.33 pages, spilling
+    // onto a second sheet that was ~70% empty. The vault still holds every bullet; only the
+    // resume projection is capped.
+    for (const variant of RESUME_VARIANTS) {
+      const doc = buildResume(variant);
+      for (const entry of doc.experience) {
+        expect(entry.bullets.length, `${variant}/${entry.slug}`).toBeLessThanOrEqual(4);
+      }
+      for (const entry of doc.projects) {
+        expect(entry.bullets.length, `${variant}/${entry.slug}`).toBeLessThanOrEqual(3);
+      }
+    }
+  });
+
+  it("keeps the first bullet of each entry, so vault order decides what survives", () => {
+    const doc = buildResume("swe");
+    for (const entry of [...doc.experience, ...doc.projects]) {
+      expect(entry.bullets.length).toBeGreaterThan(0);
+    }
+  });
+});

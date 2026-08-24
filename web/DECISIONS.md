@@ -17,6 +17,70 @@ useful part.
 
 ---
 
+## 2026-08-24 · V2 close-out decisions
+
+### D-072 · A local browser is the only MCP server
+
+**Decision.** `.mcp.json` runs `@playwright/mcp` locally, isolated, at a 1280×900 viewport.
+Nothing else is configured.
+
+**Why.** Two of the remaining tasks — resume design and the mobile layout pass — are purely
+visual, and until now the site has only ever been verified by grepping built HTML. That caught
+fabricated content and privacy leaks, but it cannot answer "does this look right", which is the
+actual question for both jobs.
+
+Local matters more than the capability. The repo is private and holds health data; a browser
+driven on Victor's own machine sends nothing anywhere. The alternatives considered — Sentry,
+Semgrep, Datadog, a Neon MCP — all ship code, telemetry or query results to a third party, and
+three of them imply paid tiers against a $0 budget. Sentry alone remains defensible later, and
+would need scrubbing rules before it touches the private site.
+
+`--isolated` so no browser profile persists between runs, and no cookie or session from ordinary
+browsing is reachable from an automated one.
+
+**How to reverse.** Delete `.mcp.json`. Verification returns to inspecting built output.
+
+### D-071 · The whole log, health included, may be sent to the model
+
+**Decision.** The AI summary sends everything: sprint goals and all six log categories,
+athletics and bodyweight among them. Asked directly, Victor chose this over excluding health.
+
+**Why.** It is his data and his call, and a summary that silently omits training is a summary of
+a fraction of his day.
+
+**This does not loosen the publication rule, which is unchanged and absolute.** Health data must
+never reach a public page. The two are different acts: one sends data to an API under Victor's
+own key for a private page only he can see; the other bakes it into a world-readable static
+bundle. A future agent reading "everything goes to Google" as licence to publish bodyweight
+would be misreading this entry.
+
+Practical consequences worth stating: prompts leave the machine, so anything sent is subject to
+Google's retention, and the summary is cached — meaning health-derived text sits in the Next
+cache alongside everything else.
+
+**How to reverse.** Filter by category in `AiSummary` before building the prompt. The
+`summarise()` output is already per-category, so the filter is one predicate.
+
+### D-070 · Feature 6 gets all four capabilities, summaries first
+
+**Decision.** Read-only summaries, draft-sprint-goals behind an approval diff, resume tailoring,
+and semantic search — all four, built in that order, after the public-site work.
+
+**Why.** Victor picked the public site as the priority for the pre-term window: the resume is
+what gets him interviews and fall recruiting is imminent, whereas feature 6 is for him alone and
+fits the 4h/week he will have during term.
+
+On cost, he judged the $10 sufficient — semantic search will be used rarely and Flash is cheap.
+That is a real constraint rather than a guess, so embeddings must be cached and re-embedding
+must be incremental, not a full pass on every vault edit.
+
+Draft-sprint-goals is what forces the approval-gated write UI to exist. That gate is
+non-negotiable: nothing writes to the vault on a model's say-so.
+
+**How to reverse.** Build only the summaries and drop the rest; nothing else depends on them.
+
+---
+
 ## 2026-08-24 · Review of external changes
 
 ### D-069 · Nothing on the public site may be inferred, only recorded
