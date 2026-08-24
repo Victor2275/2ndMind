@@ -1,0 +1,15 @@
+{
+  "name": "2ndmind-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix web",
+    "build": "npm run build --prefix web",
+    "start": "npm run start --prefix web",
+    "lint": "npm run lint --prefix web",
+    "test": "npm run test --prefix web",
+    "test:watch": "npm run test:watch --prefix web",
+    "typecheck": "npm run typecheck --prefix web",
+    "db:generate": "npm run db:generate --prefix web",
+    "db:migrate": "npm run db:migrate --prefix web"
+  }
+}

@@ -1,40 +1,42 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-24
 domain: engineering
 stability: volatile
-summary: PLACEHOLDER — smart water bottle scale tracking intake by weight.
-read_when: Portfolio; replace this entry with real detail before the site goes public.
+summary: Battery-powered load-cell scale that measures how much water is left in a bottle.
+read_when: Portfolio; hardware and embedded work.
 title: Water Bottle Scale
 slug: water-bottle-scale
-tier: 1
+tier: 2
 status: active
 year: 2026
 category: hardware
-tags: [esp32, sensors, embedded, placeholder]
-stack: [ESP32, Load cell]
+tags: [arduino, sensors, embedded, hardware]
+stack: [Arduino Uno, Load cell]
 links: {}
 draft: true
 resume_variants: []
 public: true
 bullets:
-  - PLACEHOLDER — replace with what was built, the constraint that made it hard, and a measured result.
-  - PLACEHOLDER — one bullet on the hardware, one on the firmware or data side.
+  - Built a rechargeable, water-sealed scale that reads the remaining water in a bottle from a load sensor, powered by an Arduino Uno and an internal battery.
 ---
 
 # Water Bottle Scale
 
-> **Placeholder.** Victor is supplying the real description. Everything below is scaffolding
-> so the page renders and the layout can be reviewed — none of it is claimed as fact, and
-> `draft: true` keeps it out of resume output.
+A scale that measures how much water is left in a water bottle. It uses a load sensor to read
+the remaining weight, runs from an internal rechargeable battery, and the enclosure is sealed
+against water so it survives being around a bottle that gets refilled and spilled.
 
-A scale that sits under a water bottle and tracks intake by weight rather than by asking the
-user to log anything.
+Built on an Arduino Uno.
 
-## What to fill in
+## Still to write up
 
-- What the sensing approach is — load cell and amplifier, and how drift and temperature are
-  handled.
-- How a *drink* is distinguished from *picking the bottle up*, which is the actual hard part
-  of any passive-tracking device.
-- Where the data goes, and whether it feeds the 2ndMind private dashboard.
-- One measured number: accuracy in millilitres, battery life, or sample rate.
+Everything above is what Victor has stated about the build. The points below are genuinely not
+recorded yet, and this file deliberately does **not** guess at them — `draft: true` keeps the
+entry off the resume until there is a measured result to put on it.
+
+- Which load cell and amplifier, and how the cell is mounted.
+- How the seal is achieved, and what it is rated for.
+- Battery chemistry, capacity, charge circuit, and measured runtime.
+- How readings are calibrated and how drift is handled.
+- One measured number — accuracy in millilitres or grams, or battery life.
+- Whether the reading is displayed on the device, or leaves it at all.

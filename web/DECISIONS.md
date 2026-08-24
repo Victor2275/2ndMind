@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-22
+updated: 2026-08-24
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,112 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-08-24 · Review of external changes
+
+### D-069 · Nothing on the public site may be inferred, only recorded
+
+**Decision.** Project entries state what Victor has told us and nothing else. Where detail is
+missing the file says so under a "Still to write up" heading and carries `draft: true`, which
+keeps it on the portfolio but off every resume.
+
+**Why.** The water bottle scale entry was rewritten with invented specifics — an ESP32 (Victor
+said Arduino Uno), an HX711 amplifier, "±2g accuracy", a 5-second-window state machine and MQTT
+streaming — and marked `draft: false` with `resume_variants: [swe, robotics]`. All of it reached
+the built portfolio and two resume pages. Fabricated technical detail on a hiring-facing
+document is the worst failure this project can produce: it is discovered in an interview, by
+someone asking a follow-up question.
+
+The previous placeholder had listed exactly what needed filling in. Those prompts became the
+fabrication — "one measured number: accuracy in millilitres" became "±2g accuracy".
+
+**How to reverse.** Fill the entry in with real detail from Victor, then set `draft: false` and
+add resume variants. Do not do it the other way round.
+
+### D-068 · `experience[0]` is "most recent", never "now"
+
+**Decision.** The homepage spotlight is headed "Most recent" and prints the entry's real
+`dateEnd`.
+
+**Why.** It was headed "What I'm working on now" with a hard-coded `— Present`. Dimaag.ai's
+vault entry says `date_end: 2026-08`, so the public site told every hiring manager that a
+finished internship was ongoing — a claim about employment produced by a string literal and an
+array index.
+
+The "what I'm working on now" section Victor actually asked for is about current *work* —
+2ndMind, coursework — and is still unbuilt. Reusing the experience list for it was not the same
+feature.
+
+**How to reverse.** Only with a field that says a role is current, and only driven by data.
+
+### D-067 · The AI summary is cached and reads the live log
+
+**Decision.** `generateDailySummary` wraps the model call in `unstable_cache` (6h TTL, tag
+`ai-summary`) keyed on the prompt, and the dashboard feeds it today's `log_entries` rows plus
+the sprint goals section — not `logbook_archive.md`.
+
+**Why.** Two defects. The call sat uncached on `/private`, which is `force-dynamic` and the page
+Victor opens most, so every load re-summarised an unchanged day against a $10 lifetime credit
+budget. And it summarised the *retired* free-text logbook — the thing feature 2 replaced and
+Victor asked to rework or delete — so it described a system he stopped using while ignoring
+everything he has written since.
+
+Keying the cache on the prompt rather than on time means a real change in goals or log produces
+a new summary immediately; only repetition is free.
+
+**How to reverse.** Call `callModel` directly and pass whatever context is wanted.
+
+### D-066 · `app/error.tsx` shows a digest, not a message
+
+**Decision.** The message is rendered only in development; production shows the digest.
+
+**Why.** This boundary sits at the root of `app/`, so it covers the public portfolio. Next
+redacts server-thrown messages in production, but anything thrown in a client component arrives
+verbatim — and this page is reachable by anyone. A digest locates the real trace in the Vercel
+logs and tells a passer-by nothing.
+
+It is deliberately **not** renamed to `global-error.tsx`. That file replaces the root layout,
+must render its own `<html>`/`<body>`, and fires only for errors thrown in the layout itself.
+Renaming would trade the boundary that catches nearly everything for the one that catches the
+rarest case. Both may exist; one may not become the other.
+
+**How to reverse.** Render `error.message` unconditionally, and accept that public visitors see
+internal strings.
+
+### D-065 · Structure is parsed, text is edited by offset
+
+**Decision.** `frontmatter.ts` locates sections and bullets with an mdast parse, then edits the
+located byte range as text rather than re-printing the tree.
+
+**Why.** This closes a real corruption bug: a `##` inside a fenced code block used to terminate
+a section, so replacing an earlier section left a dangling fence and a fake heading behind. A
+regex cannot tell that a line is inside a fence. Measured on the old implementation before the
+change, so the benefit is established rather than assumed.
+
+Editing by offset, not re-printing, because `mdast` round-tripping normalises whitespace, list
+markers and emphasis characters — rewriting parts of a file nobody touched and making every
+diff unreadable.
+
+Note what this does *not* do: `setLabelledBullet`, `getLabelledBullet` and `setFrontmatterField`
+still use the same regexes as before, now applied inside a narrowed range. The `m`-flag and
+CRLF traps therefore still apply, which is why the module header still documents them.
+
+**How to reverse.** The pre-AST implementation is at commit `4fe26eb`. Reverting reintroduces
+the code-fence bug.
+
+### D-064 · No client runtime in the root layout without a caller
+
+**Decision.** `<Toaster />` removed from `app/layout.tsx`.
+
+**Why.** It was mounted globally while nothing in the codebase calls `toast()`. That shipped a
+client component — and its hydration cost — to every page including the statically generated
+public portfolio, for zero functionality. The public site's whole value is arriving as finished
+HTML.
+
+**How to reverse.** Add it back at the same time as the first `toast()` call, and preferably in
+the private layout rather than the root one.
 
 ---
 

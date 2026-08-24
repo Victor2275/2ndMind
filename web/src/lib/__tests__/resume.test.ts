@@ -62,6 +62,9 @@ describe("what must never appear on a resume", () => {
     const draftSlugs = loadProjects()
       .filter((p) => p.draft)
       .map((p) => p.slug);
+    // A canary, not a formality: if the vault ever holds no draft project this assertion
+    // fires, because a guard with nothing to guard is a guard that has quietly stopped
+    // working. Deleting the only draft entry is exactly how that happened once.
     expect(draftSlugs.length, "fixture missing: no draft projects").toBeGreaterThan(0);
     for (const variant of RESUME_VARIANTS) {
       const slugs = buildResume(variant).projects.map((p) => p.slug);

@@ -19,8 +19,26 @@ import {
 } from "@/lib/tasks/queries";
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
+import { readVaultFileCached } from "@/lib/vault/write";
+import { generateDailySummary } from "@/lib/ai/gemini";
+import { entriesBetween } from "@/lib/log/queries";
+import { summarise } from "@/lib/log/categories";
 
 export const dynamic = "force-dynamic";
+
+/** Pulls one `## Heading` section out of a vault file. `(?![\s\S])` rather than `$`, which
+ *  under the `m` flag means end-of-line and would match the empty string. */
+function section(content: string, heading: string): string | null {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = content.match(
+    new RegExp(
+      `^##[ \\t]+${escaped}[ \\t]*\\r?\\n([\\s\\S]*?)(?=\\r?\\n##[ \\t]|(?![\\s\\S]))`,
+      "m",
+    ),
+  );
+  return match ? match[1].trim() : null;
+}
+
 
 
 function toView(task: Task): TaskView {
@@ -185,6 +203,58 @@ function Freshness() {
   return <FreshnessBadge report={report} />;
 }
 
+/**
+ * The day, summarised.
+ *
+ * The log it reads is `log_entries` — the six-category table feature 2 introduced — not
+ * `logbook_archive.md`. The archive is the *retired* free-text logbook that Victor asked to
+ * be reworked or deleted; summarising it would describe a system he stopped using while
+ * ignoring everything he has written since.
+ *
+ * Only today's entries are sent, and only their one-line summaries. That keeps the prompt
+ * small, keeps the cache key stable within a day, and means no more of the vault reaches
+ * Google than the question actually needs.
+ */
+async function AiSummary() {
+  const now = new Date();
+  const { start, end } = dayBounds(now, zoneOffsetMinutes(now));
+
+  let sprint = "";
+  let logs = "";
+
+  try {
+    const sprintFile = await readVaultFileCached("context/04_operations/current_sprint.md");
+    sprint = section(sprintFile.content, "1. Active Sprint Goals") ?? "";
+  } catch (error) {
+    console.error("AI summary: could not read the sprint file:", error);
+  }
+
+  try {
+    if (isDatabaseConfigured()) {
+      const entries = await entriesBetween(db(), start, end);
+      logs = entries
+        .map((entry) => `- ${summarise(entry.category, entry.data, entry.note)}`)
+        .join("\n");
+    }
+  } catch (error) {
+    console.error("AI summary: could not read today's log:", error);
+  }
+
+  const summary = await generateDailySummary(logs, sprint);
+
+  return (
+    <Panel title="Today, summarised" meta={summary.ok ? "Gemini 2.5 Flash" : undefined}>
+      <div
+        className={`whitespace-pre-wrap text-sm leading-relaxed ${
+          summary.ok ? "text-foreground" : "text-muted-foreground"
+        }`}
+      >
+        {summary.text}
+      </div>
+    </Panel>
+  );
+}
+
 export default function TodayPage() {
   return (
     <main className="pb-16">
@@ -202,6 +272,12 @@ export default function TodayPage() {
       <Suspense fallback={null}>
         <div className="mt-6">
           <Today />
+        </div>
+      </Suspense>
+
+      <Suspense fallback={<div className="mt-6"><SkeletonPanel rows={3} /></div>}>
+        <div className="mt-6">
+          <AiSummary />
         </div>
       </Suspense>
 

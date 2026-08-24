@@ -133,43 +133,81 @@ export default function AboutPage() {
         ))}
       </dl>
 
-      {/* Experience */}
-      <section className="rise mt-16" style={{ animationDelay: "200ms" }}>
-        <h2 className="text-xl font-bold tracking-tight">Experience</h2>
-        <div className="mt-6 space-y-8">
-          {experience.map((role) => (
-            <article
-              key={role.slug}
-              className="group relative border-l-2 border-border pl-5 transition-colors duration-300 hover:border-primary"
-            >
-              {/* Node on the rail — marks the entry the pointer is on. */}
-              <span
-                aria-hidden
-                className="absolute -left-[5px] top-2 size-2 rounded-full bg-border transition-all duration-300 group-hover:bg-primary group-hover:shadow-[0_0_10px_2px_var(--primary)]"
-              />
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <h3 className="text-base font-semibold text-foreground">
-                  {role.title} <span className="text-muted-foreground">·</span>{" "}
-                  <span className="transition-colors group-hover:text-primary">{role.org}</span>
+      {/* The most recent role, given a spotlight. Deliberately *not* headed "What I'm working
+          on now": this renders `experience[0]`, which is whatever sorts first, and saying "now"
+          made a claim about employment that the vault's own `date_end` contradicted. The
+          "what I'm working on now" section Victor asked for is about current *work* — 2ndMind,
+          coursework — and is still to be built. */}
+      {experience.length > 0 && (
+        <section className="rise mt-16" style={{ animationDelay: "200ms" }}>
+          <h2 className="text-xl font-bold tracking-tight">Most recent</h2>
+          <div className="mt-6">
+            <article className="group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_8px_30px_-12px_var(--primary)]">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--primary)_0%,_transparent_70%)] opacity-0 mix-blend-screen transition-opacity duration-500 group-hover:opacity-15" />
+              <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h3 className="text-lg font-bold text-foreground">
+                  {experience[0].title} <span className="text-primary">@ {experience[0].org}</span>
                 </h3>
-                <p className="tabular font-mono text-xs text-muted-foreground">
-                  {role.dateStart} — {role.dateEnd}
+                <p className="tabular font-mono text-xs font-medium text-primary">
+                  {/* The real end date, never a hard-coded "Present". Dimaag.ai's vault entry
+                      says `date_end: 2026-08`, so claiming "Present" told every hiring manager
+                      that a finished internship was ongoing. */}
+                  {experience[0].dateStart} — {experience[0].dateEnd}
                 </p>
               </div>
-              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                {role.bullets.map((b) => (
+              <ul className="relative z-10 mt-4 space-y-2 text-sm text-muted-foreground">
+                {experience[0].bullets.map((b) => (
                   <li
                     key={b}
-                    className="relative pl-4 before:absolute before:left-0 before:text-primary/60 before:content-['—']"
+                    className="relative pl-5 before:absolute before:left-0 before:top-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-primary/60"
                   >
                     {b}
                   </li>
                 ))}
               </ul>
             </article>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
+
+      {/* Previous Experience */}
+      {experience.length > 1 && (
+        <section className="rise mt-16" style={{ animationDelay: "240ms" }}>
+          <h2 className="text-xl font-bold tracking-tight">Previous Experience</h2>
+          <div className="mt-6 space-y-8">
+            {experience.slice(1).map((role) => (
+              <article
+                key={role.slug}
+                className="group relative border-l-2 border-border pl-5 transition-colors duration-300 hover:border-primary/70"
+              >
+                <span
+                  aria-hidden
+                  className="absolute -left-[5px] top-2 size-2 rounded-full bg-border transition-all duration-300 group-hover:scale-125 group-hover:bg-primary/70"
+                />
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {role.title} <span className="text-muted-foreground">·</span>{" "}
+                    <span className="transition-colors group-hover:text-primary/80">{role.org}</span>
+                  </h3>
+                  <p className="tabular font-mono text-xs text-muted-foreground">
+                    {role.dateStart} — {role.dateEnd}
+                  </p>
+                </div>
+                <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                  {role.bullets.map((b) => (
+                    <li
+                      key={b}
+                      className="relative pl-4 before:absolute before:left-0 before:text-primary/40 before:content-['—']"
+                    >
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Breadth. Framed by what each pursuit carries back into engineering, so it reads
           as range rather than as a list of hobbies. */}
