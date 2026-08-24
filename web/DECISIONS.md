@@ -17,6 +17,65 @@ useful part.
 
 ---
 
+## 2026-08-24 · Mobile and case studies
+
+### D-075 · A hover-only affordance must not occupy space without hover
+
+**Decision.** The "Read more →" hint on a project card is `hidden` and becomes `block` only
+under `@media (hover: hover)`.
+
+**Why.** It was `opacity-0` with `group-hover:opacity-100`, which still reserves its box. On a
+phone that is roughly 32px of permanently invisible space per card — six cards, no touch user
+could ever resolve any of it into text. Opacity hides ink, not layout.
+
+**How to reverse.** Drop the `hidden [@media(hover:hover)]:block` pair and accept the empty space.
+
+### D-074 · Only a real photograph earns a figure
+
+**Decision.** Project cards and detail pages render an image only when one exists. Without one,
+a card gets a 1px accent rail instead of a 16:9 generated placeholder.
+
+**Why.** Five of six projects have no photograph, and the generated stand-in cost about 180px
+each. Measured, the projects page ran to **6,150px on a 390px phone** — most of it decorative
+charts of nothing, above the actual writing. It is now **3,950px**, and the one project that
+does have a photograph reads as the strongest by contrast rather than being lost among five
+lookalikes.
+
+The `ProjectFigure` placeholder generator is kept, not deleted: it is still the right thing if
+a future layout wants a uniform grid.
+
+**How to reverse.** Render `ProjectFigure` unconditionally again.
+
+### D-073 · Case studies are skeletons in the vault, and unwritten sections do not publish
+
+**Decision.** Every project file carries the four sections Victor chose — the problem and its
+constraint, architecture, what did not work, measured results. Unwritten ones hold a
+`> **To write:** …` prompt. `dropUnwritten` strips those prompts *and* removes any heading left
+with nothing under it, so the public page shows only what he has actually written.
+
+**Why.** The write-ups are 24–80 words. A case study needs content, and content that is not
+recorded cannot be produced by an agent — the water bottle scale (D-069) is what that looks
+like when it goes wrong. So the structure is built and the prose is Victor's to add, in the
+file where he already edits.
+
+Publishing an empty `## Measured results` would be worse than having no section: it advertises
+a gap. Publishing the prompt itself would be worse again — a portfolio page asking its own
+author what he tried that failed.
+
+Two bugs found while building it, both fixed and pinned by tests:
+- The prompt matcher caught only the opening line of a blockquote, so the *wrap* of each prompt
+  was published as if it were prose. Prompts now run to the end of their quote.
+- `water-bottle-scale.md` had a "Still to write up" list that was publishing its own gaps. It
+  now uses the same convention as every other file.
+
+`solenoid-bit-reader.md` keeps `## Design decisions` and `## Results` rather than gaining
+duplicates: it already answers both questions, with a real measured number.
+
+**How to reverse.** Delete `dropUnwritten` and the skeleton sections. Bodies then publish
+verbatim, prompts included.
+
+---
+
 ## 2026-08-24 · V2 close-out decisions
 
 ### D-072 · A local browser is the only MCP server

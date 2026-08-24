@@ -28,15 +28,22 @@ against water so it survives being around a bottle that gets refilled and spille
 
 Built on an Arduino Uno.
 
-## Still to write up
+## The problem
 
-Everything above is what Victor has stated about the build. The points below are genuinely not
-recorded yet, and this file deliberately does **not** guess at them — `draft: true` keeps the
-entry off the resume until there is a measured result to put on it.
+> **To write:** what actually made this hard? Weighing something at rest is easy; a bottle
+> that gets picked up, refilled and knocked over is not. Say what the real difficulty was.
 
-- Which load cell and amplifier, and how the cell is mounted.
-- How the seal is achieved, and what it is rated for.
-- Battery chemistry, capacity, charge circuit, and measured runtime.
-- How readings are calibrated and how drift is handled.
-- One measured number — accuracy in millilitres or grams, or battery life.
-- Whether the reading is displayed on the device, or leaves it at all.
+## Architecture
+
+> **To write:** which load cell and amplifier, how the cell is mounted, how the seal is
+> achieved and what it is rated for, and the battery - chemistry, capacity, charge circuit.
+
+## What did not work
+
+> **To write:** what did you try first and abandon? A sealing approach, a mounting, a sensor
+> that drifted? This section is the one interviewers remember.
+
+## Measured results
+
+> **To write:** one number. Accuracy in grams or millilitres, or measured battery runtime.
+> This is what unlocks `draft: false` and a place on the resume.

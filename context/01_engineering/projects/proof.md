@@ -42,6 +42,22 @@ Socket.io. Gemini API handles extracting and restructuring recipe data from scra
 
 Still in progress, no post-mortem yet.
 
+## The problem
+
+> **To write:** what were you actually solving, and what made it hard? The constraint
+> is the interesting part - what you could not do, or could not afford, or could not
+> measure. This is the section interviewers open with.
+
+## What did not work
+
+> **To write:** what you tried first and abandoned, and why. Almost no student
+> portfolio has this section, which is exactly why it is convincing to an engineer.
+
+## Measured results
+
+> **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
+> A result without a number reads as a claim; with one it reads as engineering.
+
 ## Notes
 
 Hosted on Render's free tier, which sleeps after roughly 15 minutes idle. A external pinger

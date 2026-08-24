@@ -13,7 +13,8 @@
     "predev": "node scripts/sync-lab-assets.mjs",
     "prebuild": "node scripts/sync-lab-assets.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate"
+    "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
+    "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

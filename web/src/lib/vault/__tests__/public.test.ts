@@ -10,6 +10,7 @@ import {
   projectCards,
   PUBLIC_EXPERIENCE_KEYS,
   PUBLIC_LAB_KEYS,
+  dropUnwritten,
   PUBLIC_PROJECT_KEYS,
   PUBLIC_PURSUIT_KEYS,
   publicExperience,
@@ -167,7 +168,9 @@ describe("stripInternalSections", () => {
 
   it("keeps sections that follow Notes", () => {
     const body = "## Notes\nInternal.\n\n## Results\nPublished.\n";
-    expect(stripInternalSections(body)).toBe("\n## Results\nPublished.");
+    // No leading blank line any more: dropUnwritten reassembles the body from blocks, which
+    // also tidies the gap the removed Notes section used to leave behind.
+    expect(stripInternalSections(body)).toBe("## Results\nPublished.");
   });
 
   it("leaves a body with no Notes section untouched", () => {
@@ -258,5 +261,110 @@ describe("client component payload", () => {
         PROJECT_CARD_KEYS.filter((k) => k in card).sort(),
       );
     }
+  });
+});
+
+describe("dropUnwritten", () => {
+  const crlf = (lines: string[]) => lines.join("\r\n");
+
+  it("removes a prompt line but keeps the prose beside it", () => {
+    const out = dropUnwritten(
+      crlf([
+        "## The problem",
+        "",
+        "> **To write:** what made this hard?",
+        "",
+        "The encoder drifted under load.",
+      ]),
+    );
+    expect(out).toContain("## The problem");
+    expect(out).toContain("The encoder drifted under load.");
+    expect(out).not.toContain("To write");
+  });
+
+  it("removes a heading that has only a prompt under it", () => {
+    // The important case. An empty "## Measured results" advertises a gap; a published
+    // prompt asking Victor a question is worse still.
+    const out = dropUnwritten(
+      crlf(["## Measured results", "", "> **To write:** one number.", ""]),
+    );
+    expect(out).toBe("");
+  });
+
+  it("keeps written sections while dropping unwritten neighbours", () => {
+    const out = dropUnwritten(
+      crlf([
+        "Intro paragraph.",
+        "",
+        "## Architecture",
+        "",
+        "An ESP32 reads the coil.",
+        "",
+        "## What did not work",
+        "",
+        "> **To write:** which approach was abandoned?",
+      ]),
+    );
+    expect(out).toContain("Intro paragraph.");
+    expect(out).toContain("## Architecture");
+    expect(out).not.toContain("What did not work");
+  });
+
+  it("leaves a body with no prompts unchanged in substance", () => {
+    const body = crlf(["## Architecture", "", "Details here."]);
+    expect(dropUnwritten(body)).toContain("Details here.");
+    expect(dropUnwritten(body)).toContain("## Architecture");
+  });
+
+  it("handles LF as well as CRLF", () => {
+    const out = dropUnwritten("## Results\n\n> **To write:** a number.\n");
+    expect(out).toBe("");
+  });
+});
+
+describe("no prompt ever reaches a public page", () => {
+  it("holds across every real project and experience entry", () => {
+    for (const project of publicProjects()) {
+      expect(project.body, project.slug).not.toMatch(/To write/i);
+    }
+    for (const role of publicExperience()) {
+      expect(role.body, role.slug).not.toMatch(/To write/i);
+    }
+  });
+});
+
+describe("a prompt runs to the end of its blockquote", () => {
+  const crlf = (lines: string[]) => lines.join("\r\n");
+
+  it("drops wrapped prompt lines, not just the first", () => {
+    // The bug this pins: TO_WRITE matched only the opening line, so the continuation of the
+    // quote was published as if it were Victor's prose.
+    const out = dropUnwritten(
+      crlf([
+        "## What did not work",
+        "",
+        "> **To write:** what did you try first and abandon, and why? Almost no student",
+        "> portfolio has this section, which is exactly why it is convincing to an engineer.",
+        "",
+      ]),
+    );
+    expect(out).toBe("");
+    expect(out).not.toContain("convincing to an engineer");
+  });
+
+  it("ends the prompt at the first line that is not part of the quote", () => {
+    const out = dropUnwritten(
+      crlf([
+        "## Architecture",
+        "",
+        "> **To write:** the components.",
+        "> and how they talk.",
+        "",
+        "Real prose that Victor wrote.",
+      ]),
+    );
+    expect(out).toContain("## Architecture");
+    expect(out).toContain("Real prose that Victor wrote.");
+    expect(out).not.toContain("how they talk");
   });
 });

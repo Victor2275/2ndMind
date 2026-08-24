@@ -42,3 +42,19 @@ API generates task breakdowns. Features reward system and emotion logging.
 
 Began to understand how to use AI workflows, as well as working in a small team of
 non-technical people.
+
+## The problem
+
+> **To write:** what were you actually solving, and what made it hard? The constraint
+> is the interesting part - what you could not do, or could not afford, or could not
+> measure. This is the section interviewers open with.
+
+## What did not work
+
+> **To write:** what you tried first and abandoned, and why. Almost no student
+> portfolio has this section, which is exactly why it is convincing to an engineer.
+
+## Measured results
+
+> **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
+> A result without a number reads as a claim; with one it reads as engineering.

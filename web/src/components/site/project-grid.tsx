@@ -10,6 +10,21 @@ import { cn } from "@/lib/utils";
 
 type Filter = "all" | ProjectCard["category"];
 
+/** Says a project is real but its write-up is not finished. Honest, and it keeps a thin
+ *  entry from reading as a padded one. */
+function DraftBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded border border-border bg-background/85 px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur-sm",
+        className,
+      )}
+    >
+      Write-up pending
+    </span>
+  );
+}
+
 export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -59,20 +74,31 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             style={{ animationDelay: `${i * 60}ms` }}
             className="rise card-scan group flex flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            <div className="relative aspect-16/9 w-full shrink-0 overflow-hidden border-b border-border bg-background/40">
-              <ProjectFigure
-                slug={p.slug}
-                title={p.title}
-                image={p.image}
-                priority={i < 2}
-                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            {/* Only a real photograph earns a figure.
+                Five of six projects have no image, and the generated stand-in was costing
+                ~180px each — measured, the projects page ran to 6,150px on a 390px phone,
+                most of it decorative charts of nothing. Collapsing them cuts that by more
+                than half and, by contrast, gives the one project that *does* have a
+                photograph some weight. */}
+            {p.image ? (
+              <div className="relative aspect-16/9 w-full shrink-0 overflow-hidden border-b border-border bg-background/40">
+                <ProjectFigure
+                  slug={p.slug}
+                  title={p.title}
+                  image={p.image}
+                  priority={i < 2}
+                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                {p.draft && <DraftBadge className="absolute right-2 top-2" />}
+              </div>
+            ) : (
+              /* A thin accent rail keeps the grid reading as a set rather than as cards that
+                 lost their images. */
+              <div
+                aria-hidden
+                className="h-1 w-full shrink-0 bg-gradient-to-r from-primary/70 via-primary/25 to-transparent"
               />
-              {p.draft && (
-                <span className="absolute right-2 top-2 rounded border border-border bg-background/85 px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur-sm">
-                  Write-up pending
-                </span>
-              )}
-            </div>
+            )}
 
             <div className="flex flex-1 flex-col p-5">
             <div className="flex items-baseline justify-between gap-3">
@@ -92,6 +118,9 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.summary}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-1.5">
+              {/* Sits with the tags, not beside the year: next to the title it stole enough
+                  width to wrap "Water Bottle Scale" onto two lines on a 390px screen. */}
+              {p.draft && !p.image && <DraftBadge />}
               <Badge
                 variant={p.status === "active" ? "default" : "outline"}
                 className="text-[0.65rem]"
@@ -110,9 +139,12 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
               )}
             </div>
 
+            {/* Hover-only, so it must not exist at all where hovering does not.
+                It was `opacity-0` and still occupied its box on a phone: ~32px of permanently
+                invisible space per card, which no touch user could ever resolve into text. */}
             <span
               aria-hidden
-              className="mt-4 font-mono text-xs text-primary opacity-0 transition-all duration-300 group-hover:opacity-100"
+              className="mt-4 hidden font-mono text-xs text-primary opacity-0 transition-all duration-300 group-hover:opacity-100 [@media(hover:hover)]:block"
             >
               Read more &rarr;
             </span>

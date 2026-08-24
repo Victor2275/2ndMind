@@ -30,9 +30,73 @@ export function stripInternalSections(body: string): string {
   // Two things this has to get right: `\r?\n`, because vault files are CRLF on Windows and
   // a bare \n silently matches nothing; and no `m` flag, so `$` means end-of-input rather
   // than end-of-line.
-  return body
+  const withoutNotes = body
     .replace(/(?:^|\r?\n)##[ \t]+Notes[ \t]*\r?\n[\s\S]*?(?=\r?\n##[ \t]|$)/gi, "")
     .trimEnd();
+
+  return dropUnwritten(withoutNotes);
+}
+
+/** Marks a case-study prompt: a question to Victor, never a claim about the work. */
+const TO_WRITE = /^>[ \t]*\*\*To write:?\*\*/i;
+
+/**
+ * Removes case-study prompts, and any heading left with nothing under it.
+ *
+ * The case-study skeleton lives in the vault file itself, so Victor sees the questions where
+ * he edits. They must never reach a public page — a prompt reading "what did you try that
+ * failed?" published under a project would be worse than no section at all, and an empty
+ * `## Measured results` heading is worse still: it advertises a gap.
+ *
+ * So a section is published only once it has real prose under it. Nothing is invented to
+ * fill one, which is the failure this whole convention exists to prevent.
+ *
+ * Line-based rather than one multi-line regex, for the reasons in `frontmatter.ts`: the vault
+ * is CRLF and `$` under the `m` flag does not mean end of input.
+ */
+export function dropUnwritten(body: string): string {
+  const lines = body.split(/\r?\n/);
+  const eol = body.includes("\r\n") ? "\r\n" : "\n";
+
+  type Block = { heading: string | null; lines: string[] };
+  const blocks: Block[] = [{ heading: null, lines: [] }];
+
+  // A prompt runs to the end of its blockquote. Matching only the first line published the
+  // rest of it — the wrap of "> **To write:** …" is still the prompt, not prose.
+  let inPrompt = false;
+
+  for (const line of lines) {
+    if (/^##[ \t]+/.test(line)) {
+      inPrompt = false;
+      blocks.push({ heading: line, lines: [] });
+      continue;
+    }
+
+    if (TO_WRITE.test(line)) {
+      inPrompt = true;
+      continue;
+    }
+    if (inPrompt) {
+      // Still inside the quote: skip. Anything else ends it.
+      if (/^>/.test(line) || line.trim() === "") continue;
+      inPrompt = false;
+    }
+
+    blocks[blocks.length - 1].lines.push(line);
+  }
+
+  const kept: string[] = [];
+  for (const block of blocks) {
+    const hasProse = block.lines.some((l) => l.trim() !== "");
+    if (block.heading === null) {
+      if (hasProse) kept.push(block.lines.join(eol).trim());
+      continue;
+    }
+    if (!hasProse) continue; // heading with nothing written under it
+    kept.push([block.heading, ...block.lines].join(eol).trim());
+  }
+
+  return kept.filter((b) => b !== "").join(eol + eol);
 }
 
 export type PublicProject = {

@@ -58,3 +58,8 @@ across three intervals maps the shrinking windows that follow.
 Four binary sequences decoded at 100% accuracy. The calibration work established a 40 mm
 resolution limit — closer than that and adjacent spikes merge at the velocities reached
 toward the end of the drop.
+
+## What did not work
+
+> **To write:** what you tried first and abandoned, and why. Almost no student
+> portfolio has this section, which is exactly why it is convincing to an engineer.

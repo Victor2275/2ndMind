@@ -58,15 +58,20 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
         </p>
       )}
 
-      <div className="relative mt-8 aspect-16/9 w-full overflow-hidden rounded-lg border border-border bg-card/70">
-        <ProjectFigure
-          slug={project.slug}
-          title={project.title}
-          image={project.image}
-          priority
-          className="object-cover"
-        />
-      </div>
+      {/* Same rule as the grid: no photograph, no figure. A 16:9 generated placeholder at the
+          top of a detail page pushes the actual writing below the fold on a phone for no
+          information gain. */}
+      {project.image && (
+        <div className="relative mt-8 aspect-16/9 w-full overflow-hidden rounded-lg border border-border bg-card/70">
+          <ProjectFigure
+            slug={project.slug}
+            title={project.title}
+            image={project.image}
+            priority
+            className="object-cover"
+          />
+        </div>
+      )}
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {meta.map((m) => (
