@@ -1,9 +1,9 @@
 # 2ndMind — Handoff
 
-**Written 2026-08-22.** For an AI assistant picking this project up cold.
+**Written 2026-08-22, revised 2026-08-24.** For an AI assistant picking this project up cold.
 
 Read this, then `CLAUDE.md`, then `web/AGENTS.md` and `web/context.md`. `web/DECISIONS.md`
-(63 entries) is the record of *why* things are the way they are — check it before undoing
+(69 entries) is the record of *why* things are the way they are — check it before undoing
 anything that looks deliberate.
 
 ---
@@ -85,7 +85,7 @@ Victor's own words from the V2 scoping questions, because these drove real decis
 - **Next.js 16.3.1**, App Router, Turbopack, React 19.2.8
 - **Drizzle ORM** + **Neon** serverless Postgres (`drizzle-orm/neon-http`)
 - **PGlite** (`@electric-sql/pglite`) for tests — real Postgres in WASM, not mocks
-- **Vitest** — 380 tests across 20 files
+- **Vitest** — 381 tests across 21 files
 - Auth: `@simplewebauthn` (passkeys) + Web Crypto HMAC sessions, self-hosted
 - Vault writes: **GitHub Contents API**, never `fs.writeFile`
 - Deployed on Vercel free tier
@@ -196,40 +196,78 @@ differ by about seven seconds.
 
 ## 7. What remains
 
-### Feature 6 · AI (10–14h) — **needs Victor's input before building**
+*Updated 2026-08-24, after reviewing an external agent's changes.*
 
-Requested capabilities: summarise my day/goals, summarise my week, draft sprint goals, semantic
-search, resume tailoring. All vault writes approval-gated as a diff.
+### Before V3 — the gate
 
-The open question is where to spend the $10 of credits. Victor named *summarise my day/goals*
-as the thing he would actually use daily — that is the one to build first.
+Nothing here is optional. V2 is not finished while any of it is outstanding.
 
-### Public site work (Victor asked for all of this; none started)
+**1. Feature 6 · AI is half-built and needs a decision (6–10h left).**
+The summary panel exists on `/private`, is cached, and reads today's `log_entries`. It is inert
+until `GEMINI_API_KEY` is set, and it is currently *the only* AI feature. Still to decide and
+build: summarise-my-week, draft-sprint-goals, semantic search, resume tailoring — and, for any
+of those that write, **the approval-gated diff UI, which does not exist yet**. That gate is a
+hard constraint, not a nicety: nothing may write to the vault on a model's say-so.
 
-- **Add the water bottle scale project.** Description supplied verbatim: *"Uses a load sensor
-  and internal battery, sealed from water to detect remaining water in a water bottle.
-  Rechargable, powered by Arduino Uno."* Mark it as **less important**.
-- **Remove the RC car project.** (Currently still at `/projects/rc-car`.)
-- Make **Dimaag.ai** more prominent.
-- Case studies for projects.
-- A "what I'm working on now" section.
-- **The resume needs real design work.**
-- Mobile layout pass.
+**2. Feature 3 · Today is not closed out (2–3h).**
+Tasks, goals, stats and the schedule are live on `/private`; nobody has ever sat down and asked
+whether that page answers "what do I do now" in one screen. That review is the feature.
 
-### V1 findings still open
+**3. Public site work (Victor asked; mostly still open).**
+- ~~Remove the RC car~~ — done.
+- ~~Add the water bottle scale~~ — added, but **`draft: true` until Victor supplies real
+  detail**. It needs the load cell and amplifier, how the seal is achieved, battery capacity
+  and measured runtime, and one measured accuracy figure. Until then it stays off the resume.
+- Make **Dimaag.ai** more prominent — partly done (homepage spotlight).
+- **A real "what I'm working on now" section** — still open. The homepage spotlight is *not*
+  this; it shows the most recent role. What Victor asked for is current work: 2ndMind, term.
+- **Case studies for projects** — not started.
+- **The resume needs real design work** — not started, and it is the artefact most likely to be
+  read by someone deciding whether to interview him.
+- **Mobile layout pass** — not started.
 
-Carried over from the V1 review. The numbering came from that review; the substance is what
-matters:
+**4. Vercel configuration (Victor, 15 minutes).** See §10. The calendar is dead in production
+until two variables are set, and he cannot sign in there at all until a passkey is enrolled
+against that origin.
 
-- **Markdown editing is regex-based** — should move to an mdast/AST approach. This is the
-  largest remaining source of fragility in the vault write path.
-- **No end-to-end tests for the write path.** Unit tests cover the parsers; nothing exercises
-  edit → GitHub commit → re-read.
-- **No error reporting.** A failure in production is invisible unless Victor happens to see it.
-- **No per-session revocation.** Sessions are HMAC tokens with an expiry; there is no way to
-  kill one early.
+### V1 findings — current state
 
-*(The volume/warmup inconsistency was resolved in feature 5 — see D-060.)*
+- ~~**Markdown editing is regex-based**~~ — **closed.** `frontmatter.ts` now locates structure
+  with mdast. Verified against the old implementation: a `##` inside a fenced code block used to
+  truncate a section and leave a dangling fence. Note the narrower regexes inside
+  `setLabelledBullet` and `setFrontmatterField` remain, so the CRLF and `m`-flag traps in §8
+  still apply.
+- ~~**No end-to-end write-path test**~~ — **closed.** `write-e2e.test.ts` mocks `fetch` and
+  exercises read → edit → write, asserting the SHA is round-tripped and the content changed.
+- ~~**No error reporting**~~ — **partly closed.** `app/error.tsx` gives a real boundary and logs
+  to the Vercel function log. There is still no *aggregation*: a failure Victor never sees is
+  still invisible. A free Sentry tier would close it properly and fits the $0 budget.
+- **No per-session revocation** — still open. Sessions are HMAC tokens with an expiry; rotating
+  `SESSION_SECRET` is the only revocation, and it signs out every device.
+
+### Reviewed and deliberately **not** doing
+
+An external agent proposed these. Each was checked against the code rather than accepted:
+
+- **Boot-time env validation with `@t3-oss/env-nextjs`** — **rejected, it contradicts the
+  architecture.** The app is deliberately built to degrade: `/private/athletics` explains itself
+  without `DATABASE_URL`, `/signin` reports "Not configured", the calendar says "no feeds
+  connected". "Refuses to boot" would break that, and would break the public build, which runs
+  with no `DATABASE_URL` on purpose.
+- **Rename `error.tsx` → `global-error.tsx`** — **rejected as stated.** `global-error` replaces
+  the root layout, must render its own `<html>`/`<body>`, and fires only for errors thrown in
+  the layout. Renaming trades the boundary that catches almost everything for the one that
+  catches the rarest case. Adding it *alongside* would be fine.
+- **Path-traversal hardening with `path.normalize`** — **not applicable.** Vault paths never
+  touch a filesystem; they go to the GitHub Contents API. Every caller passes a hard-coded
+  constant, so no user input reaches `assertVaultPath` at all.
+- **Serialising vault writes to avoid a TOCTOU race** — **very low priority, and the diagnosis
+  was wrong.** A stale SHA produces a loud `409`, not silent data loss — that is optimistic
+  concurrency working. There is one user, and **nothing in the app currently writes to the
+  vault** (D-036 moved it all to Postgres). Revisit when feature 6's approval-gated writes land.
+- **Octokit retry/throttle plugins** — reasonable and cheap, low priority for one user.
+- **APM / DevTools / CodeQL / Lighthouse MCP servers** — generic, and the observability ones
+  imply paid tiers. The underlying gap (error aggregation) is already tracked above.
 
 ---
 
