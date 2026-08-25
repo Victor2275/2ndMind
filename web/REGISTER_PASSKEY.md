@@ -2,7 +2,7 @@
 
 One-time setup, about ten minutes. You do it twice — once on localhost, once on the live
 site — because **a passkey is bound to the origin it was created on**. A credential enrolled
-on `localhost` will not work on `victorgusev.vercel.app`.
+on `localhost` will not work on `victorgusev.com`.
 
 ## Before you start
 
@@ -49,7 +49,7 @@ In Vercel → Settings → Environment Variables, add:
 |---|---|
 | `SESSION_SECRET` | a **different** random 32-byte hex string from your local one |
 | `GITHUB_TOKEN` | the fine-grained PAT (repo `2ndMind`, Contents: read and write) |
-| `NEXT_PUBLIC_SITE_URL` | `https://victorgusev.vercel.app` |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.victorgusev.com` |
 | `PASSKEY_REGISTRATION_SECRET` | temporary, removed in the last step |
 
 `NEXT_PUBLIC_SITE_URL` matters more than it looks — it sets the WebAuthn relying-party ID. If

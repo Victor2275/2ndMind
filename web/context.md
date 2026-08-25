@@ -55,7 +55,7 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 | Auth | Self-hosted WebAuthn (`@simplewebauthn`), credential in env, no database |
 | Vault I/O | `@octokit/rest`, `gray-matter`, `zod` |
 | Tests | Vitest + Testing Library |
-| Host | Vercel Hobby, `vercel.app` subdomain |
+| Host | Vercel Hobby, custom domain `victorgusev.com` (serves at `www`) |
 
 Budget is **$0**. Everything above must stay on a free tier.
 
@@ -118,7 +118,7 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **391 tests across 21 files** as of
+Run with `npm test`. Typecheck with `npm run typecheck`. **432 tests across 25 files** as of
 2026-08-25, all passing. A drop from that count is a regression, not noise.
 
 ### Layout is checked by measurement, not by looking

@@ -596,6 +596,35 @@ trick of a cheap first year against a $15–20 renewal, which passes your budget
 **Done when:** `victorgusev.com` serves the site over HTTPS, the old `.vercel.app` URL still
 resolves, `/sitemap.xml` names the new host, and you can sign in to `/private` on your phone.
 
+> **PARTLY DONE 2026-08-25. Two steps left, both Victor's.**
+>
+> The domain is bought and connected. Measured from here:
+> `victorgusev.com` → 308 → `www.victorgusev.com` (200); `victorgusev.vercel.app` → 307 → the
+> same. **`www` is the primary**, which the plan had not anticipated and which changes the
+> passkey story.
+>
+> **`NEXT_PUBLIC_SITE_URL` is not set in Vercel.** `/sitemap.xml` and `/robots.txt` still
+> advertise `victorgusev.vercel.app`, which is how I know. That single variable is both the
+> canonical URL *and* the WebAuthn relying party, so while it is unset:
+>
+> - every indexed URL points at a redirect, and
+> - **sign-in on the live site does not work** — the app expects `victorgusev.vercel.app` while
+>   the browser is on `www.victorgusev.com`, and the origin check fails.
+>
+> **Done in code:** the three fallbacks now read `https://www.victorgusev.com` (D-094), and
+> `relyingParty()` was rewritten (D-095) so the credential binds to the **apex** while *both*
+> the apex and `www` are accepted as origins. That means flipping which one is primary no
+> longer locks anyone out — previously it silently would have. Six tests cover it. Docs updated:
+> `REGISTER_PASSKEY.md`, `.env.example`, `context.md`, `current_sprint.md`.
+>
+> **Left for Victor, in order:**
+> 1. Set `NEXT_PUBLIC_SITE_URL=https://www.victorgusev.com` in Vercel and redeploy.
+> 2. Re-enrol the passkey on the new origin — set `PASSKEY_REGISTRATION_SECRET`, register from
+>    the phone he actually uses, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.
+>
+> Step 2 is unavoidable: the old credential is bound to `victorgusev.vercel.app`, which no
+> longer serves anything. Doing it once, now, is what §7.1 being scheduled first was for.
+
 ### 7.3 · The four images — **1h**
 
 `5SecondRule.png`, `MicromouseSim.png`, `taskable.png` and `ProfilePhoto.jpg` are sitting in

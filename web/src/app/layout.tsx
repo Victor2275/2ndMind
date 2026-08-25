@@ -44,7 +44,7 @@ const plexMono = localFont({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.victorgusev.com";
 const DESCRIPTION =
   "Robotics and computer vision engineer. B.S. Computer Science and Engineering, UCLA.";
 

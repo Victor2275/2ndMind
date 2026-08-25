@@ -17,6 +17,56 @@ useful part.
 
 ---
 
+## 2026-08-25 · The domain
+
+### D-095 · The relying party is the apex, and both origins are accepted
+
+**Decision.** `relyingParty()` returns `rpID` = the apex domain with any `www.` stripped, and
+`origins` = a **list** containing the configured origin plus both the apex and `www` forms.
+Both auth routes pass the list as `expectedOrigin`.
+
+**Why.** It broke for real. The domain was connected with **`www.victorgusev.com` as the
+primary** — the apex 308-redirects to it — while `NEXT_PUBLIC_SITE_URL` was unset and still
+falling back to `victorgusev.vercel.app`. The app therefore expected one origin while the
+browser sent another, and sign-in on the live site simply failed.
+
+Two separate rules were being conflated by deriving both values from one hostname:
+
+- **`rpID` is a permanent binding.** It may be any registrable-domain suffix of the origin, so
+  a credential scoped to `victorgusev.com` works on `www.victorgusev.com` — but not the
+  reverse. The apex is therefore strictly better: `www` is a narrower binding that buys
+  nothing and breaks if the primary is ever flipped.
+- **`origins` must contain the browser's exact origin**, scheme and port included. Which of
+  apex and `www` is primary is a Vercel setting changeable in one click, and as a single value
+  that click was a lockout.
+
+Together: the passkey now survives apex and `www` being swapped, and only an actual change of
+domain forces re-enrolment. Six tests cover it, including that `rpID` never carries a scheme or
+port and that `localhost` keeps its port — rebuilding the origin from the hostname would drop
+it and break the ceremony in development only.
+
+**How to reverse.** Return `origin: url.origin` and pass it directly. Accept that the primary
+hostname and the configured one must then match exactly, forever.
+
+### D-094 · The canonical URL is `www`, because that is what is served
+
+**Decision.** The three `NEXT_PUBLIC_SITE_URL` fallbacks in `layout.tsx`, `robots.ts` and
+`sitemap.ts` are `https://www.victorgusev.com`.
+
+**Why.** Vercel is serving `www` as primary and redirecting the apex to it. Canonical URLs,
+the sitemap and Open Graph metadata should name the origin that actually answers, or every
+indexed URL is a redirect hop.
+
+These are *fallbacks*: the environment variable still wins, and setting it in Vercel is what
+actually moves the deployed site. They matter because the fallback is what runs when the
+variable is missing — which is exactly the state the production deployment was in.
+
+**How to reverse.** If the apex is made primary in Vercel instead, change these three strings
+and `NEXT_PUBLIC_SITE_URL` together. Thanks to D-095 the passkey survives that change; nothing
+else does automatically.
+
+---
+
 ## 2026-08-25 · Weekly summary, images, and retiring culinary
 
 ### D-093 · Every real model call is logged

@@ -61,14 +61,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "challenge expired — start again" }, { status: 400 });
   }
 
-  const { rpID, origin } = relyingParty();
+  const { rpID, origins } = relyingParty();
 
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
       response: body.response,
       expectedChallenge: challenge.sub,
-      expectedOrigin: origin,
+      expectedOrigin: origins,
       expectedRPID: rpID,
       credential: {
         id: credential.id,
