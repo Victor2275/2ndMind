@@ -10,7 +10,7 @@ read_when: Always — anything about current priorities or scheduling.
 
 ## 1. Active Sprint Goals
 *Identify top 3 priorities across all domains for the week here.*
-- **Engineering / Career:** 2ndMind is live at https://www.victorgusev.com. V1 complete
+- **Engineering / Career:** 2ndMind is live at https://victorgusev.com. V1 complete
   2026-08-21. V2 features 0, 1, 2, 4 and 5 shipped; 3 is largely built; 6 (AI) is the only
   one not started. Its scope is now decided (V2_PLAN rev 2, D-076 to D-080).
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
@@ -113,11 +113,11 @@ portfolio, resume generator, passkey auth, vault writes, freshness audit, athlet
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
 **Open on Victor, in priority order:**
-1. **Set `NEXT_PUBLIC_SITE_URL=https://www.victorgusev.com` in Vercel, redeploy, then
-   re-enrol the passkey.** The domain is connected but that variable is not set, so the site
-   still advertises `victorgusev.vercel.app` in its sitemap and — because the same variable is
-   the WebAuthn relying party — **sign-in on the live site does not work**. See `V2_PLAN.md`
-   §7.1.
+1. **Make the apex primary in Vercel, set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com`,
+   redeploy, then re-enrol the passkey.** The domain is connected but that variable is not set,
+   so the site still advertises `victorgusev.vercel.app` in its sitemap and — because the same
+   variable is the WebAuthn relying party — **sign-in on the live site does not work**. Order
+   matters: flip the primary *before* enrolling, so it is done once. See `V2_PLAN.md` §7.1.
 2. **Publish the internship sheet as CSV** and send the URL — needs a connection, so before
    you fly. It unblocks §7.6. See `UPLOADS_NEEDED.md` §1.2.
 3. **Write the five case studies.** The prompts wait in each project file under

@@ -19,6 +19,26 @@ useful part.
 
 ## 2026-08-25 · The domain
 
+### D-096 · The canonical URL is the apex, `victorgusev.com`
+
+**Decision.** `NEXT_PUBLIC_SITE_URL` and the three fallbacks in `layout.tsx`, `robots.ts` and
+`sitemap.ts` are `https://victorgusev.com`. Vercel serves the apex as primary and redirects
+`www` to it. Supersedes D-094, which is in [Reversed](#reversed).
+
+**Why.** Victor's call, 2026-08-25. The bare domain is what he would write on a resume and in
+an email signature, and it is one fewer word everywhere it appears. D-094 had chosen `www`
+only because that was how the domain happened to be connected — a description of the current
+setting rather than a preference, and the wrong thing to enshrine once the preference was
+known.
+
+**This cost nothing to reverse, by design.** D-095 had already made `rpID` the apex and
+`origins` a list covering both forms, so flipping the primary did not invalidate the passkey
+and required no auth change at all. Had D-095 not landed first, this would have been a second
+forced re-enrolment. That is the entire value of the list.
+
+**How to reverse.** Flip the primary in Vercel and change `NEXT_PUBLIC_SITE_URL` plus the
+three fallbacks back to the `www` form. The passkey survives either direction.
+
 ### D-095 · The relying party is the apex, and both origins are accepted
 
 **Decision.** `relyingParty()` returns `rpID` = the apex domain with any `www.` stripped, and
@@ -47,23 +67,6 @@ it and break the ceremony in development only.
 
 **How to reverse.** Return `origin: url.origin` and pass it directly. Accept that the primary
 hostname and the configured one must then match exactly, forever.
-
-### D-094 · The canonical URL is `www`, because that is what is served
-
-**Decision.** The three `NEXT_PUBLIC_SITE_URL` fallbacks in `layout.tsx`, `robots.ts` and
-`sitemap.ts` are `https://www.victorgusev.com`.
-
-**Why.** Vercel is serving `www` as primary and redirecting the apex to it. Canonical URLs,
-the sitemap and Open Graph metadata should name the origin that actually answers, or every
-indexed URL is a redirect hop.
-
-These are *fallbacks*: the environment variable still wins, and setting it in Vercel is what
-actually moves the deployed site. They matter because the fallback is what runs when the
-variable is missing — which is exactly the state the production deployment was in.
-
-**How to reverse.** If the apex is made primary in Vercel instead, change these three strings
-and `NEXT_PUBLIC_SITE_URL` together. Thanks to D-095 the passkey survives that change; nothing
-else does automatically.
 
 ---
 
@@ -1722,4 +1725,33 @@ directly, which Victor asked for.
 
 ## Reversed
 
-*(nothing yet)*
+### D-094 · The canonical URL is `www` — **reversed 2026-08-25, same day**
+
+Superseded by D-096 within hours, at Victor's request: he wants the bare `victorgusev.com`.
+
+D-094 was not wrong so much as premature. It described how the domain had happened to be
+connected — Vercel was serving `www` as primary — and promoted that accident to a decision
+before anyone had been asked which they preferred. The lesson is narrow and worth keeping:
+*a setting you discovered is not a decision you made.*
+
+It never reached production. `NEXT_PUBLIC_SITE_URL` was unset the whole time it existed, so
+the deployed site never advertised the `www` canonical it specified.
+
+The original entry, for the record:
+
+> ### D-094 · The canonical URL is `www`, because that is what is served
+>
+> **Decision.** The three `NEXT_PUBLIC_SITE_URL` fallbacks in `layout.tsx`, `robots.ts` and
+> `sitemap.ts` are `https://www.victorgusev.com`.
+>
+> **Why.** Vercel is serving `www` as primary and redirecting the apex to it. Canonical URLs,
+> the sitemap and Open Graph metadata should name the origin that actually answers, or every
+> indexed URL is a redirect hop.
+>
+> These are *fallbacks*: the environment variable still wins, and setting it in Vercel is what
+> actually moves the deployed site. They matter because the fallback is what runs when the
+> variable is missing — which is exactly the state the production deployment was in.
+>
+> **How to reverse.** If the apex is made primary in Vercel instead, change these three strings
+> and `NEXT_PUBLIC_SITE_URL` together. Thanks to D-095 the passkey survives that change; nothing
+> else does automatically.

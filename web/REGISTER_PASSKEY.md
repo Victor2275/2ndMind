@@ -49,7 +49,7 @@ In Vercel → Settings → Environment Variables, add:
 |---|---|
 | `SESSION_SECRET` | a **different** random 32-byte hex string from your local one |
 | `GITHUB_TOKEN` | the fine-grained PAT (repo `2ndMind`, Contents: read and write) |
-| `NEXT_PUBLIC_SITE_URL` | `https://www.victorgusev.com` |
+| `NEXT_PUBLIC_SITE_URL` | `https://victorgusev.com` |
 | `PASSKEY_REGISTRATION_SECRET` | temporary, removed in the last step |
 
 `NEXT_PUBLIC_SITE_URL` matters more than it looks — it sets the WebAuthn relying-party ID. If

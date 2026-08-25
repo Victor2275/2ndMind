@@ -55,7 +55,7 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 | Auth | Self-hosted WebAuthn (`@simplewebauthn`), credential in env, no database |
 | Vault I/O | `@octokit/rest`, `gray-matter`, `zod` |
 | Tests | Vitest + Testing Library |
-| Host | Vercel Hobby, custom domain `victorgusev.com` (serves at `www`) |
+| Host | Vercel Hobby, custom domain `victorgusev.com` (apex primary, `www` redirects) |
 
 Budget is **$0**. Everything above must stay on a free tier.
 

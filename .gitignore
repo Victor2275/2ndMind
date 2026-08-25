@@ -13,3 +13,7 @@ desktop.ini
 # nutrition and per-course grades into a single blob, and a committed copy would go stale
 # while still claiming to be "the absolute source of truth". Regenerate it on demand.
 Mastermind.md
+
+# Tool cache from the graphify skill: an AST index and content-hashed blobs regenerated on
+# demand. Not project content, and it churns on every file change.
+graphify-out/

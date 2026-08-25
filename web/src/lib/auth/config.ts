@@ -67,7 +67,7 @@ export function registrationSecret(): string | null {
  * of actual domain requires re-enrolment.
  */
 export function relyingParty(): { rpID: string; origins: string[]; rpName: string } {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.victorgusev.com";
+  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.com";
   const url = new URL(configured);
   const host = url.hostname;
 

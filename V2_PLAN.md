@@ -617,13 +617,22 @@ resolves, `/sitemap.xml` names the new host, and you can sign in to `/private` o
 > longer locks anyone out — previously it silently would have. Six tests cover it. Docs updated:
 > `REGISTER_PASSKEY.md`, `.env.example`, `context.md`, `current_sprint.md`.
 >
-> **Left for Victor, in order:**
-> 1. Set `NEXT_PUBLIC_SITE_URL=https://www.victorgusev.com` in Vercel and redeploy.
-> 2. Re-enrol the passkey on the new origin — set `PASSKEY_REGISTRATION_SECRET`, register from
->    the phone he actually uses, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.
+> **Canonical URL flipped to the apex** on Victor's call, later the same day (D-096,
+> superseding D-094). `victorgusev.com` is what goes on a resume. It cost nothing to change
+> because D-095 had already made `rpID` the apex and `origins` a list — without that, this
+> would have been a second forced re-enrolment.
 >
-> Step 2 is unavoidable: the old credential is bound to `victorgusev.vercel.app`, which no
-> longer serves anything. Doing it once, now, is what §7.1 being scheduled first was for.
+> **Left for Victor, in order — and the order matters:**
+> 1. In Vercel, make **`victorgusev.com` the primary domain**, so `www` redirects to it rather
+>    than the reverse.
+> 2. Set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com` and redeploy.
+> 3. Re-enrol the passkey — set `PASSKEY_REGISTRATION_SECRET`, register from the phone he
+>    actually uses, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.
+>
+> Step 3 is unavoidable: the old credential is bound to `victorgusev.vercel.app`, which no
+> longer serves anything. It comes last so it happens exactly once — enrolling before step 1
+> would bind the credential and then need doing again. Doing it once, now, is what §7.1 being
+> scheduled first was for.
 
 ### 7.3 · The four images — **1h**
 

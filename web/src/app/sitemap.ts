@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { RESUME_VARIANTS } from "@/lib/resume";
 import { publicProjects } from "@/lib/vault/public";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.victorgusev.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
