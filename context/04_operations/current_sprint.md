@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-22
+updated: 2026-08-24
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -26,7 +26,12 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 21-29 — freshness widget, athletics (Neon + Drizzle, Hevy import, PRs)
 - [x] Days 30-32 — Work, Academics (tracker), Calendar, Hobbies. **V1 complete.**
 
-### V2 — scoped 2026-08-21
+### V2 — scoped 2026-08-21, replanned 2026-08-24
+
+Full ordered plan with difficulty and estimates: `V2_PLAN.md` at the repo root.
+Scope decided 2026-08-24: **features only** — per-session revocation and error
+aggregation move to V3. Semantic search is the declared cut if the AI work runs long.
+
 
 Priority is Victor's: fix V1's findings and make it faster and cleaner before adding
 features. Four ship before term, two during. Full plan and reasoning in `web/DECISIONS.md`
