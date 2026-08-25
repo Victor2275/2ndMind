@@ -19,6 +19,37 @@ useful part.
 
 ## 2026-08-25 · The domain
 
+### D-097 · A relying-party mismatch fails with a sentence, not a DOMException
+
+**Decision.** Both auth routes call `relyingPartyProblem(request.headers.get("origin"))` before
+starting a ceremony, and return a 500 naming the offending values when the request origin is
+not one the app accepts.
+
+**Why.** The browser's own error is actively misleading. With `NEXT_PUBLIC_SITE_URL` unset in
+Vercel, the pre-2026-08-25 `relyingParty()` fell back to `http://localhost:3000`, and enrolling
+on the live site produced:
+
+    The RP ID "localhost" is invalid for this domain
+
+That message names a value nobody configured, never mentions the variable that produced it, and
+reads like a bug in the site rather than a missing environment variable. It cost a real
+debugging session. The replacement says which origin the request came from, what
+`NEXT_PUBLIC_SITE_URL` currently is, what the app therefore expects, and what to do.
+
+Two details worth keeping:
+
+- **A missing `Origin` header is not a problem.** Same-origin GETs may omit it, and refusing to
+  serve on that would break the ceremony in the name of protecting it.
+- **The message is safe to return.** `NEXT_PUBLIC_*` is inlined into client bundles by
+  definition, and the request's own origin is known to whoever sent it. Nothing here is secret.
+
+The check runs on *registration* too, and that is the more valuable half: enrolling against the
+wrong relying party mints a credential bound to a hostname that will never serve the site, and
+the only symptom is a sign-in failing later for reasons that look unrelated.
+
+**How to reverse.** Delete the calls. The ceremonies work identically; only the failure gets
+worse.
+
 ### D-096 · The canonical URL is the apex, `victorgusev.com`
 
 **Decision.** `NEXT_PUBLIC_SITE_URL` and the three fallbacks in `layout.tsx`, `robots.ts` and

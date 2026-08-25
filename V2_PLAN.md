@@ -622,9 +622,22 @@ resolves, `/sitemap.xml` names the new host, and you can sign in to `/private` o
 > because D-095 had already made `rpID` the apex and `origins` a list — without that, this
 > would have been a second forced re-enrolment.
 >
+> **2026-08-25, later:** Victor hit `The RP ID "localhost" is invalid for this domain` while
+> enrolling. Diagnosed from here — the apex is primary now (`www` 307s to it, step 1 done), but
+> `/sitemap.xml` still names `victorgusev.vercel.app`, so **the deployed build is still the old
+> code and `NEXT_PUBLIC_SITE_URL` is still unset.** The *old* `relyingParty()` fell back to
+> `http://localhost:3000`, which is exactly where that `localhost` came from.
+>
+> Correction to the note above: it said the app "expects `victorgusev.vercel.app`". That was
+> wrong for auth — only the sitemap, robots and metadata used that fallback. Auth's fallback was
+> localhost, so sign-in was failing more confusingly than described, not less.
+>
+> D-097 makes this class of failure legible: both ceremonies now refuse up front with a sentence
+> naming the request origin, the current `NEXT_PUBLIC_SITE_URL` and what the app expects.
+>
 > **Left for Victor, in order — and the order matters:**
-> 1. In Vercel, make **`victorgusev.com` the primary domain**, so `www` redirects to it rather
->    than the reverse.
+> 1. ~~In Vercel, make **`victorgusev.com` the primary domain**~~ — **done**, verified
+>    2026-08-25: `www` 307s to the apex.
 > 2. Set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com` and redeploy.
 > 3. Re-enrol the passkey — set `PASSKEY_REGISTRATION_SECRET`, register from the phone he
 >    actually uses, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.

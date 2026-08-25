@@ -10,6 +10,7 @@ import {
   bytesToBase64url,
   registrationSecret,
   relyingParty,
+  relyingPartyProblem,
   sessionSecret,
   storedCredential,
 } from "@/lib/auth/config";
@@ -35,6 +36,12 @@ export async function GET(request: Request) {
   if (!gateOpen(supplied)) {
     return NextResponse.json({ error: "registration is disabled" }, { status: 403 });
   }
+
+  // Before the ceremony, not after: enrolling against the wrong relying party produces a
+  // credential bound to a hostname that will never serve the site, and the only symptom is a
+  // sign-in that fails later for reasons that look unrelated.
+  const problem = relyingPartyProblem(request.headers.get("origin"));
+  if (problem) return NextResponse.json({ error: problem }, { status: 500 });
 
   const { rpID, rpName } = relyingParty();
   const existing = storedCredential();

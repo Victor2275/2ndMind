@@ -6,7 +6,12 @@ import {
 } from "@simplewebauthn/server";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 
-import { relyingParty, sessionSecret, storedCredential } from "@/lib/auth/config";
+import {
+  relyingParty,
+  relyingPartyProblem,
+  sessionSecret,
+  storedCredential,
+} from "@/lib/auth/config";
 import {
   CHALLENGE_COOKIE,
   newSessionPayload,
@@ -19,11 +24,16 @@ import {
 export const dynamic = "force-dynamic";
 
 /** Step 1: challenge. */
-export async function GET() {
+export async function GET(request: Request) {
   const credential = storedCredential();
   if (!credential) {
     return NextResponse.json({ error: "no passkey enrolled" }, { status: 503 });
   }
+
+  // Checked before the ceremony starts, so a misconfigured origin is a sentence rather than
+  // an opaque DOMException in the browser.
+  const problem = relyingPartyProblem(request.headers.get("origin"));
+  if (problem) return NextResponse.json({ error: problem }, { status: 500 });
 
   const { rpID } = relyingParty();
   const options = await generateAuthenticationOptions({

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { relyingParty } from "../config";
+import { relyingParty, relyingPartyProblem } from "../config";
 
 /**
  * The relying party is the piece that locks Victor out of his own site when it is wrong, and
@@ -76,5 +76,41 @@ describe("relyingParty", () => {
       expect(rpID).not.toContain(":");
       expect(rpID).not.toContain("/");
     }
+  });
+});
+
+describe("relyingPartyProblem", () => {
+  it("catches the exact failure that happened in production", () => {
+    // NEXT_PUBLIC_SITE_URL unset in Vercel, so the old fallback made rpID "localhost" and the
+    // browser said: The RP ID "localhost" is invalid for this domain. That message names a
+    // value nobody configured and never mentions the variable that produced it.
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
+    const problem = relyingPartyProblem("https://victorgusev.com");
+    expect(problem).toContain("NEXT_PUBLIC_SITE_URL");
+    expect(problem).toContain("https://victorgusev.com");
+    expect(problem).toContain("localhost");
+  });
+
+  it("says the variable is unset when it is", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", undefined);
+    expect(relyingPartyProblem("https://example.com")).toContain("(unset)");
+  });
+
+  it("is silent when the origin matches, apex or www", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://victorgusev.com");
+    expect(relyingPartyProblem("https://victorgusev.com")).toBeNull();
+    expect(relyingPartyProblem("https://www.victorgusev.com")).toBeNull();
+  });
+
+  it("is silent when there is no Origin header to check", () => {
+    // A same-origin GET may omit it. Refusing to serve on a missing header would break the
+    // ceremony in the name of protecting it.
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://victorgusev.com");
+    expect(relyingPartyProblem(null)).toBeNull();
+  });
+
+  it("catches a scheme mismatch, not just a hostname one", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://victorgusev.com");
+    expect(relyingPartyProblem("http://victorgusev.com")).not.toBeNull();
   });
 });

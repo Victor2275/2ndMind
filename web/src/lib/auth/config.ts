@@ -88,6 +88,37 @@ export function relyingParty(): { rpID: string; origins: string[]; rpName: strin
 }
 
 /**
+ * Explains a relying-party misconfiguration, or null when there is nothing wrong.
+ *
+ * This exists because the browser's own error is actively misleading. When
+ * `NEXT_PUBLIC_SITE_URL` was unset in production, `relyingParty()` fell back to
+ * `http://localhost:3000` and the browser reported:
+ *
+ *     The RP ID "localhost" is invalid for this domain
+ *
+ * which names a value nobody configured, does not mention the variable that produced it, and
+ * reads like a bug in the site rather than a missing environment variable. It cost a real
+ * debugging session on 2026-08-25.
+ *
+ * Called before the ceremony starts, so the failure arrives as a sentence instead of a
+ * DOMException. Everything in the message is already public: `NEXT_PUBLIC_*` is inlined into
+ * client bundles by definition, and the request's own origin is known to whoever sent it.
+ */
+export function relyingPartyProblem(requestOrigin: string | null): string | null {
+  if (!requestOrigin) return null; // Same-origin GETs may omit it; nothing to check against.
+
+  const { origins } = relyingParty();
+  if (origins.includes(requestOrigin)) return null;
+
+  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? "(unset)";
+  return (
+    `Passkeys cannot work here: this request came from ${requestOrigin}, but ` +
+    `NEXT_PUBLIC_SITE_URL is ${configured}, so the app expects ${origins.join(" or ")}. ` +
+    `Set NEXT_PUBLIC_SITE_URL to the origin the site is actually served from and redeploy.`
+  );
+}
+
+/**
  * Returns `Uint8Array<ArrayBuffer>` rather than plain `Uint8Array`. TypeScript now tracks the
  * backing buffer in the type, `Uint8Array.from` widens it to `ArrayBufferLike`, and
  * @simplewebauthn requires the narrow form — so the buffer is allocated explicitly.
