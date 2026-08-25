@@ -68,7 +68,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             title={project.title}
             image={project.image}
             priority
-            className="object-cover"
+            className={
+              project.imageFit === "contain" ? "object-contain p-3" : "object-cover"
+            }
           />
         </div>
       )}

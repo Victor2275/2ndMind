@@ -61,6 +61,16 @@ export const projectSchema = baseFrontmatter.extend({
    * means the file is the first of a numbered sequence and the page shows a gallery.
    */
   image: z.string().startsWith("/").optional(),
+  /**
+   * How the hero image fills its 16:9 box. `cover` crops to fill and is right for anything
+   * roughly widescreen; `contain` fits the whole image on a padded surface and is right for
+   * a square or portrait one, which `cover` would crop the top and bottom off.
+   *
+   * Explicit rather than derived: reading intrinsic dimensions at build time would work, but
+   * it makes every project page depend on decoding an image, to decide something a human
+   * knows by looking. Defaults to `cover`.
+   */
+  image_fit: z.enum(["cover", "contain"]).optional(),
   figure_count: z.number().int().positive().optional(),
   /** Group work: shown as "N-person team" so solo work is not implied. */
   group_size: z.number().int().min(2).optional(),

@@ -1,6 +1,6 @@
 # 2ndMind — V2 Completion Plan
 
-**Revised 2026-08-25 · Deadline 2026-09-18 · Scope decided by Victor 2026-08-24, re-decided 2026-08-25**
+**Rev 4 · 2026-08-25 · Deadline 2026-09-18 · Scope decided by Victor 2026-08-24, revised three times on 2026-08-25**
 
 The forward plan. `MIGRATION_PLAN.md` is its predecessor and is finished — that document is
 history, this one is live.
@@ -14,6 +14,14 @@ Revision 2 changes four things, all on Victor's call (2026-08-25):
 4. **§1.6 loses its wall-clock gate.**
 
 Rev-1 items §1.1 (git push) and §1.2 (Vercel config) are closed and moved to §0.1.
+
+**Revision 3** adds §7: ten new items requested on 2026-08-25, split four into V2 and six into
+V3. One of them — the domain — reorders existing work, because changing the domain invalidates
+the production passkey.
+
+**Revision 4** takes the cut. Victor moved the Working page and the public→private button into
+V2 and accepted read-only for the job sheet; **semantic search is cut** to pay for them. Net
+−4.5h. V3 is now its own document, `V3_PLAN.md`.
 
 ---
 
@@ -29,13 +37,33 @@ This is the constraint everything else answers to.
 | Move-in | 09-19 | 0h | |
 | Term starts | 09-20 | ~4h/**week** | Everything after this is a different budget |
 
-**Total before the deadline: ~60 hours.** Planned work below totals **39h**, leaving **21h of
-slack — 35% of the budget**. That margin is deliberate: every estimate in this project so far
+**Total before the deadline: ~60 hours.** Planned work totals **~42h**, leaving **~18h of
+slack — 30% of the budget**. That margin is deliberate: every estimate in this project so far
 has been beaten or missed by more than 10%, and the ten-day gap in the middle is where context
 gets lost and re-acquired.
 
 Reinstating §2.5 (12h) is affordable only because descoping §2.2 and §2.3 gave back 7h. Those
 two moves are linked; undoing the first without undoing the second breaks the budget.
+
+**Rev 4 (2026-08-25)** is the version that matters now:
+
+| | Hours |
+|---|---:|
+| Rev 3 total | 42h |
+| **+** Working page, now a public "Now" page (§7.9) | +6h |
+| **+** Public → private button (§7.5) | +1.5h |
+| **+** Job sheet, read-only (§7.6) | +4h |
+| **−** Semantic search, **cut** (was §2.4) | −12h |
+| **Rev 4 total** | **~41.5h** |
+
+**Spent: ~5.5h** — §0.3, §1.1, §1.2 and §1.4 are done. **~36h of work remains against ~54.5h
+available**, so slack is ~34%. Three features were added and the plan got *shorter*, because
+the item they displaced was the largest and hardest in it.
+
+Victor offered extra hours to fit everything. They are not needed and are not being taken: the
+cut was already declared in rev 1, and eleven consecutive 6h days ending the day before
+move-in is the kind of schedule that produces the mistakes this plan exists to avoid. The offer
+is held in reserve — see §5.
 
 ### What "V2 done" means
 
@@ -89,7 +117,7 @@ four decision entries exist.
 
 ---
 
-## 1. Do first — this week, before Taiwan (~16h available, 12h committed)
+## 1. Do first — this week, before Taiwan (~16h available, 15h committed)
 
 Ordering principle unchanged: **anything blocked on Victor goes first**, because a ten-day gap
 turns a five-minute task into a two-week delay. §1.5 is the only one left in that class.
@@ -268,9 +296,28 @@ hit/miss, not an assumption that `unstable_cache` did its job. Note that local
 `unstable_cache` behaviour and Vercel's are not identical; this must be confirmed on the
 deployed site, not only in dev.
 
+> **DONE 2026-08-25**, in ~2h. Tests 422 → 426.
+>
+> **The cache is now observed, not trusted** (D-093). `callModel` logs every real request, and
+> from a cold cache three loads of `/private` with unchanged input cost **zero** calls while
+> changing the prompt cost exactly **one**. That measurement is the completion test, and it was
+> not satisfiable before — nothing could see whether a call happened.
+>
+> The model is fed **one line per day for seven days, empty days included** (D-092), not one
+> line per entry. Keyed on the prompt, a week of raw entries would change its cache key every
+> time any single entry moved; days change only when a day changes. And "nothing logged" on
+> three days is the most useful thing a weekly summary can say — dropping those rows would make
+> a four-day week look like a full one.
+>
+> **What is not verified: the populated path.** `.env.local` points at the production Neon
+> database, so seeding log entries to exercise it would write into Victor's real logbook. The
+> empty-week path, the guards and the tag separation are tested; the first real exercise is the
+> first week he logs something. The Vercel-versus-local caching question in the note above is
+> still open for the same reason it always was — it needs a deploy.
+
 ---
 
-## 2. Feature 6 · the rest of the AI work — after Taiwan (27h)
+## 2. Feature 6 · the rest of the AI work — after Taiwan (14h)
 
 Built in this order, because each one makes the next cheaper.
 
@@ -344,81 +391,79 @@ D-069 walks straight back in through the one feature that touches a hiring docum
 **Done when:** it produces a suggestion for a real job posting, and the fabricated-id test
 fails closed.
 
-### 2.4 · Semantic search — **Hard, 12h**
+### 2.4 · Semantic search — ✂️ **CUT 2026-08-25**
 
-*Reinstated on Victor's call (2026-08-25).* Rev 1 declared it the cut on grounds of cost; the
-budget is $10/month, not lifetime, so that reason no longer holds. It stays **last in build
-order**, which keeps it the de-facto cut without needing to be named one.
+Moved to `V3_PLAN.md` §1. It was the declared cut in rev 1, reinstated in rev 2 when the
+budget turned out to be $10/month rather than $10 lifetime, and cut again in rev 4 — this time
+on **time**, which was always the binding constraint. At 12h it was the largest item in V2 and
+the only remaining Hard one, and it paid for three features Victor wanted more.
 
-Natural-language questions across the vault. Needs embeddings, somewhere to store them, and
-incremental re-embedding so that editing one file does not re-embed all twenty-four.
-
-- Vectors in Postgres, alongside the four existing tables, with a committed migration.
-- Embed only files whose `updated:` frontmatter changed — the field every write already bumps,
-  which is why it can be trusted here.
-- A hard ceiling on tokens per re-index run, enforced in code, not in judgement.
-- **Health data may go to the model (D-071) and may never be published (absolute).** Embedding
-  `02_physical_performance/` sends bodyweight to Google; that is inside D-071. Any search
-  surface reading those vectors is private-only, and a test asserts no public route imports it.
-
-**New cut line, since §2.5 is no longer it:**
-
-1. **First cut** — drop incremental re-embedding; full re-index on demand from a button.
-   Saves ~4h, costs one full pass per invocation, which at 24 files is affordable monthly.
-2. **Second cut** — the whole item.
-
-**Cut trigger, stated now so it is not decided under pressure:** if §2.1 + §2.2 + §2.3 exceed
-**18h combined** as of **2026-09-13**, take cut 1. If they exceed 22h, take cut 2.
+Nothing was built, so nothing is wasted. The reasoning that survives into V3: vectors in
+Postgres, embed only files whose `updated:` changed, and a hard token ceiling per re-index run.
+Health data reaching the model is inside D-071; health data reaching a *public* page never is,
+so any search surface is private-only with a test asserting no public route imports it.
 
 ---
 
-## 3. Not in V2 — deferred to V3
+## 3. Not in V2
 
-Recorded so they are not silently forgotten.
+**Everything deferred now lives in `V3_PLAN.md`**, with sizing and reasoning, rather than as a
+table of regrets at the bottom of this document. It holds nine items across ~46h.
 
-| Item | Why deferred |
-|---|---|
-| **Vault-write markdown diff** | *New in rev 2.* The full diff UI from rev 1 §2.2. Real, but it needs a writer to exist first; building it ahead of one is what rev 1 got wrong. Revisit when something actually drafts markdown — case-study sections or `current_sprint.md` prose are the candidates, and the first collides with D-073 and needs Victor's explicit sign-off. |
-| **Per-session revocation** | Sessions are HMAC tokens with an expiry; rotating `SESSION_SECRET` is the only revocation and it signs out every device. Real, but it does not block daily use. |
-| **Error aggregation** | `app/error.tsx` gives a boundary and logs to Vercel. What is missing is *aggregation* — a failure you never see is still invisible. A free Sentry tier would close it, but payloads carry vault content and need scrubbing rules first. |
-| **Octokit retry/throttle** | Reasonable, cheap, and pointless for one user until something writes to the vault regularly. Revisit alongside the diff UI. |
-| **Vault write concurrency queue** | The `409` is optimistic concurrency working correctly. A full queue is over-engineering for one user. |
+The three Victor picked for V3 on 2026-08-25 — filament and printer tracking, uploading his own
+resumes, and editing the job sheet — are scheduled there. The rest are recorded but unscheduled,
+including the two V1 findings (per-session revocation, error aggregation) which he did *not*
+pick, and which therefore stay open rather than quietly becoming V3's problem.
+
+The rule that put each one there is the same: **V2 ships the portfolio**. Anything that does not
+make the portfolio better, or is not forced by a date, waits.
 
 ---
 
 ## 4. Ordered summary
 
-| # | Item | Who | Difficulty | Est. | Window |
-|---|---|---|---|---:|---|
-| 0.3 | Housekeeping — indexes, freshness, decisions | me | Easy | 1h | pre |
-| 1.1 | Resume: page-count measurement + coursework trim | me | Easy | 2h | pre |
-| 1.2 | Case-study page design, against fixtures | me | Moderate | 4h | pre |
-| 1.3 | Write the case studies | **Victor** | — | 2–4h | plane |
-| 1.4 | Close out feature 3 | me | Moderate | 2h | pre |
-| 1.5 | Summarise my week | me | Easy | 3h | pre |
-| 1.2b | Case-study design revision, against real prose | me | Easy | 1h | post |
-| 2.1 | Approval-gated **proposal** UI | me | Moderate | 4h | post |
-| 2.2 | Draft sprint goals | me | Moderate | 4h | post |
-| 2.3 | Resume tailoring | me | Moderate | 6h | post |
-| 2.4 | Semantic search | me | **Hard** | 12h | post |
+Done is struck through in spirit — the DONE blocks above carry the detail.
 
-**Pre-Taiwan: 12h committed against ~16h.** 4h buffer, deliberately unfilled — the last day
-before a flight is not when to start a 4h item.
+| # | Item | Who | Difficulty | Est. | Window | State |
+|---|---|---|---|---:|---|---|
+| 0.3 | Housekeeping — indexes, freshness, decisions | me | Easy | 1h | pre | **done** |
+| 1.1 | Resume: page-count gate + one-page fix | me | Easy | 2h | pre | **done** |
+| 1.2 | Case-study page design, against fixtures | me | Moderate | 4h | pre | **done** |
+| 1.4 | Close out feature 3 | me | Moderate | 2h | pre | **done** |
+| 7.2 | The uploads list | me | — | — | pre | **done** |
+| **7.1** | **Domain `victorgusev.com`** | **both** | Easy | 1.5h | **pre** | blocks passkey |
+| 1.5 | Summarise my week | me | Easy | 3h | pre | next |
+| 7.3 | The four uploaded images | me | Easy | 1h | pre | |
+| 7.4 | Culinary → Proof | me | Easy | 0.5h | pre | |
+| 1.3 | Write the case studies | **Victor** | — | 2–4h | plane | 17 sections |
+| — | `UPLOADS_NEEDED.md` §2 | **Victor** | — | — | plane | |
+| 1.2b | Case-study revision, against real prose | me | Easy | 1h | post | needs 1.3 |
+| 7.9 | **Working page — public "Now"** | me | Moderate | 6h | post | |
+| 2.1 | Approval-gated proposal UI | me | Moderate | 4h | post | |
+| 2.2 | Draft sprint goals | me | Moderate | 4h | post | needs 2.1 |
+| 2.3 | Resume tailoring | me | Moderate | 6h | post | ✂️ 2nd cut |
+| 7.5 | Public → private button | me | Easy | 1.5h | post | |
+| 7.6 | Job sheet, read-only | me | Moderate | 4h | post | ✂️ **1st cut** · needs Victor |
+| ~~2.4~~ | ~~Semantic search~~ | — | — | ~~12h~~ | — | **cut → V3** |
 
-**Post-Taiwan: 27h against ~44h.** 17h slack.
+**Pre-Taiwan: 15h committed against ~16h**, of which **9h is done**. Remaining: 6h against
+~10.5h. Order matters — §7.1 first, because it needs a connection and gates the passkey.
 
-**Total mine: ~39h against ~60h.**
+**Post-Taiwan: 26.5h against ~44h.** 17.5h slack.
 
-### Changed against rev 1
+**Total: ~41.5h against ~60h.** ~36h of it still to do.
 
-| Item | Rev 1 | Rev 2 | Why |
-|---|---:|---:|---|
-| Resume | 1h | 2h | Page-count measurement did not exist |
-| Approval UI | 10h Hard | 4h Moderate | The dependency justifying it was false |
-| Draft goals | 5h | 4h | No markdown to render |
-| Semantic search | 12h ✂️ | 12h kept | $10/month, not lifetime |
-| Housekeeping | — | 1h | Rules with no task attached |
-| **Total** | **43h** | **39h** | |
+### The new cut line
+
+Semantic search was the declared cut and has been spent. A plan without a cut line decides
+under pressure, so:
+
+1. **First cut — §7.6, the job sheet read (4h).** It is blocked on Victor publishing the CSV,
+   it duplicates a sheet he can already open on his phone, and a background script already
+   maintains it. Losing it costs the least of anything left.
+2. **Second cut — §2.3, resume tailoring (6h).**
+
+**Trigger:** if §7.9 + §2.1 + §2.2 exceed **16h combined** by **2026-09-14**, take cut 1.
 
 ---
 
@@ -426,22 +471,32 @@ before a flight is not when to start a 4h item.
 
 Ordered by how likely they are to actually happen.
 
-1. **The case studies do not get written.** Now the top risk, since the push is fixed. Then
-   §1.2 designs a page for content that does not exist and the portfolio gains structure
-   without substance. Mitigation: they are plane work, needing no network; and §1.2 is built
-   against fixtures so it is at least *correct* for the empty and partial cases.
-2. **§2.4 runs to 18h instead of 12.** It is the only Hard item left and the only one touching
-   a new storage shape. Mitigation: the two-stage cut in §2.4, with a dated trigger.
+1. **The case studies do not get written.** Unchanged as the top risk, and now the *only* thing
+   standing between the portfolio and being finished — the design, the resume and the page
+   structure are all done and waiting on prose. 17 sections; run
+   `python scripts/case_study_status.py`. Mitigation: plane work, no network, and solenoid is
+   one section from complete.
+2. **§7.9 runs long.** It is the largest remaining item and the first live caller of
+   `writeVaultFile`, dormant since D-036 — a code path that has never run in production.
+   Mitigation: the cut line in §4, with a dated trigger.
 3. **`unstable_cache` behaves differently on Vercel than locally.** Every §2 item's cost story
-   rests on it, and it has only ever been exercised on one call site. Mitigation: §1.5 verifies
-   it on the deployed site before three more features depend on it. This is why §1.5 moved
-   forward.
-4. **The ten-day gap loses context.** Mitigation: `web/DECISIONS.md` (75 entries, 79 after
-   §0.3) and this file. Regenerate `Mastermind.md` before travelling if another AI will be used.
-5. **The $10/month runs out.** Only §2.4 can plausibly do this, and only through repeated full
-   re-indexing — which is precisely what cut 1 would introduce. If cut 1 is taken, the token
-   ceiling stops being a safeguard and becomes the only defence.
-6. **The Vercel config is not actually done.** Reported, not verified. §1.5 surfaces it.
+   rests on it. Mitigation: §1.5 verifies it on the deployed site before two more features
+   depend on it. Rev 2 moved §1.5 forward for exactly this, and rev 3's discovery that failures
+   were being cached for six hours (D-086) is evidence the concern was right.
+4. **The domain switch locks Victor out of `/private`.** Changing `NEXT_PUBLIC_SITE_URL` moves
+   the passkey relying party, and the enrolled credential stops working. This is not a risk so
+   much as a certainty; the mitigation is doing it *before* the next enrolment rather than
+   after, which is why §7.1 is first.
+5. **The ten-day gap loses context.** Mitigation: `web/DECISIONS.md` (86 entries), this file,
+   `V3_PLAN.md` and `UPLOADS_NEEDED.md`. Regenerate `Mastermind.md` before travelling if
+   another AI will be used.
+6. **The Vercel config is not actually done.** Reported, not verified. §1.5 surfaces it, and
+   §7.1 forces a visit to that dashboard anyway.
+
+**The reserve.** Victor offered extra hours. They are deliberately unspent — if two of these
+land at once, that offer is the answer, not a further cut. Taking them up front would have
+converted a margin into a plan, and a plan with no margin is how the last three weeks of a
+deadline go wrong.
 
 ---
 
@@ -464,3 +519,256 @@ Not new — restated because they are what an agent gets wrong.
 - **Measure, do not assume.** "The resume looks fine" survived weeks; "1.33 pages" did not
   survive ten minutes. Rev 1's own completion test for that item assumed a measurement that did
   not exist.
+
+---
+
+## 7. New scope — requested 2026-08-25
+
+Ten items. **Seven are in V2; three are in V3.**
+
+Rev 3 put four in V2 on the grounds that they were forced by time. Rev 4 added three more on
+Victor's call — the Working page, the public→private button, and reading the job sheet — and
+paid for them by cutting semantic search, which was 12h of the hardest work in the plan for the
+capability he rated lowest. That trade is why seven new features fit into a plan that got
+*shorter*.
+
+| # | Item | Where | Est. | Why there |
+|---|---|---|---:|---|
+| 7.1 | Domain `victorgusev.com` | **V2, first** | 1.5h | Blocks passkey. Needs a connection. |
+| 7.2 | The uploads list | **V2, done** | — | Requested for Thursday. `UPLOADS_NEEDED.md`. |
+| 7.3 | The four images you uploaded | **V2** | 1h | Already on disk, earning nothing. |
+| 7.4 | Culinary → Proof | **V2** | 0.5h | A deletion. Deletions are cheap. |
+| 7.5 | Public → private button | **V2** *(rev 4)* | 1.5h | Moved in on your call. |
+| 7.6 | Job sheet, **read-only** | **V2** *(rev 4)* | 4h | You said read-only is fine for now. |
+| 7.9 | Working page — public **"Now"** | **V2** *(rev 4)* | 6h | Moved in on your call. |
+| 7.7 | Upload your own resumes | V3 | 5h | Your call. Needs a decision first. |
+| 7.8 | 3D printing: filament + printers | V3 | 9h | Your call. Blocked on your inventory. |
+| 7.10 | **Edit** the job sheet | V3 | 12h | Ten times the cost of reading it. |
+
+**Rev 4 settled this.** Three of the six deferred items came into V2 (+11.5h) and semantic
+search was cut to pay for them (−12h), so V2 is ~41.5h against ~60h and slack is ~34% — better
+than before the ten items arrived. The three remaining V3 items are in `V3_PLAN.md`.
+
+### 7.1 · Buy `victorgusev.com` and point it here — **1.5h, and 10 min of it is yours**
+
+**Do this before enrolling any more passkeys.** `relyingParty()` derives `rpID` from
+`NEXT_PUBLIC_SITE_URL`'s hostname (`lib/auth/config.ts:56`), and a WebAuthn credential is
+bound to the origin that created it. The passkey on `victorgusev.vercel.app` **stops working
+the moment the domain changes**. Buy first, switch, then enrol once — rather than enrolling
+now and again in three weeks.
+
+**Where to buy, against a $12/yr ceiling.** A `.com` costs registries about $10.50 wholesale,
+so the ceiling rules out anyone taking a real margin — and it especially rules out the common
+trick of a cheap first year against a $15–20 renewal, which passes your budget in year two.
+
+- **Cloudflare Registrar — recommended.** Sells at cost, no markup, renewal is the same price
+  as year one. WHOIS privacy included. Requires using Cloudflare's DNS, which is free and is
+  no worse than any other. Roughly **$10.50/yr**.
+- **Porkbun** — a little more, around **$11/yr**, privacy included, no DNS requirement.
+- **Vercel Domains** — buys and configures in one step, but a `.com` is typically around
+  $20/yr. Convenient and over budget.
+- **Namecheap / GoDaddy** — cheap first year, renewal above your ceiling. Avoid.
+
+*Prices are approximate and move; check at checkout before committing.*
+
+**Then, in order:**
+
+1. Vercel → the project → **Settings → Domains** → add `victorgusev.com` **and**
+   `www.victorgusev.com`. Vercel will nominate one as primary and redirect the other; apex as
+   primary is the usual choice.
+2. Vercel shows the exact DNS records to create — an `A` record for the apex and a `CNAME` for
+   `www`. **Use the values it shows you, not any written down elsewhere**, including here:
+   Vercel has changed these addresses before and a stale IP fails in a way that looks like a
+   propagation delay for hours.
+3. In Cloudflare, add those records with proxying **off** (the grey cloud, "DNS only").
+   Cloudflare's orange-cloud proxy in front of Vercel's is two CDNs in series, which breaks
+   certificate issuance and is a genuinely unpleasant thing to debug.
+4. Wait for Vercel to report the domain valid and the certificate issued. Usually minutes.
+5. **Set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com` in Vercel** and redeploy. This one
+   variable moves the canonical URL, the sitemap, `robots.txt`, Open Graph metadata *and* the
+   passkey relying party together.
+6. **Re-enrol the passkey on the new origin.** Set `PASSKEY_REGISTRATION_SECRET`, register from
+   the phone you actually use, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.
+7. Mine — the three fallback strings in `layout.tsx`, `robots.ts` and `sitemap.ts` still read
+   `victorgusev.vercel.app`, and `REGISTER_PASSKEY.md`, `.env.example` and `context.md` all
+   name the old host.
+
+**Done when:** `victorgusev.com` serves the site over HTTPS, the old `.vercel.app` URL still
+resolves, `/sitemap.xml` names the new host, and you can sign in to `/private` on your phone.
+
+### 7.3 · The four images — **1h**
+
+`5SecondRule.png`, `MicromouseSim.png`, `taskable.png` and `ProfilePhoto.jpg` are sitting in
+`context/assets/`, untracked and unused.
+
+The mechanism already exists but only for labs: `scripts/sync-lab-assets.mjs` copies
+`context/assets/labs/` into `public/labs/` on predev and prebuild, and `public/labs/` is
+gitignored so 2 MB of PNGs never enter the repo twice. This extends that to the top-level
+assets directory, then sets `image:` in the three project files and adds the photograph to
+About.
+
+Three projects gaining a real photograph is worth more than it sounds: D-074 removed generated
+placeholders precisely so that the projects which *do* have an image read as the strongest.
+Until now that was one project out of six.
+
+Rev 3 said `MicromouseSim.png` was too small at 6.4 KB and asked for a larger one. **That was
+wrong, and the file is fine.** 6.4 KB is what flat maze graphics compress to; PNG is very good
+at large areas of one colour. Measured:
+
+| File | Pixels | Ratio | Fits the 16:9 hero? |
+|---|---|---|---|
+| `5SecondRule.png` | 1920 × 1080 | 1.78 | yes |
+| `taskable.png` | 1428 × 910 | 1.57 | yes |
+| `ProfilePhoto.jpg` | 2048 × 1365 | 1.50 | About page, not a hero |
+| `MicromouseSim.png` | **606 × 649** | **0.93** | **no — nearly square** |
+
+The real problem is shape. The hero is `aspect-16/9` with `object-cover`, which on a square
+image crops the top and bottom off the maze and upscales what is left from 606px. So Micromouse
+does not get a hero: it renders **contained on a padded surface**, which is what the Figures
+gallery on the same page already does (`object-contain p-1.5`). No larger file is needed.
+
+**Done when:** the three projects show their image on card and detail page, About shows the
+photograph, `npm run shots` reports no new overflow, and no PNG is committed to the repo.
+
+> **DONE 2026-08-25**, in ~1h. `sync-lab-assets.mjs` became `sync-vault-assets.mjs` and now
+> syncs `context/assets/` → `public/assets/` as well as the labs directory; both destinations
+> are gitignored, so no image enters the repo twice.
+>
+> Two things the screenshots caught that the measurement could not:
+>
+> 1. **The grid went ragged** (D-090). Rows stretched to equal height, which was invisible with
+>    one image among six and opened ~200px of void under Proof and Water Bottle Scale once four
+>    of six had one. Fixed with `items-start`.
+> 2. **Three heroes were being cropped** (D-091). A new `image_fit` field picks `contain` for
+>    diagrams and screenshots and leaves `cover` for photographs. On taskable, `cover` had been
+>    slicing off the "TaskAble (Teacher View)" heading — the one thing that screenshot exists to
+>    show. Solenoid's crop pre-dated this work and was fixed too.
+>
+> Victor corrected three project years on the same day: 5 Second Rule 2024 → **2025**,
+> Micromouse 2024 → **2023**, TaskAble 2024 → **2026**. Indexes and the generated resume were
+> rebuilt; the resume still prints to one page.
+
+### 7.4 · Culinary becomes a link to Proof — **0.5h**
+
+`context/03_craft_and_creative/pursuits/culinary.md` and the culinary section of
+`/private/hobbies` come out; a link to Proof goes in.
+
+A deletion, and the vault file is the part to get right: `culinary.md` is referenced from
+`CLAUDE.md`'s routing table, `AGENTS.md` and `Mastermind.md`, so removing the file without
+those leaves three documents pointing at nothing. The file moves to `99_archive/superseded/`
+rather than being deleted — the same treatment every other retired document has had, and it
+costs nothing.
+
+**Done when:** no live document routes to culinary, `/private/hobbies` links to Proof, and
+`audit_freshness.py` is clean.
+
+> **DONE 2026-08-25**, in ~0.5h. `culinary_formulas.md` moved to `99_archive/superseded/`; the
+> routing tables in `CLAUDE.md` and `AGENTS.md` now point at Proof directly; `/private/hobbies`
+> has a "Recipes" panel linking out. `Mastermind.md` regenerated.
+>
+> **Narrow reading, deliberately.** "Culinary formulas" is the name of the *private reference
+> doc*, and the reason given — Proof is where recipes live now — is about Victor's own
+> material. The **public** pursuit (`pursuits/culinary.md`, "Precision Baking") was left alone:
+> it is portfolio breadth whose entire job is explaining where Proof came from, so deleting it
+> would work against "link to Proof" rather than for it. Flagged for Victor; one line to remove
+> if he meant both.
+
+### 7.5 · Public → private button — **Easy, 1.5h**
+
+Shown only on a device that has signed in before, and **gating nothing**.
+
+The session cookie is `httpOnly`, so client JavaScript cannot read it, and public pages are
+statically generated, so the server cannot know either. The workable shape is a second cookie
+carrying no authority at all — a boolean saying "this device has signed in before" — set at
+login, readable by JS, and used only to decide whether a link is rendered. `/private` still
+redirects to `/signin` for anyone who arrives without a valid session.
+
+That distinction is the whole design. Anyone can set that cookie themselves; doing so reveals
+nothing and grants nothing. If it ever gates anything real, it becomes an authentication bypass
+made of a boolean.
+
+**Done when:** the link appears on public pages after signing in, is absent in a fresh private
+window, and forging the cookie still lands on `/signin`.
+
+### 7.6 · The job sheet, read-only — **Moderate, 4h**
+
+Blocked on Victor publishing the sheet as CSV (`UPLOADS_NEEDED.md` §1.2) — the URL is needed
+before he flies, since the parser can be written and tested offline once its shape is known.
+
+Third instance of a pattern the app already runs twice: a private URL in an environment
+variable, fetched and parsed server-side. `papaparse` is already a dependency for the Hevy
+import. No OAuth, no Google Cloud project, no cost. **The URL is a credential** — anyone
+holding it can read the sheet — so it lives in Vercel's environment variables and never in the
+repo, exactly as `GOOGLE_CALENDAR_KEY` does.
+
+Applications surface on `/private/work`, which today deliberately does *not* duplicate the
+sheet. That decision was made when nothing could read it; it can now be revisited, and the
+page's own lede ("this page does not duplicate it") comes out with it.
+
+**Done when:** `/private/work` shows the current pipeline, a malformed or unreachable sheet
+degrades to a message rather than an error page, and no sheet URL appears in the repository.
+
+### 7.7 · Uploading your own resumes — a decision before an estimate
+
+The generated resume is built from the same vault entries as the project and experience pages,
+so it **cannot** drift from them. An uploaded PDF can, and silently — it becomes a second
+source of truth for your own bullet points, and the first time it matters will be an interview
+where the page and the PDF disagree.
+
+That is not a reason to skip it. It is a reason to pick deliberately between replacing,
+running alongside, or falling back — the three options are laid out in `UPLOADS_NEEDED.md`
+§2.4, and the estimate depends on which you choose.
+
+### 7.9 · The Working page — public "Now" — **Moderate, 6h**
+
+Decided with Victor 2026-08-25: **public, authored from `/private`, built on the projects that
+already exist, with dated updates and photo prompts rather than photo uploads.**
+
+**A project is "working" when its frontmatter says `status: active`.** The schema has carried
+`status: active | archived` since the beginning, so this needs no new entity and cannot drift
+from `/projects` — a project cannot be finished on one page and in progress on another. The
+alternative, a separate list, buys the ability to show motion on things that will never be
+portfolio projects; it can be added later without moving anything, and should not be added
+speculatively now.
+
+**Updates are dated entries in the project's own markdown file.** The public site stays
+statically generated and free, which it would not if updates lived in Postgres — that would
+make this the first public page needing a database, and turn a static page dynamic for content
+that changes weekly. The cost is that saving an update is a git commit plus a Vercel rebuild,
+so it takes about a minute to appear. For something written weekly that is the right trade;
+for tasks it was not, which is exactly why D-036 moved those the other way.
+
+**This is the first live caller of `writeVaultFile`**, dormant since D-036 and exercised only
+by its own tests. Everything in §2.1's staleness discussion applies here in its original
+markdown form: a real `409` is now reachable, and the retry has to work. Rev 2 deferred the
+vault-write *diff* to V3 on the grounds that nothing wrote markdown yet — this is the writer
+that changes that, and it is a human writing, not a model, so it needs no approval gate. D-080
+is unaffected: nothing **AI-driven** writes to the vault in V2.
+
+**Photo prompts, not uploads.** The page lists which active projects have no image and says so.
+Victor adds files to `context/assets/` from his laptop; §7.3 already builds the pipeline that
+serves them. An in-browser upload committing binaries through the Contents API is ~4h on top,
+and `writeVaultFile` is text-only today.
+
+**Nav: a top-level "Now".** Header becomes About / Now / Projects / Resume. A `/now` page is an
+established convention and reads as current, which is the entire signal it exists to carry.
+
+**Done when:** `/now` lists every `status: active` project with its latest update, an update
+written from `/private` appears publicly after one rebuild, a project with no updates looks
+deliberate rather than empty, and `npm run shots` is clean at 390px.
+
+### 7.10 · Editing the job sheet — V3, and why it is not V2
+
+Reading and editing arrived as one request and are two very different pieces of work. Reading
+is §7.6 above, costs 4h, and is in V2.
+
+**Editing costs ~12h.** Write access means the real Sheets API: a Google Cloud project, a
+service account or an OAuth flow, a refresh token to store and rotate, write scopes, and an
+error path for each of those. It is roughly ten times the cost of reading, for a sheet that a
+background script already maintains and that Victor can already edit in the Sheets app on his
+phone.
+
+**Use §7.6 for a month first.** There is a reasonable chance that seeing the pipeline on
+`/private` is the whole value, and that the editing actually wanted is "mark this one
+rejected" — one field, a far smaller feature than "edit the spreadsheet". Scheduled in
+`V3_PLAN.md`; that is the question to answer before starting it.

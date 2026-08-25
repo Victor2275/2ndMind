@@ -2,16 +2,19 @@ import { GoogleGenAI } from "@google/genai";
 import { unstable_cache } from "next/cache";
 
 /**
- * The one AI call on the site: a short summary of the day.
+ * The AI calls on the site: a summary of the day, and a summary of the week.
  *
  * Two constraints shape everything here, and both come from Victor directly.
  *
- * **Budget.** The site runs at $0/month with a single exception: about $10 of AI credit,
- * total. `/private` is the page he opens most, and it is `force-dynamic`, so an uncached call
- * would hit the API on every load — several hundred requests a month to re-summarise a day
- * that has not changed since thirty seconds ago. The result is therefore cached for
- * `SUMMARY_TTL_SECONDS` and tagged, so a fresh summary costs a tag invalidation rather than
- * a page view.
+ * **Budget.** The site runs at $0/month with a single exception: about $10 of AI credit
+ * **per month**. `/private` is the page he opens most, and it is `force-dynamic`, so an
+ * uncached call would hit the API on every load — several hundred requests a month to
+ * re-summarise a day that has not changed since thirty seconds ago. Each summary is therefore
+ * cached on its own tag, so a fresh one costs a tag invalidation rather than a page view.
+ *
+ * Measured 2026-08-25, from a cold cache: three loads of `/private` with unchanged input cost
+ * **zero** calls, and changing the prompt cost exactly **one**. `callModel` logs every real
+ * call, which is what makes that checkable rather than assumed.
  *
  * **Failure must be quiet.** No key, exhausted quota and a bad request all return a string
  * rather than throwing. A dashboard that 500s because a nice-to-have panel failed is worse
@@ -72,6 +75,15 @@ const NO_KEY = "Set GEMINI_API_KEY to turn this on. Everything else works withou
 async function callModel(prompt: string): Promise<SummaryResult> {
   const key = apiKey();
   if (!key) return unavailable(NO_KEY);
+
+  // Logged on every real call, deliberately.
+  //
+  // Everything here is built on the assumption that the cache absorbs repeat views, and that
+  // assumption was never observable — a cache that had quietly stopped working would look
+  // exactly like one that was working, until the bill arrived. This is the line that makes it
+  // checkable: load a page twice, and the second load must print nothing. It also gives a
+  // rough running cost, since the prompt length is most of what is paid for.
+  console.log(`Gemini call: ${MODEL}, ${prompt.length} chars`);
 
   try {
     const ai = new GoogleGenAI({ apiKey: key });
@@ -141,6 +153,68 @@ export async function generateDailySummary(
 
   try {
     return await cachedSummary(prompt);
+  } catch (error) {
+    // The message thrown above is the one `unavailable` produced, so it survives the round
+    // trip intact and the UI still shows what actually went wrong.
+    return unavailable(
+      error instanceof Error ? error.message : "The summary could not be generated just now.",
+    );
+  }
+}
+
+/**
+ * A week, summarised. The same shape as the day, over a seven-day window.
+ *
+ * Its own cache entry and its own tag: a day's log changing must not invalidate the week, and
+ * invalidating the week must not cost a fresh daily call. They are separate questions asked of
+ * separate windows, and sharing a tag would make each one pay for the other's churn.
+ *
+ * The TTL is longer than the daily one for the obvious reason — a week does not change as
+ * often as a day — but the TTL is not what makes this cheap. The cache key is the prompt, so a
+ * week whose logs have not changed produces the same key and costs nothing, and a week that
+ * *has* changed produces a new key and should cost a call. That is the intended behaviour, not
+ * a leak: the alternative is showing a summary that describes a week that no longer exists.
+ */
+const WEEKLY_TTL_SECONDS = 60 * 60 * 24;
+
+export const WEEKLY_CACHE_TAG = "ai-weekly-summary";
+
+const cachedWeekly = unstable_cache(
+  async (prompt: string) => {
+    const result = await callModel(prompt);
+    if (!result.ok) throw new Error(result.text);
+    return result;
+  },
+  ["ai-weekly-summary"],
+  { tags: [WEEKLY_CACHE_TAG], revalidate: WEEKLY_TTL_SECONDS },
+);
+
+export async function generateWeeklySummary(
+  /** One line per day, newest first, already summarised by the caller. */
+  days: string,
+  sprint: string,
+): Promise<SummaryResult> {
+  if (days.trim() === "") {
+    return unavailable("Nothing logged this week yet.");
+  }
+  if (!apiKey()) return unavailable(NO_KEY);
+
+  const prompt = [
+    "You are summarising one week for Victor, who is writing this system for himself.",
+    "Say what actually happened, what moved, and what did not. Three or four sentences.",
+    "Prefer patterns over a list: which days had nothing, what recurred, what stalled.",
+    "Do not invent progress that is not in the input. Do not congratulate.",
+    "If a stated goal has no matching activity, say so plainly — that is the useful part.",
+    "",
+    "This week's goals:",
+    sprint.trim() || "(none recorded)",
+    "",
+    "This week's log, newest day first:",
+    days.trim(),
+  ].join("\n");
+
+  try {
+    return await cachedWeekly(prompt);
   } catch (error) {
     // The message thrown above is the one `unavailable` produced, so it survives the round
     // trip intact and the UI still shows what actually went wrong.

@@ -17,15 +17,15 @@ read_when: Portfolio, resume bullets, or "what have you built" questions.
 |---|---|---|---|---|---|
 | [Proof](projects/proof.md) | active | 2026 | software | React, MongoDB, Cheerio, Gemini API, Socket.io | [Live](https://proof-cdvj.onrender.com) |
 | [Solenoid Bit Reader](projects/solenoid-bit-reader.md) | archived | 2026 | hardware | ESP32, LM358N op-amp, 387-turn copper coil | — |
-| [Micromouse Simulator](projects/micromouse-simulator.md) | archived | 2024 | robotics | Java, Java Graphics | [GitHub](https://github.com/Victor2275/MicroMouseSim) |
-| [TaskAble](projects/taskable.md) | archived | 2024 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
+| [TaskAble](projects/taskable.md) | archived | 2026 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
+| [Micromouse Simulator](projects/micromouse-simulator.md) | archived | 2023 | robotics | Java, Java Graphics | [GitHub](https://github.com/Victor2275/MicroMouseSim) |
 
 ## Tier 2
 
 | Project | Status | Year | Category | Stack | Links |
 |---|---|---|---|---|---|
 | [Water Bottle Scale](projects/water-bottle-scale.md) | active | 2026 | hardware | Arduino Uno, Load cell | — |
-| [5 Second Rule](projects/five-second-rule.md) | archived | 2024 | software | Unity, C# | [Itch.io](https://mcalmic.itch.io/5-second-rule) |
+| [5 Second Rule](projects/five-second-rule.md) | archived | 2025 | software | Unity, C# | [Itch.io](https://mcalmic.itch.io/5-second-rule) |
 
 ## Confidentiality Notes
 

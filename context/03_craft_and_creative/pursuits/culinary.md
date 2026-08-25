@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-25
 domain: craft
 stability: stable
 summary: Precision baking as portfolio breadth — the domain that motivated the Proof project.
@@ -29,8 +29,10 @@ carryover: >-
 
 # Precision Baking
 
-Portfolio-facing framing. Skill level, target cuisines, dining-hall heuristics, and the
-master formula list live in `03_craft_and_creative/culinary_formulas.md`.
+Portfolio-facing framing only. The formulas themselves are **not in this vault** — Victor keeps
+recipes in Proof (https://proof-cdvj.onrender.com), which is the thing this pursuit exists to
+explain. `culinary_formulas.md` was retired to `99_archive/superseded/` on 2026-08-25 once Proof
+had replaced it in practice.
 
 This is the one pursuit with a direct engineering artifact attached: the Proof project in
 `01_engineering/projects/proof.md`. That link is the reason this belongs on a portfolio at

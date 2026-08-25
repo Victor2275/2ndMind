@@ -10,8 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "predev": "node scripts/sync-lab-assets.mjs",
-    "prebuild": "node scripts/sync-lab-assets.mjs",
+    "predev": "node scripts/sync-vault-assets.mjs",
+    "prebuild": "node scripts/sync-vault-assets.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
     "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs"

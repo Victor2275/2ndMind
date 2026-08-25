@@ -13,8 +13,18 @@ export const dynamic = "force-dynamic";
  */
 const DOCS = [
   { title: "Fabrication and CAD", path: "context/03_craft_and_creative/fabrication_and_cad.md" },
-  { title: "Culinary formulas", path: "context/03_craft_and_creative/culinary_formulas.md" },
 ];
+
+/**
+ * Recipes are not in this vault, and a panel saying so beats a panel that has fallen behind.
+ *
+ * `culinary_formulas.md` was retired to `99_archive/superseded/` on 2026-08-25: Victor keeps
+ * recipes in Proof now, so the vault copy had become a second, staler source for the same
+ * thing. The public *pursuit* (Precision Baking) is untouched — that is portfolio framing for
+ * where Proof came from, not a recipe store, and it is the reason this link is worth showing
+ * at all.
+ */
+const PROOF_URL = "https://proof-cdvj.onrender.com";
 
 async function Documents() {
   const docs = await Promise.all(DOCS.map((d) => loadVaultDoc(d.path)));
@@ -32,6 +42,20 @@ async function Documents() {
             <VaultDocument doc={docs[i]} />
           </Panel>
         ))}
+
+        <Panel title="Recipes" meta="Proof">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Formulas live in Proof, not in this vault.
+          </p>
+          <a
+            href={PROOF_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block rounded-md border border-primary/40 px-3.5 py-1.5 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
+          >
+            Open Proof &rarr;
+          </a>
+        </Panel>
       </div>
   );
 }

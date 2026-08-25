@@ -66,7 +66,12 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
 
       {/* Re-keying on the filter restarts the stagger, so switching categories
           replays the reveal instead of swapping content in place. */}
-      <div key={filter} className="mt-8 grid gap-4 sm:grid-cols-2">
+      {/* `items-start`, so a card is as tall as its content.
+          The grid stretched rows to equal height, which was invisible while at most one
+          project had an image. With four of six carrying one, a card without an image was
+          being stretched to match its neighbour and opening ~200px of void above its tags.
+          Uneven card heights read as a set; a void reads as a missing image. */}
+      <div key={filter} className="mt-8 grid items-start gap-4 sm:grid-cols-2">
         {shown.map((p, i) => (
           <Link
             key={p.slug}
@@ -87,7 +92,9 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
                   title={p.title}
                   image={p.image}
                   priority={i < 2}
-                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className={`transition-transform duration-500 ease-out group-hover:scale-105 ${
+                    p.imageFit === "contain" ? "object-contain p-3" : "object-cover"
+                  }`}
                 />
                 {p.draft && <DraftBadge className="absolute right-2 top-2" />}
               </div>

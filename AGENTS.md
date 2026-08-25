@@ -27,7 +27,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Projects, portfolio, "what have you built" | `context/01_engineering/projects/` (fast index: `project_catalog.md`) |
 | Dragon boat, erg, PRs, nutrition, recovery | `context/02_physical_performance/benchmarks_and_logs.md` |
 | Workout programming, weekly split, tapering | `context/02_physical_performance/training_blocks.md` |
-| Cooking, baking, recipes, dining hall | `context/03_craft_and_creative/culinary_formulas.md` |
+| Cooking, baking, recipes | **Proof** — https://proof-cdvj.onrender.com. Not in this vault. |
 | CAD, 3D printing, makerspace, the Turret | `context/03_craft_and_creative/fabrication_and_cad.md` |
 | This week's priorities, scheduling | `context/04_operations/current_sprint.md` |
 | Applications, cover letters, interview prep | `context/04_operations/internship_pipeline.md` |

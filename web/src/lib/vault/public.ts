@@ -112,6 +112,7 @@ export type PublicProject = {
   links: Record<string, string>;
   event?: string;
   image?: string;
+  imageFit: "cover" | "contain";
   figures: string[];
   groupSize?: number;
   draft: boolean;
@@ -164,6 +165,7 @@ export function toPublicProject(p: Project): PublicProject {
     links: p.links ?? {},
     ...(p.event ? { event: p.event } : {}),
     ...(p.image ? { image: p.image } : {}),
+    imageFit: p.image_fit ?? "cover",
     figures: p.image && p.figure_count ? labFigures(p.image, p.figure_count) : [],
     ...(p.group_size ? { groupSize: p.group_size } : {}),
     draft: p.draft,
@@ -222,7 +224,7 @@ export function toPublicLab(l: Lab): PublicLab {
 /** Field allowlists, exported so the security test asserts against one source of truth. */
 export const PUBLIC_PROJECT_KEYS = [
   "slug", "title", "summary", "tier", "status", "year", "category",
-  "tags", "stack", "links", "event", "image", "figures", "groupSize",
+  "tags", "stack", "links", "event", "image", "imageFit", "figures", "groupSize",
   "draft", "bullets", "body",
 ] as const;
 
@@ -245,11 +247,11 @@ export const PUBLIC_LAB_KEYS = [
 export type ProjectCard = Pick<
   PublicProject,
   "slug" | "title" | "summary" | "tier" | "status" | "year" | "category" | "stack"
-> & { image?: string; draft: boolean };
+> & { image?: string; imageFit: "cover" | "contain"; draft: boolean };
 
 export const PROJECT_CARD_KEYS = [
   "slug", "title", "summary", "tier", "status", "year", "category", "stack",
-  "image", "draft",
+  "image", "imageFit", "draft",
 ] as const;
 
 export function toProjectCard(p: PublicProject): ProjectCard {
@@ -263,6 +265,7 @@ export function toProjectCard(p: PublicProject): ProjectCard {
     category: p.category,
     stack: p.stack,
     ...(p.image ? { image: p.image } : {}),
+    imageFit: p.imageFit,
     draft: p.draft,
   };
 }

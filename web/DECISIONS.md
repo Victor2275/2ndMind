@@ -17,6 +17,156 @@ useful part.
 
 ---
 
+## 2026-08-25 · Weekly summary, images, and retiring culinary
+
+### D-093 · Every real model call is logged
+
+**Decision.** `callModel` prints `Gemini call: <model>, <n> chars` on every request that
+actually reaches the API.
+
+**Why.** The entire cost story rests on the cache absorbing repeat views, and that was never
+observable — a cache that had silently stopped working looked exactly like one that was
+working, until the bill arrived. This makes it checkable in ten seconds: load a page twice and
+the second load must print nothing.
+
+Measured with it, from a cold cache: three loads of `/private` with unchanged input cost
+**zero** calls; changing the prompt cost exactly **one**. That is V2_PLAN §1.5's completion
+test — "verified by watching the cache rather than by trusting it" — and it could not have been
+satisfied without this line.
+
+The character count is there because prompt length is most of what is paid for.
+
+**How to reverse.** Delete the line. Accept that cache behaviour becomes unobservable again.
+
+### D-092 · The weekly summary is fed days, not entries
+
+**Decision.** `generateWeeklySummary` receives one line per day for seven days, with empty days
+included explicitly as "nothing logged". It has its own cache entry and its own tag, and it
+short-circuits to zero cost when the whole week is empty.
+
+**Why.** Three reasons, in order of weight:
+
+1. **Cache stability.** Keyed on the prompt, a week of raw entries changes its key every time
+   any single entry moves. Days change only when a day changes.
+2. **Empty days are the signal.** "Nothing logged" on three days is the most informative thing
+   a weekly summary can say. Dropping those rows would make a four-day week indistinguishable
+   from a full one, which is exactly the self-flattering summary nobody needs.
+3. **Cost.** A week of entries is a few hundred lines against a $10/month budget.
+
+A separate tag from the daily summary matters: a day's log changing must not invalidate the
+week, and invalidating the week must not cost a fresh daily call. Sharing one would make each
+pay for the other's churn.
+
+**Not verified live.** The weekly path needs real log data, and `.env.local` points at the
+production Neon database — seeding fake entries would write into Victor's actual logbook. The
+empty-week path and the guards are tested; the populated path gets its first real exercise the
+first week he logs something.
+
+**How to reverse.** Pass entries instead of days, and drop the `anything` guard in the page.
+
+### D-091 · `image_fit` decides cover or contain, per project
+
+**Decision.** A new optional frontmatter field, `image_fit: cover | contain`, defaulting to
+`cover`. Set to `contain` on `micromouse-simulator`, `taskable` and `solenoid-bit-reader`.
+
+**Why.** The hero box is `aspect-16/9` with `object-cover`, which is right for a photograph and
+wrong for everything else. Measured: micromouse is 606×649 (0.93:1), taskable 1428×910 (1.57:1),
+solenoid 424×299 (1.42:1) — all taller than 16:9, so `cover` cropped the top and bottom off.
+On taskable that removed the "TaskAble (Teacher View)" heading, which is the one thing the
+screenshot exists to show. `5SecondRule.png` is 1920×1080 artwork and stays `cover`.
+
+Explicit rather than derived. Reading intrinsic dimensions at build time would work, but it
+makes every project page depend on decoding an image to decide something a human knows by
+looking — and the rule is not really about the ratio, it is that **a diagram or screenshot is
+worth seeing whole and a photograph is worth cropping**.
+
+Solenoid's crop pre-dated all of this and was not a regression; it was fixed anyway, because
+leaving one diagram cropped while fixing two others is incoherent.
+
+**How to reverse.** Delete the field from the schema, both projections and both render sites.
+Everything returns to `object-cover`.
+
+### D-090 · Project cards size to their own content
+
+**Decision.** `items-start` on the projects grid.
+
+**Why.** A regression introduced by adding images. The grid stretched rows to equal height,
+which was invisible while one project of six had an image. With four of six carrying one, a
+card without an image was stretched to match its neighbour and opened roughly 200px of void
+above its tags — Proof and Water Bottle Scale both looked broken.
+
+Uneven card heights read as a set. A void reads as a missing image.
+
+**How to reverse.** Drop `items-start` and accept equal-height rows.
+
+---
+
+## 2026-08-25 · V2 rev 4 — the cut, and three features that fit inside it
+
+### D-089 · Project updates live in markdown, and `writeVaultFile` finally gets a caller
+
+**Decision.** The Working page's dated updates are stored as entries in each project's own
+markdown file, written from `/private` through `writeVaultFile`. Not Postgres.
+
+**Why.** The public site is statically generated and free. Updates in Postgres would make the
+Working page the first public page needing a database, turning a static page dynamic for
+content that changes weekly. Markdown keeps it static; the cost is that saving an update is a
+commit plus a Vercel rebuild, so it appears in about a minute.
+
+That is the right trade *here* and was the wrong one for tasks — D-036 moved those to Postgres
+precisely because a commit-and-deploy per save made logging slower than the app it replaced.
+The difference is frequency: tasks change many times a day, a project update perhaps weekly.
+
+This makes V2 §7.9 the **first live caller of `writeVaultFile`**, dormant since D-036 and
+exercised only by its own tests. A real `409` becomes reachable for the first time, so the
+retry has to work. D-080 is unaffected: this is a human writing, not a model, so it needs no
+approval gate, and nothing AI-driven writes to the vault in V2.
+
+**How to reverse.** Move updates to a Postgres table and make `/now` dynamic. Expect to revisit
+static export assumptions across the public build.
+
+### D-088 · The Working page is built on `status: active`, not a new entity
+
+**Decision.** A project appears on the public `/now` page when its frontmatter says
+`status: active`. No new data model. Nav becomes About / Now / Projects / Resume.
+
+**Why.** The schema has carried `status: active | archived` since the beginning. Reusing it
+means `/now` and `/projects` cannot disagree — a project cannot be in progress on one page and
+finished on another — and it means the page costs 6h instead of 9h.
+
+The alternative, a separate list, buys the ability to show motion on work that will never be a
+portfolio project: coursework, this vault, one-off experiments. That is a real gap, but it is
+**additive** — a separate list can be added later without moving anything that exists — so
+adding it speculatively now would be paying for an option before knowing it is wanted. Recorded
+in `V3_PLAN.md` §2.
+
+**How to reverse.** Introduce a `working` entity and read from it instead; `/projects` is
+unaffected either way.
+
+### D-087 · Semantic search is cut, and this time it stays cut
+
+**Decision.** Semantic search leaves V2 and moves to `V3_PLAN.md` §2 as recorded-but-unscheduled.
+The Working page, the public→private button and read-only job-sheet access take its place.
+
+**Why.** It has now been evaluated three times. Rev 1 cut it on **cost** ($10 of credit). Rev 2
+reinstated it when the budget turned out to be $10 *per month*, which removed that objection.
+Rev 4 cuts it on **time**, which was always the real constraint: at 12h it was the largest item
+in V2 and the only remaining Hard one, and Victor rated it the lowest-frequency capability in
+the plan.
+
+The arithmetic is the argument. Three requested features cost 11.5h; semantic search cost 12h.
+Trading them left V2 **shorter** than before the features arrived, with slack going from ~19%
+to ~34%. Victor offered extra hours to fit everything; they were declined and held in reserve,
+because eleven consecutive 6h days ending the day before move-in is how the last week of a
+deadline goes wrong.
+
+Nothing had been built, so nothing was wasted.
+
+**How to reverse.** It is intact in `V3_PLAN.md` §2 with its design notes — Postgres vectors,
+re-embed only on `updated:` change, hard token ceiling, private-only surface.
+
+---
+
 ## 2026-08-25 · Closing out "Today"
 
 ### D-086 · A failed summary is not cached, and a missing key never reaches the cache

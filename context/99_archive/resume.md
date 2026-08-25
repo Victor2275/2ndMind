@@ -55,7 +55,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 - Amplified sensor output 20x with an LM358N op-amp to fit the ESP32 ADC's 0-3.3V window, and calibrated bit-time windows against gravitational acceleration to establish the system's 40 mm resolution limit
 - Achieved 100% decoding accuracy across all binary test sequences using a start-bit clock synchronization scheme
 
-**Micromouse Simulator** | *robotics* - 2024
+**Micromouse Simulator** | *robotics* - 2023
 
 - Designed a full maze-solving simulator for Micromouse competitions using Java
 - Implemented Flood Fill pathfinding algorithm to autonomously solve unknown mazes
@@ -108,7 +108,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 - Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms
 - Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments
 
-**TaskAble** | *UCLA HOTH* - 2024
+**TaskAble** | *UCLA HOTH* - 2026
 
 - Built an educational web app linking student interfaces to a teacher dashboard through Firebase Firestore, developed with a small team during UCLA HOTH
 - Integrated the Gemini API to generate task breakdowns that decompose assignments into manageable steps for students
@@ -158,17 +158,17 @@ Expected June 2028 - GPA 3.64 / 4.00
 - Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms
 - Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments
 
-**Micromouse Simulator** | *robotics* - 2024
+**TaskAble** | *UCLA HOTH* - 2026
+
+- Built an educational web app linking student interfaces to a teacher dashboard through Firebase Firestore, developed with a small team during UCLA HOTH
+- Integrated the Gemini API to generate task breakdowns that decompose assignments into manageable steps for students
+- Implemented a reward system and emotion logging to track student engagement alongside task completion
+
+**Micromouse Simulator** | *robotics* - 2023
 
 - Designed a full maze-solving simulator for Micromouse competitions using Java
 - Implemented Flood Fill pathfinding algorithm to autonomously solve unknown mazes
 - Built a graphical visualization engine using Java Graphics to animate traversal and decisions
 - Developed file parsing pipeline to load and replay real competition mazes
-
-**TaskAble** | *UCLA HOTH* - 2024
-
-- Built an educational web app linking student interfaces to a teacher dashboard through Firebase Firestore, developed with a small team during UCLA HOTH
-- Integrated the Gemini API to generate task breakdowns that decompose assignments into manageable steps for students
-- Implemented a reward system and emotion logging to track student engagement alongside task completion
 
 ---

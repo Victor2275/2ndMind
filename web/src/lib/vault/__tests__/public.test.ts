@@ -38,6 +38,23 @@ describe("public projections expose exactly the allowlisted fields", () => {
     }
   });
 
+  it("defaults imageFit to cover, and honours contain where the vault sets it", () => {
+    // A square or portrait hero cropped to 16:9 loses its top and bottom. micromouse-simulator
+    // is 606x649, which is why the field exists at all.
+    const projects = publicProjects();
+    const micromouse = projects.find((p) => p.slug === "micromouse-simulator");
+    expect(micromouse?.imageFit).toBe("contain");
+
+    for (const p of projects) {
+      expect(["cover", "contain"]).toContain(p.imageFit);
+    }
+    // A project that does not set `image_fit` must come out as "cover", never undefined — the
+    // render sites branch on it, and an undefined would take the cover path by accident rather
+    // than by decision. five-second-rule is 1920x1080 artwork and deliberately omits the field.
+    const fiveSecond = projects.find((p) => p.slug === "five-second-rule");
+    expect(fiveSecond?.imageFit).toBe("cover");
+  });
+
   it("experience", () => {
     for (const e of publicExperience()) {
       expect(Object.keys(e).sort()).toEqual([...PUBLIC_EXPERIENCE_KEYS].sort());

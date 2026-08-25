@@ -20,7 +20,7 @@ import {
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 import { readVaultFileCached } from "@/lib/vault/write";
-import { generateDailySummary, MODEL } from "@/lib/ai/gemini";
+import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
 import { entriesBetween } from "@/lib/log/queries";
 import { summarise } from "@/lib/log/categories";
 
@@ -270,6 +270,88 @@ async function AiSummary() {
   );
 }
 
+/**
+ * The week, summarised.
+ *
+ * Reads the same `log_entries` the daily summary does, over seven days instead of one, and
+ * hands the model one line per day rather than one line per entry. That grouping is the whole
+ * design: a week of raw entries is a few hundred lines, which costs tokens, buries the shape
+ * of the week in detail, and changes its cache key every time any single entry moves. Days
+ * are the unit a week is actually made of.
+ *
+ * Empty days are included explicitly. "Nothing logged" on three days is the most informative
+ * thing a weekly summary can say, and dropping those rows would make a week with four active
+ * days indistinguishable from a full one.
+ *
+ * Same privacy rule as the daily summary (D-071): only one-line summaries are sent, never the
+ * raw entry data, and health content may reach the model but may never be published.
+ */
+async function WeeklySummary() {
+  const now = new Date();
+  const offset = zoneOffsetMinutes(now);
+  const today = dayBounds(now, offset);
+
+  let sprint = "";
+  try {
+    const sprintFile = await readVaultFileCached("context/04_operations/current_sprint.md");
+    sprint = section(sprintFile.content, "1. Active Sprint Goals") ?? "";
+  } catch (error) {
+    console.error("Weekly summary: could not read the sprint file:", error);
+  }
+
+  const lines: string[] = [];
+  try {
+    if (isDatabaseConfigured()) {
+      const handle = db();
+      const weekStart = new Date(today.start.getTime() - 6 * 86_400_000);
+      const entries = await entriesBetween(handle, weekStart, today.end);
+
+      // One pass, bucketed by local day. Querying seven times would be seven round trips to
+      // a database that sleeps on the free tier.
+      const byDay = new Map<string, string[]>();
+      for (const entry of entries) {
+        const key = dayBounds(entry.occurredAt, offset).start.toISOString().slice(0, 10);
+        const bucket = byDay.get(key) ?? [];
+        bucket.push(summarise(entry.category, entry.data, entry.note));
+        byDay.set(key, bucket);
+      }
+
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(today.start.getTime() - i * 86_400_000);
+        const key = day.toISOString().slice(0, 10);
+        const label = new Intl.DateTimeFormat("en-US", {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+          timeZone: "America/Los_Angeles",
+        }).format(day);
+        const items = byDay.get(key);
+        lines.push(items?.length ? `${label}: ${items.join("; ")}` : `${label}: nothing logged`);
+      }
+    }
+  } catch (error) {
+    console.error("Weekly summary: could not read the week's log:", error);
+  }
+
+  // Seven "nothing logged" lines are not a week worth paying a model to describe.
+  const anything = lines.some((l) => !l.endsWith("nothing logged"));
+  const summary = anything
+    ? await generateWeeklySummary(lines.join("\n"), sprint)
+    : { text: "Nothing logged this week yet.", ok: false };
+
+  if (!summary.ok) {
+    return <p className="px-1 text-xs text-muted-foreground">{summary.text}</p>;
+  }
+
+  return (
+    <Panel title="This week, summarised" meta={MODEL}>
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+        {summary.text}
+      </div>
+    </Panel>
+  );
+}
+
 export default function TodayPage() {
   return (
     <main className="pb-16">
@@ -312,6 +394,15 @@ export default function TodayPage() {
       <Suspense fallback={null}>
         <div className="mt-8">
           <AiSummary />
+        </div>
+      </Suspense>
+
+      {/* Its own boundary, so the week does not wait on the day. They are two independent
+          model calls against two independent caches, and one being slow or unavailable must
+          not hold the other back. */}
+      <Suspense fallback={null}>
+        <div className="mt-4">
+          <WeeklySummary />
         </div>
       </Suspense>
     </main>

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-25
 domain: engineering
 stability: stable
 summary: Hackathon education app linking student and teacher views with AI task breakdowns.
@@ -8,13 +8,17 @@ title: TaskAble
 slug: taskable
 tier: 1
 status: archived
-year: 2024
+year: 2026
 category: software
 tags: [web, ai, hackathon, education]
 stack: [React, Firebase Firestore, Gemini API]
 event: UCLA HOTH
 links:
   github: https://github.com/Victor2275/HOTHproject
+image: /assets/taskable.png
+# 1428x910 (1.57:1) against a 16:9 box — `cover` cropped the "TaskAble (Teacher View)"
+# heading off the top. A UI screenshot is worth seeing whole.
+image_fit: contain
 resume_variants: [swe, ml]
 public: true
 bullets:

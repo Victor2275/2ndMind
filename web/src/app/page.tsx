@@ -62,13 +62,17 @@ export default function AboutPage() {
             aria-hidden
             className="absolute -inset-3 rounded-xl bg-primary/15 opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
           />
+          {/* The real photograph, synced from context/assets by scripts/sync-vault-assets.mjs.
+              It is 2048x1365 (3:2) rendered into a square, so it needs object-cover — without
+              it the portrait stretches. `object-top` because a 3:2 photograph cropped square
+              from the centre tends to cut the top of the head. */}
           <Image
-            src="/avatar-placeholder.svg"
+            src="/assets/ProfilePhoto.jpg"
             alt={`Portrait of ${profile.name}`}
-            width={144}
-            height={144}
+            width={288}
+            height={288}
             priority
-            className="relative h-32 w-32 rounded-lg border border-border transition-transform duration-500 ease-out group-hover:scale-[1.03] sm:h-36 sm:w-36"
+            className="relative h-32 w-32 rounded-lg border border-border object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03] sm:h-36 sm:w-36"
           />
         </div>
 

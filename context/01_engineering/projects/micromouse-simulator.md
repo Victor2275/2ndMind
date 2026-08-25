@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-25
 domain: engineering
 stability: stable
 summary: Java maze-solving simulator with Flood Fill pathfinding and a visualization engine.
@@ -8,12 +8,16 @@ title: Micromouse Simulator
 slug: micromouse-simulator
 tier: 1
 status: archived
-year: 2024
+year: 2023
 category: robotics
 tags: [algorithms, simulation, visualization]
 stack: [Java, Java Graphics]
 links:
   github: https://github.com/Victor2275/MicroMouseSim
+image: /assets/MicromouseSim.png
+# 606x649 — nearly square. `cover` would crop the top and bottom off the maze and upscale
+# what is left, so it is fitted whole onto a padded surface instead.
+image_fit: contain
 resume_variants: [robotics, swe]
 public: true
 bullets:

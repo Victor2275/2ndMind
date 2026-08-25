@@ -14,6 +14,10 @@ tags: [esp32, electromagnetism, signal-processing, instrumentation, embedded]
 stack: [ESP32, LM358N op-amp, 387-turn copper coil]
 links: {}
 image: /labs/solenoid_lab_image1.png
+# 424x299 (1.42:1) against a 16:9 box. Pre-dates image_fit; `cover` was cropping the top and
+# bottom off the apparatus diagram and upscaling a 424px-wide source. Same call as the other
+# two diagrams: a figure is worth seeing whole.
+image_fit: contain
 figure_count: 10
 event: Physics 4BL
 group_size: 2

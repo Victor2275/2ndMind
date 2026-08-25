@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-25
 domain: engineering
 stability: stable
 summary: Unity game built in a 72-hour Ludum Dare jam, with combat and enemy AI.
@@ -8,13 +8,14 @@ title: 5 Second Rule
 slug: five-second-rule
 tier: 2
 status: archived
-year: 2024
+year: 2025
 category: software
 tags: [game, hackathon, unity]
 stack: [Unity, C#]
 event: Ludum Dare Game Jam 58
 links:
   itch: https://mcalmic.itch.io/5-second-rule
+image: /assets/5SecondRule.png
 resume_variants: []
 public: true
 bullets: []

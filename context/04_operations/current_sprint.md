@@ -42,11 +42,26 @@ Revision 2 (2026-08-25) changed four things, all Victor's call:
 - The case-study page design is built **against fixtures now**, not deferred behind the prose.
 - "Close out Today" loses its one-real-day-of-use gate.
 
-Budget after the revision: **~39h of my work against ~60h available.**
+Revisions 3 and 4 (2026-08-25) added ten requested items as `V2_PLAN.md` §7. **Seven are in
+V2**: the domain, the uploads list, the four uploaded images, retiring culinary, the public
+`/now` Working page, the public→private button, and read-only access to the job sheet.
 
-**Done 2026-08-25 (~5.5h):** housekeeping, the resume page-count gate and one-page fix
-(§1.1), the case-study page design (§1.2), and feature 3's close-out (§1.4). Next is §1.5,
-summarise-my-week. Remaining before Taiwan: ~4h of slack, deliberately unfilled.
+**Semantic search is cut** to pay for them (D-087) — 12h out against 11.5h in, so V2 got
+shorter while gaining three features. It has now been assessed three times: cut on cost,
+reinstated when the budget turned out to be monthly, cut on time. **V3 is its own document,
+`V3_PLAN.md`** — resumes, filament and printers, and editing the job sheet, ~26h scheduled at
+a term-time rate of ~4h/week.
+
+Budget after all revisions: **~41.5h of my work against ~60h available**, ~34% slack.
+
+**Done 2026-08-25 (~9h):** housekeeping, the resume page-count gate and one-page fix (§1.1),
+the case-study page design (§1.2), feature 3's close-out (§1.4), summarise-my-week (§1.5), the
+four uploaded images (§7.3), and retiring culinary formulas in favour of a Proof link (§7.4).
+
+**Remaining before Taiwan: only §7.1, the domain** — parked at Victor's request until he buys
+it. Nothing else pre-Taiwan is blocked.
+
+**Corrected 2026-08-25:** project years — 5 Second Rule 2025, Micromouse 2023, TaskAble 2026.
 
 **Found while doing it:** `gemini-2.5-flash` was retired and every AI call had been 404ing
 silently — the daily summary showed a fallback string and nothing else said so. Now
@@ -79,9 +94,11 @@ D-036 to D-039.
 - [x] **5 · Athletics depth** — done 2026-08-22. Concept2 weight-adjusted splits against
       the sub-2:00 goal, bodyweight table, rehab checklist and SPM targets parsed from this
       vault, week-plan-vs-logged review, server-rendered SVG charts.
-- [ ] **6 · AI, narrowly scoped** (~26h, last) — summarise the week, draft sprint goals,
-      resume tailoring, semantic search. Every model-proposed change is approved item by item
-      before it is applied; nothing AI-driven writes to the vault in V2 (D-080).
+- [ ] **6 · AI, narrowly scoped** (~14h) — summarise the week, draft sprint goals, resume
+      tailoring. Semantic search is cut (D-087). Every model-proposed change is approved item
+      by item before it is applied; nothing AI-driven writes to the vault in V2 (D-080).
+- [ ] **7 · New scope, rev 3-4** (~14.5h) — domain, images, culinary retired, public `/now`
+      page, public→private button, job sheet read-only. `V2_PLAN.md` §7.
 
 **Time budget:** ~4h/day until 2026-09-20, then ~4h/week. Six features is 80-106h against
 ~76h before term, which is why only 0-3 are pre-term. Taiwan 08-29 to 09-07 is assumed to
@@ -96,12 +113,19 @@ portfolio, resume generator, passkey auth, vault writes, freshness audit, athlet
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
 **Open on Victor, in priority order:**
-1. **Write the five case studies.** The prompts wait in each project file under
+1. **Buy `victorgusev.com`** — before any more passkey work. Changing the domain invalidates
+   the passkey enrolled on `victorgusev.vercel.app`, because a passkey is bound to its origin.
+   Cloudflare Registrar at ~$10.50/yr; full instructions in `V2_PLAN.md` §7.1.
+2. **Publish the internship sheet as CSV** and send the URL — needs a connection, so before
+   you fly. It unblocks §7.6. See `UPLOADS_NEEDED.md` §1.2.
+3. **Write the five case studies.** The prompts wait in each project file under
    `> **To write:**`. Nothing publishes until prose replaces them, and no agent will fill them
    in — that is the point of the convention (D-073) and D-069 is what happens when one tries.
    Plane work: no network, no computer beyond a text editor.
-2. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
+4. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
    appears on its own once they exist.
+5. **`UPLOADS_NEEDED.md`** — the data only you can supply, split into what needs a connection
+   and what is plane work. Requested for 2026-08-27.
 
 **Reported done 2026-08-25, not yet verified from here:** production passkey enrolled, and
 `GOOGLE_CALENDAR_KEY` / `CANVAS_CALENDAR` / `DATABASE_URL` / `GEMINI_API_KEY` set in Vercel.
