@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 
 import { ProjectFigure } from "@/components/site/project-figure";
-import { Prose } from "@/components/site/prose";
+import { CaseStudy } from "@/components/site/case-study";
 import { Badge } from "@/components/ui/badge";
 import { publicProjects } from "@/lib/vault/public";
 
@@ -136,7 +136,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       )}
 
       <section className="mt-12">
-        <Prose>{project.body}</Prose>
+        <CaseStudy>{project.body}</CaseStudy>
       </section>
 
       {project.figures.length > 1 && (

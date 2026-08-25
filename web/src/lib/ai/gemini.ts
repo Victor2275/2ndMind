@@ -30,6 +30,19 @@ export const SUMMARY_CACHE_TAG = "ai-summary";
 /** The placeholder shipped in `.env.example`, which must never be treated as a real key. */
 const PLACEHOLDER_KEY = "your_temp_key_here";
 
+/**
+ * Flash, for cost: the budget is ~$10/month and this runs on the page Victor opens most.
+ *
+ * Was `gemini-2.5-flash` until 2026-08-25, when every call started returning 404 — "no longer
+ * available to new users" — and the daily summary had been silently degrading to its fallback
+ * string on the dashboard. The error names its own replacement, which is where this value
+ * comes from. Worth knowing that a retired model does not fail loudly here: `callModel`
+ * catches everything and returns a message, so the panel says "could not be generated" and
+ * nothing else does. If the summary is ever blank, check the server log for an ApiError
+ * before assuming the key is wrong.
+ */
+export const MODEL = "gemini-3.6-flash";
+
 export type SummaryResult = {
   text: string;
   /** False when this is a fallback message rather than model output, so the UI can say so. */
@@ -40,17 +53,30 @@ function unavailable(reason: string): SummaryResult {
   return { text: reason, ok: false };
 }
 
-async function callModel(prompt: string): Promise<SummaryResult> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
+/**
+ * The configured key, or null when there is not a usable one.
+ *
+ * Separate from `callModel` so the caller can short-circuit *before* the cache. A missing key
+ * is a configuration state, not a model failure: there is nothing to memoise, no request to
+ * make, and going through `unstable_cache` to discover that costs a cache lookup and makes
+ * the path untestable outside a Next request context.
+ */
+function apiKey(): string | null {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key || key === PLACEHOLDER_KEY) return null;
+  return key;
+}
 
-  if (!apiKey || apiKey === PLACEHOLDER_KEY) {
-    return unavailable("Set GEMINI_API_KEY to turn this on. Everything else works without it.");
-  }
+const NO_KEY = "Set GEMINI_API_KEY to turn this on. Everything else works without it.";
+
+async function callModel(prompt: string): Promise<SummaryResult> {
+  const key = apiKey();
+  if (!key) return unavailable(NO_KEY);
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: key });
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: MODEL,
       contents: prompt,
     });
 
@@ -71,7 +97,19 @@ async function callModel(prompt: string): Promise<SummaryResult> {
  * change in the input.
  */
 const cachedSummary = unstable_cache(
-  async (prompt: string) => callModel(prompt),
+  async (prompt: string) => {
+    const result = await callModel(prompt);
+    // Throw rather than return, so a failure is not what gets cached.
+    //
+    // `unstable_cache` stores whatever the function returns, and `callModel` deliberately
+    // returns failures as values rather than throwing. Composed naively that means a single
+    // 404 or a rate limit pins "the summary could not be generated" to the dashboard for the
+    // full six hours, long after the cause has gone. A rejected promise is not stored, so
+    // this converts the failure back into one at the cache boundary and the caller turns it
+    // into a message again. Only successes occupy the cache.
+    if (!result.ok) throw new Error(result.text);
+    return result;
+  },
   ["ai-daily-summary"],
   { tags: [SUMMARY_CACHE_TAG], revalidate: SUMMARY_TTL_SECONDS },
 );
@@ -85,6 +123,10 @@ export async function generateDailySummary(
     return unavailable("Nothing logged yet today.");
   }
 
+  // Nor is a missing key. Checked here rather than inside the cache for the reason on
+  // `apiKey()`: there is nothing to cache about a configuration that has not been done.
+  if (!apiKey()) return unavailable(NO_KEY);
+
   const prompt = [
     "You are summarising one day for Victor, who is writing this system for himself.",
     "Say what actually happened and what is still outstanding. Two or three sentences.",
@@ -97,5 +139,13 @@ export async function generateDailySummary(
     logs.trim() || "(nothing logged)",
   ].join("\n");
 
-  return cachedSummary(prompt);
+  try {
+    return await cachedSummary(prompt);
+  } catch (error) {
+    // The message thrown above is the one `unavailable` produced, so it survives the round
+    // trip intact and the UI still shows what actually went wrong.
+    return unavailable(
+      error instanceof Error ? error.message : "The summary could not be generated just now.",
+    );
+  }
 }

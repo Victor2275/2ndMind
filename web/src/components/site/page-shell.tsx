@@ -113,12 +113,16 @@ export function Stat({
     tone === "accent" ? "text-primary" : tone === "warn" ? "text-destructive" : "text-foreground";
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 px-4 py-3">
-      <p className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground">
+    // `px-3 sm:px-4` and the tighter tracking below are what let three of these sit across a
+    // 390px screen instead of stacking into ~290px of vertical space for three numbers.
+    <div className="rounded-lg border border-border bg-card/60 px-3 py-3 sm:px-4">
+      <p className="font-mono text-[0.55rem] uppercase tracking-[0.1em] text-muted-foreground sm:tracking-[0.16em]">
         {label}
       </p>
       <p className={`tabular mt-1.5 text-xl font-semibold ${valueTone}`}>{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      {/* The hint is the first thing to go when the card is one of three on a phone: it is a
+          gloss on the number, and the number is already there. */}
+      {hint && <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">{hint}</p>}
     </div>
   );
 }

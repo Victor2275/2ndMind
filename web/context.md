@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-22
+updated: 2026-08-25
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -85,8 +85,10 @@ faces live in `src/app/fonts/` and load via `next/font/local`. Source files came
 
 ## Theme
 
-Dark only in V1, per `context/00_meta/brand_and_voice.md`: teal primary, rose secondary,
-peach as the single warm note, on grounds derived from the palette's own slate teal. The
+Dark only in V1, per `context/00_meta/brand_and_voice.md`. V2's redesign replaced the original
+teal/rose pairing: **magenta** (`#d94f93`) is the primary accent, **steel** (`#5484a4`) the
+secondary, and peach (`#f6c992`) remains the single warm note — eyebrows and tier markers,
+nothing structural — on near-black grounds carrying the magenta hue. The
 dark palette lives in `:root` and `.dark` mirrors it, so adding light mode in V2 means
 redefining `:root` and nothing else. `<html>` carries a hardcoded `dark` class.
 
@@ -96,7 +98,7 @@ That is also why `body` must stay background-less — giving it an opaque backgr
 both layers.
 
 Motion is centralised as two custom utilities in `globals.css` rather than repeated Tailwind
-chains: `card-scan` (lift, teal glow, and a trace sweeping across the card the way a scope
+chains: `card-scan` (lift, a magenta glow, and a trace sweeping across the card the way a scope
 refreshes) and `link-wipe` (underline growing from the leading edge). Both, and the ambient
 drift, collapse under `prefers-reduced-motion`.
 
@@ -116,8 +118,16 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **200 tests across 13 files** as of
-2026-08-21.
+Run with `npm test`. Typecheck with `npm run typecheck`. **391 tests across 21 files** as of
+2026-08-25, all passing. A drop from that count is a regression, not noise.
+
+### Layout is checked by measurement, not by looking
+
+`npm run shots` (dev server must be running) is the third gate. It sweeps the public pages at
+four device widths reporting horizontal overflow, sub-40px tap targets and sub-12px text, and
+it measures every resume variant against one printed Letter page. It exits non-zero on a
+fault, so it can gate a commit. See D-077 — the resume ran at 1.33 pages for weeks because the
+only check anyone ran was looking at it.
 
 ### The database tests are not mocked
 

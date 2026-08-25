@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-24
+updated: 2026-08-25
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -12,7 +12,7 @@ read_when: Always — anything about current priorities or scheduling.
 *Identify top 3 priorities across all domains for the week here.*
 - **Engineering / Career:** 2ndMind is live at https://victorgusev.vercel.app. V1 complete
   2026-08-21. V2 features 0, 1, 2, 4 and 5 shipped; 3 is largely built; 6 (AI) is the only
-  one not started, and is the one needing a scope decision from Victor.
+  one not started. Its scope is now decided (V2_PLAN rev 2, D-076 to D-080).
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -26,11 +26,32 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 - [x] Days 21-29 — freshness widget, athletics (Neon + Drizzle, Hevy import, PRs)
 - [x] Days 30-32 — Work, Academics (tracker), Calendar, Hobbies. **V1 complete.**
 
-### V2 — scoped 2026-08-21, replanned 2026-08-24
+### V2 — scoped 2026-08-21, replanned 2026-08-24, revised 2026-08-25
 
 Full ordered plan with difficulty and estimates: `V2_PLAN.md` at the repo root.
 Scope decided 2026-08-24: **features only** — per-session revocation and error
-aggregation move to V3. Semantic search is the declared cut if the AI work runs long.
+aggregation move to V3.
+
+Revision 2 (2026-08-25) changed four things, all Victor's call:
+
+- The AI approval gate is over **structured proposals, not a markdown diff** — sprint goals
+  are Postgres rows, so the dependency that justified a 10h diff UI did not exist. 10h → 4h,
+  and nothing AI-driven writes to the vault in V2 at all (D-080).
+- **Semantic search is reinstated** — the $10 is per month, not lifetime. It stays last in
+  build order, and the new cut line is its incremental re-embedding (D-079).
+- The case-study page design is built **against fixtures now**, not deferred behind the prose.
+- "Close out Today" loses its one-real-day-of-use gate.
+
+Budget after the revision: **~39h of my work against ~60h available.**
+
+**Done 2026-08-25 (~5.5h):** housekeeping, the resume page-count gate and one-page fix
+(§1.1), the case-study page design (§1.2), and feature 3's close-out (§1.4). Next is §1.5,
+summarise-my-week. Remaining before Taiwan: ~4h of slack, deliberately unfilled.
+
+**Found while doing it:** `gemini-2.5-flash` was retired and every AI call had been 404ing
+silently — the daily summary showed a fallback string and nothing else said so. Now
+`gemini-3.6-flash` and verified working (D-085). Failures were also being cached for six
+hours (D-086). Both were blockers for feature 6 that no one knew about.
 
 
 Priority is Victor's: fix V1's findings and make it faster and cleaner before adding
@@ -46,8 +67,11 @@ D-036 to D-039.
 - [x] **2 · Structured logging** — done 2026-08-21. Six categories, fields generated from
       one definition file, full-text search over everything, dictation on Android, soft
       delete with undo. Replaces the old free-text logbook.
-- [~] **3 · Today** (8-10h) — largely built already: tasks, goals, stats and the schedule
-      section are all live on `/private`. Not formally closed out.
+- [x] **3 · Today** — closed out 2026-08-25. The review was the feature: nothing new was
+      built. The first task on `/private` sat 791px down a phone screen, behind a failed AI
+      panel and three stacked stat cards; it now sits at 356px. `npm run shots` signs its own
+      session, sweeps the private pages and fails above 500px, so this cannot regress
+      unnoticed (D-083, D-084).
 - [x] **4 · Calendar** — done 2026-08-22. Google and Canvas private iCal feeds via ical.js,
       agenda for today plus seven days, Canvas assignments importable as tasks. No OAuth, no
       cost. Two data gaps, neither a defect: the Canvas feed is empty (211 bytes, zero
@@ -55,8 +79,9 @@ D-036 to D-039.
 - [x] **5 · Athletics depth** — done 2026-08-22. Concept2 weight-adjusted splits against
       the sub-2:00 goal, bodyweight table, rehab checklist and SPM targets parsed from this
       vault, week-plan-vs-logged review, server-rendered SVG charts.
-- [ ] **6 · AI, narrowly scoped** (10-14h, last) — summarise the week, draft sprint goals,
-      every vault write approved as a diff.
+- [ ] **6 · AI, narrowly scoped** (~26h, last) — summarise the week, draft sprint goals,
+      resume tailoring, semantic search. Every model-proposed change is approved item by item
+      before it is applied; nothing AI-driven writes to the vault in V2 (D-080).
 
 **Time budget:** ~4h/day until 2026-09-20, then ~4h/week. Six features is 80-106h against
 ~76h before term, which is why only 0-3 are pre-term. Taiwan 08-29 to 09-07 is assumed to
@@ -71,16 +96,16 @@ portfolio, resume generator, passkey auth, vault writes, freshness audit, athlet
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
 **Open on Victor, in priority order:**
-1. **Enrol a passkey on the production origin** (`victorgusev.vercel.app`). The local one is
-   bound to `localhost` and will not work there. See `web/REGISTER_PASSKEY.md`.
-2. **Set `GOOGLE_CALENDAR_KEY` and `CANVAS_CALENDAR` in Vercel.** They exist in `.env.local`
-   only, so the production calendar page shows "No calendar feeds connected". These URLs are
-   credentials — anyone holding one can read the calendar.
-3. **Confirm Vercel's `DATABASE_URL` is the same Neon database as local.** Migration 0003 was
-   applied to the local one; if production points elsewhere, `/private/athletics` errors
-   there until it is migrated.
-4. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
+1. **Write the five case studies.** The prompts wait in each project file under
+   `> **To write:**`. Nothing publishes until prose replaces them, and no agent will fill them
+   in — that is the point of the convention (D-073) and D-069 is what happens when one tries.
+   Plane work: no network, no computer beyond a text editor.
+2. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
    appears on its own once they exist.
+
+**Reported done 2026-08-25, not yet verified from here:** production passkey enrolled, and
+`GOOGLE_CALENDAR_KEY` / `CANVAS_CALENDAR` / `DATABASE_URL` / `GEMINI_API_KEY` set in Vercel.
+The weekly summary (V2_PLAN §1.5) is the first thing that will notice if the key is missing.
 
 **Cut rule:** spent. Days 16-20 and 21-29 both landed early; the CSV import shipped.
 

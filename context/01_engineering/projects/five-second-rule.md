@@ -22,16 +22,16 @@ bullets: []
 
 # 5 Second Rule
 
-## Architecture
-
-Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement,
-combat, abilities, and enemy AI.
-
 ## The problem
 
 > **To write:** what were you actually solving, and what made it hard? The constraint
 > is the interesting part - what you could not do, or could not afford, or could not
 > measure. This is the section interviewers open with.
+
+## Architecture
+
+Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement,
+combat, abilities, and enemy AI.
 
 ## What did not work
 

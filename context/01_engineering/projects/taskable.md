@@ -33,21 +33,16 @@ bullets:
 
 Built at UCLA HOTH (Hack on the Hill).
 
-## Architecture
-
-Educational web app linking student interfaces to a teacher dashboard via Firebase. Gemini
-API generates task breakdowns. Features reward system and emotion logging.
-
-## Post-mortem
-
-Began to understand how to use AI workflows, as well as working in a small team of
-non-technical people.
-
 ## The problem
 
 > **To write:** what were you actually solving, and what made it hard? The constraint
 > is the interesting part - what you could not do, or could not afford, or could not
 > measure. This is the section interviewers open with.
+
+## Architecture
+
+Educational web app linking student interfaces to a teacher dashboard via Firebase. Gemini
+API generates task breakdowns. Features reward system and emotion logging.
 
 ## What did not work
 
@@ -58,3 +53,8 @@ non-technical people.
 
 > **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
 > A result without a number reads as a claim; with one it reads as engineering.
+
+## Post-mortem
+
+Began to understand how to use AI workflows, as well as working in a small team of
+non-technical people.

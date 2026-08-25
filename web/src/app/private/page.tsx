@@ -20,7 +20,7 @@ import {
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 import { readVaultFileCached } from "@/lib/vault/write";
-import { generateDailySummary } from "@/lib/ai/gemini";
+import { generateDailySummary, MODEL } from "@/lib/ai/gemini";
 import { entriesBetween } from "@/lib/log/queries";
 import { summarise } from "@/lib/log/categories";
 
@@ -117,7 +117,24 @@ async function Tasks() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      {/* The task list comes first, before the numbers that describe it.
+          Measured at 390px before this change: the first task sat 791px down the page, past
+          the fold on any phone. Two of the three stats restate what the panels below already
+          say — "Due today" is the length of the very next list, "Done today" is the count in
+          "Finished today" — so leading with them meant scrolling past a summary of the answer
+          to reach the answer. */}
+      <div className="mt-6 space-y-4">
+        <Panel title="Due" meta={due.length > 0 ? `${due.length} open` : undefined}>
+          <TaskList
+            tasks={due.map(toView)}
+            emptyMessage="Nothing due. Add something below, or enjoy it."
+          />
+        </Panel>
+      </div>
+
+      {/* Three across, not stacked. At 390px `sm:grid-cols-3` stacked these into ~290px of
+          height to show three single digits. */}
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat label="Due today" value={due.length} tone={due.length > 0 ? "accent" : "default"} />
         <Stat
           label="Overdue"
@@ -129,13 +146,6 @@ async function Tasks() {
       </div>
 
       <div className="mt-8 space-y-4">
-        <Panel title="Due" meta={due.length > 0 ? `${due.length} open` : undefined}>
-          <TaskList
-            tasks={due.map(toView)}
-            emptyMessage="Nothing due. Add something below, or enjoy it."
-          />
-        </Panel>
-
         <Panel title="This week's goals">
           <GoalsEditor values={goalValues} />
         </Panel>
@@ -242,13 +252,18 @@ async function AiSummary() {
 
   const summary = await generateDailySummary(logs, sprint);
 
+  // A failed or empty summary gets a line, not a panel. Measured at 390px: the panel spent
+  // ~170px of the top of the page saying "The summary could not be generated just now" —
+  // which is the loudest possible way to report the failure of the least urgent thing here.
+  // Still shown, because a summary that is silently missing is a key nobody notices is
+  // broken; just shown at the weight the message deserves.
+  if (!summary.ok) {
+    return <p className="px-1 text-xs text-muted-foreground">{summary.text}</p>;
+  }
+
   return (
-    <Panel title="Today, summarised" meta={summary.ok ? "Gemini 2.5 Flash" : undefined}>
-      <div
-        className={`whitespace-pre-wrap text-sm leading-relaxed ${
-          summary.ok ? "text-foreground" : "text-muted-foreground"
-        }`}
-      >
+    <Panel title="Today, summarised" meta={MODEL}>
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
         {summary.text}
       </div>
     </Panel>
@@ -275,24 +290,29 @@ export default function TodayPage() {
         </div>
       </Suspense>
 
-      <Suspense fallback={<div className="mt-6"><SkeletonPanel rows={3} /></div>}>
-        <div className="mt-6">
-          <AiSummary />
-        </div>
-      </Suspense>
-
       <Suspense
         fallback={
           <>
-            <SkeletonStats />
-            <div className="mt-8 space-y-4">
-              <SkeletonPanel rows={3} />
+            <div className="mt-6">
               <SkeletonPanel rows={3} />
             </div>
+            <SkeletonStats />
           </>
         }
       >
         <Tasks />
+      </Suspense>
+
+      {/* Last, and after the tasks it describes.
+          This is a reflection on the day, not an instruction for the next hour — it answers
+          "how did today go", where everything above answers "what do I do now". It also
+          depends on a network round trip to Google, so putting it last means the slowest
+          thing on the page is the thing nobody is waiting for. `fallback={null}`, since a
+          skeleton at the very bottom reserves space for something nobody is looking at. */}
+      <Suspense fallback={null}>
+        <div className="mt-8">
+          <AiSummary />
+        </div>
       </Suspense>
     </main>
   );

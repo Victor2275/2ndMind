@@ -485,11 +485,17 @@
     line-height: 1.3;
   }
 
-  /* Bullets are where the height actually goes: 20 of them, over half wrapping to a second
-     line. Tightening the leading alone recovers most of a page. */
+  /* Bullets are where the height actually goes. Measured on the SWE variant 2026-08-25:
+     17 bullets over 27 rendered lines, 432px of a 973px sheet — 44% of the page. So leading
+     here is worth more than anything else on the sheet, and it is the last lever that costs
+     no content.
+
+     1.26 -> 1.20 recovers ~20px. The font size stays at 9.6pt: that is the floor of what
+     reads as confident, and going under it to buy space is how a resume starts looking like
+     it is hiding from its own length. */
   .resume-sheet li {
     font-size: 9.6pt !important;
-    line-height: 1.26 !important;
+    line-height: 1.2 !important;
     margin-top: 0.04rem !important;
   }
 
@@ -499,9 +505,11 @@
     font-weight: 700;
   }
 
-  /* Section rhythm. `mt-7` between five sections is 140px of paper spent on gaps. */
+  /* Section rhythm. `mt-7` between five sections is 140px of paper spent on gaps. 0.5rem was
+     32px across the four gaps; 0.375rem is 24px and the sections still read as separated,
+     because the rule under each heading is doing that work, not the gap. */
   .resume-sheet section {
-    margin-top: 0.5rem !important;
+    margin-top: 0.375rem !important;
   }
 
   .resume-sheet section > div,

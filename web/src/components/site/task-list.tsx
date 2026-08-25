@@ -151,7 +151,9 @@ export function TaskList({
   const [undoId, setUndoId] = useState<number | null>(null);
 
   return (
-    <div>
+    // `data-task-list` is read by scripts/shots.mjs to measure how far down the page the
+    // first actionable item sits. It is the one thing /private has to answer quickly.
+    <div data-task-list>
       {tasks.length > 0 ? (
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
           {tasks.map((task) => (

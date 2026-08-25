@@ -33,20 +33,16 @@ bullets:
 
 # Proof
 
-## Architecture
-
-Full-stack progressive web app (PWA) with MongoDB/React. Real-time cross-device sync via
-Socket.io. Gemini API handles extracting and restructuring recipe data from scraped URLs.
-
-## Post-mortem
-
-Still in progress, no post-mortem yet.
-
 ## The problem
 
 > **To write:** what were you actually solving, and what made it hard? The constraint
 > is the interesting part - what you could not do, or could not afford, or could not
 > measure. This is the section interviewers open with.
+
+## Architecture
+
+Full-stack progressive web app (PWA) with MongoDB/React. Real-time cross-device sync via
+Socket.io. Gemini API handles extracting and restructuring recipe data from scraped URLs.
 
 ## What did not work
 
@@ -57,6 +53,10 @@ Still in progress, no post-mortem yet.
 
 > **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
 > A result without a number reads as a claim; with one it reads as engineering.
+
+## Post-mortem
+
+Still in progress, no post-mortem yet.
 
 ## Notes
 

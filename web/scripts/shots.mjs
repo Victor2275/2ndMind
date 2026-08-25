@@ -10,6 +10,10 @@
  *   npm run dev            # in another terminal
  *   npm run shots          # writes to .shots/ (gitignored)
  *   npm run shots -- 390   # only the 390px width
+ *
+ * It also measures how many pages each resume variant prints to. That is a different kind of
+ * check from the ones above — paper has no viewport width — so it runs once, after the width
+ * sweep. See `measureResumes` for why it exists.
  */
 import { chromium } from "playwright";
 import fs from "node:fs";
@@ -30,6 +34,152 @@ const PAGES = [
 
 const only = process.argv[2] ? Number(process.argv[2]) : null;
 const widths = only ? WIDTHS.filter((w) => w === only) : WIDTHS;
+
+/* --- Resume page count ---------------------------------------------------------------
+   All three variants are measured, but only `swe` is screenshotted above. The three pages
+   are one component fed different data, so a mobile layout fault appears in all of them
+   identically — twelve more PNGs would carry no signal the swe shots do not. What differs
+   between variants is *length*, and length is exactly what this measures.
+
+   An intern resume is one page. Before the print density block in `globals.css` every
+   variant ran over (swe 1.33, ml 1.24, robotics 1.18) and nobody knew for weeks, because
+   the only check anyone ran was looking at it. So this reports two numbers:
+
+   - `pages`, from Chromium's own PDF writer at Letter/0.5in. This is ground truth: it is
+     the same path as the browser print dialog, which is how the file Victor sends is made.
+   - `ratio`, the print-emulated document height over one printable page. This is the number
+     that makes an overflow *fixable* — "1.03" says trim a line, "2" says nothing at all. */
+
+/* --- The private side ----------------------------------------------------------------
+   `/private` is the page Victor opens most and the only one he uses on a phone every day,
+   and until now it was the one page nothing could see: it is behind a passkey, so the sweep
+   above stopped at the sign-in screen.
+
+   The session is an HMAC over a JSON payload (`lib/auth/session.ts`), so a valid cookie can
+   be minted here from the same `SESSION_SECRET` the app verifies against. Nothing is
+   weakened by doing so: the secret is already on this machine, the server is this machine,
+   and the token expires in fifteen minutes. Skipped entirely when the secret is absent, so
+   this stays optional rather than a new setup step.
+
+   Run with `SHOTS_PRIVATE=0` to skip it deliberately. */
+
+/** How far down /private the first actionable item may sit on a phone. See the check below. */
+const FOLD_LIMIT = 500;
+
+const PRIVATE_PAGES = [
+  { name: "private-today", url: "/private" },
+  { name: "private-log", url: "/private/log" },
+];
+
+function b64url(bytes) {
+  return Buffer.from(bytes).toString("base64url");
+}
+
+async function mintSession(secret) {
+  const now = Math.floor(Date.now() / 1000);
+  // Fifteen minutes, not the app's seven days: this token exists for the length of one run.
+  const payload = { sub: "victor", iat: now, exp: now + 900 };
+  const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return `${body}.${b64url(new Uint8Array(signature))}`;
+}
+
+const RESUME_VARIANTS = ["swe", "ml", "robotics"];
+
+/** Letter at 0.5in margins, in CSS pixels at 96dpi: 7.5in x 10in. */
+const PAGE_W = 720;
+const PAGE_H = 960;
+
+/**
+ * Counts pages in a Chromium-generated PDF.
+ *
+ * Chromium's PDF writer emits classic indirect objects and an xref table rather than
+ * compressed object streams, so the page tree is readable in the raw bytes. The `/Count` on
+ * the root `/Pages` node is authoritative; counting `/Type /Page` objects is the fallback,
+ * and `[^s]` is what stops it also matching every `/Type /Pages`. If both fail we return
+ * null rather than a wrong number — a silently wrong page count is the failure this whole
+ * function exists to prevent.
+ */
+function pdfPageCount(buffer) {
+  const raw = buffer.toString("latin1");
+
+  const counts = [...raw.matchAll(/\/Type\s*\/Pages\b[\s\S]{0,400}?\/Count\s+(\d+)/g)].map((m) =>
+    Number(m[1]),
+  );
+  if (counts.length > 0) return Math.max(...counts);
+
+  const pages = raw.match(/\/Type\s*\/Page[^s]/g);
+  return pages ? pages.length : null;
+}
+
+async function measureResumes(browser) {
+  console.log("\nResume, printed at Letter with 0.5in margins:\n");
+  let over = 0;
+
+  for (const variant of RESUME_VARIANTS) {
+    // Viewport at the printable width so text wraps the way it wraps on paper. `main` keeps
+    // its px-6 in print, and so does this — the inset is real in the PDF too.
+    const page = await browser.newPage({ viewport: { width: PAGE_W, height: PAGE_H } });
+    await page.goto(`${BASE}/resume/${variant}`, { waitUntil: "networkidle" });
+
+    // `print:hidden` controls are display:none under print media, so they stop counting
+    // toward the height — which is the point of emulating rather than measuring on screen.
+    await page.emulateMedia({ media: "print" });
+
+    // The bottom edge of the sheet, plus the padding below it.
+    //
+    // Not `scrollHeight`, which never reports less than the viewport — every variant that fit
+    // would read exactly 1.00, and a resume with room to spare would be indistinguishable
+    // from one filled to the millimetre. Not `main` either: it carries `flex-1` inside the
+    // layout's flex column, so it is stretched to the viewport whatever it contains. Both of
+    // those measure the window. The sheet is the only element whose height is the content's.
+    const height = await page.evaluate(() => {
+      const sheet = document.querySelector(".resume-sheet");
+      const main = document.querySelector("main");
+      if (!sheet || !main) return 0;
+      // `py-12` below the sheet is not overridden in print, so it occupies paper too.
+      const below = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+      return sheet.getBoundingClientRect().bottom + window.scrollY + below;
+    });
+    const ratio = height / PAGE_H;
+
+    const pdf = await page.pdf({
+      format: "Letter",
+      margin: { top: "0.5in", right: "0.5in", bottom: "0.5in", left: "0.5in" },
+      printBackground: false,
+    });
+    const pages = pdfPageCount(pdf);
+
+    fs.writeFileSync(path.join(OUT, `resume-${variant}.pdf`), pdf);
+
+    // A PNG as well as the PDF, because reviewing the PDF needs a viewer and reviewing this
+    // does not. Same print media, white background, so what it shows is what prints.
+    await page.screenshot({
+      path: path.join(OUT, `resume-${variant}-print.png`),
+      clip: { x: 0, y: 0, width: PAGE_W, height: Math.max(PAGE_H, Math.ceil(height)) },
+    });
+
+    const bad = pages === null ? false : pages > 1;
+    if (bad) over += 1;
+
+    console.log(
+      `  ${variant.padEnd(9)} ratio=${ratio.toFixed(2)} pages` +
+        `=${pages ?? "?"}` +
+        (pages === null ? "  <-- could not read the page tree" : bad ? "  <-- OVER" : "  ok"),
+    );
+
+    await page.close();
+  }
+
+  return over;
+}
 
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -100,5 +250,76 @@ for (const width of widths) {
   }
 }
 
+let privateFaults = 0;
+const secret = process.env.SESSION_SECRET?.trim();
+if (process.env.SHOTS_PRIVATE !== "0" && secret) {
+  const token = await mintSession(secret);
+  const origin = new URL(BASE).origin;
+  console.log("");
+
+  for (const width of widths) {
+    for (const target of PRIVATE_PAGES) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+        deviceScaleFactor: 2,
+        colorScheme: "dark",
+        isMobile: width < 768,
+        hasTouch: width < 768,
+      });
+      await context.addCookies([
+        { name: "2m_session", value: token, url: origin, httpOnly: true, sameSite: "Lax" },
+      ]);
+
+      const page = await context.newPage();
+      const response = await page.goto(BASE + target.url, { waitUntil: "networkidle" });
+      await page.screenshot({
+        path: path.join(OUT, `${target.name}-${width}.png`),
+        fullPage: true,
+      });
+
+      // A redirect to /signin means the cookie was rejected — report it rather than
+      // silently screenshotting a sign-in page and calling the layout fine.
+      const landed = new URL(page.url()).pathname;
+      const rejected = landed.startsWith("/signin");
+
+      // How much of the answer to "what do I do now" is above the fold. The first task list
+      // is the answer; everything above it is what you have to scroll past to reach it.
+      const fold = await page.evaluate(() => {
+        const list = document.querySelector("[data-task-list]");
+        if (!list) return null;
+        return Math.round(list.getBoundingClientRect().top + window.scrollY);
+      });
+
+      // The whole point of /private is answering "what do I do now" without scrolling. A
+      // 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
+      // margin and still fails loudly if a panel creeps back above the task list. It was
+      // 791px before feature 3 was closed out.
+      const buried = width < 768 && fold !== null && fold > FOLD_LIMIT;
+      if (buried || rejected) privateFaults += 1;
+
+      console.log(
+        `${String(width).padStart(4)}px ${target.name.padEnd(15)}` +
+          ` status=${response?.status() ?? "?"}` +
+          (fold === null ? "" : ` first-task-at=${String(fold).padStart(4)}px`) +
+          (rejected ? `  <-- redirected to ${landed}` : "") +
+          (buried ? `  <-- below the fold (limit ${FOLD_LIMIT}px)` : ""),
+      );
+
+      await context.close();
+    }
+  }
+} else if (!secret) {
+  console.log("\nSESSION_SECRET not set, so the private pages were skipped.");
+}
+
+// Paper has no viewport width, so this runs once rather than inside the sweep. Skipped when
+// a single width was requested, because that invocation is a targeted layout check.
+const overLong = only ? 0 : await measureResumes(browser);
+
 await browser.close();
 console.log(`\n${faults} page/width combination(s) scroll sideways. Written to ${OUT}/`);
+if (!only) console.log(`${overLong} resume variant(s) print to more than one page.`);
+if (privateFaults > 0) console.log(`${privateFaults} private page(s) bury the answer or refused the session.`);
+
+// A non-zero exit is what lets this gate a commit, rather than being advice nobody reads.
+if (faults > 0 || overLong > 0 || privateFaults > 0) process.exitCode = 1;

@@ -27,20 +27,16 @@ bullets:
 
 # Micromouse Simulator
 
-## Architecture
-
-Maze-solving simulator featuring Flood Fill pathfinding algorithm and a graphical
-visualization engine. Uses a file parsing pipeline to load competition mazes.
-
-## Post-mortem
-
-Learned various algorithms to solve mazes, and learned how to iterate and understand big O.
-
 ## The problem
 
 > **To write:** what were you actually solving, and what made it hard? The constraint
 > is the interesting part - what you could not do, or could not afford, or could not
 > measure. This is the section interviewers open with.
+
+## Architecture
+
+Maze-solving simulator featuring Flood Fill pathfinding algorithm and a graphical
+visualization engine. Uses a file parsing pipeline to load competition mazes.
 
 ## What did not work
 
@@ -51,3 +47,7 @@ Learned various algorithms to solve mazes, and learned how to iterate and unders
 
 > **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
 > A result without a number reads as a claim; with one it reads as engineering.
+
+## Post-mortem
+
+Learned various algorithms to solve mazes, and learned how to iterate and understand big O.

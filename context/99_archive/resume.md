@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-24
+updated: 2026-08-25
 domain: archive
 stability: stable
 summary: Generated resume, all three variants. Not canonical for any entry.
@@ -21,7 +21,7 @@ read_when: Only when explicitly asked for this specific document.
 
 **University of California, Los Angeles** - B.S. Computer Science and Engineering  
 Expected June 2028 - GPA 3.64 / 4.00  
-*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Linear Algebra
 
 ### Technical Skills
 
@@ -72,7 +72,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 **University of California, Los Angeles** - B.S. Computer Science and Engineering  
 Expected June 2028 - GPA 3.64 / 4.00  
-*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Linear Algebra
 
 ### Technical Skills
 
@@ -124,7 +124,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 **University of California, Los Angeles** - B.S. Computer Science and Engineering  
 Expected June 2028 - GPA 3.64 / 4.00  
-*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Programming Languages, Discrete Structures, Linear Algebra, Logic Design
+*Coursework:* Algorithms and Complexity, Software Construction, Object-Oriented Design, Linear Algebra
 
 ### Technical Skills
 

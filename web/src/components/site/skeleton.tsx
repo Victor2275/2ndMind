@@ -16,11 +16,14 @@ export function SkeletonLine({ className = "" }: { className?: string }) {
 
 export function SkeletonStats() {
   return (
-    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+    // Grid and spacing mirror the real stats row on `/private` exactly. When they drifted,
+    // the page jumped as the tasks resolved — three stacked placeholders collapsing into one
+    // row is a ~200px shift under the reader's thumb.
+    <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="rounded-lg border border-border bg-card/60 px-4 py-3">
-          <SkeletonLine className="h-2 w-16" />
-          <SkeletonLine className="mt-3 h-5 w-10" />
+        <div key={i} className="rounded-lg border border-border bg-card/60 px-3 py-3 sm:px-4">
+          <SkeletonLine className="h-2 w-12" />
+          <SkeletonLine className="mt-3 h-5 w-8" />
         </div>
       ))}
     </div>

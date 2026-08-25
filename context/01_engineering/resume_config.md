@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-25
 domain: engineering
 stability: stable
 summary: Skill groups, coursework line, and per-variant headlines that configure the generated resume.
@@ -21,15 +21,16 @@ skills:
   - group: Tools & Hardware
     variants: [robotics, ml, swe]
     items: [Git, Docker, Linux, SolidWorks, 3D Printing]
+# Four, not seven. This list is shared by every variant and is the lowest-signal content on
+# the page — the four kept are the ones a recruiter reads as load-bearing, and dropping the
+# rest is what brings the SWE variant back under one page. Dropped 2026-08-25: Programming
+# Languages, Discrete Structures, Logic Design.
 coursework:
   [
     Algorithms and Complexity,
     Software Construction,
     Object-Oriented Design,
-    Programming Languages,
-    Discrete Structures,
     Linear Algebra,
-    Logic Design,
   ]
 variants:
   - id: robotics

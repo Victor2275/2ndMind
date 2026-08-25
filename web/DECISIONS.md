@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-24
+updated: 2026-08-25
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,286 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-08-25 · Closing out "Today"
+
+### D-086 · A failed summary is not cached, and a missing key never reaches the cache
+
+**Decision.** `cachedSummary` throws when `callModel` returns `ok: false`, and
+`generateDailySummary` catches it and turns it back into a message. A missing or placeholder
+`GEMINI_API_KEY` is checked *before* the cache and short-circuits, like the empty-day case.
+
+**Why.** `unstable_cache` stores whatever its function returns, and `callModel` deliberately
+returns failures as values rather than throwing (so a nice-to-have panel cannot 500 the
+dashboard). Composed naively those two correct decisions produce a wrong one: a single 404 or
+rate limit pinned "the summary could not be generated" to the dashboard for the full six-hour
+TTL, long after the cause had gone. A rejected promise is not stored, so throwing at the cache
+boundary means only successes occupy it.
+
+The key check moved out for a second reason: `unstable_cache` needs a Next request context, so
+anything behind it cannot be tested outside one — the first version of the test got
+`Invariant: incrementalCache missing` and the too-broad catch reported it as a summary
+failure. A missing key is a configuration state, not a model failure. There is nothing to
+memoise about it.
+
+**How to reverse.** Return the result instead of throwing, and put the key check back inside
+`callModel`. Accept that a transient failure sticks for six hours.
+
+### D-085 · `gemini-2.5-flash` is retired; the model id is `gemini-3.6-flash`
+
+**Decision.** `MODEL` is exported from `lib/ai/gemini.ts`, is `gemini-3.6-flash`, and is what
+the dashboard panel prints as its `meta`.
+
+**Why.** Every call was returning `404 — "This model models/gemini-2.5-flash is no longer
+available to new users"`. The API names its own replacement, which is where the new value came
+from. The daily summary had been silently degrading to its fallback string, because
+`callModel` catches everything: **a retired model does not fail loudly here.** Found only by
+reading the dev server log while screenshotting the page for D-084.
+
+That is also why the panel now prints the live `MODEL` constant rather than a hardcoded
+"Gemini 2.5 Flash" label — the label had already drifted from the truth once.
+
+Two tests guard it: one asserts the id still contains `flash` (the budget is ~$10/month), one
+asserts it is not the retired string.
+
+**How to reverse.** Change the constant. Nothing else references a model name.
+
+### D-084 · The task list comes before the numbers that describe it
+
+**Decision.** `/private` orders as: schedule (when there are events), the Due list, a compact
+three-across stat row, goals, backlog, finished, and the AI summary last. The stats no longer
+stack on a phone, and their hints are hidden below `sm`.
+
+**Why.** Feature 3 was "largely built" and had never been reviewed against the question it
+exists to answer: *what do I do now*. Measured at 390px, **the first task sat 791px down the
+page** — past the fold on any phone. What occupied that space was a failed AI panel (~170px
+saying it could not generate a summary) and three stat cards stacked into ~290px to show three
+zeros. Two of those three restate what the panels below already say: "Due today" is the length
+of the very next list, and "Done today" is the count in "Finished today". So the page opened
+with a summary of the answer and put the answer below the fold.
+
+The AI summary moved to the bottom because it answers "how did today go", not "what do I do
+now", and because it is the slowest thing on the page — last means the network round trip is
+the thing nobody is waiting for. When it fails it now gets one muted line rather than a panel:
+still shown, because a silently missing summary is a key nobody notices is broken, but at the
+weight the message deserves.
+
+After: **356px.** No panel was deleted and nothing was built — the review was the feature,
+exactly as V2_PLAN predicted.
+
+`SkeletonStats` was updated to match the new grid. When the two drifted, three stacked
+placeholders collapsing into one row moved the page ~200px under the reader's thumb as the
+tasks resolved.
+
+**How to reverse.** Move the blocks back in `app/private/page.tsx`; they are three
+independent JSX chunks. Put `sm:grid-cols-3` back on the stat row and the skeleton together.
+
+### D-083 · `shots` signs its own session and gates the fold
+
+**Decision.** `npm run shots` now sweeps `/private` and `/private/log`, minting a session
+cookie from `SESSION_SECRET` (loaded via `--env-file-if-exists=.env.local`). It reports how far
+down the page the first task sits and **exits non-zero above 500px** on a phone width. Skipped
+silently when the secret is absent, or with `SHOTS_PRIVATE=0`.
+
+**Why.** `/private` is the page Victor opens most and the only one he uses on a phone daily,
+and it was the one page nothing could see — behind a passkey, so the sweep stopped at the
+sign-in screen. That is how 791px survived. The session is an HMAC over a JSON payload, so a
+valid cookie can be minted from the same secret the app verifies against; the secret is
+already on this machine, the server is this machine, and the minted token lives fifteen
+minutes rather than the app's seven days.
+
+500px because a 390×844 phone shows roughly 690px once browser chrome is subtracted. The gate
+was verified in both directions — lowered to 300px it fails with exit 1, restored to 500px it
+passes with exit 0. A gate that has never fired is not known to be a gate.
+
+The script also reports a redirect to `/signin`, so a rejected cookie cannot silently become a
+screenshot of the sign-in page recorded as a healthy layout.
+
+**How to reverse.** Delete the private block and `data-task-list` from `task-list.tsx`, and
+drop `--env-file-if-exists` from the `shots` script.
+
+---
+
+## 2026-08-25 · The case-study page
+
+### D-082 · Project sections are stored in narrative order, not reordered at render
+
+**Decision.** `scripts/order_case_study_sections.py` puts each project file's sections into
+the order a case study reads in — problem, what was built, what did not work, what it
+measured, then anything else. Five of six files moved. The renderer then displays them in
+file order, with no reordering of its own.
+
+**Why.** Four files opened with `## Architecture` and reached `## The problem` third, because
+the D-073 skeleton was appended to files that already had an architecture paragraph. That is
+invisible today only because the misplaced sections are all still unwritten and
+`dropUnwritten` removes them — it stops being invisible the moment the prose lands, which is
+why this ran before Victor writes rather than after.
+
+Reordering in the renderer was the alternative and is worse: the public page would then
+disagree with the file, which breaks the one rule this vault runs on. The vault is also read
+directly by AI agents, so a file that reads in the wrong order is wrong for them too, not just
+for the website.
+
+The script moves whole sections and never edits a line inside one. Verified by comparing the
+sorted set of non-blank lines before and after: identical for all six files. It is idempotent,
+and `--check` reports drift without writing.
+
+**How to reverse.** Move the sections back by hand; nothing depends on the order but reading.
+
+### D-081 · A case study is styled by role, and the results carry the weight
+
+**Decision.** `CaseStudy` renders a project body by mapping each `##` heading to a role and
+giving each role its own treatment. `Measured results` gets the primary magenta, a panel, and
+its numbers wrapped in mono; `What did not work` gets the steel secondary and a panel of its
+own; the problem and the architecture are plain. Sections carry a mono index and a rule to the
+edge. Everything else falls through to plain `Prose` exactly as before.
+
+**Why.** Every section was styled identically, so the one number Victor measured and the one
+thing he abandoned looked exactly like a paragraph about the stack. Those are the two sections
+an engineer actually reads: results are the payload, and "what did not work" is the section
+almost no student portfolio has at all.
+
+Three rules make the half-written states — which is most of the portfolio until the write-ups
+land — look deliberate rather than broken:
+
+- **A section keeps its own heading.** The role picks the colour and the container, never the
+  wording. `solenoid-bit-reader` still says "Design decisions" and "Results", because D-073
+  kept that wording on purpose and a renderer quietly retitling an author's section is an
+  editorial act disguised as styling.
+- **The index counts sections that are present**, not the role's slot in the skeleton.
+  Numbering by role would print `01 03 04` on a half-written project, advertising exactly the
+  gap `dropUnwritten` exists to hide.
+- **One section is still a case study**, and is rendered without an index — it does not need
+  to be told it is the first of one.
+
+Failure is steel, not red. This section is evidence of judgement; colouring it like a warning
+would say the opposite.
+
+Number emphasis is opt-in on `Prose` (`numbers`) and used only inside a results panel. `Prose`
+also renders experience entries, lab write-ups, the private calendar's rules and every vault
+document, and highlighting every figure across those would be noise where it is signal on one
+panel. A test asserts the marked-up text is character-identical to the plain text — altering a
+measured figure on a portfolio page is the D-069 failure mode with extra steps.
+
+Verified against `solenoid-bit-reader` plus throwaway one-, two- and four-section fixtures at
+390px and 1280px, since solenoid alone is one section from complete and cannot show the
+partially-filled case. The fixtures were deleted immediately; they were never committed.
+
+**How to reverse.** Put `<Prose>` back in `projects/[slug]/page.tsx` and delete
+`case-study.tsx`, `lib/vault/case-study.ts` and the `numbers` prop. Bodies then render as an
+undifferentiated run of headings again.
+
+---
+
+## 2026-08-25 · V2 replan and the resume gate
+
+### D-080 · The AI approval gate is over proposals, not over a markdown diff
+
+**Decision.** Feature 6's approval surface reviews a **typed list of changes** — a before and
+an after per item, approved or rejected individually — rather than a rendered diff of two
+markdown documents. `writeVaultFile` stays dormant through V2; nothing AI-driven writes to the
+vault at all.
+
+**Why.** V2_PLAN rev 1 specified a markdown diff and justified building it first because
+"draft sprint goals depends entirely on the approval UI". That dependency does not exist.
+Sprint goals are Postgres rows: `saveSprintGoals` → `replaceGoals` writes `tasks` rows with
+`source='goal'` (`src/app/private/actions.ts:144`). Nothing about goals touches markdown.
+
+Following rev 1 would have spent 10h — the largest single item before the deadline — building
+a markdown-diff UI that **no V2 feature calls**: goals write rows, resume tailoring writes
+nothing, semantic search reads. It would have shipped a code path exercised only by its own
+tests, which is the exact condition (`writeVaultFile` dormant since D-036) the plan named as
+its own risk.
+
+The constraint Victor set — *nothing writes on a model's say-so* — is unchanged and is in fact
+satisfied more strongly this way, because in V2 the model cannot reach the vault at all.
+
+**How to reverse.** Build the diff view and give `writeVaultFile` a caller. Do it in that
+order and only once something genuinely drafts markdown; a writer whose first job is
+case-study prose collides with D-073 and needs Victor's explicit sign-off, not an agent's
+judgement.
+
+### D-079 · Semantic search is reinstated; the cut line moves to its re-embedding
+
+**Decision.** Feature 6 keeps all four capabilities including semantic search. It stays last
+in build order. The declared cut is now, in order: (1) drop incremental re-embedding for
+on-demand full re-index, (2) drop the feature.
+
+**Why.** Rev 1 cut it on cost, against "$10 of credits, total, for the life of this". The
+budget is **$10 per month**. Cost was the objection, so the cut lapses — but a plan without a
+declared cut line decides under pressure, so a new one is named with a dated trigger (V2_PLAN
+§2.4). Reinstating 12h is affordable only because D-080 gave back 7h; the two are linked.
+
+**How to reverse.** Take cut 1, then cut 2.
+
+### D-078 · Coursework is four entries, and it is shared by every variant
+
+**Decision.** `coursework:` in `resume_config.md` drops from seven to four — Algorithms and
+Complexity, Software Construction, Object-Oriented Design, Linear Algebra. Dropped:
+Programming Languages, Discrete Structures, Logic Design.
+
+**Why.** The SWE variant printed at 1.03 pages and coursework is the lowest-signal content on
+the sheet. Worth knowing before editing it: this is **one flat list consumed by all three
+variants** (`src/lib/resume.ts:126`), so the trim shortened ml and robotics too. That was
+acceptable — both had room — but a variant-specific coursework line would need a schema
+change, and was judged not worth it for one line of text.
+
+Measured: the trim alone moved swe 1.03 → 1.01, i.e. it recovered ~19px of the ~29px needed.
+It did **not** close the gap on its own, which is why D-076 exists.
+
+**How to reverse.** Put the three back. Expect swe to return to 1.01 and check with
+`npm run shots`.
+
+### D-077 · The resume's page count is measured, not eyeballed
+
+**Decision.** `npm run shots` measures every resume variant against one printed Letter page
+and exits non-zero if any runs over. Two numbers per variant: `pages`, from Chromium's own PDF
+writer at Letter/0.5in — the same path as the print dialog Victor actually uses — and `ratio`,
+the print-emulated sheet height over one page. A print-media PNG is written alongside the PDF.
+
+**Why.** V2_PLAN rev 1's completion test for the resume was "`shots.mjs` reports every variant
+under 1.00 pages". `shots.mjs` could not do that: it measured horizontal overflow, tap targets
+and font size, and only ever loaded `/resume/swe`. The plan's own rule is *measure, do not
+assume*, and its completion test assumed a measurement that did not exist. The resume printed
+at 1.33 pages for weeks for exactly this reason.
+
+`ratio` is there because it is the number that makes an overflow *fixable*: "1.03" says trim a
+line, "2 pages" says nothing. Two attempts at measuring it were wrong before the third was
+right, and both failure modes are worth remembering — `documentElement.scrollHeight` never
+reports less than the viewport, so every variant that fit read exactly 1.00; and `main`
+carries `flex-1` inside the layout's flex column, so it is stretched to the viewport whatever
+it holds. Both measure the window, not the content. `.resume-sheet` is the only element whose
+height is the content's. The fixed version independently reproduced the three figures rev 1
+had recorded by hand (1.03 / 0.98 / 0.90), which is what says it is right.
+
+Only `swe` is screenshotted at the four device widths. The three variants are one component
+fed different data, so a mobile layout fault appears in all of them identically; what differs
+between variants is length, and length is what the new measurement covers.
+
+**How to reverse.** Delete `measureResumes` and its call. Page count returns to being checked
+by printing the page and counting.
+
+### D-076 · Bullet leading, not bullet count, closed the last 13px
+
+**Decision.** Print bullet `line-height` 1.26 → 1.20, and `.resume-sheet section` margin-top
+0.5rem → 0.375rem. Font sizes are unchanged.
+
+**Why.** After D-078 the SWE sheet still measured 973px against 960 available. Probing where
+the height actually went: 17 bullets over 27 rendered lines were 432px — **44% of the page** —
+so leading there is worth more than anything else on the sheet, and it costs no content. The
+alternative levers were both worse: `main` and `.resume-sheet` padding are already zeroed in
+print, and everything else on the page is text Victor wrote.
+
+The 9.6pt floor from the earlier density pass is deliberately untouched. Leading is
+whitespace; type size is legibility, and shrinking it further is how a resume starts looking
+like it is hiding from its own length.
+
+Result: swe 0.98, ml 0.93, robotics 0.86 — all one page, with headroom rather than sitting at
+0.999 where the next added bullet breaks it again.
+
+**How to reverse.** Both values back to 1.26 and 0.5rem. swe returns to two pages.
 
 ---
 
