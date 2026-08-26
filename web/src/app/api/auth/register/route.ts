@@ -11,8 +11,9 @@ import {
   registrationSecret,
   relyingParty,
   relyingPartyProblem,
+  serialiseCredentials,
   sessionSecret,
-  storedCredential,
+  storedCredentials,
 } from "@/lib/auth/config";
 import { CHALLENGE_COOKIE, signSession, verifySession } from "@/lib/auth/session";
 
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
   if (problem) return NextResponse.json({ error: problem }, { status: 500 });
 
   const { rpID, rpName } = relyingParty();
-  const existing = storedCredential();
+  const existing = storedCredentials();
 
   const options = await generateRegistrationOptions({
     rpName,
@@ -52,8 +53,10 @@ export async function GET(request: Request) {
     userName: "victor",
     userDisplayName: "Victor Gusev",
     attestationType: "none",
-    // Refuse to silently enrol a second credential over the first.
-    excludeCredentials: existing ? [{ id: existing.id }] : [],
+    // Every device already enrolled. This does not block adding a second device — it blocks
+    // adding the *same* device twice, which would otherwise mint a duplicate credential and
+    // leave a dead entry in PASSKEYS that nobody could later tell apart from a live one.
+    excludeCredentials: existing.map((c) => ({ id: c.id })),
     authenticatorSelection: {
       residentKey: "required",
       userVerification: "preferred",
@@ -79,6 +82,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     secret?: string;
+    label?: string;
     response?: RegistrationResponseJSON;
   };
   if (!gateOpen(body.secret ?? null)) {
@@ -110,14 +114,30 @@ export async function POST(request: Request) {
 
   const { credential } = verification.registrationInfo;
 
-  // Returned, not persisted: there is no database. These two values go into .env.local and
-  // Vercel by hand, which is also what keeps enrolment a deliberate act.
+  // Colons and commas are the separators, so a label containing either would split into
+  // something that no longer parses back. Stripped here rather than rejected: the label is a
+  // convenience, and failing an otherwise-good enrolment over punctuation would be absurd.
+  const label = (body.label ?? "").replace(/[:,\n]/g, " ").trim() || "device";
+
+  // The whole list, not just the new device. Enrolment returns one variable to paste, so the
+  // phone cannot be added by overwriting the laptop — which is exactly the mistake the old
+  // two-variable output invited, and it locks you out of the machine you are sitting at.
+  const all = serialiseCredentials([
+    ...storedCredentials().map((c) => ({
+      id: c.id,
+      publicKey: bytesToBase64url(c.publicKey),
+      label: c.label,
+    })),
+    { id: credential.id, publicKey: bytesToBase64url(credential.publicKey), label },
+  ]);
+
+  // Returned, not persisted: there is no database. The value goes into .env.local and Vercel
+  // by hand, which is also what keeps enrolment a deliberate act.
   return NextResponse.json({
     verified: true,
-    env: {
-      PASSKEY_CREDENTIAL_ID: credential.id,
-      PASSKEY_PUBLIC_KEY: bytesToBase64url(credential.publicKey),
-    },
-    next: "Add both values to .env.local and Vercel, then unset PASSKEY_REGISTRATION_SECRET.",
+    env: { PASSKEYS: all },
+    next:
+      "Set PASSKEYS to this value in .env.local and Vercel, remove PASSKEY_CREDENTIAL_ID and " +
+      "PASSKEY_PUBLIC_KEY, then unset PASSKEY_REGISTRATION_SECRET and redeploy.",
   });
 }

@@ -10,7 +10,7 @@ import {
   relyingParty,
   relyingPartyProblem,
   sessionSecret,
-  storedCredential,
+  storedCredentials,
 } from "@/lib/auth/config";
 import {
   CHALLENGE_COOKIE,
@@ -25,8 +25,8 @@ export const dynamic = "force-dynamic";
 
 /** Step 1: challenge. */
 export async function GET(request: Request) {
-  const credential = storedCredential();
-  if (!credential) {
+  const credentials = storedCredentials();
+  if (credentials.length === 0) {
     return NextResponse.json({ error: "no passkey enrolled" }, { status: 503 });
   }
 
@@ -38,7 +38,8 @@ export async function GET(request: Request) {
   const { rpID } = relyingParty();
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: [{ id: credential.id }],
+    // Every enrolled device, so the browser can offer whichever one is actually present.
+    allowCredentials: credentials.map((c) => ({ id: c.id })),
     userVerification: "preferred",
   });
 
@@ -55,14 +56,24 @@ export async function GET(request: Request) {
 
 /** Step 2: verify the assertion and mint a session. */
 export async function POST(request: Request) {
-  const credential = storedCredential();
-  if (!credential) {
+  const credentials = storedCredentials();
+  if (credentials.length === 0) {
     return NextResponse.json({ error: "no passkey enrolled" }, { status: 503 });
   }
 
   const body = (await request.json()) as { response?: AuthenticationResponseJSON };
   if (!body.response) {
     return NextResponse.json({ error: "missing response" }, { status: 400 });
+  }
+
+  // Which device signed this. Matching on the asserted id is what makes more than one enrolled
+  // device possible; verifying against the first credential in the list would reject the phone
+  // whenever the laptop happened to be listed first. An unknown id is an ordinary auth failure
+  // and gets the same opaque message as any other, so this does not become an oracle for which
+  // credential ids are registered.
+  const credential = credentials.find((c) => c.id === body.response!.id);
+  if (!credential) {
+    return NextResponse.json({ error: "verification failed" }, { status: 401 });
   }
 
   const store = await cookies();

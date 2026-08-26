@@ -15,6 +15,8 @@ import "server-only";
 export type StoredCredential = {
   id: string;
   publicKey: Uint8Array<ArrayBuffer>;
+  /** Which device this is, for the human reading the environment. Never used in the ceremony. */
+  label: string;
 };
 
 export function sessionSecret(): string {
@@ -28,12 +30,64 @@ export function sessionSecret(): string {
   return secret;
 }
 
-/** The registered passkey, or null when none has been configured yet. */
-export function storedCredential(): StoredCredential | null {
-  const id = process.env.PASSKEY_CREDENTIAL_ID;
-  const publicKey = process.env.PASSKEY_PUBLIC_KEY;
-  if (!id || !publicKey) return null;
-  return { id, publicKey: base64urlToBytes(publicKey) };
+/**
+ * Every registered passkey. Empty when none has been configured yet.
+ *
+ * Two devices means two credentials, and the shape of the environment decides how badly that
+ * can go wrong. Two parallel lists — ids in one variable, keys in another — would pair by
+ * position, so deleting one retired device from one list and forgetting the other silently
+ * binds the wrong key to the wrong id. So a credential is one indivisible string:
+ *
+ *     PASSKEYS=laptop:<id>:<publicKey>,phone:<id>:<publicKey>
+ *
+ * Entries are separated by commas or newlines, fields by colons — safe as a separator because
+ * base64url is `A-Za-z0-9-_` and contains no colon. The id and key are the last two fields, so
+ * a label may contain colons without ambiguity. The label is for whoever is reading the
+ * variable months later deciding which line is the old phone; it never enters the ceremony.
+ *
+ * `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are still honoured as a single unlabelled
+ * credential. That pair is what is currently deployed and working, and this change must not be
+ * the thing that logs Victor out of his own site.
+ */
+export function storedCredentials(): StoredCredential[] {
+  const found: StoredCredential[] = [];
+
+  const legacyId = process.env.PASSKEY_CREDENTIAL_ID;
+  const legacyKey = process.env.PASSKEY_PUBLIC_KEY;
+  if (legacyId && legacyKey) {
+    found.push({ id: legacyId, publicKey: base64urlToBytes(legacyKey), label: "device 1" });
+  }
+
+  for (const entry of (process.env.PASSKEYS ?? "").split(/[,\n]/)) {
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+
+    const parts = trimmed.split(":");
+    const publicKey = parts.pop();
+    const id = parts.pop();
+    if (!id || !publicKey) {
+      // Skipped rather than thrown: one typo should cost one device, not the whole site's
+      // ability to sign in. The remaining credentials still work, and if none survive the
+      // login route already answers "no passkey enrolled".
+      console.warn(`PASSKEYS: ignoring malformed entry "${trimmed.slice(0, 12)}…"`);
+      continue;
+    }
+
+    const label = parts.join(":").trim() || `device ${found.length + 1}`;
+    // First wins, so a legacy entry and a PASSKEYS entry for the same authenticator do not
+    // become two.
+    if (found.some((c) => c.id === id)) continue;
+    found.push({ id, publicKey: base64urlToBytes(publicKey), label });
+  }
+
+  return found;
+}
+
+/** Serialises credentials back into a `PASSKEYS` value, for the enrolment page to hand over. */
+export function serialiseCredentials(
+  credentials: { id: string; publicKey: string; label: string }[],
+): string {
+  return credentials.map((c) => `${c.label}:${c.id}:${c.publicKey}`).join(",");
 }
 
 /**

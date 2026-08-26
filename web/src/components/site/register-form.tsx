@@ -3,10 +3,11 @@
 import { startRegistration } from "@simplewebauthn/browser";
 import { useState } from "react";
 
-type Result = { PASSKEY_CREDENTIAL_ID: string; PASSKEY_PUBLIC_KEY: string };
+type Result = { PASSKEYS: string };
 
 export function RegisterForm() {
   const [secret, setSecret] = useState("");
+  const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,7 +30,7 @@ export function RegisterForm() {
       const verifyRes = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ secret, response: attestation }),
+        body: JSON.stringify({ secret, label, response: attestation }),
       });
       const verified = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verified.error ?? "verification failed");
@@ -49,11 +50,13 @@ export function RegisterForm() {
   }
 
   if (result) {
-    const env = `PASSKEY_CREDENTIAL_ID=${result.PASSKEY_CREDENTIAL_ID}\nPASSKEY_PUBLIC_KEY=${result.PASSKEY_PUBLIC_KEY}`;
+    const env = `PASSKEYS=${result.PASSKEYS}`;
     return (
       <div className="space-y-4">
         <p className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-foreground">
-          Passkey enrolled. Copy both lines into your environment.
+          Passkey enrolled. This line holds <em>every</em> enrolled device, so replace PASSKEYS
+          entirely — and delete PASSKEY_CREDENTIAL_ID and PASSKEY_PUBLIC_KEY if they are still
+          set.
         </p>
         <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 font-mono text-[0.68rem] text-muted-foreground">
           {env}
@@ -91,6 +94,26 @@ export function RegisterForm() {
           className="mt-1.5 w-full rounded-md border border-border bg-card/70 px-3 py-2 font-mono text-sm text-foreground focus:border-primary/60 focus:outline-none"
           placeholder="PASSKEY_REGISTRATION_SECRET"
         />
+      </div>
+
+      <div>
+        <label
+          htmlFor="label"
+          className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
+        >
+          Device name
+        </label>
+        <input
+          id="label"
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          className="mt-1.5 w-full rounded-md border border-border bg-card/70 px-3 py-2 font-mono text-sm text-foreground focus:border-primary/60 focus:outline-none"
+          placeholder="laptop"
+        />
+        <p className="mt-1 text-[0.7rem] text-muted-foreground">
+          Only so you can tell the entries apart later, when retiring a device.
+        </p>
       </div>
 
       <button

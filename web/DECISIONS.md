@@ -19,6 +19,46 @@ useful part.
 
 ## 2026-08-25 · The domain
 
+### D-098 · A credential is one indivisible string, and `PASSKEYS` holds every device
+
+**Decision.** `storedCredential()` becomes `storedCredentials()`, returning a list read from a
+new `PASSKEYS` variable: entries separated by commas or newlines, each
+`label:credentialId:publicKey`. Login offers every enrolled id and verifies against the one the
+browser actually asserted; enrolment excludes every enrolled id and returns the **whole** list to
+paste back.
+
+**Why.** Victor wants the private side on his phone as well as his laptop, and the account was a
+single pair of environment variables.
+
+The alternative — `PASSKEY_CREDENTIAL_IDS` and `PASSKEY_PUBLIC_KEYS` as two parallel lists —
+pairs by position. Retiring a device then means deleting the matching entry from both, and
+missing one silently binds the wrong key to the wrong id. That fails closed rather than opening a
+hole, but it fails as "sign-in stopped working" with nothing to point at. Keeping a credential
+atomic makes that state unrepresentable. Colons are safe as a separator because base64url is
+`A-Za-z0-9-_`; the id and key are read from the *end* of the entry, so labels may contain colons.
+
+The label is for the human, never the ceremony. Deciding which of two opaque base64 blobs is the
+old phone, six months from now, is otherwise guesswork.
+
+Two failure modes shaped the rest:
+
+- **Verifying against the first credential** in the list would have rejected the phone whenever
+  the laptop was listed first. The asserted id selects the key. An unknown id returns the same
+  opaque `verification failed` as a bad signature, so this is not an oracle for which ids exist.
+- **Returning only the new device** — what the old two-variable output did — invites adding the
+  phone by overwriting the laptop, which locks you out of the machine you are sitting at.
+  Enrolment now returns one variable containing everything.
+
+A malformed entry is skipped with a warning rather than thrown: one typo should cost one device,
+not the ability to sign in at all. If none survive, the existing `no passkey enrolled` 503 fires.
+
+`PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are still read, as one unlabelled credential, and
+deduped by id against `PASSKEYS`. That pair is what is deployed and working right now, and this
+change must not be the thing that logs Victor out — the migration can happen at his pace.
+
+**Reversing it.** Delete `PASSKEYS`, keep the legacy pair; single-device behaviour is unchanged
+and still fully tested. Tests: `src/lib/auth/__tests__/credentials.test.ts`.
+
 ### D-097 · A relying-party mismatch fails with a sentence, not a DOMException
 
 **Decision.** Both auth routes call `relyingPartyProblem(request.headers.get("origin"))` before
