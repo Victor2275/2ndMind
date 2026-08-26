@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { PrivateLink } from "@/components/site/private-link";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -42,7 +43,7 @@ export function SiteHeader({ name }: { name: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-md px-2 py-1.5 text-sm transition-colors sm:px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  "relative rounded-md px-1.5 py-1.5 text-sm transition-colors min-[380px]:px-2 sm:px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -59,6 +60,13 @@ export function SiteHeader({ name }: { name: string }) {
               </Link>
             );
           })}
+
+          {/* Victor's, visible only to a browser that has signed in before — see
+              `lib/auth/returning.ts`. It gates nothing: `/private` still requires a session.
+              Last, not first: at 360px the nav wins the space fight against the name, and a
+              link placed ahead of "About" sits where the site's identity belongs — the first
+              thing on the page read "Private" instead of "Victor Gusev". */}
+          <PrivateLink className="rounded-md px-1.5 py-1.5 text-sm text-primary transition-colors hover:bg-accent/60 min-[380px]:px-2 sm:px-3" />
         </nav>
       </div>
     </header>

@@ -39,8 +39,27 @@ export function PrivateLink({ className }: { className?: string }) {
   if (!returning) return null;
 
   return (
-    <Link href="/private" className={className} rel="nofollow">
-      Private
+    <Link href="/private" className={className} rel="nofollow" aria-label="Private">
+      {/* A word on desktop, a glyph on phones.
+          Measured: at 360px the four public items leave the name 59px, and the word "Private"
+          costs ~60px — enough to squeeze "Victor Gusev" out of the header entirely, which is
+          exactly what happened the first time this moved here. The lock is ~24px including
+          padding, which leaves the name intact at every width. `aria-hidden` on the icon plus
+          `aria-label` on the link means screen readers hear "Private" either way. */}
+      <span className="hidden sm:inline">Private</span>
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="inline size-4 sm:hidden"
+      >
+        <rect x="4" y="10.5" width="16" height="10" rx="2" />
+        <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+      </svg>
     </Link>
   );
 }

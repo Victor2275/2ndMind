@@ -19,6 +19,38 @@ useful part.
 
 ## 2026-08-25 · Career tooling
 
+### D-105 · The private link moves to the header, and becomes a lock icon on phones
+
+**Decision.** The `/private` link moves from the footer into the header nav, last. Below `sm` it
+renders a lock icon instead of the word; nav padding tightens below 380px. Behaviour is
+unchanged — still shown to any browser that has signed in before, still gating nothing.
+
+**Why it moved.** Victor asked for it in the header. D-102 had put it in the footer to avoid
+crowding, which was a real constraint dodged rather than solved.
+
+**What the first attempt got wrong, and how it was caught.** Placed first in the nav, the
+measurements looked perfect — five items, zero overflow at every width. The screenshot showed
+the header reading **"Private About Now Projects Resume"** with *Victor Gusev gone entirely*.
+Nothing overflowed because the name is `min-w-0` and simply collapsed to zero. A nav that fits
+is not the same as a header that works, and the check only knew about the nav.
+
+Two fixes followed, and the order matters:
+
+1. **The check now measures the name's rendered width**, failing below 40px. It is the only
+   thing that would have caught this, and it was added before the layout was touched again.
+2. **The link moved last.** Ahead of "About" it also sat where the site's identity belongs — the
+   first thing on the portfolio read "Private".
+
+**Why an icon on phones.** Measured: at 360px the four public items leave the name 59px, and the
+word "Private" costs ~60px. The lock is ~24px including padding. With `px-1.5` below 380px the
+name holds at 46px on a 360px screen and 56px at 390px — truncated, as it already was, but
+present. `aria-label="Private"` on the link with `aria-hidden` on the icon means a screen reader
+hears the same word at every width.
+
+**Reversing it.** Move `<PrivateLink>` back to `site-footer.tsx` and drop the responsive padding.
+The `home-returning-*.png` shots and the header check in `shots.mjs` are worth keeping either
+way — they are the only thing that renders the signed-in header at all.
+
 ### D-104 · The tailoring model returns bullet ids, never bullet text
 
 **Decision.** Resume tailoring supplies every bullet as `section:slug#index` with its text, and
@@ -109,9 +141,9 @@ a minute of being written, which is the correct behaviour.
 should not leave a "Victor signs in here" sign on the public site. An expired session is the
 opposite case — that visitor wants the shortcut back to `/signin`.
 
-**In the footer, not the header nav.** The header is already four items and truncates the name
-at 390px; a fifth would push it over for the one person who can see it. A personal shortcut is
-also not site navigation.
+**In the header nav** — *amended 2026-08-25, at Victor's request.* Originally the footer, on the
+reasoning that a fifth item would crowd the bar. That reasoning was right about the constraint
+and wrong about the conclusion: see D-105, which moves it and pays the layout cost properly.
 
 **`useSyncExternalStore`, not `useState` + `useEffect`.** Its server snapshot is `false`, so the
 prerendered HTML and first client render agree and there is no hydration mismatch — and setting

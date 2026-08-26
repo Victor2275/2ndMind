@@ -254,6 +254,83 @@ for (const width of widths) {
   }
 }
 
+/* --- The header, as Victor sees it ----------------------------------------------------
+   The public sweep above renders the header a stranger gets: four items. Victor gets five,
+   because `2m_returning` adds a "Private" link — and the header was the one place that link
+   was originally kept out of, precisely because five items plus a truncated name is tight at
+   390px. So the crowded case is the one that has to be measured, and it is invisible to every
+   other check here: no cookie, no fifth item, no overflow.
+
+   The cookie carries no authority (see `lib/auth/returning.ts`), so setting it here needs no
+   secret and reveals nothing. */
+let returningFaults = 0;
+if (process.env.SHOTS_RETURNING !== "0") {
+  console.log("");
+  const origin = new URL(BASE).origin;
+
+  for (const width of widths) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      deviceScaleFactor: 2,
+      colorScheme: "dark",
+      isMobile: width < 768,
+      hasTouch: width < 768,
+    });
+    if (process.env.SHOTS_NO_COOKIE !== "1")
+      await context.addCookies([
+        { name: "2m_returning", value: "1", url: origin, sameSite: "Lax" },
+      ]);
+
+    const page = await context.newPage();
+    await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    await page.screenshot({ path: path.join(OUT, `home-returning-${width}.png`) });
+
+    const header = await page.evaluate(() => {
+      const bar = document.querySelector("header");
+      if (!bar) return null;
+      const links = [...bar.querySelectorAll("nav a")].map(
+        (a) => a.getAttribute("aria-label") || a.textContent?.trim() || "",
+      );
+      const nav = bar.querySelector("nav");
+
+      // How much of the name is still on screen.
+      //
+      // This is the measurement the first version of this check lacked, and it cost a real
+      // mistake: the fifth nav item fit perfectly, reported zero overflow, and had silently
+      // squeezed "Victor Gusev" out of the header altogether. Nothing overflowed because the
+      // name is `min-w-0` and simply collapsed. A nav that fits is not the same as a header
+      // that works.
+      const brand = bar.querySelector("a span:last-child");
+      return {
+        links,
+        navOverflow: nav ? nav.scrollWidth - nav.clientWidth : 0,
+        barOverflow: bar.scrollWidth - bar.clientWidth,
+        brandWidth: brand ? Math.round(brand.getBoundingClientRect().width) : 0,
+        brandText: brand?.textContent?.trim() ?? "",
+      };
+    });
+
+    const hasPrivate = header?.links.includes("Private") ?? false;
+    const squeezed = (header?.navOverflow ?? 0) > 0 || (header?.barOverflow ?? 0) > 0;
+    // 40px is about four characters — enough to tell that a name is there and being
+    // truncated, rather than gone. Below that the header has no identity on it at all.
+    const nameGone = (header?.brandWidth ?? 0) < 40;
+    if (!hasPrivate || squeezed || nameGone) returningFaults += 1;
+
+    console.log(
+      ` ${String(width).padStart(4)}px header (signed in) ` +
+        `items=${header?.links.length ?? 0} ` +
+        `private=${hasPrivate ? "yes" : "NO"} ` +
+        `name=${header?.brandWidth ?? 0}px ` +
+        `overflow=${Math.max(header?.navOverflow ?? 0, header?.barOverflow ?? 0)}px` +
+        (squeezed ? "  <-- the nav does not fit" : "") +
+        (nameGone ? "  <-- the name is squeezed out" : ""),
+    );
+
+    await context.close();
+  }
+}
+
 let privateFaults = 0;
 const secret = process.env.SESSION_SECRET?.trim();
 if (process.env.SHOTS_PRIVATE !== "0" && secret) {
@@ -324,6 +401,8 @@ await browser.close();
 console.log(`\n${faults} page/width combination(s) scroll sideways. Written to ${OUT}/`);
 if (!only) console.log(`${overLong} resume variant(s) print to more than one page.`);
 if (privateFaults > 0) console.log(`${privateFaults} private page(s) bury the answer or refused the session.`);
+if (returningFaults > 0)
+  console.log(`${returningFaults} width(s) where the signed-in header is missing its link or does not fit.`);
 
 // A non-zero exit is what lets this gate a commit, rather than being advice nobody reads.
-if (faults > 0 || overLong > 0 || privateFaults > 0) process.exitCode = 1;
+if (faults > 0 || overLong > 0 || privateFaults > 0 || returningFaults > 0) process.exitCode = 1;
