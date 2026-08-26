@@ -33,10 +33,17 @@ first means you enrol once instead of twice.
 In the master Google Sheet: **File → Share → Publish to web → (the applications tab) → CSV →
 Publish**. Send me the URL it gives you.
 
-> **Partly unblocked.** You put a CSV export in `context/99_archive/`, which is enough to
-> build and test the parser offline. The published URL is still needed for §7.6 to show
-> live data rather than a snapshot — and §7.6 is the plan's declared first cut, so this
-> is the one item on this list whose absence could remove a feature.
+> **§7.6 is built and waiting for this URL.** The parser was written and tested against
+> your archived export, so the only thing missing is the live link: set
+> `JOB_SHEET_CSV_URL` in Vercel and `/private/work` shows the real pipeline. Until then
+> that panel explains itself and the rest of the page works.
+>
+> The archived CSV is a **test fixture, never a fallback** — nothing at runtime reads it.
+> Serving months-old applications as though they were current would be worse than saying
+> the sheet is unreachable.
+>
+> **The URL is a credential.** Anyone holding it can read the sheet, so it goes in Vercel
+> and never in a file in the repo.
 
 This is the same shape as your calendar feeds, which is why it is cheap: a URL the app fetches
 and parses, no OAuth, no Google API project, no cost. Note that **the URL is a credential** —

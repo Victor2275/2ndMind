@@ -429,6 +429,23 @@ D-069 walks straight back in through the one feature that touches a hiring docum
 **Done when:** it produces a suggestion for a real job posting, and the fabricated-id test
 fails closed.
 
+> **BUILT 2026-08-25**, in ~2h against a 6h estimate. Decision D-104. On `/private/tailor`.
+>
+> The fabricated-id test fails closed, and so does a fabricated id in `deprioritise` — advice to
+> drop a bullet that does not exist is still a fabrication, and a parser checking only
+> `emphasise` would let it through. The **whole response** is rejected rather than the offending
+> id dropped: a fabricated id is evidence about everything else in the response, and dropping it
+> would leave the rest looking trustworthy.
+>
+> Bullet text on screen is resolved from the vault by id. The model never supplies words that
+> reach the page — that is the entire point of the id scheme.
+>
+> Bullets are the **union of all three variants**: which variant to send is one of the questions
+> being asked, and feeding it only the robotics set is a question with one possible answer.
+>
+> **The other half is Victor's:** a suggestion for a real posting, and whether the advice is any
+> good. It writes nothing, so trying it costs one API call.
+
 ### 2.4 · Semantic search — ✂️ **CUT 2026-08-25**
 
 Moved to `V3_PLAN.md` §1. It was the declared cut in rev 1, reinstated in rev 2 when the
@@ -480,22 +497,25 @@ Done is struck through in spirit — the DONE blocks above carry the detail.
 | 7.9 | Working page — public "Now" | me | Moderate | 6h | post | **done** (~3h) |
 | 2.1 | Approval-gated proposal UI | me | Moderate | 4h | post | **done** (~2h) |
 | 2.2 | Draft sprint goals | me | Moderate | 4h | post | **built** (~2h) · Victor to accept |
-| 2.3 | Resume tailoring | me | Moderate | 6h | post | ✂️ 2nd cut |
-| 7.5 | Public → private button | me | Easy | 1.5h | post | |
-| 7.6 | Job sheet, read-only | me | Moderate | 4h | post | ✂️ **1st cut** · needs Victor |
+| 2.3 | Resume tailoring | me | Moderate | 6h | post | **built** (~2h) · Victor to judge |
+| 7.5 | Public → private button | me | Easy | 1.5h | post | **done** (~1h) |
+| 7.6 | Job sheet, read-only | me | Moderate | 4h | post | **done** (~1.5h) · needs the URL |
 | ~~2.4~~ | ~~Semantic search~~ | — | — | ~~12h~~ | — | **cut → V3** |
 
 **Pre-Taiwan: complete.** Everything scheduled before the flight is done, plus §7.11, which
 was not in the plan at all until sign-in started working.
 
-**Post-Taiwan: 14h of the 26.5h is already done** — §7.9, §2.1 and §2.2 landed early, in ~7h
-against a 14h estimate. Remaining: **§1.2b (1h, needs Victor's prose), §2.3 (6h), §7.5
-(1.5h), §7.6 (4h)** — 12.5h.
+**Post-Taiwan: 25.5h of the 26.5h is done**, in ~11.5h of actual work. §7.9, §2.1, §2.2,
+§7.5, §7.6 and §2.3 have all landed. **Nothing was cut.** The cut line's trigger — §7.9 +
+§2.1 + §2.2 over 16h combined by 2026-09-14 — was never approached; those three came in at
+~7h, three weeks early, and both cut candidates were built anyway.
 
-**The cut line has not been reached.** Its trigger was §7.9 + §2.1 + §2.2 exceeding 16h
-combined by 2026-09-14; they came in at ~7h, three weeks early. Both §7.6 and §2.3 survive
-on current numbers, and §7.6 is still blocked on Victor publishing the sheet rather than on
-time.
+**Remaining engineering: §1.2b (1h)**, the case-study revision against real prose, which
+cannot start until §1.3 exists.
+
+**V2 is now gated on Victor, not on code.** The open items are his: writing the case
+studies, publishing the sheet as CSV, approving one drafted goal set, and judging a real
+tailoring suggestion.
 
 ### The new cut line
 
@@ -783,10 +803,28 @@ made of a boolean.
 **Done when:** the link appears on public pages after signing in, is absent in a fresh private
 window, and forging the cookie still lands on `/signin`.
 
+> **DONE 2026-08-25**, in ~1h. Decision D-102.
+>
+> In the **footer**, not the header: the header already truncates the name at 390px with four
+> items, and a personal shortcut is not site navigation.
+>
+> **The test is a grep, not a unit test.** The hazard is not this module misbehaving, it is a
+> *new call site* elsewhere consulting the cookie to decide something real. It walks `src/` and
+> fails on any mention outside an allowlist — and caught its own test file a minute after being
+> written, which is the behaviour it exists for.
+>
+> Cleared on explicit sign-out but **not** on session expiry: signing out on a borrowed machine
+> should not leave a "Victor signs in here" sign on the public site, whereas an expired session
+> is exactly the case that wants the shortcut back to `/signin`.
+
 ### 7.6 · The job sheet, read-only — **Moderate, 4h**
 
-Blocked on Victor publishing the sheet as CSV (`UPLOADS_NEEDED.md` §1.2) — the URL is needed
-before he flies, since the parser can be written and tested offline once its shape is known.
+~~Blocked on Victor publishing the sheet as CSV (`UPLOADS_NEEDED.md` §1.2) — the URL is needed
+before he flies, since the parser can be written and tested offline once its shape is known.~~
+
+**Unblocked on Victor's call:** he put an export in `context/99_archive/`, so the parser was
+written and tested against real data offline. Only the live URL is outstanding, and the feature
+degrades to a message without it.
 
 Third instance of a pattern the app already runs twice: a private URL in an environment
 variable, fetched and parsed server-side. `papaparse` is already a dependency for the Hevy
@@ -800,6 +838,25 @@ page's own lede ("this page does not duplicate it") comes out with it.
 
 **Done when:** `/private/work` shows the current pipeline, a malformed or unreachable sheet
 degrades to a message rather than an error page, and no sheet URL appears in the repository.
+
+> **DONE 2026-08-25**, in ~1.5h against a 4h estimate. Decision D-103. **It survived the cut
+> line** — the trigger was never approached.
+>
+> Built against the archived export rather than blocked on the published URL, which is what
+> Victor asked for: it reads the live sheet from `JOB_SHEET_CSV_URL`, and the snapshot in
+> `99_archive/` is a **test fixture, never a runtime fallback**. Serving months-old data as
+> though it were current would be worse than saying the sheet is unreachable.
+>
+> **The real export decided the design.** 173 of its 179 rows say "No Application", so rendered
+> whole the six that matter are invisible. The page shows live applications, the high-priority
+> rows not yet applied to, and counts by status. A fixture I invented would have had a tidy
+> spread of statuses and taught me nothing.
+>
+> The page's old lede — "this page does not duplicate it" — is **rewritten, not dropped**. That
+> reasoning was about a competing *writer*; reading is not duplicating, and nothing here writes.
+>
+> Verified end to end by serving the archived export over local HTTP: 179 postings, 6 applied,
+> 3 live, clean at 390px. **Still needs the published URL** in Vercel to show live data.
 
 ### 7.7 · Uploading your own resumes — a decision before an estimate
 
