@@ -5,6 +5,7 @@ import Image from "next/image";
 
 import { ProjectFigure } from "@/components/site/project-figure";
 import { CaseStudy } from "@/components/site/case-study";
+import { ProjectUpdates } from "@/components/site/project-updates";
 import { Badge } from "@/components/ui/badge";
 import { publicProjects } from "@/lib/vault/public";
 
@@ -140,6 +141,17 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       <section className="mt-12">
         <CaseStudy>{project.body}</CaseStudy>
       </section>
+
+      {/* The full history, where `/now` shows only the latest two. Rendered here rather than
+          left in the body so an update reads the same on both pages. */}
+      {project.updates.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-lg font-bold tracking-tight">Updates</h2>
+          <div className="mt-4 border-l border-border pl-5">
+            <ProjectUpdates updates={project.updates} />
+          </div>
+        </section>
+      )}
 
       {project.figures.length > 1 && (
         <section className="mt-12">

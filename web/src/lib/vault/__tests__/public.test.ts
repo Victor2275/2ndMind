@@ -205,6 +205,23 @@ describe("public projection odds and ends", () => {
     const privateSlugs = loadExperience().filter((e) => !e.public).map((e) => e.slug);
     expect(publicSlugs).toEqual(allSlugs.filter((s) => !privateSlugs.includes(s)));
   });
+
+  it("never publishes an Updates section as raw body markdown", () => {
+    // The projection splits updates out into data. If that ever stops happening, the section
+    // renders twice — once as markdown under a heading, once as dated entries on /now.
+    for (const p of publicProjects()) {
+      expect(p.body).not.toMatch(/^##[ \t]+Updates[ \t]*$/im);
+      expect(Array.isArray(p.updates)).toBe(true);
+    }
+  });
+
+  it("keeps updates off the client grid", () => {
+    // Same reason as `body`: the grid is a Client Component, so anything on the card is
+    // serialised and shipped whether it is rendered or not.
+    for (const card of projectCards()) {
+      expect(card).not.toHaveProperty("updates");
+    }
+  });
 });
 
 describe("public pages never import a private loader", () => {

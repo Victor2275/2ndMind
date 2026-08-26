@@ -2,6 +2,7 @@ import "server-only";
 
 import { loadExperience, loadLabs, loadProfile, loadProjects, loadPursuits } from "./load";
 import type { Experience, Lab, Project, Pursuit } from "./schemas";
+import { splitUpdates, type ProjectUpdate } from "./updates";
 
 /**
  * Projections from vault entries to the shapes public pages are allowed to render.
@@ -118,6 +119,8 @@ export type PublicProject = {
   draft: boolean;
   bullets: string[];
   body: string;
+  /** Dated entries from the file's `## Updates` section, newest first. */
+  updates: ProjectUpdate[];
 };
 
 export type PublicExperience = {
@@ -152,6 +155,10 @@ export type PublicLab = {
 };
 
 export function toPublicProject(p: Project): PublicProject {
+  // Split before stripping. Left in the body, an update would be published twice: once as
+  // raw markdown under its heading, and once as the dated entry the Working page renders.
+  const { body, updates } = splitUpdates(p.body);
+
   return {
     slug: p.slug,
     title: p.title,
@@ -170,7 +177,8 @@ export function toPublicProject(p: Project): PublicProject {
     ...(p.group_size ? { groupSize: p.group_size } : {}),
     draft: p.draft,
     bullets: p.bullets,
-    body: stripInternalSections(p.body),
+    body: stripInternalSections(body),
+    updates,
   };
 }
 
@@ -225,7 +233,7 @@ export function toPublicLab(l: Lab): PublicLab {
 export const PUBLIC_PROJECT_KEYS = [
   "slug", "title", "summary", "tier", "status", "year", "category",
   "tags", "stack", "links", "event", "image", "imageFit", "figures", "groupSize",
-  "draft", "bullets", "body",
+  "draft", "bullets", "body", "updates",
 ] as const;
 
 export const PUBLIC_EXPERIENCE_KEYS = [

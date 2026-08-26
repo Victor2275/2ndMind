@@ -17,6 +17,44 @@ useful part.
 
 ---
 
+## 2026-08-25 · The Working page
+
+### D-099 · Updates live in the project's markdown, and `status: active` is what puts a project on `/now`
+
+**Decision.** `/now` renders every project whose frontmatter says `status: active`. Updates are
+`### YYYY-MM-DD` entries under a `## Updates` heading in the project's own file, parsed out of
+the public body into data.
+
+**Why `status`, not a new list.** The project schema has carried `status: active | archived`
+since the beginning. Reusing it means `/now` and `/projects` read one source, so a project cannot
+be finished on one page and in progress on the other. A separate "currently working on" list
+would allow showing motion on things that will never be portfolio projects — worth having, not
+worth guessing at now, and addable later without moving any of this.
+
+**Why the vault, not Postgres.** Updates in a table would make `/now` the first public page
+needing a database, turning a static page dynamic for content written weekly. The cost is real
+and stated in the UI: publishing is a commit plus a Vercel rebuild, about a minute. For ticking
+off a task that trade went the other way — that is D-036 — and the difference is frequency.
+
+**The section is removed from the published body.** Both callers want updates as data: `/now`
+shows the latest two, the project page renders all of them as dated entries. Left in the body,
+the same text would publish twice — once as raw markdown under a heading, once as entries. A
+test asserts no public body still contains an `## Updates` heading.
+
+**First live caller of `writeVaultFile`,** dormant since D-036 and exercised only by its own
+tests. Its last-write-wins behaviour and 8s deadline are reachable in production for the first
+time. No approval gate: a human writes these, not a model, so D-080 is untouched — nothing
+AI-driven writes to the vault in V2.
+
+**Photo prompts, not uploads,** as agreed. The private page names each active project with no
+image and the file to edit. `writeVaultFile` is text-only; committing binaries through the
+Contents API is its own piece of work.
+
+**Reversing it.** Delete `src/app/now/`, `src/app/private/now/`, and the `updates` field from
+`toPublicProject`; the `## Updates` sections then render as ordinary markdown on project pages
+and nothing is lost. Remove the two nav entries. Tests:
+`src/lib/vault/__tests__/updates.test.ts`.
+
 ## 2026-08-25 · The domain
 
 ### D-098 · A credential is one indivisible string, and `PASSKEYS` holds every device
