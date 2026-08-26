@@ -25,6 +25,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Physics labs, ESP32 instrumentation work | `context/01_engineering/labs/` |
 | Jobs, internships, leadership roles | `context/01_engineering/experience/` (fast index: `experience_and_roles.md`) |
 | Projects, portfolio, "what have you built" | `context/01_engineering/projects/` (fast index: `project_catalog.md`) |
+| What Victor is working on *right now* | the `status: active` projects and their `## Updates` sections — same files; published at `/now` |
 | Dragon boat, erg, PRs, nutrition, recovery | `context/02_physical_performance/benchmarks_and_logs.md` |
 | Workout programming, weekly split, tapering | `context/02_physical_performance/training_blocks.md` |
 | Cooking, baking, recipes | **Proof** — https://proof-cdvj.onrender.com. Not in this vault. |
@@ -55,6 +56,11 @@ if the question is broad. It is not affordable to touch `99_archive/`.
   **generated indexes**: read them for a one-file overview, never edit them. Same for
   `99_archive/resume.md`, and the `## Lab Experiments` section of `coursework_and_labs.md`.
   After changing any entry, run `python scripts/build_indexes.py`.
+- **`## Updates` in a project file is published.** `### YYYY-MM-DD` entries under that heading
+  render on the public `/now` page and on the project page, newest first — see `web/DECISIONS.md`
+  D-099. A project reaches `/now` by its frontmatter saying `status: active`, so that field is
+  now load-bearing rather than descriptive. Write updates for a stranger, not as notes to self;
+  anything internal belongs under `## Notes`, which is stripped.
 - **Dimaag.ai:** the technical specifics in `experience_and_roles.md` (PPO, Isaac Lab, LiDAR
   raycasting, sim-to-real validation, tracking accuracy) are shareable — use them freely.
   Anything beyond that documented scope is not recorded in this vault; say so rather than

@@ -14,7 +14,7 @@ later.
 
 ## 1 · Before you fly — needs a connection (~30 min total)
 
-### 1.1 · Buy the domain — ~10 min, ~$10.50/yr
+### 1.1 · Buy the domain — ~10 min, ~$10.50/yr — **DONE 2026-08-25**
 
 Full instructions are in `V2_PLAN.md` §7.1. The short version: **Cloudflare Registrar**, which
 sells at cost with no first-year discount that doubles on renewal. Then tell me the registrar
@@ -24,10 +24,19 @@ you used, and nothing else — I do not need the account.
 you enrolled on `victorgusev.vercel.app`, because a passkey is bound to its origin. Buying
 first means you enrol once instead of twice.
 
-### 1.2 · Publish the internship spreadsheet as CSV — ~5 min
+> **Done.** `victorgusev.com` is live and canonical; `www` 307s to it. Passkeys are now
+> scoped to the apex and accept both origins, so flipping which one is primary can never
+> force a re-enrolment again.
+
+### 1.2 · Publish the internship spreadsheet as CSV — ~5 min — **still open**
 
 In the master Google Sheet: **File → Share → Publish to web → (the applications tab) → CSV →
 Publish**. Send me the URL it gives you.
+
+> **Partly unblocked.** You put a CSV export in `context/99_archive/`, which is enough to
+> build and test the parser offline. The published URL is still needed for §7.6 to show
+> live data rather than a snapshot — and §7.6 is the plan's declared first cut, so this
+> is the one item on this list whose absence could remove a feature.
 
 This is the same shape as your calendar feeds, which is why it is cheap: a URL the app fetches
 and parses, no OAuth, no Google API project, no cost. Note that **the URL is a credential** —
@@ -42,7 +51,7 @@ while you are away.
 > is a much larger job — it needs the real Sheets API, a service account and write scopes. See
 > `V2_PLAN.md` §7 for why that one is V3 and what it costs.
 
-### 1.3 · Confirm the four images — ~2 min
+### 1.3 · Confirm the four images — ~2 min — **shipped, confirmation still welcome**
 
 These are already in `context/assets/`. I need to know I have them right, and one line of alt
 text each. Reply inline:
@@ -58,10 +67,19 @@ text each. Reply inline:
 photograph. If a larger version exists, it will look better — D-074 exists because
 low-information images cost 180px each on a phone and earn nothing.
 
-### 1.4 · The Proof link — ~1 min
+> **Answered and shipped.** You said no larger Micromouse image exists, so it runs as-is.
+> All four are live (§7.3); TaskAble and Five Second Rule use `image_fit: contain` because
+> `cover` cropped their titles off. **Alt text is still the open half** — the images
+> currently carry generated descriptions, and one line each from you would replace them.
+
+### 1.4 · The Proof link — ~1 min — **DONE 2026-08-25**
 
 Culinary is being replaced by a link to Proof. Which URL should it point at — the live app, or
 the `/projects/proof` case study on this site?
+
+> **Assumed the live app** — <https://proof-cdvj.onrender.com> — since you described Proof
+> as the thing you actually use for recipes, and a case study is not that. Say the word and
+> it points at `/projects/proof` instead; it is a one-line change.
 
 ---
 

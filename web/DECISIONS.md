@@ -151,6 +151,23 @@ not the ability to sign in at all. If none survive, the existing `no passkey enr
 deduped by id against `PASSKEYS`. That pair is what is deployed and working right now, and this
 change must not be the thing that logs Victor out — the migration can happen at his pace.
 
+**The migration hazard, learned the same day.** Keeping the legacy pair readable makes the
+migration safe *only if the order is right*: deploy the code that reads `PASSKEYS`, then set it,
+then delete the old pair. Done in the other order the site reads neither — the new variable is
+invisible to an old build, and the old variables are gone — and it reports `no passkey enrolled`
+for every device.
+
+What made that hard to see is that a live session cookie lasts seven days, so one device kept
+working and the failure looked per-device rather than total. The check that settles it in
+seconds, and which now lives in `REGISTER_PASSKEY.md`:
+
+```bash
+curl -s https://victorgusev.com/api/auth/login -H "Origin: https://victorgusev.com"
+```
+
+It lists one entry per credential the *deployed* build can see, which is the only number that
+matters and is not what Vercel's settings screen shows.
+
 **Reversing it.** Delete `PASSKEYS`, keep the legacy pair; single-device behaviour is unchanged
 and still fully tested. Tests: `src/lib/auth/__tests__/credentials.test.ts`.
 
@@ -1639,6 +1656,12 @@ ever isn't, cache per-request rather than reverting to the filesystem.
 **Decision.** The enrolled credential lives in two environment variables
 (`PASSKEY_CREDENTIAL_ID`, `PASSKEY_PUBLIC_KEY`). Sessions are HMAC-signed cookies built on
 Web Crypto. There is no user table and no auth vendor.
+
+> **Amended by D-098 (2026-08-25):** the account is now a *list* — `PASSKEYS`, one
+> `label:credentialId:publicKey` entry per device — so more than one device can be signed in.
+> The two variables named here are still read as a single unlabelled credential. What this entry
+> got right is unchanged and is the reason the amendment was cheap: no database, no vendor,
+> credentials in the environment.
 
 **Why.** Following D-006 (Clerk gates passkeys behind $20-25/mo). With exactly one user, the
 stored values are not secret — the private key never leaves the authenticator — so a database

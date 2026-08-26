@@ -899,9 +899,21 @@ The account was a single pair of environment variables, so this made it a list.
 > credential, deduped by id, so the migration happens at Victor's pace and this change was not
 > the thing that logged him out.
 >
-> **Left for Victor:** enrol the second device — set `PASSKEY_REGISTRATION_SECRET`, register
-> from it, paste the returned `PASSKEYS` into Vercel *replacing* the old value, delete the two
-> legacy variables, unset the registration secret, redeploy.
+> **Blocked on a push, 2026-08-25.** Victor enrolled both devices and set `PASSKEYS`, and
+> only the laptop appeared to work. Diagnosed from the live site: `/api/auth/login` returns
+> `no passkey enrolled`, `/now` 404s, and `origin/main` is **seven commits behind** — so
+> Vercel is building code that has never heard of `PASSKEYS`, while the legacy variables it
+> *does* read have been deleted. The deployed app therefore sees **zero** credentials.
+>
+> The laptop is not working either; it is holding a session cookie, which lasts seven days.
+> That is what made a total failure look like a per-device one.
+>
+> **My error.** I told him to delete the legacy variables while the code that reads their
+> replacement was unpushed on this machine. Environment variables are read by the deployed
+> build, not by what is committed locally. `REGISTER_PASSKEY.md` and `.env.example` now say
+> so at the top, and the check that would have caught it in seconds is written down.
+>
+> **Fix:** push. Nothing in Vercel needs changing afterwards.
 
 ### 7.10 · Editing the job sheet — V3, and why it is not V2
 

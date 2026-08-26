@@ -52,7 +52,7 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 | Styling | Tailwind v4 + shadcn/ui |
 | Fonts | Self-hosted in `src/app/fonts/` — see below |
 | Database | Neon Postgres + Drizzle |
-| Auth | Self-hosted WebAuthn (`@simplewebauthn`), credential in env, no database |
+| Auth | Self-hosted WebAuthn (`@simplewebauthn`), credentials in env (`PASSKEYS`), no database |
 | Vault I/O | `@octokit/rest`, `gray-matter`, `zod` |
 | Tests | Vitest + Testing Library |
 | Host | Vercel Hobby, custom domain `victorgusev.com` (apex primary, `www` redirects) |
