@@ -360,6 +360,26 @@ nothing writes on a model's say-so, and in V2 **nothing AI-driven writes to the 
 rejected item leaves no trace in Postgres, and a proposal built against stale rows is refused
 rather than applied.
 
+> **DONE 2026-08-25**, in ~2h against a 4h estimate. Decision D-100.
+>
+> **Rejection is expressed by absence** — an unticked item is not sent, so its current value
+> carries through untouched. The alternative, every item plus a decision flag, needs a branch
+> that can be got wrong; this cannot write a rejected item because it never sees one. An
+> approved *empty* value is a deletion, not a no-op, so proposing removal stays sayable.
+>
+> **Staleness is recomputed server-side** against live rows; the returned `basis` is compared,
+> never trusted. The fingerprint sorts by key because `replaceGoals` soft-deletes and re-inserts
+> on every save — ids change constantly, and an order-sensitive fingerprint would mark every
+> proposal stale.
+>
+> Nothing is persisted between proposing and approving. A table would need a migration, a
+> lifecycle and a cleanup rule for proposals nobody answered, for two events seconds apart on
+> one screen.
+>
+> Partial approval is tested **against real Postgres**, not a mock: `replaceGoals` wipes the set
+> before inserting, so a merge bug would not throw — it would quietly delete the goals Victor
+> did not approve.
+
 ### 2.2 · Draft sprint goals — **Moderate, 4h**
 
 Reads the week's tasks, logs and calendar; proposes next week's goals as a §2.1 proposal.
@@ -368,6 +388,24 @@ Reads the week's tasks, logs and calendar; proposes next week's goals as a §2.1
 
 **Done when:** it proposes goals Victor would plausibly have written, and he has approved one
 real set — with at least one item rejected, to prove partial approval works on real input.
+
+> **BUILT 2026-08-25**, in ~2h. Tests 464 → 499. Decision D-101. **The acceptance half is
+> Victor's** and is deliberately left open: approving writes to the production goals table, so
+> the first real set has to be his.
+>
+> Reads the week's done and open tasks, the week's log as one-line summaries, and next week's
+> calendar (best-effort — a slow feed must not block drafting). Health data does not travel this
+> path: bodyweight and rehab are their own tables and are not read.
+>
+> **The model's output is parsed, not cast.** Fenced JSON, a sentence of preamble, and two goals
+> for one domain are routine model behaviour rather than exceptions, and `as GoalDraft[]` would
+> put an empty row in front of Victor that approves an empty goal. Unparseable responses are
+> logged and reported as a written message — pasting raw model output into the UI is how an
+> injected string reaches the screen looking like an app message.
+>
+> **Uncached**, unlike the summaries: those exist because `/private` is `force-dynamic`. A draft
+> is a button press, and a memoised one would make pressing twice look broken. The panel is
+> collapsed by default so it is not pressed out of habit.
 
 ### 2.3 · Resume tailoring — **Moderate, 6h**
 
@@ -431,27 +469,33 @@ Done is struck through in spirit — the DONE blocks above carry the detail.
 | 1.2 | Case-study page design, against fixtures | me | Moderate | 4h | pre | **done** |
 | 1.4 | Close out feature 3 | me | Moderate | 2h | pre | **done** |
 | 7.2 | The uploads list | me | — | — | pre | **done** |
-| **7.1** | **Domain `victorgusev.com`** | **both** | Easy | 1.5h | **pre** | blocks passkey |
-| 1.5 | Summarise my week | me | Easy | 3h | pre | next |
-| 7.3 | The four uploaded images | me | Easy | 1h | pre | |
-| 7.4 | Culinary → Proof | me | Easy | 0.5h | pre | |
+| 7.1 | Domain `victorgusev.com` | both | Easy | 1.5h | pre | **done** |
+| 1.5 | Summarise my week | me | Easy | 3h | pre | **done** |
+| 7.3 | The four uploaded images | me | Easy | 1h | pre | **done** |
+| 7.4 | Culinary → Proof | me | Easy | 0.5h | pre | **done** |
+| 7.11 | Both devices signed in | me | Easy | 1h | pre | **done** |
 | 1.3 | Write the case studies | **Victor** | — | 2–4h | plane | 17 sections |
 | — | `UPLOADS_NEEDED.md` §2 | **Victor** | — | — | plane | |
 | 1.2b | Case-study revision, against real prose | me | Easy | 1h | post | needs 1.3 |
-| 7.9 | **Working page — public "Now"** | me | Moderate | 6h | post | |
-| 2.1 | Approval-gated proposal UI | me | Moderate | 4h | post | |
-| 2.2 | Draft sprint goals | me | Moderate | 4h | post | needs 2.1 |
+| 7.9 | Working page — public "Now" | me | Moderate | 6h | post | **done** (~3h) |
+| 2.1 | Approval-gated proposal UI | me | Moderate | 4h | post | **done** (~2h) |
+| 2.2 | Draft sprint goals | me | Moderate | 4h | post | **built** (~2h) · Victor to accept |
 | 2.3 | Resume tailoring | me | Moderate | 6h | post | ✂️ 2nd cut |
 | 7.5 | Public → private button | me | Easy | 1.5h | post | |
 | 7.6 | Job sheet, read-only | me | Moderate | 4h | post | ✂️ **1st cut** · needs Victor |
 | ~~2.4~~ | ~~Semantic search~~ | — | — | ~~12h~~ | — | **cut → V3** |
 
-**Pre-Taiwan: 15h committed against ~16h**, of which **9h is done**. Remaining: 6h against
-~10.5h. Order matters — §7.1 first, because it needs a connection and gates the passkey.
+**Pre-Taiwan: complete.** Everything scheduled before the flight is done, plus §7.11, which
+was not in the plan at all until sign-in started working.
 
-**Post-Taiwan: 26.5h against ~44h.** 17.5h slack.
+**Post-Taiwan: 14h of the 26.5h is already done** — §7.9, §2.1 and §2.2 landed early, in ~7h
+against a 14h estimate. Remaining: **§1.2b (1h, needs Victor's prose), §2.3 (6h), §7.5
+(1.5h), §7.6 (4h)** — 12.5h.
 
-**Total: ~41.5h against ~60h.** ~36h of it still to do.
+**The cut line has not been reached.** Its trigger was §7.9 + §2.1 + §2.2 exceeding 16h
+combined by 2026-09-14; they came in at ~7h, three weeks early. Both §7.6 and §2.3 survive
+on current numbers, and §7.6 is still blocked on Victor publishing the sheet rather than on
+time.
 
 ### The new cut line
 
@@ -638,14 +682,12 @@ resolves, `/sitemap.xml` names the new host, and you can sign in to `/private` o
 > **Left for Victor, in order — and the order matters:**
 > 1. ~~In Vercel, make **`victorgusev.com` the primary domain**~~ — **done**, verified
 >    2026-08-25: `www` 307s to the apex.
-> 2. Set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com` and redeploy.
-> 3. Re-enrol the passkey — set `PASSKEY_REGISTRATION_SECRET`, register from the phone he
->    actually uses, then unset it. `web/REGISTER_PASSKEY.md` has the ceremony.
+> 2. ~~Set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com` and redeploy.~~ — **done**.
+> 3. ~~Re-enrol the passkey.~~ — **done 2026-08-25**, and sign-in works. See §7.11: one
+>    device was never the requirement, and the account is now a list.
 >
-> Step 3 is unavoidable: the old credential is bound to `victorgusev.vercel.app`, which no
-> longer serves anything. It comes last so it happens exactly once — enrolling before step 1
-> would bind the credential and then need doing again. Doing it once, now, is what §7.1 being
-> scheduled first was for.
+> Step 3 was unavoidable: the old credential was bound to `victorgusev.vercel.app`, which no
+> longer serves anything. Putting it last meant it happened exactly once. **§7.1 is closed.**
 
 ### 7.3 · The four images — **1h**
 
@@ -807,6 +849,59 @@ established convention and reads as current, which is the entire signal it exist
 **Done when:** `/now` lists every `status: active` project with its latest update, an update
 written from `/private` appears publicly after one rebuild, a project with no updates looks
 deliberate rather than empty, and `npm run shots` is clean at 390px.
+
+> **DONE 2026-08-25**, in ~3h against a 6h estimate. Tests 447 → 464. Decision D-099.
+>
+> Nav is About / Now / Projects / Resume; `/now` is in the sitemap. Updates are `### YYYY-MM-DD`
+> entries under `## Updates` in the project's own file, parsed **out** of the published body —
+> left in place the same text would publish twice, once as raw markdown under a heading and once
+> as dated entries. A test asserts no public body still contains an `## Updates` heading.
+>
+> **First live caller of `writeVaultFile`**, dormant since D-036. No approval gate: a human
+> writes these, so D-080 is untouched.
+>
+> **A bug caught by looking at the render, not by a test.** Both pages filtered out
+> `draft: true`, which marks the *case study* as scaffolding, not the project. That hid Water
+> Bottle Scale from the page whose entire subject is work in progress, and left the composer
+> unable to post an update to it. Drafts now appear with the same "write-up pending" marker the
+> project page carries.
+>
+> `npm run shots -- 390`: nothing scrolls sideways, `/private` first task unmoved at 356px.
+>
+> **What is not verified:** the round trip. Publishing commits to the real vault, so the first
+> real exercise is the first update Victor writes. `/now` currently shows two active projects
+> and no updates — honest, and nothing was invented to fill it.
+
+### 7.11 · Both devices signed in — **Easy, 1h** — **DONE 2026-08-25**
+
+Requested the moment sign-in started working: the private side on the phone *and* the laptop.
+The account was a single pair of environment variables, so this made it a list.
+
+> **DONE 2026-08-25**, in ~1h. Tests 437 → 447. Decision D-098.
+>
+> `PASSKEYS` holds every device, one entry per line or comma: `label:credentialId:publicKey`.
+> A credential is **one indivisible string** on purpose. The obvious alternative — ids in one
+> variable, keys in another — pairs by position, so retiring a device means editing both and
+> missing one binds the wrong key to the wrong id. That fails closed, but it fails as "sign-in
+> stopped working" with nothing to point at.
+>
+> Two failure modes shaped the rest. Verifying against the *first* credential would reject the
+> phone whenever the laptop was listed first, so the asserted id selects the key — and an
+> unknown id returns the same opaque `verification failed` as a bad signature, so it is not an
+> oracle for which ids are registered. And returning only the new device, which the old
+> two-variable output did, invites adding the phone by **overwriting the laptop** — locking you
+> out of the machine you are sitting at. Enrolment returns the whole list to paste back.
+>
+> A malformed entry is skipped with a warning, not thrown: one typo should cost one device, not
+> the ability to sign in at all.
+>
+> `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are still honoured as one unlabelled
+> credential, deduped by id, so the migration happens at Victor's pace and this change was not
+> the thing that logged him out.
+>
+> **Left for Victor:** enrol the second device — set `PASSKEY_REGISTRATION_SECRET`, register
+> from it, paste the returned `PASSKEYS` into Vercel *replacing* the old value, delete the two
+> legacy variables, unset the registration secret, redeploy.
 
 ### 7.10 · Editing the job sheet — V3, and why it is not V2
 
