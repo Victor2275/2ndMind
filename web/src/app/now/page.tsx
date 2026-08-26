@@ -23,8 +23,12 @@ export const metadata = {
 };
 
 export default function NowPage() {
+  // Drafts included, deliberately. `draft` marks the *case study* as scaffolding, not the
+  // project — the summary and any updates are real prose. Excluding them would hide the most
+  // actively-in-progress work from the page whose entire subject is work in progress, which
+  // is how this page first rendered with one project on it instead of two.
   const active = publicProjects()
-    .filter((p) => p.status === "active" && !p.draft)
+    .filter((p) => p.status === "active")
     // Most recently updated first: the page is about motion, so the thing that moved last
     // belongs at the top. Projects with no updates sort below those that have them rather
     // than jumping to the front on an empty string.
@@ -62,6 +66,14 @@ export default function NowPage() {
                   </Link>
                 </h2>
                 <Badge>{project.category}</Badge>
+                {project.draft && (
+                  // Same honesty marker the project page carries. The build is real; the
+                  // write-up behind the link is not written yet, and saying so here stops the
+                  // click being a disappointment.
+                  <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
+                    write-up pending
+                  </span>
+                )}
               </div>
 
               <p className="mt-2 max-w-[60ch] text-sm text-muted-foreground">{project.summary}</p>

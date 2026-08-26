@@ -22,7 +22,10 @@ export const metadata = { title: "Now" };
 export default async function PrivateNowPage() {
   await requireSession();
 
-  const active = publicProjects().filter((p) => p.status === "active" && !p.draft);
+  // Drafts included: `draft` marks the case-study body as scaffolding, not the project. They
+  // are the ones most likely to need an update written, so excluding them made the composer
+  // unable to post to the very projects the page exists for.
+  const active = publicProjects().filter((p) => p.status === "active");
   const needPhotos = active.filter((p) => !p.image);
 
   return (
@@ -71,11 +74,13 @@ export default async function PrivateNowPage() {
           </p>
           <ul className="mt-3 space-y-1.5">
             {needPhotos.map((p) => (
-              <li key={p.slug} className="text-sm text-muted-foreground">
-                <span className="text-foreground">{p.title}</span>
-                <span className="ml-2 font-mono text-xs">
+              // The path on its own line. Inline, a title that wrapped ran straight into it
+              // and the two read as one broken string on a phone.
+              <li key={p.slug}>
+                <p className="text-sm text-foreground">{p.title}</p>
+                <p className="font-mono text-xs break-all text-muted-foreground">
                   context/01_engineering/projects/{p.slug}.md
-                </span>
+                </p>
               </li>
             ))}
           </ul>

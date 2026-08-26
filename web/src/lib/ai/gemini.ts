@@ -2,7 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { unstable_cache } from "next/cache";
 
 /**
- * The AI calls on the site: a summary of the day, and a summary of the week.
+ * The AI calls on the site: a summary of the day, a summary of the week, and the goal
+ * drafter in `goal-drafts.ts`, which reaches `callModel` here.
  *
  * Two constraints shape everything here, and both come from Victor directly.
  *
@@ -72,7 +73,16 @@ function apiKey(): string | null {
 
 const NO_KEY = "Set GEMINI_API_KEY to turn this on. Everything else works without it.";
 
-async function callModel(prompt: string): Promise<SummaryResult> {
+/**
+ * One model call, uncached.
+ *
+ * Exported so `goal-drafts.ts` can reach it. Deliberately *not* cached there: drafting goals
+ * happens on a button press, not a page load, and the caching in this file exists because
+ * `/private` is `force-dynamic` and would otherwise re-summarise an unchanged day on every
+ * view. A user-initiated draft is a request for a fresh take — serving a memoised one would
+ * make pressing the button twice look broken.
+ */
+export async function callModel(prompt: string): Promise<SummaryResult> {
   const key = apiKey();
   if (!key) return unavailable(NO_KEY);
 

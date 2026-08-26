@@ -27,6 +27,7 @@ const WIDTHS = [360, 390, 768, 1280];
 
 const PAGES = [
   { name: "home", url: "/" },
+  { name: "now", url: "/now" },
   { name: "projects", url: "/projects" },
   { name: "project-detail", url: "/projects/solenoid-bit-reader" },
   { name: "resume", url: "/resume/swe" },
@@ -69,6 +70,7 @@ const FOLD_LIMIT = 500;
 const PRIVATE_PAGES = [
   { name: "private-today", url: "/private" },
   { name: "private-log", url: "/private/log" },
+  { name: "private-now", url: "/private/now" },
 ];
 
 function b64url(bytes) {

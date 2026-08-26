@@ -4,6 +4,7 @@ import { Agenda } from "@/components/site/agenda";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
+import { ProposalReview } from "@/components/site/proposal-review";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { Task } from "@/lib/db/schema";
@@ -148,6 +149,13 @@ async function Tasks() {
       <div className="mt-8 space-y-4">
         <Panel title="This week's goals">
           <GoalsEditor values={goalValues} />
+        </Panel>
+
+        {/* Collapsed by default. Drafting is a weekly act, and an open panel with a model
+            button in it on the page Victor opens daily invites pressing it out of habit —
+            each press is a real API call against a ~$10/month budget. */}
+        <Panel title="Draft next week" collapsible defaultOpen={false}>
+          <ProposalReview />
         </Panel>
 
         <Panel title="Backlog" collapsible defaultOpen={someday.length > 0}>

@@ -118,7 +118,7 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **464 tests across 27 files** as of
+Run with `npm test`. Typecheck with `npm run typecheck`. **499 tests across 30 files** as of
 2026-08-25, all passing. A drop from that count is a regression, not noise.
 
 ### Layout is checked by measurement, not by looking

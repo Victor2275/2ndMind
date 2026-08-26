@@ -17,6 +17,63 @@ useful part.
 
 ---
 
+## 2026-08-25 · Proposals
+
+### D-101 · The goal drafter parses the model's output, and drops what it cannot use
+
+**Decision.** `draftSprintGoals` asks for JSON, extracts it by slicing between the first `{` and
+the last `}`, parses it with Zod, then drops goals for unknown domains and duplicates within a
+domain. A malformed response returns a written message; the raw text is logged, never shown.
+
+**Why.** Model output is untrusted input. `as GoalDraft[]` would push a `{}` into the review UI,
+where it renders as an empty row that approves an empty goal — and the fence-wrapping, the extra
+sentence of preamble, and the two goals for one domain are all things models do routinely rather
+than exceptionally.
+
+Not showing the raw text matters separately: pasting model output into the UI as an app message
+is how an injected string reaches the screen looking official. It goes to the server log.
+
+**Uncached, unlike the summaries.** `gemini.ts` caches because `/private` is `force-dynamic` and
+would re-summarise an unchanged day on every view. Drafting happens on a button press, and
+serving a memoised draft would make pressing the button twice look broken. The panel is
+collapsed by default so the button is not pressed out of habit — each press is a real call
+against a ~$10/month budget.
+
+**Reversing it.** Delete `lib/ai/goal-drafts.ts` and the `Draft next week` panel; the manual
+`GoalsEditor` is untouched and remains the primary way goals are set.
+
+### D-100 · Approval is a typed proposal, not a text diff, and rejection is expressed by absence
+
+**Decision.** A proposal is a list of `{ key, label, before, after, note }`. The review UI ticks
+items individually, values are editable before approving, and `applyApprovals` merges approvals
+over current state. Nothing is stored between proposing and approving.
+
+**Why not a markdown diff,** which rev 1 of the plan specified: sprint goals are rows in `tasks`
+(D-037) and never touch the vault, so the 10h diff UI would have had no V2 caller at all. The
+constraint worth building is "nothing writes on a model's say-so", and that is about structure,
+not about text.
+
+**Rejection is absence.** An unticked item is not sent, so its current value carries through
+untouched. The alternative — sending every item with a decision flag — needs a branch that can
+be got wrong; this cannot write a rejected item because it never sees one.
+
+**An approved empty value is a deletion,** not a no-op. Proposing removal of a goal that no
+longer makes sense is legitimate, and treating blank as "leave it" would make that unsayable.
+
+**Staleness is checked server-side against live rows.** The `basis` fingerprint is sorted by key
+so it does not depend on row order — `replaceGoals` soft-deletes and re-inserts, so ids change
+on every save and an order-sensitive fingerprint would mark every proposal stale. The client
+returns the basis but it is compared, never trusted: a forged one only skips a warning about the
+user's own concurrent edit, and anyone who can post it is signed in and could call `replaceGoals`
+directly.
+
+**Nothing is persisted between the two steps.** A proposals table would need a migration, a
+lifecycle, and a rule for cleaning up proposals nobody answered — for two events seconds apart
+on one screen.
+
+**Reversing it.** Delete `lib/proposals/` and `components/site/proposal-review.tsx`. Tests:
+`lib/proposals/__tests__/`, including partial approval against real Postgres.
+
 ## 2026-08-25 · The Working page
 
 ### D-099 · Updates live in the project's markdown, and `status: active` is what puts a project on `/now`
