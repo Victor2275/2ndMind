@@ -17,6 +17,110 @@ useful part.
 
 ---
 
+## 2026-08-25 · Career tooling
+
+### D-104 · The tailoring model returns bullet ids, never bullet text
+
+**Decision.** Resume tailoring supplies every bullet as `section:slug#index` with its text, and
+the model may reply only with ids from that list. An id it was not given **fails the whole
+response**. Free-text rationale is allowed and displayed as rationale. Bullet text on screen is
+resolved from the vault by id; the model never supplies words that reach the page.
+
+**Why ids and not prose.** Rev 1 of the plan promised "a test proves it cannot introduce a
+bullet that is not in the vault". That is only enforceable if the model returns identifiers. If
+it returns prose, the check is fuzzy string matching — and a model that helpfully rewrites
+"Built a rechargeable scale" as "Engineered a precision instrument" passes any threshold loose
+enough to be useful. That is D-069 walking back in through the one feature that touches a
+hiring document.
+
+**Why the whole response fails.** A fabricated id is evidence about everything else in that
+response. Dropping just the bad id would hide exactly the failure the check exists to catch,
+and would leave the surviving advice looking trustworthy. `deprioritise` is checked as
+strictly as `emphasise` — advice to drop a bullet that does not exist is still a fabrication,
+and a parser that only checked the first list would let it through.
+
+**Bullets come from the union of all three variants,** not from one. *Which variant to send* is
+one of the questions being asked; feeding it only the robotics bullets and then asking whether
+robotics is right is a question with one possible answer.
+
+**A posting under 80 characters is refused without a model call.** Given a job title alone the
+model pattern-matches and recommends whatever sounds adjacent, confidently.
+
+**Reversing it.** Delete `lib/ai/tailor.ts`, `app/private/tailor/` and the nav entry. Nothing
+else depends on it — it writes nothing. Tests: `lib/ai/__tests__/tailor.test.ts`, including the
+fabricated-id case the plan asked for by name.
+
+### D-103 · `/private/work` reads the applications sheet, and still never writes to it
+
+**Decision.** `/private/work` fetches the published CSV from `JOB_SHEET_CSV_URL`, parses it, and
+shows live applications, a high-priority shortlist, and counts by status.
+
+**Why this reverses the page's original refusal.** The page's lede used to say it deliberately
+does not duplicate the sheet, because `internship_pipeline.md` asks assistants to leave that
+data entry to the Gmail script. That reasoning was about a competing *writer*. Reading is not
+duplicating: there is still exactly one source of truth and this is a view of it. Nothing here
+writes, and the lede has been rewritten to say so rather than quietly dropped.
+
+**The URL is a credential** — Google's publish-to-web link grants read access to whoever holds
+it — so it lives in Vercel and never in the repo, the same treatment `GOOGLE_CALENDAR_KEY` gets.
+Errors report status codes, never the URL.
+
+**The export is 179 rows and 173 say "No Application".** Rendered whole it is a wall with the
+six rows that matter invisible inside it, so the page shows live applications, the high-priority
+rows not yet applied to, and counts. That fact came from parsing Victor's real export; a fixture
+I invented would have had a tidy spread of statuses and taught me nothing.
+
+**Headers are matched after stripping case and punctuation.** The sheet is edited by hand —
+`Domain / Focus` carries spaces around the slash — and exact matching would turn a cosmetic edit
+into an outage. A row with neither company nor role is counted as skipped rather than dropped
+silently, so a drifting sheet shows as a visible number.
+
+**A date that is not ISO is blanked, not guessed.** `08/13/2026` is ambiguous, and guessing
+wrong misdates a row by up to eleven months with nothing looking wrong.
+
+**Failures degrade to a message.** An unpublished sheet answers `200` with an HTML login page
+rather than a `404`, so the body is sniffed for a leading `<`. As in D-086, the cache throws
+rather than returns on failure, so a transient outage is not pinned to the page for the full TTL.
+
+**Reversing it.** Unset `JOB_SHEET_CSV_URL` — the panel then explains itself and the rest of the
+page is unaffected. Tests: `lib/jobs/__tests__/sheet.test.ts`, parsed against the real export in
+`context/99_archive/`, which is a fixture and never a runtime fallback.
+
+### D-102 · The public→private link is a hint with no authority, and a test keeps it that way
+
+**Decision.** Login sets `2m_returning=1` — not `httpOnly`, a year long — and the public footer
+renders a `/private` link when it is present. It gates nothing.
+
+**Why a second cookie at all.** The session cookie is `httpOnly` and public pages are statically
+generated, so neither the browser nor the server can tell who is asking. A value that decides
+only whether a link is drawn is the workable shape.
+
+**Why deliberately not `httpOnly`.** Making it unreadable would suggest it protects something.
+Anyone can set it from the console; doing so yields a link and a redirect to `/signin`, because
+`/private` calls `requireSession()` regardless.
+
+**The test is a grep, not a unit test.** The hazard is not this module misbehaving — it is a
+*new call site* somewhere else in the tree consulting the cookie to decide something real, at
+which point it becomes an authentication bypass made of a boolean. So the test walks `src/` and
+fails if anything outside an explicit allowlist mentions it. It caught its own test file within
+a minute of being written, which is the correct behaviour.
+
+**Cleared on explicit sign-out, not on session expiry.** Signing out on a borrowed machine
+should not leave a "Victor signs in here" sign on the public site. An expired session is the
+opposite case — that visitor wants the shortcut back to `/signin`.
+
+**In the footer, not the header nav.** The header is already four items and truncates the name
+at 390px; a fifth would push it over for the one person who can see it. A personal shortcut is
+also not site navigation.
+
+**`useSyncExternalStore`, not `useState` + `useEffect`.** Its server snapshot is `false`, so the
+prerendered HTML and first client render agree and there is no hydration mismatch — and setting
+state from an effect is rejected by the React lint rule, correctly, since this reads an external
+source.
+
+**Reversing it.** Delete `lib/auth/returning.ts`, `components/site/private-link.tsx`, the footer
+line and the two `store.set`/`store.delete` calls in the login route.
+
 ## 2026-08-25 · Proposals
 
 ### D-101 · The goal drafter parses the model's output, and drops what it cannot use

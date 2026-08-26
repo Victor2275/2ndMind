@@ -20,6 +20,7 @@ import {
   signSession,
   verifySession,
 } from "@/lib/auth/session";
+import { RETURNING_COOKIE, RETURNING_MAX_AGE } from "@/lib/auth/returning";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,16 @@ export async function POST(request: Request) {
     maxAge: SESSION_MAX_AGE,
   });
 
+  // Deliberately readable by scripts, and deliberately outlives the session. See
+  // RETURNING_COOKIE: it decides whether a link is drawn on a static public page, nothing more.
+  store.set(RETURNING_COOKIE, "1", {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: RETURNING_MAX_AGE,
+  });
+
   return NextResponse.json({ verified: true });
 }
 
@@ -126,5 +137,9 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const store = await cookies();
   store.delete(SESSION_COOKIE);
+  // Signing out is a deliberate act, and on a borrowed or shared machine it should not leave a
+  // "Victor signs in here" sign on the public site. An expiring session does not clear this —
+  // that case wants the link, so the shortcut back to /signin is still there.
+  store.delete(RETURNING_COOKIE);
   return NextResponse.json({ ok: true });
 }

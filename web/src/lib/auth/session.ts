@@ -17,6 +17,9 @@ export const CHALLENGE_COOKIE = "2m_challenge";
 /** Seven days. Long enough not to be annoying on a personal tool, short enough to matter. */
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
+// The returning-visitor hint lives in `returning.ts` — it is not a session and carries no
+// authority. Kept out of this module so public client bundles need not import the HMAC code.
+
 export type SessionPayload = {
   /** Subject. Always "victor" — there is exactly one user, by design. */
   sub: string;

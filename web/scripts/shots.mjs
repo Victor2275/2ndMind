@@ -71,6 +71,8 @@ const PRIVATE_PAGES = [
   { name: "private-today", url: "/private" },
   { name: "private-log", url: "/private/log" },
   { name: "private-now", url: "/private/now" },
+  { name: "private-work", url: "/private/work" },
+  { name: "private-tailor", url: "/private/tailor" },
 ];
 
 function b64url(bytes) {
