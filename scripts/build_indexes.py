@@ -125,7 +125,9 @@ def build_experience(entries: list[dict]) -> str:
         "| Role | Organization | Type | Start | End | On CV |",
         "|---|---|---|---|---|---|",
     ]
-    for e in sorted(entries, key=lambda x: str(x.get("date_start", "")), reverse=True):
+    # Victor's explicit order, matching the site (D-121). A generated index that
+    # contradicts the page it summarises is worse than no index.
+    for e in sorted(entries, key=lambda x: (int(x.get("order", 99)), str(x.get("date_start", "")))):
         variants = e.get("resume_variants") or []
         out.append(
             "| [{title}]({path}) | {org} | {type} | {start} | {end} | {cv} |".format(

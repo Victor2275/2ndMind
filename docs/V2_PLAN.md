@@ -2,7 +2,7 @@
 
 **Rev 4 · 2026-08-25 · Deadline 2026-09-18 · Scope decided by Victor 2026-08-24, revised three times on 2026-08-25**
 
-The forward plan. `MIGRATION_PLAN.md` is its predecessor and is finished — that document is
+The forward plan. `docs/MIGRATION_PLAN.md` is its predecessor and is finished — that document is
 history, this one is live.
 
 Revision 2 changes four things, all on Victor's call (2026-08-25):
@@ -21,7 +21,7 @@ the production passkey.
 
 **Revision 4** takes the cut. Victor moved the Working page and the public→private button into
 V2 and accepted read-only for the job sheet; **semantic search is cut** to pay for them. Net
-−4.5h. V3 is now its own document, `V3_PLAN.md`.
+−4.5h. V3 is now its own document, `docs/V3_PLAN.md`.
 
 ---
 
@@ -448,7 +448,7 @@ fails closed.
 
 ### 2.4 · Semantic search — ✂️ **CUT 2026-08-25**
 
-Moved to `V3_PLAN.md` §1. It was the declared cut in rev 1, reinstated in rev 2 when the
+Moved to `docs/V3_PLAN.md` §1. It was the declared cut in rev 1, reinstated in rev 2 when the
 budget turned out to be $10/month rather than $10 lifetime, and cut again in rev 4 — this time
 on **time**, which was always the binding constraint. At 12h it was the largest item in V2 and
 the only remaining Hard one, and it paid for three features Victor wanted more.
@@ -462,7 +462,7 @@ so any search surface is private-only with a test asserting no public route impo
 
 ## 3. Not in V2
 
-**Everything deferred now lives in `V3_PLAN.md`**, with sizing and reasoning, rather than as a
+**Everything deferred now lives in `docs/V3_PLAN.md`**, with sizing and reasoning, rather than as a
 table of regrets at the bottom of this document. It holds nine items across ~46h.
 
 The three Victor picked for V3 on 2026-08-25 — filament and printer tracking, uploading his own
@@ -492,7 +492,7 @@ Done is struck through in spirit — the DONE blocks above carry the detail.
 | 7.4 | Culinary → Proof | me | Easy | 0.5h | pre | **done** |
 | 7.11 | Both devices signed in | me | Easy | 1h | pre | **done** |
 | 1.3 | Write the case studies | **Victor** | — | 2–4h | plane | 17 sections |
-| — | `UPLOADS_NEEDED.md` §2 | **Victor** | — | — | plane | |
+| — | `docs/UPLOADS_NEEDED.md` §2 | **Victor** | — | — | plane | |
 | 1.2b | Case-study revision, against real prose | me | Easy | 1h | post | needs 1.3 |
 | 7.9 | Working page — public "Now" | me | Moderate | 6h | post | **done** (~3h) |
 | 2.1 | Approval-gated proposal UI | me | Moderate | 4h | post | **done** (~2h) |
@@ -552,7 +552,7 @@ Ordered by how likely they are to actually happen.
    much as a certainty; the mitigation is doing it *before* the next enrolment rather than
    after, which is why §7.1 is first.
 5. **The ten-day gap loses context.** Mitigation: `web/DECISIONS.md` (86 entries), this file,
-   `V3_PLAN.md` and `UPLOADS_NEEDED.md`. Regenerate `Mastermind.md` before travelling if
+   `docs/V3_PLAN.md` and `docs/UPLOADS_NEEDED.md`. Regenerate `Mastermind.md` before travelling if
    another AI will be used.
 6. **The Vercel config is not actually done.** Reported, not verified. §1.5 surfaces it, and
    §7.1 forces a visit to that dashboard anyway.
@@ -599,7 +599,7 @@ capability he rated lowest. That trade is why seven new features fit into a plan
 | # | Item | Where | Est. | Why there |
 |---|---|---|---:|---|
 | 7.1 | Domain `victorgusev.com` | **V2, first** | 1.5h | Blocks passkey. Needs a connection. |
-| 7.2 | The uploads list | **V2, done** | — | Requested for Thursday. `UPLOADS_NEEDED.md`. |
+| 7.2 | The uploads list | **V2, done** | — | Requested for Thursday. `docs/UPLOADS_NEEDED.md`. |
 | 7.3 | The four images you uploaded | **V2** | 1h | Already on disk, earning nothing. |
 | 7.4 | Culinary → Proof | **V2** | 0.5h | A deletion. Deletions are cheap. |
 | 7.5 | Public → private button | **V2** *(rev 4)* | 1.5h | Moved in on your call. |
@@ -611,7 +611,7 @@ capability he rated lowest. That trade is why seven new features fit into a plan
 
 **Rev 4 settled this.** Three of the six deferred items came into V2 (+11.5h) and semantic
 search was cut to pay for them (−12h), so V2 is ~41.5h against ~60h and slack is ~34% — better
-than before the ten items arrived. The three remaining V3 items are in `V3_PLAN.md`.
+than before the ten items arrived. The three remaining V3 items are in `docs/V3_PLAN.md`.
 
 ### 7.1 · Buy `victorgusev.com` and point it here — **1.5h, and 10 min of it is yours**
 
@@ -819,7 +819,7 @@ window, and forging the cookie still lands on `/signin`.
 
 ### 7.6 · The job sheet, read-only — **Moderate, 4h**
 
-~~Blocked on Victor publishing the sheet as CSV (`UPLOADS_NEEDED.md` §1.2) — the URL is needed
+~~Blocked on Victor publishing the sheet as CSV (`docs/UPLOADS_NEEDED.md` §1.2) — the URL is needed
 before he flies, since the parser can be written and tested offline once its shape is known.~~
 
 **Unblocked on Victor's call:** he put an export in `context/99_archive/`, so the parser was
@@ -866,7 +866,7 @@ source of truth for your own bullet points, and the first time it matters will b
 where the page and the PDF disagree.
 
 That is not a reason to skip it. It is a reason to pick deliberately between replacing,
-running alongside, or falling back — the three options are laid out in `UPLOADS_NEEDED.md`
+running alongside, or falling back — the three options are laid out in `docs/UPLOADS_NEEDED.md`
 §2.4, and the estimate depends on which you choose.
 
 ### 7.9 · The Working page — public "Now" — **Moderate, 6h**
@@ -986,4 +986,4 @@ phone.
 **Use §7.6 for a month first.** There is a reasonable chance that seeing the pipeline on
 `/private` is the whole value, and that the editing actually wanted is "mark this one
 rejected" — one field, a far smaller feature than "edit the spreadsheet". Scheduled in
-`V3_PLAN.md`; that is the question to answer before starting it.
+`docs/V3_PLAN.md`; that is the question to answer before starting it.

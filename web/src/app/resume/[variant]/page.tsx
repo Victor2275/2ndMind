@@ -28,9 +28,13 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
   if (!isVariant(variant)) notFound();
 
   const doc = buildResume(variant);
-  const others = RESUME_VARIANTS.filter((v) => v !== variant).map((v) => ({
+  // Every variant, always, in the order declared by RESUME_VARIANTS -- robotics, ml, swe.
+  // Before this it rendered only the *other* two, so the row re-ordered itself on every
+  // switch and the control moved out from under the cursor.
+  const variants = RESUME_VARIANTS.map((v) => ({
     id: v,
     label: buildResume(v).label,
+    current: v === variant,
   }));
 
   return (
@@ -41,18 +45,25 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
           <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
             Variant
           </span>
-          <span className="rounded-full border border-primary bg-primary px-3 py-1 font-mono text-xs text-primary-foreground">
-            {doc.label}
-          </span>
-          {others.map((o) => (
-            <Link
-              key={o.id}
-              href={`/resume/${o.id}`}
-              className="rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground transition-all duration-250 hover:-translate-y-0.5 hover:border-primary/60 hover:text-foreground"
-            >
-              {o.label}
-            </Link>
-          ))}
+          {variants.map((v) =>
+            v.current ? (
+              <span
+                key={v.id}
+                aria-current="page"
+                className="rounded-full border border-primary bg-primary px-3 py-1 font-mono text-xs text-primary-foreground"
+              >
+                {v.label}
+              </span>
+            ) : (
+              <Link
+                key={v.id}
+                href={`/resume/${v.id}`}
+                className="rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground transition-all duration-250 hover:-translate-y-0.5 hover:border-primary/60 hover:text-foreground"
+              >
+                {v.label}
+              </Link>
+            ),
+          )}
         </div>
         <PrintButton />
       </div>

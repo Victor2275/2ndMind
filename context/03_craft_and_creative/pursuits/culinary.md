@@ -12,8 +12,8 @@ kicker: Using science to create food
 discipline: Craft
 resume_variants: []
 bullets:
-  - Learning technique-led methods such as fermentation and tempering to sharpen the craft.
-  - Builds Proof, an application for tracking and iterating on recipe designs.
+  - Taught myself various techniques in cooking, such as fermentation and tempering.
+  - Built Proof, an application for tracking and iterating on recipe designs.
 facts:
   - label: Measurement
     value: By weight

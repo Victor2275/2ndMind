@@ -94,8 +94,12 @@ context/
 ├── 02_physical_performance/  dragon boat training and benchmarks
 ├── 03_craft_and_creative/    cooking, CAD, fabrication
 ├── 04_operations/            sprints, internship pipeline, logbook
-├── assets/labs/               extracted lab report images (binary)
-└── 99_archive/                full lab reports, transcripts, superseded docs
+├── assets/                   project hero images + profile photo (synced into web/public)
+├── assets/labs/              extracted lab report images (binary)
+└── 99_archive/               full lab reports, transcripts, superseded docs
 
+scripts/                      maintenance and generation scripts
+docs/                         plans: V2_PLAN, V3_PLAN, UPLOADS_NEEDED, REVIEW_ROUND_PLAN
+private/                      gitignored source documents (saved DARS audits) — never commit
 web/                          Next.js app — public portfolio + private second brain
 ```

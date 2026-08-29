@@ -20,6 +20,9 @@ routing table.
 | `context/03_craft_and_creative/` | Culinary formulas, CAD and fabrication |
 | `context/04_operations/` | Current sprint, internship pipeline, logbook |
 | `context/99_archive/` | Full lab reports, transcripts, superseded documents |
+| `context/assets/` | Project hero images and the profile photograph — synced into `web/public/` at build |
+| `docs/` | Plans and migration notes: `V2_PLAN`, `V3_PLAN`, `UPLOADS_NEEDED`, `REVIEW_ROUND_PLAN` |
+| `private/` | **Gitignored.** Source documents downloaded to be parsed, never committed — saved DARS audits and the like |
 | `scripts/` | Maintenance scripts (see below) |
 | `web/` | Next.js app — public portfolio and private second brain |
 
@@ -58,3 +61,4 @@ Weekly ritual: update `context/04_operations/current_sprint.md`, append the clos
 | `strip_dataview.py` | Convert legacy Obsidian Dataview inline fields to plain markdown |
 | `audit_freshness.py` | Report files whose `updated:` date is overdue |
 | `build_indexes.py` | Regenerate `project_catalog.md` and `experience_and_roles.md` |
+| `parse_dars.py` | Derive `01_engineering/degree_audit.md` from a saved DARS audit in `private/` |

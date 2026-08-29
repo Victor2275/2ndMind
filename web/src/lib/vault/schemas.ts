@@ -98,6 +98,13 @@ export const projectSchema = baseFrontmatter.extend({
 export const experienceSchema = baseFrontmatter.extend({
   ...entryFields,
   org: z.string().min(1),
+  /**
+   * Display order, ascending — the same decision projects carry (D-107). Sorting on
+   * `date_start` alone put a seasonal lifeguard job (2022) above the FIRST Robotics software
+   * lead (2021-08), which is chronologically right and wrong for a page a hiring manager
+   * reads top-down.
+   */
+  order: z.number().int().positive(),
   type: z.enum(["internship", "leadership", "other"]),
   date_start: partialDate,
   date_end: partialDate,

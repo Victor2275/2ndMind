@@ -28,7 +28,7 @@ Plan runs to 2026-09-18 (real code deadline — travel 08-29 to 09-07, move-in 0
 
 ### V2 — scoped 2026-08-21, replanned 2026-08-24, revised 2026-08-25
 
-Full ordered plan with difficulty and estimates: `V2_PLAN.md` at the repo root.
+Full ordered plan with difficulty and estimates: `docs/V2_PLAN.md`.
 Scope decided 2026-08-24: **features only** — per-session revocation and error
 aggregation move to V3.
 
@@ -42,14 +42,14 @@ Revision 2 (2026-08-25) changed four things, all Victor's call:
 - The case-study page design is built **against fixtures now**, not deferred behind the prose.
 - "Close out Today" loses its one-real-day-of-use gate.
 
-Revisions 3 and 4 (2026-08-25) added ten requested items as `V2_PLAN.md` §7. **Seven are in
+Revisions 3 and 4 (2026-08-25) added ten requested items as `docs/V2_PLAN.md` §7. **Seven are in
 V2**: the domain, the uploads list, the four uploaded images, retiring culinary, the public
 `/now` Working page, the public→private button, and read-only access to the job sheet.
 
 **Semantic search is cut** to pay for them (D-087) — 12h out against 11.5h in, so V2 got
 shorter while gaining three features. It has now been assessed three times: cut on cost,
 reinstated when the budget turned out to be monthly, cut on time. **V3 is its own document,
-`V3_PLAN.md`** — resumes, filament and printers, and editing the job sheet, ~26h scheduled at
+`docs/V3_PLAN.md`** — resumes, filament and printers, and editing the job sheet, ~26h scheduled at
 a term-time rate of ~4h/week.
 
 Budget after all revisions: **~41.5h of my work against ~60h available**, ~34% slack.
@@ -73,7 +73,7 @@ hours (D-086). Both were blockers for feature 6 that no one knew about.
 
 Victor reviewed a frozen snapshot of the site while travelling (`npm run freeze`, D-106),
 wrote the six project case studies, and returned a change list. Answered as ~50 questions,
-then built. **Full status and what is left: `REVIEW_ROUND_PLAN.md` at the repo root.**
+then built. **Full status and what is left: `docs/REVIEW_ROUND_PLAN.md` at the repo root.**
 
 Shipped: the About rewrite and hobbies trim, tiers replaced by explicit ordering, `archived`
 renamed to `done`, Water Bottle Scale deleted and Smart Bottle created, the Dimaag paper as a
@@ -119,7 +119,7 @@ D-036 to D-039.
       tailoring. Semantic search is cut (D-087). Every model-proposed change is approved item
       by item before it is applied; nothing AI-driven writes to the vault in V2 (D-080).
 - [ ] **7 · New scope, rev 3-4** (~14.5h) — domain, images, culinary retired, public `/now`
-      page, public→private button, job sheet read-only. `V2_PLAN.md` §7.
+      page, public→private button, job sheet read-only. `docs/V2_PLAN.md` §7.
 
 **Time budget:** ~4h/day until 2026-09-20, then ~4h/week. Six features is 80-106h against
 ~76h before term, which is why only 0-3 are pre-term. Taiwan 08-29 to 09-07 is assumed to
@@ -138,16 +138,16 @@ Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
    redeploy, then re-enrol the passkey.** The domain is connected but that variable is not set,
    so the site still advertises `victorgusev.vercel.app` in its sitemap and — because the same
    variable is the WebAuthn relying party — **sign-in on the live site does not work**. Order
-   matters: flip the primary *before* enrolling, so it is done once. See `V2_PLAN.md` §7.1.
+   matters: flip the primary *before* enrolling, so it is done once. See `docs/V2_PLAN.md` §7.1.
 2. **Publish the internship sheet as CSV** and send the URL — needs a connection, so before
-   you fly. It unblocks §7.6. See `UPLOADS_NEEDED.md` §1.2.
+   you fly. It unblocks §7.6. See `docs/UPLOADS_NEEDED.md` §1.2.
 3. **Write the five case studies.** The prompts wait in each project file under
    `> **To write:**`. Nothing publishes until prose replaces them, and no agent will fill them
    in — that is the point of the convention (D-073) and D-069 is what happens when one tries.
    Plane work: no network, no computer beyond a text editor.
 4. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
    appears on its own once they exist.
-5. **`UPLOADS_NEEDED.md`** — the data only you can supply, split into what needs a connection
+5. **`docs/UPLOADS_NEEDED.md`** — the data only you can supply, split into what needs a connection
    and what is plane work. Requested for 2026-08-27.
 
 **Reported done 2026-08-25, not yet verified from here:** production passkey enrolled, and

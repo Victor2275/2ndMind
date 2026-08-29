@@ -66,14 +66,6 @@ export default function NowPage() {
                   </Link>
                 </h2>
                 <Badge>{project.category}</Badge>
-                {project.draft && (
-                  // Same honesty marker the project page carries. The build is real; the
-                  // write-up behind the link is not written yet, and saying so here stops the
-                  // click being a disappointment.
-                  <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
-                    write-up pending
-                  </span>
-                )}
               </div>
 
               <p className="mt-2 max-w-[60ch] text-sm text-muted-foreground">{project.summary}</p>
@@ -94,9 +86,9 @@ export default function NowPage() {
                   )}
                 </div>
               ) : (
-                <p className="mt-6 border-l border-border pl-5 font-mono text-xs text-muted-foreground">
-                  Active, no write-up yet.
-                </p>
+                // Nothing rendered. A project with no dated updates yet shows its summary
+                // and stops there, rather than captioning its own emptiness.
+                null
               )}
             </section>
           ))}

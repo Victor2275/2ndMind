@@ -55,6 +55,7 @@ read_when: Testing.
 title: Role
 slug: role
 org: Somewhere
+order: 1
 type: other
 date_start: ${start}
 date_end: ${end}

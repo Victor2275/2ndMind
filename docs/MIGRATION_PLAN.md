@@ -63,7 +63,7 @@
 ├── CLAUDE.md                      [NEW]  AI entry point + routing table
 ├── AGENTS.md                      [NEW]  byte-identical copy of CLAUDE.md
 ├── README.md                      [NEW]  human-facing map
-├── MIGRATION_PLAN.md              this file
+├── docs/MIGRATION_PLAN.md              this file
 ├── scripts/
 │   ├── strip_base64.py            [NEW]
 │   ├── fix_corruption.py          [NEW]

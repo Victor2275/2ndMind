@@ -253,12 +253,7 @@ export default function AboutPage() {
       {/* Breadth. Framed by what each pursuit carries back into engineering, so it reads
           as range rather than as a list of hobbies. */}
       <section className="mt-16">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-          <h2 className="text-xl font-bold tracking-tight">Hobbies and Interests</h2>
-          <p className="max-w-[42ch] text-sm text-muted-foreground">
-            Three things I do seriously outside the work above.
-          </p>
-        </div>
+        <h2 className="text-xl font-bold tracking-tight">Hobbies and Interests</h2>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-3">
           {pursuits.map((p, i) => (

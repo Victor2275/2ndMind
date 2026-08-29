@@ -7,6 +7,7 @@ read_when: Resume work, interview prep, experience questions.
 title: Software Engineering Intern
 org: Dimaag.ai
 slug: dimaag
+order: 1
 type: internship
 date_start: 2026-06
 date_end: 2026-08

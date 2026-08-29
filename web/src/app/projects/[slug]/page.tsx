@@ -52,13 +52,6 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       <h1 className="mt-6 text-4xl font-extrabold tracking-tight">{project.title}</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">{project.summary}</p>
 
-      {project.draft && (
-        <p className="mt-6 rounded-md border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Write-up pending.</span> This build is
-          real; the description below is scaffolding and will be replaced.
-        </p>
-      )}
-
       {/* Same rule as the grid: no photograph, no figure. A 16:9 generated placeholder at the
           top of a detail page pushes the actual writing below the fold on a phone for no
           information gain. */}

@@ -7,7 +7,7 @@ V2 has one: 2026-09-18, the code deadline before term. **V3 deliberately has non
 run at — and a dated plan against that budget would be fiction. What follows is ordered, sized,
 and picked up when there is time.
 
-`V2_PLAN.md` is the live document until V2 ships. Nothing here starts before it does.
+`docs/V2_PLAN.md` is the live document until V2 ships. Nothing here starts before it does.
 
 ---
 
@@ -33,7 +33,7 @@ Ordered by value per hour, not by size.
 
 ### 1.1 · Upload your own resumes — **5h**
 
-**Blocked on a decision, not on code.** `UPLOADS_NEEDED.md` §2.4 has it: does an uploaded PDF
+**Blocked on a decision, not on code.** `docs/UPLOADS_NEEDED.md` §2.4 has it: does an uploaded PDF
 *replace* the generated resume, run *alongside* it, or act as a *fallback* where no upload
 exists?
 
@@ -52,7 +52,7 @@ guesses the URL.
 
 ### 1.2 · Filament and printer tracking — **9h**
 
-**Blocked on Victor's inventory** — the template is in `UPLOADS_NEEDED.md` §2.1 and §2.2.
+**Blocked on Victor's inventory** — the template is in `docs/UPLOADS_NEEDED.md` §2.1 and §2.2.
 
 Three things, of which only the first is really new:
 
@@ -67,7 +67,7 @@ Three things, of which only the first is really new:
 
 The open design question, and it decides the layout: **is this "which printer is free right
 now" or "what do I need to reorder"?** They are different pages. The question is in
-`UPLOADS_NEEDED.md` §2.2 and should be answered before any of this is built.
+`docs/UPLOADS_NEEDED.md` §2.2 and should be answered before any of this is built.
 
 **Done when:** the inventory is editable from `/private`, swatches render, and the page answers
 whichever of those two questions Victor named.
@@ -119,8 +119,8 @@ failure aggregation exists to catch, and it will happen again.
 
 | # | Item | Est. | Blocked on |
 |---|---|---:|---|
-| 1.1 | Upload your own resumes | 5h | A decision — `UPLOADS_NEEDED.md` §2.4 |
-| 1.2 | Filament and printer tracking | 9h | Victor's inventory — `UPLOADS_NEEDED.md` §2.1–2.2 |
+| 1.1 | Upload your own resumes | 5h | A decision — `docs/UPLOADS_NEEDED.md` §2.4 |
+| 1.2 | Filament and printer tracking | 9h | Victor's inventory — `docs/UPLOADS_NEEDED.md` §2.1–2.2 |
 | 1.3 | Edit the job sheet | 12h | A month of using V2 §7.6 first |
 | | **Scheduled total** | **26h** | ~7 weeks at 4h/week |
 | | Recorded, unscheduled | ~37h | |

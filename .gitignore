@@ -18,8 +18,11 @@ Mastermind.md
 # demand. Not project content, and it churns on every file change.
 graphify-out/
 
-# Saved DARS audits. These carry the student ID, high school, and full grade history --
+# Source documents that must never be committed: saved DARS audits (student ID, high school,
+# full grade history) and anything else downloaded to be parsed rather than kept.
 # `scripts/parse_dars.py` derives `context/01_engineering/degree_audit.md` from one and the
-# site reads only that. Keep the raw page out of the repo.
+# site reads only that. The name patterns stay as a second line of defence in case a file is
+# ever saved outside this folder.
+private/
 DARS*.html
 *Audit Results Tab_files/

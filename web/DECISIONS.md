@@ -263,6 +263,64 @@ model say anything it could not say before.
 **How to reverse.** Rebuild `collectBullets` from `buildResume(variant)` over
 `RESUME_VARIANTS`. Note that doing so silently drops every entry with `resume_variants: []`.
 
+### D-119 · Public pages stop advertising an unfinished write-up
+
+**Decision.** The "Write-up pending" badge on the project grid, the same marker on `/now`,
+the banner on a project detail page, and "Active, no write-up yet." are all removed. The
+`draft` field stays and still keeps an unwritten entry off every resume variant.
+
+**Why.** Victor: it reads as unprofessional on a public-facing site, and he is right. The
+badge was written as an honesty marker for a reader who could see the gap anyway; on a
+portfolio it announces a gap to a stranger who had no way to know one existed, and it
+captions the page's own emptiness. Honesty about scope is served by publishing only written
+sections — `dropUnwritten` already does that — not by labelling the ones that are missing.
+
+**How to reverse.** `git show` this commit for `project-grid.tsx`, `now/page.tsx` and
+`projects/[slug]/page.tsx`; the `draft` flag they keyed on is untouched.
+
+### D-120 · The resume variant row is fixed and complete
+
+**Decision.** `/resume/[variant]` renders all three variants in `RESUME_VARIANTS` order —
+Robotics, Machine Learning, Software Engineering — with the current one marked
+`aria-current` rather than omitted.
+
+**Why.** It previously rendered only the *other* two, so the row re-ordered itself on every
+switch and the control moved out from under the cursor mid-click. A tab strip that changes
+its own contents is not a tab strip.
+
+**How to reverse.** Restore the `others` filter.
+
+### D-121 · Experience carries an explicit `order`, like projects
+
+**Decision.** `experienceSchema` gains `order`. The About page renders Dimaag, FIRST
+Robotics, MathCounts, Lifeguard.
+
+**Why.** Sorting on `date_start` alone put a seasonal lifeguard job (2022) above the FIRST
+Robotics software lead (2021-08). Chronologically correct; wrong for a page a hiring manager
+reads top-down. Same reasoning as D-107, and a test now asserts the specific inversion that
+prompted it.
+
+**How to reverse.** Drop the field and sort on `date_start` descending.
+
+### D-122 · The repo root holds only what belongs at a repo root
+
+**Decision.** Plans move to `docs/` (`V2_PLAN`, `V3_PLAN`, `MIGRATION_PLAN`,
+`UPLOADS_NEEDED`, `REVIEW_ROUND_PLAN`), and downloaded source documents move to a gitignored
+`private/`. An empty `assets/` is deleted, and `Proof.png` moves from `99_archive/` — where
+nothing is served from — into `context/assets/`, which is what the build syncs.
+
+**Why `private/` rather than name patterns alone.** The `DARS*.html` rule works only for
+files named that way. A folder that is ignored wholesale is the version that survives the
+next document being saved under a different name, and the patterns stay as a second line of
+defence.
+
+**Caught while doing it.** `README.md` requires `CLAUDE.md` and `AGENTS.md` to be identical
+copies, and the previous round edited only `CLAUDE.md`. Re-synced with `cp`.
+
+**How to reverse.** Move the files back and re-run the reference rewrite in the opposite
+direction; every mention was updated in `current_sprint.md`, `DECISIONS.md`, the plans
+themselves, and `README.md`.
+
 ---
 
 ## 2026-08-25 · Career tooling
@@ -758,14 +816,14 @@ The alternative, a separate list, buys the ability to show motion on work that w
 portfolio project: coursework, this vault, one-off experiments. That is a real gap, but it is
 **additive** — a separate list can be added later without moving anything that exists — so
 adding it speculatively now would be paying for an option before knowing it is wanted. Recorded
-in `V3_PLAN.md` §2.
+in `docs/V3_PLAN.md` §2.
 
 **How to reverse.** Introduce a `working` entity and read from it instead; `/projects` is
 unaffected either way.
 
 ### D-087 · Semantic search is cut, and this time it stays cut
 
-**Decision.** Semantic search leaves V2 and moves to `V3_PLAN.md` §2 as recorded-but-unscheduled.
+**Decision.** Semantic search leaves V2 and moves to `docs/V3_PLAN.md` §2 as recorded-but-unscheduled.
 The Working page, the public→private button and read-only job-sheet access take its place.
 
 **Why.** It has now been evaluated three times. Rev 1 cut it on **cost** ($10 of credit). Rev 2
@@ -782,7 +840,7 @@ deadline goes wrong.
 
 Nothing had been built, so nothing was wasted.
 
-**How to reverse.** It is intact in `V3_PLAN.md` §2 with its design notes — Postgres vectors,
+**How to reverse.** It is intact in `docs/V3_PLAN.md` §2 with its design notes — Postgres vectors,
 re-embed only on `updated:` change, hard token ceiling, private-only surface.
 
 ---

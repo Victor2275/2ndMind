@@ -58,8 +58,9 @@ export function loadProjects(): Project[] {
 }
 
 export function loadExperience(): Experience[] {
-  return loadDir(path.join(ENG, "experience"), experienceSchema).sort((a, b) =>
-    b.date_start.localeCompare(a.date_start),
+  // Victor's explicit order; newest-first only breaks ties.
+  return loadDir(path.join(ENG, "experience"), experienceSchema).sort(
+    (a, b) => a.order - b.order || b.date_start.localeCompare(a.date_start),
   );
 }
 

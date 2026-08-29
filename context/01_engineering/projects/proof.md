@@ -14,6 +14,11 @@ tags: [web, ai, pwa, full-stack]
 stack: [React, MongoDB, Cheerio, Gemini API, Socket.io]
 links:
   live: https://proof-cdvj.onrender.com
+image: /assets/Proof.png
+# 1869x964 (1.94:1) against a 16:9 box -- close enough that `cover` crops a few pixels off
+# the sides rather than beheading anything, which is the right trade for a UI screenshot
+# that should fill its card.
+image_fit: cover
 resume_variants: [swe, ml, robotics]
 # Two bullets on robotics, three elsewhere. Proof earns a place on the robotics resume for
 # the engineering behind it, but a robotics reader does not need the Socket.io timers or the

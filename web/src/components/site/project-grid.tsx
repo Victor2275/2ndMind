@@ -10,21 +10,6 @@ import { cn } from "@/lib/utils";
 
 type Filter = "all" | ProjectCard["category"];
 
-/** Says a project is real but its write-up is not finished. Honest, and it keeps a thin
- *  entry from reading as a padded one. */
-function DraftBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "rounded border border-border bg-background/85 px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur-sm",
-        className,
-      )}
-    >
-      Write-up pending
-    </span>
-  );
-}
-
 export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -96,7 +81,6 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
                     p.imageFit === "contain" ? "object-contain p-3" : "object-cover"
                   }`}
                 />
-                {p.draft && <DraftBadge className="absolute right-2 top-2" />}
               </div>
             ) : (
               /* A thin accent rail keeps the grid reading as a set rather than as cards that
@@ -120,9 +104,6 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.summary}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              {/* Sits with the tags, not beside the year: next to the title it stole enough
-                  width to wrap "Water Bottle Scale" onto two lines on a 390px screen. */}
-              {p.draft && !p.image && <DraftBadge />}
               <Badge
                 variant={p.status === "active" ? "default" : "outline"}
                 className="text-[0.65rem]"

@@ -7,6 +7,7 @@ read_when: Resume work, interview prep, experience questions.
 title: Head Coach
 org: MathCounts
 slug: mathcounts
+order: 3
 type: leadership
 date_start: 2021-08
 date_end: 2025-06

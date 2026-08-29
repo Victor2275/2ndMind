@@ -7,6 +7,7 @@ read_when: Resume work, interview prep, experience questions.
 title: Robotics Programming Lead
 org: FIRST Robotics
 slug: first-robotics
+order: 2
 type: leadership
 date_start: 2021-08
 date_end: 2025-05

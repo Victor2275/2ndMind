@@ -3,7 +3,7 @@
 **Written 2026-08-25 · Requested for Thursday 2026-08-27 · You fly 2026-08-29**
 
 Everything here is data only I cannot invent. Nothing in this document asks you to write
-prose about a project — that is `V2_PLAN.md` §1.3 and it is separate.
+prose about a project — that is `docs/V2_PLAN.md` §1.3 and it is separate.
 
 The document is split by **whether it needs a network connection**, because ten days of the
 next fortnight are on a plane or in Taiwan. Do §1 before you board. §2 is plane work: a text
@@ -16,7 +16,7 @@ later.
 
 ### 1.1 · Buy the domain — ~10 min, ~$10.50/yr — **DONE 2026-08-25**
 
-Full instructions are in `V2_PLAN.md` §7.1. The short version: **Cloudflare Registrar**, which
+Full instructions are in `docs/V2_PLAN.md` §7.1. The short version: **Cloudflare Registrar**, which
 sells at cost with no first-year discount that doubles on renewal. Then tell me the registrar
 you used, and nothing else — I do not need the account.
 
@@ -56,7 +56,7 @@ while you are away.
 
 > **Read-only.** Publishing to web gives me read access. *Editing* the sheet from the Jobs tab
 > is a much larger job — it needs the real Sheets API, a service account and write scopes. See
-> `V2_PLAN.md` §7 for why that one is V3 and what it costs.
+> `docs/V2_PLAN.md` §7 for why that one is V3 and what it costs.
 
 ### 1.3 · Confirm the four images — ~2 min — **shipped, confirmation still welcome**
 
@@ -164,7 +164,7 @@ The PDFs themselves need a connection, so send those when you land — or drop t
 
 ## 3 · Not on this list, on purpose
 
-- **Case-study prose** — `V2_PLAN.md` §1.3, 17 sections outstanding. Run
+- **Case-study prose** — `docs/V2_PLAN.md` §1.3, 17 sections outstanding. Run
   `python scripts/case_study_status.py` for the live count. Solenoid is one section from
   complete and is the best twenty minutes on the list.
 - **Anything I can read from the repo.** If it is already in the vault I will not ask for it.

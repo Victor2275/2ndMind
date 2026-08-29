@@ -7,6 +7,7 @@ read_when: Resume work, interview prep, experience questions.
 title: Lifeguard
 org: Seasonal
 slug: lifeguard
+order: 4
 type: other
 date_start: 2022
 date_end: 2025

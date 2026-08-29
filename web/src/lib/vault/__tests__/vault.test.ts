@@ -82,13 +82,23 @@ describe("vault invariants", () => {
     expect(new Set(orders).size).toBe(orders.length);
   });
 
-  it("sorts experience newest first", () => {
+  it("sorts experience by Victor's explicit order", () => {
     const experience = loadExperience();
     for (let i = 1; i < experience.length; i++) {
-      expect(
-        experience[i - 1].date_start.localeCompare(experience[i].date_start),
-      ).toBeGreaterThanOrEqual(0);
+      expect(experience[i - 1].order <= experience[i].order).toBe(true);
     }
+  });
+
+  it("gives every role a distinct order, so the sequence is a decision not a tie-break", () => {
+    const orders = loadExperience().map((e) => e.order);
+    expect(new Set(orders).size).toBe(orders.length);
+  });
+
+  it("keeps the FIRST Robotics lead above the seasonal lifeguard job", () => {
+    // The reason the field exists: sorting on start date alone put a seasonal job above the
+    // software lead, because 2022 is later than 2021-08.
+    const slugs = loadExperience().map((e) => e.slug);
+    expect(slugs.indexOf("first-robotics")).toBeLessThan(slugs.indexOf("lifeguard"));
   });
 
   it("never ends a role before it starts", () => {

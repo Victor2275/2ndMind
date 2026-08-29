@@ -7,7 +7,7 @@ and returned a change list on 2026-08-29. This tracks what came out of it.
 that the rate drops to ~4h/week. V2 feature 6 (AI) and §7 were the open items before this
 round; the domain (§7.1) is still parked on Victor.
 
-Decisions from this round: `web/DECISIONS.md` **D-106 – D-118**.
+Decisions from this round: `web/DECISIONS.md` **D-106 – D-122**.
 
 ---
 
@@ -34,7 +34,11 @@ Decisions from this round: `web/DECISIONS.md` **D-106 – D-118**.
 | Water Bottle Scale deleted; **Smart Bottle** created | `projects/` |
 | **Dimaag paper** project created, deliberately vague | `projects/dimaag-paper.md` |
 | `/now` lede → "Current active projects"; now shows Smart Bottle + the paper | `/now` |
-| Proof marked `done` | `projects/proof.md` |
+| Proof marked `done`, and gains its hero image | `projects/proof.md`, `context/assets/` |
+| Experience order fixed: Dimaag, FIRST, MathCounts, Lifeguard | `order:` on experience |
+| "Write-up pending" removed from every public page | grid, `/now`, project detail |
+| Resume variant row is fixed and complete, current one marked | `/resume/[variant]` |
+| Repo root tidied: plans to `docs/`, source documents to gitignored `private/` | root |
 
 **Case studies, corrected against the real repos** (both public, cloned and read):
 
@@ -93,7 +97,7 @@ served without authentication. It was harmless while the split was public; you m
 private in this same round (Q20). Replaced with `m:ss`. This is `AGENTS.md` rule 3, and a new
 rule 5 now says the matching thing about projections.
 
-**Verification:** 558 tests across 34 files passing, typecheck clean, production build clean,
+**Verification:** 560 tests across 34 files passing, typecheck clean, production build clean,
 `npm run shots` clean at four widths with zero horizontal overflow and all three resumes on
 one page, and the built client chunks scanned for the pursuit telemetry that stopped being
 published.
@@ -137,7 +141,7 @@ published.
    - Worth knowing: your DARS says **Degree Expected Term 2029 SPRING**, the catalog default.
      Your three-year track is not reflected in it, so the planner is also how you would show
      the plan closes a year early.
-8. **Calendar month view** — you said V3. Noted in `V3_PLAN.md` territory, not started.
+8. **Calendar month view** — you said V3. Noted in `docs/V3_PLAN.md` territory, not started.
 9. **V2 feature 6 (AI), remainder** — summarise-the-week and draft-sprint-goals are built;
    resume tailoring is built and now moved under Work. The daily-summary logging you asked
    for in Q38 ("as long as it logs the summaries somewhere") is **not built** — summaries are
