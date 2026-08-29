@@ -69,13 +69,41 @@ async function Outstanding() {
   );
 }
 
+/**
+ * What is left to graduate, from the DARS audit.
+ *
+ * Victor asked for the Record panel to read like DARS rather than like a course list, and
+ * the thing DARS answers that a course list cannot is "what is still outstanding, and what
+ * satisfies it". That question is now the panel, and the transcript-shaped history moved
+ * below it into Coursework.
+ *
+ * The file is derived by `scripts/parse_dars.py`, never read from the saved audit: the audit
+ * page carries a student ID, a high school, and every grade ever received, none of which
+ * this page needs. Re-run the script when a new audit is saved.
+ */
+async function Degree() {
+  const doc = await loadVaultDoc("context/01_engineering/degree_audit.md");
+  return (
+    <div className="mt-8">
+      <Panel
+        title="Outstanding requirements"
+        meta={doc.updated ? `audit ${doc.updated}` : undefined}
+        collapsible
+        defaultOpen
+      >
+        <VaultDocument doc={doc} />
+      </Panel>
+    </div>
+  );
+}
+
 /** Separate boundary: the vault read and the database call should not wait for each other. */
 async function Record() {
   const doc = await loadVaultDoc("context/01_engineering/coursework_and_labs.md");
   return (
     <div className="mt-4">
       <Panel
-        title="Record"
+        title="Coursework record"
         meta={doc.updated ? `updated ${doc.updated}` : undefined}
         collapsible
         defaultOpen={false}
@@ -92,7 +120,7 @@ export default function AcademicsPage() {
       <PageHeader
         eyebrow="Academics"
         title="Coursework"
-        lede="Midterms and multi-week projects. Canvas still owns the week-to-week deadlines."
+        lede="What is left to graduate, and the work in front of it. Canvas still owns the week-to-week deadlines."
       />
 
       <Suspense
@@ -106,6 +134,10 @@ export default function AcademicsPage() {
         }
       >
         <Outstanding />
+      </Suspense>
+
+      <Suspense fallback={<div className="mt-8"><SkeletonPanel rows={4} /></div>}>
+        <Degree />
       </Suspense>
 
       <Suspense fallback={<div className="mt-4"><SkeletonPanel rows={1} /></div>}>

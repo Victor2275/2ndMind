@@ -1,20 +1,25 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-29
 domain: engineering
 stability: volatile
 summary: Full-stack recipe PWA with AI-assisted import and real-time cross-device timers.
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: Proof
 slug: proof
-tier: 1
-status: active
+order: 1
+status: done
 year: 2026
 category: software
 tags: [web, ai, pwa, full-stack]
 stack: [React, MongoDB, Cheerio, Gemini API, Socket.io]
 links:
   live: https://proof-cdvj.onrender.com
-resume_variants: [swe, ml]
+resume_variants: [swe, ml, robotics]
+# Two bullets on robotics, three elsewhere. Proof earns a place on the robotics resume for
+# the engineering behind it, but a robotics reader does not need the Socket.io timers or the
+# test count -- and the variant has to stay on one printed page.
+resume_bullets:
+  robotics: 2
 public: true
 bullets:
   - >-
@@ -35,9 +40,7 @@ bullets:
 
 ## The problem
 
-> **To write:** what were you actually solving, and what made it hard? The constraint
-> is the interesting part - what you could not do, or could not afford, or could not
-> measure. This is the section interviewers open with.
+Often, when I am trying to bake, I like to take photos of my food and make changes to recipes that I am making. While other online recipe books do exist, they were either behind a paywall, or did not have features that I wanted like photo storage, 1-off recipe corrections, and ease-of-use features. I made this website to not only store my recipes, but also easily look at them while baking with hands-free features and sharing posts of baked goods I created.
 
 ## Architecture
 
@@ -46,13 +49,12 @@ Socket.io. Gemini API handles extracting and restructuring recipe data from scra
 
 ## What did not work
 
-> **To write:** what you tried first and abandoned, and why. Almost no student
-> portfolio has this section, which is exactly why it is convincing to an engineer.
+Originally, got too trigger happy with adding features without considering ease of use. While on computer using the app was fine, using the app on mobile (the intended usage) was very cramped and bloated, making it hard to work with. This required UI and feature revision to ensure that the app stays clean on mobile and computer.
 
 ## Measured results
 
-> **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
-> A result without a number reads as a claim; with one it reads as engineering.
+99 automated tests across 22 test files guard the app, which runs to 40 React components and
+roughly 9,000 lines across client and server, on 31 runtime dependencies.
 
 ## Post-mortem
 

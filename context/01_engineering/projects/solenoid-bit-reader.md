@@ -1,13 +1,13 @@
 ---
-updated: 2026-08-21
+updated: 2026-08-29
 domain: engineering
 stability: stable
 summary: Macro-scale hard-disk-reader analog decoding falling magnetic bits at 100% accuracy.
 read_when: Portfolio, robotics resume bullets, or embedded/instrumentation questions.
 title: Solenoid Bit Reader
 slug: solenoid-bit-reader
-tier: 1
-status: archived
+order: 4
+status: done
 year: 2026
 category: hardware
 tags: [esp32, electromagnetism, signal-processing, instrumentation, embedded]
@@ -59,8 +59,7 @@ across three intervals maps the shrinking windows that follow.
 
 ## What did not work
 
-> **To write:** what you tried first and abandoned, and why. Almost no student
-> portfolio has this section, which is exactly why it is convincing to an engineer.
+Initially, reading voltage changes from the solenoid were too low, meaning the ESP-32 used in the project was unable to read and understand when a bit passed the sensor. The ESP-32 also was unable to read voltage changes fast enough, meaning measures had to be taken to ensure bits were not dropped, such as increasing the distance between bits.
 
 ## Results
 

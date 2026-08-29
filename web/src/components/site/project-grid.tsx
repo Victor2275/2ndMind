@@ -109,12 +109,7 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
 
             <div className="flex flex-1 flex-col p-5">
             <div className="flex items-baseline justify-between gap-3">
-              <h2
-                className={cn(
-                  "font-semibold tracking-tight transition-colors group-hover:text-primary",
-                  p.tier === 1 ? "text-lg" : "text-base",
-                )}
-              >
+              <h2 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
                 {p.title}
               </h2>
               <span className="tabular shrink-0 font-mono text-xs text-muted-foreground">

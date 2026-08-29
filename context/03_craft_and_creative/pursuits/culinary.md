@@ -1,19 +1,19 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: craft
 stability: stable
-summary: Precision baking as portfolio breadth — the domain that motivated the Proof project.
+summary: Baking as portfolio breadth — the domain that motivated the Proof project.
 read_when: Public-site breadth section, or explaining where Proof came from.
-title: Precision Baking
+title: Baking
 slug: culinary
 public: true
 order: 3
-kicker: Formulas, by weight
+kicker: Using science to create food
 discipline: Craft
 resume_variants: []
 bullets:
-  - Cooks and bakes to gram-accurate formulas rather than volume measures, treating a recipe as a parameterised process to be versioned and iterated.
-  - Working through sous-vide, fermentation, and other technique-led methods where the controlled variable is time and temperature rather than ingredients.
+  - Learning technique-led methods such as fermentation and tempering to sharpen the craft.
+  - Builds Proof, an application for tracking and iterating on recipe designs.
 facts:
   - label: Measurement
     value: By weight
@@ -27,7 +27,7 @@ carryover: >-
   wanting real diffs between one bake and the next.
 ---
 
-# Precision Baking
+# Baking
 
 Portfolio-facing framing only. The formulas themselves are **not in this vault** — Victor keeps
 recipes in Proof (https://proof-cdvj.onrender.com), which is the thing this pursuit exists to

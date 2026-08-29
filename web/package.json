@@ -14,7 +14,8 @@
     "prebuild": "node scripts/sync-vault-assets.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
-    "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs"
+    "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs",
+    "freeze": "node scripts/freeze.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

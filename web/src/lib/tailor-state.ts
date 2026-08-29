@@ -1,4 +1,4 @@
-import type { BulletRef, TailorAdvice } from "@/lib/ai/tailor";
+import type { BulletRef, QuestionAnswer, TailorAdvice } from "@/lib/ai/tailor";
 
 /**
  * The shape the tailoring action returns.
@@ -9,8 +9,10 @@ import type { BulletRef, TailorAdvice } from "@/lib/ai/tailor";
  */
 export type TailorState = {
   ok: boolean;
-  message: string;
+  message?: string;
   advice?: TailorAdvice;
+  /** Set by the posting-question mode instead of `advice`. */
+  answer?: QuestionAnswer;
   /** Only the bullets the advice refers to, resolved from the vault rather than the model. */
   bullets?: BulletRef[];
 };

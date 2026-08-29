@@ -48,8 +48,21 @@ const entryFields = {
 
 export const projectSchema = baseFrontmatter.extend({
   ...entryFields,
-  tier: z.number().int().positive(),
-  status: z.enum(["active", "archived"]),
+  /**
+   * Where the project sits on `/projects`, ascending. Replaced `tier` on 2026-08-29
+   * (D-107): tier published a ranking Victor did not want to publish, and the order he
+   * actually wanted was not derivable from tier-then-year. New projects append to the
+   * bottom by taking the next number.
+   */
+  order: z.number().int().positive(),
+  status: z.enum(["active", "done"]),
+  /**
+   * Optional per-variant override of how many bullets this entry contributes to a printed
+   * resume. Exists because an entry can be worth listing on a variant without being worth
+   * three lines on it: Proof earns a place on the robotics resume for the engineering, but
+   * the robotics reader does not need its Socket.io timers. Absent means the global cap.
+   */
+  resume_bullets: z.partialRecord(resumeVariant, z.number().int().positive()).optional(),
   year: z.number().int(),
   category: z.enum(["software", "hardware", "robotics"]),
   tags: z.array(z.string()).default([]),
@@ -88,7 +101,16 @@ export const experienceSchema = baseFrontmatter.extend({
   type: z.enum(["internship", "leadership", "other"]),
   date_start: partialDate,
   date_end: partialDate,
+  /**
+   * Still going. `date_end` stays a real date so nothing has to parse "Present", and the
+   * renderer decides what to show — which is the point: a hard-coded "Present" in the page
+   * once outlived the vault fact behind it and told every reader a finished internship was
+   * ongoing.
+   */
+  ongoing: z.boolean().default(false),
   seasonal: z.boolean().optional(),
+  /** Per-variant bullet cap; see the identical field on `projectSchema`. */
+  resume_bullets: z.partialRecord(resumeVariant, z.number().int().positive()).optional(),
   confidential_scope: z.string().optional(),
 });
 

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { ApplicationsPanel } from "@/components/site/applications-panel";
+import { WorkTabs } from "@/components/site/work-tabs";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
@@ -65,6 +66,8 @@ export default function WorkPage() {
         title="Work"
         lede="Applications, read live from the sheet the mail script maintains, plus the strategy behind them. Nothing here writes to the sheet."
       />
+
+      <WorkTabs />
 
       <Suspense
         fallback={

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-29
 domain: engineering
 stability: stable
 summary: SWE internship building a hybrid RL and classical local planner for autonomous vehicles.
@@ -10,42 +10,53 @@ slug: dimaag
 type: internship
 date_start: 2026-06
 date_end: 2026-08
+ongoing: true
 resume_variants: [robotics, ml, swe]
 public: true
 bullets:
   - >-
-    Architected a hybrid Reinforcement Learning and classical local planner for autonomous
-    vehicles to improve accuracy and speed of travel along complex curved paths
+    Developed a hybrid reinforcement-learning and classical local planner for autonomous
+    vehicle trajectory tracking on complex paths
   - >-
-    Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain
-    randomization within NVIDIA Isaac Lab
+    Validated and deployed autonomous navigation policies on physical hardware, achieving
+    reliable tracking at >10 mph with sub-decimeter trajectory accuracy
+  - >-
+    Implemented PPO algorithm training pipelines and 2D LiDAR sensor raycasting within
+    NVIDIA Isaac Lab
   - >-
     Bridged the sim-to-real gap by validating policies across various simulators,
     implementing domain randomization to ensure seamless hardware deployment
-  - >-
-    Validated and deployed autonomous navigation policies on physical hardware, achieving
-    reliable tracking at >12 mph with sub-decimeter trajectory accuracy
-  - >-
-    Integrated advanced LLM tooling into the engineering pipeline to automate architectural
-    documentation, generate robust system test cases, and parse complex training logs
+  - Reduced mean tracking error by 80% over the classical planner
 confidential_scope: >-
-  The technical architecture and contributions recorded in this file — PPO training
-  pipelines, LiDAR raycasting, Isaac Lab, sim-to-real validation, tracking accuracy — are
-  shareable and safe for resumes, interviews, and portfolio material. Dimaag.ai business and
-  product details beyond that scope remain confidential and are deliberately not recorded
-  anywhere in this vault. If a question needs specifics not found here, say so rather than
-  speculating.
+  Shareable, and safe for resumes, interviews, and portfolio material: the bullets in this
+  file — hybrid RL/classical local planner, PPO training pipelines, 2D LiDAR raycasting,
+  NVIDIA Isaac Lab, sim-to-real validation across simulators, domain randomization, >10 mph
+  tracking with sub-decimeter accuracy, and the 80% reduction in mean tracking error over the
+  classical planner. NOT shareable as of 2026-08-29, pending clearance from Dimaag: anything
+  about the research paper's specifics — the vehicle class and mass, TRPO with IPO barrier
+  constraints, the bounded-correction architecture, cross-track error budgets, lap geometry,
+  simulator-calibration detail, and every number measured in simulation. Describe that work
+  only in the generic terms used by the `dimaag-paper` project entry. Dimaag.ai business and
+  product details remain confidential and are deliberately not recorded anywhere in this
+  vault. If a question needs specifics not found here, say so rather than speculating.
 ---
 
 # Software Engineering Intern — Dimaag.ai
 
-Architected a hybrid Reinforcement Learning and classical local planner for autonomous
-vehicles.
+Developed a hybrid reinforcement-learning and classical local planner for autonomous
+vehicles. Ongoing as of 2026-08-29, with a research paper added to the scope.
 
 ## Key contributions
 
 - Implemented PPO training pipelines, 2D LiDAR raycasting, and domain randomization in
   NVIDIA Isaac Lab.
-- Validated policies across simulators and physical hardware (tracking >12 mph with
+- Validated policies across simulators and physical hardware (tracking >10 mph with
   sub-decimeter accuracy).
-- Integrated LLM tooling for automated documentation, test case generation, and log parsing.
+- Reduced mean tracking error by 80% against the classical planner.
+
+## Notes
+
+The research paper is tracked as its own project entry, `projects/dimaag-paper.md`. Its
+technical content is internal until Dimaag clears it — see `confidential_scope` above, which
+names exactly what may and may not be said. The repository is private and has not been read
+by any assistant; nothing in this vault is derived from it.

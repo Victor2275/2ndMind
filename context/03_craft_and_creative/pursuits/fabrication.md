@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-29
 domain: craft
 stability: stable
 summary: CAD and fabrication as portfolio breadth — SolidWorks, FDM, makerspace, the Turret.
@@ -8,12 +8,12 @@ title: Fabrication and CAD
 slug: fabrication
 public: true
 order: 2
-kicker: Design for manufacture
+kicker: Manufacturing
 discipline: Hardware
 resume_variants: []
 bullets:
-  - Designs rigid parametric parts in SolidWorks with explicit tolerancing, and prints them FDM at the UCLA Makerspace.
-  - Reverse-engineers existing hardware with digital calipers to model mating parts against measured, rather than assumed, dimensions.
+  - Designs parts for robotics projects in SolidWorks, printed FDM at the UCLA Makerspace.
+  - Building a self-sourced Voron 3D printer from individually sourced parts.
 facts:
   - label: Primary CAD
     value: SolidWorks

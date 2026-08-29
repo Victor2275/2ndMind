@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-29
 domain: physical
 stability: stable
 summary: Dragon boat as portfolio breadth — the publishable framing, not the training telemetry.
@@ -12,8 +12,7 @@ kicker: Competitive paddling
 discipline: Athletics
 resume_variants: []
 bullets:
-  - Trains as an engine seat, the position responsible for sustained power output through the middle of the boat.
-  - Working toward a sub-2:00 500m split by May 2027, with training programmed against stroke-rate targets for sprint, race, and head-race distances.
+  - Part of the Southbreeze dragon boat team, competing in the Club Crew World Championships.
 facts:
   - label: 500m erg
     value: "2:17"

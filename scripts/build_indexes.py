@@ -71,27 +71,25 @@ def build_projects(entries: list[dict]) -> str:
         "",
     ]
 
-    for tier in sorted({e.get("tier", 99) for e in entries}):
-        tier_entries = [e for e in entries if e.get("tier") == tier]
-        if not tier_entries:
-            continue
-        out.append(f"## Tier {tier}")
-        out.append("")
-        out.append("| Project | Status | Year | Category | Stack | Links |")
-        out.append("|---|---|---|---|---|---|")
-        for e in sorted(tier_entries, key=lambda x: (-int(x.get("year", 0)), x["title"])):
-            out.append(
-                "| [{title}]({path}) | {status} | {year} | {category} | {stack} | {links} |".format(
-                    title=e["title"],
-                    path=e["_path"],
-                    status=e.get("status", "—"),
-                    year=e.get("year", "—"),
-                    category=e.get("category", "—"),
-                    stack=", ".join(e.get("stack", [])) or "—",
-                    links=fmt_links(e.get("links")),
-                )
+    # One table in Victor's own order. Tiers were removed on 2026-08-29 (D-107) - they
+    # published a ranking he did not want published, and the order he wanted was not
+    # derivable from tier-then-year.
+    out.append("| # | Project | Status | Year | Category | Stack | Links |")
+    out.append("|---|---|---|---|---|---|---|")
+    for e in sorted(entries, key=lambda x: (int(x.get("order", 99)), -int(x.get("year", 0)))):
+        out.append(
+            "| {order} | [{title}]({path}) | {status} | {year} | {category} | {stack} | {links} |".format(
+                order=e.get("order", "-"),
+                title=e["title"],
+                path=e["_path"],
+                status=e.get("status", "-"),
+                year=e.get("year", "-"),
+                category=e.get("category", "-"),
+                stack=", ".join(e.get("stack", [])) or "-",
+                links=fmt_links(e.get("links")),
             )
-        out.append("")
+        )
+    out.append("")
 
     out += [
         "## Confidentiality Notes",

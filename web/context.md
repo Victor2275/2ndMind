@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -113,13 +113,15 @@ will live in pure logic, not in browser choreography. Required coverage:
 - vault write path validation
 - vault frontmatter parsers and zod schemas
 - resume variant filtering (each variant includes and excludes the right entries)
+- the tailoring bullet library, which is vault-wide and deliberately independent of
+  `resume_variants` — MathCounts and Lifeguard are reachable there and on no printed resume
 - the public-field whitelist
 - workout CSV parsing and PR derivation
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **549 tests across 34 files** as of
-2026-08-25, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **550 tests across 34 files** as of
+2026-08-29, all passing. A drop from that count is a regression, not noise.
 
 ### Layout is checked by measurement, not by looking
 
@@ -127,7 +129,16 @@ Run with `npm test`. Typecheck with `npm run typecheck`. **549 tests across 34 f
 four device widths reporting horizontal overflow, sub-40px tap targets and sub-12px text, and
 it measures every resume variant against one printed Letter page. It exits non-zero on a
 fault, so it can gate a commit. See D-077 — the resume ran at 1.33 pages for weeks because the
-only check anyone ran was looking at it.
+only check anyone ran was looking at it. It earned its keep again on 2026-08-29: adding Proof
+to the robotics variant and two roles to all three pushed every variant onto a second page,
+and nothing else would have noticed (D-115).
+
+### Reviewing the site offline
+
+`npm run freeze` writes every route to `.frozen/` as standalone HTML — inlined assets, no
+scripts, links rewritten so it browses from `file://`. Set `FREEZE_COOKIE` to a live
+`2m_session` value to include the private pages. This is how the 2026-08-29 review round was
+done (D-106); notes land in `web/SITE-REVIEW.md`.
 
 ### The database tests are not mocked
 

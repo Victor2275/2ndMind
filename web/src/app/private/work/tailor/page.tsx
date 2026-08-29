@@ -1,4 +1,6 @@
+import { WorkTabs } from "@/components/site/work-tabs";
 import { PageHeader, Panel } from "@/components/site/page-shell";
+import { QuestionForm } from "@/components/site/question-form";
 import { TailorForm } from "@/components/site/tailor-form";
 import { requireSession } from "@/lib/auth/dal";
 import { buildResume, RESUME_VARIANTS } from "@/lib/resume";
@@ -29,15 +31,24 @@ export default async function TailorPage() {
       <PageHeader
         eyebrow="Career"
         title="Tailor"
-        lede="Paste a posting; get a variant and an order to lead with. It selects from bullets that already exist and can never write a new one."
+        lede="Paste a posting for a variant and an order to lead with, or an application question for what to build the answer from. Both select from material that already exists and can never write anything new."
       />
 
+      <WorkTabs />
+
       <div className="mt-8 space-y-4">
-        <Panel title="Posting">
+        <Panel title="Tailor a resume">
           <TailorForm variantLabels={variantLabels} />
         </Panel>
 
-        <Panel title={`What it can choose from · ${bullets.length}`} collapsible defaultOpen={false}>
+        {/* The other half of an application. Separate panel rather than a mode toggle: the
+            two take different input and produce different output, and a toggle would hide
+            whichever one Victor is not looking at behind a click he has to remember. */}
+        <Panel title="Answer a posting question" collapsible defaultOpen={false}>
+          <QuestionForm />
+        </Panel>
+
+        <Panel title={`What both can choose from · ${bullets.length}`} collapsible defaultOpen={false}>
           {/* Shown so the advice is checkable: if a bullet is not in this list, no suggestion
               can mention it, and the parser rejects any response that tries. */}
           <ul className="space-y-1.5">

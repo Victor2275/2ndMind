@@ -1,13 +1,13 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: engineering
 stability: stable
 summary: Java maze-solving simulator with Flood Fill pathfinding and a visualization engine.
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: Micromouse Simulator
 slug: micromouse-simulator
-tier: 1
-status: archived
+order: 2
+status: done
 year: 2023
 category: robotics
 tags: [algorithms, simulation, visualization]
@@ -33,25 +33,24 @@ bullets:
 
 ## The problem
 
-> **To write:** what were you actually solving, and what made it hard? The constraint
-> is the interesting part - what you could not do, or could not afford, or could not
-> measure. This is the section interviewers open with.
+Micromouse is a popular competition where you build a small robot to traverse a maze quickly and return back to the start. While maze-solving algorithms are available to research and find online, if someone wants to test a certain algorithm against a maze prior to testing on Hardware, is is important that a clean visualizer is used.
 
 ## Architecture
 
 Maze-solving simulator featuring Flood Fill pathfinding algorithm and a graphical
-visualization engine. Uses a file parsing pipeline to load competition mazes.
+visualization engine. Uses a file parsing pipeline to load competition mazes. Run on Java
 
 ## What did not work
 
-> **To write:** what you tried first and abandoned, and why. Almost no student
-> portfolio has this section, which is exactly why it is convincing to an engineer.
+When originally testing this project, it ran very slowly due to attempting to re-generate the entire maze/re-run maze solving algorithms every frame. This was fixed using concepts/algorithms learned to reduce time complexity, and now the program runs much faster.
 
 ## Measured results
 
-> **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
-> A result without a number reads as a claim; with one it reads as engineering.
+The solver runs one wavefront pass per distance layer over the 16x16 grid — O(n·d) for n
+cells and d the longest path, bounded by the grid rather than by the maze, so a full solve is
+instant. The first implementation was not: it copied the visited-set at every recursive call,
+making each step O(n) on its own and the whole solve visibly slow to watch.
 
 ## Post-mortem
 
-Learned various algorithms to solve mazes, and learned how to iterate and understand big O.
+Learned various algorithms to solve mazes, and learned how to iterate and understand big O. I also got more familiar with the Java programming language.

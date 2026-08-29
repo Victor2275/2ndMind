@@ -104,8 +104,8 @@ export type PublicProject = {
   slug: string;
   title: string;
   summary: string;
-  tier: number;
-  status: "active" | "archived";
+  order: number;
+  status: "active" | "done";
   year: number;
   category: "software" | "hardware" | "robotics";
   tags: string[];
@@ -131,6 +131,7 @@ export type PublicExperience = {
   type: "internship" | "leadership" | "other";
   dateStart: string;
   dateEnd: string;
+  ongoing: boolean;
   seasonal: boolean;
   links: Record<string, string>;
   bullets: string[];
@@ -163,7 +164,7 @@ export function toPublicProject(p: Project): PublicProject {
     slug: p.slug,
     title: p.title,
     summary: p.summary,
-    tier: p.tier,
+    order: p.order,
     status: p.status,
     year: p.year,
     category: p.category,
@@ -191,6 +192,7 @@ export function toPublicExperience(e: Experience): PublicExperience {
     type: e.type,
     dateStart: e.date_start,
     dateEnd: e.date_end,
+    ongoing: e.ongoing,
     seasonal: e.seasonal ?? false,
     links: e.links ?? {},
     bullets: e.bullets,
@@ -231,13 +233,13 @@ export function toPublicLab(l: Lab): PublicLab {
 
 /** Field allowlists, exported so the security test asserts against one source of truth. */
 export const PUBLIC_PROJECT_KEYS = [
-  "slug", "title", "summary", "tier", "status", "year", "category",
+  "slug", "title", "summary", "order", "status", "year", "category",
   "tags", "stack", "links", "event", "image", "imageFit", "figures", "groupSize",
   "draft", "bullets", "body", "updates",
 ] as const;
 
 export const PUBLIC_EXPERIENCE_KEYS = [
-  "slug", "title", "summary", "org", "type", "dateStart", "dateEnd",
+  "slug", "title", "summary", "org", "type", "dateStart", "dateEnd", "ongoing",
   "seasonal", "links", "bullets", "body",
 ] as const;
 
@@ -254,11 +256,11 @@ export const PUBLIC_LAB_KEYS = [
  */
 export type ProjectCard = Pick<
   PublicProject,
-  "slug" | "title" | "summary" | "tier" | "status" | "year" | "category" | "stack"
+  "slug" | "title" | "summary" | "order" | "status" | "year" | "category" | "stack"
 > & { image?: string; imageFit: "cover" | "contain"; draft: boolean };
 
 export const PROJECT_CARD_KEYS = [
-  "slug", "title", "summary", "tier", "status", "year", "category", "stack",
+  "slug", "title", "summary", "order", "status", "year", "category", "stack",
   "image", "imageFit", "draft",
 ] as const;
 
@@ -267,7 +269,7 @@ export function toProjectCard(p: PublicProject): ProjectCard {
     slug: p.slug,
     title: p.title,
     summary: p.summary,
-    tier: p.tier,
+    order: p.order,
     status: p.status,
     year: p.year,
     category: p.category,
@@ -305,13 +307,11 @@ export type PublicPursuit = {
   kicker: string;
   discipline: string;
   summary: string;
-  facts: { label: string; value: string }[];
   bullets: string[];
-  carryover: string;
 };
 
 export const PUBLIC_PURSUIT_KEYS = [
-  "slug", "title", "kicker", "discipline", "summary", "facts", "bullets", "carryover",
+  "slug", "title", "kicker", "discipline", "summary", "bullets",
 ] as const;
 
 export function toPublicPursuit(p: Pursuit): PublicPursuit {
@@ -321,9 +321,7 @@ export function toPublicPursuit(p: Pursuit): PublicPursuit {
     kicker: p.kicker,
     discipline: p.discipline,
     summary: p.summary,
-    facts: p.facts.map((f) => ({ label: f.label, value: f.value })),
     bullets: p.bullets,
-    carryover: p.carryover,
   };
 }
 

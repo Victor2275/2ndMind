@@ -50,8 +50,10 @@ function loadDir<T extends { slug: string }>(
 }
 
 export function loadProjects(): Project[] {
+  // Victor's explicit order, nothing derived. Ties fall back to newest-first so a missing
+  // decision still renders sensibly rather than alphabetically.
   return loadDir(path.join(ENG, "projects"), projectSchema).sort(
-    (a, b) => a.tier - b.tier || b.year - a.year || a.title.localeCompare(b.title),
+    (a, b) => a.order - b.order || b.year - a.year || a.title.localeCompare(b.title),
   );
 }
 

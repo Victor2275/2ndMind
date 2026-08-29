@@ -60,7 +60,7 @@ function SetRow({ index }: { index: number }) {
       </div>
       <div className="sm:col-span-2">
         {index === 0 && <label className={LABEL}>Time</label>}
-        <input name="duration" className={`${FIELD} mt-1`} placeholder="2:17" />
+        <input name="duration" className={`${FIELD} mt-1`} placeholder="m:ss" />
       </div>
       <div className="sm:col-span-1">
         {/* Erg only. Without it here, the vault's stroke-rate targets have nothing to check
@@ -142,7 +142,7 @@ export function WorkoutLogForm() {
 
       <p className="text-xs text-muted-foreground">
         Blank rows are ignored. Weight and reps for lifts; distance, time and SPM for erg
-        pieces — a time may be typed as <span className="text-foreground">2:17</span> or as
+        pieces — a time may be typed as <span className="text-foreground">m:ss</span> or as
         seconds. A stroke rate is what lets a piece be checked against the vault&rsquo;s
         targets.
       </p>

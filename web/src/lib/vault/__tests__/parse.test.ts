@@ -11,7 +11,7 @@ summary: A test project.
 read_when: Testing.
 title: Test Project
 slug: test-project
-tier: 1
+order: 1
 status: active
 year: 2026
 category: software
@@ -107,7 +107,7 @@ Body.
   });
 
   it("requires image_count on a lab", () => {
-    const broken = validProject.replace("tier: 1", "tier: 1");
+    const broken = validProject.replace("order: 1", "");
     expect(() => parseEntry(broken, labSchema, "broken.md")).toThrow(VaultParseError);
   });
 });

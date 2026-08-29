@@ -36,4 +36,12 @@ Four rules that are easy to violate by accident:
    Exporting a constant from one is a build error, not a lint nit. Non-async shared values go
    in a plain module — see `lib/sprint-goals.ts`. This has been got wrong twice.
 
-Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`.
+5. **Hiding a field from the markup does not hide it from the bundle.**
+   Public pages are statically generated, so anything left in a projection in
+   `lib/vault/public.ts` ships whether or not a component renders it. When Victor asks for
+   something hidden, take it out of the projection — see D-114, where pursuit `facts` held
+   erg splits he had just made private.
+
+Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`, `npm run shots`
+(layout and resume page-count gate, dev server must be running), `npm run freeze` (offline
+snapshot of the site).

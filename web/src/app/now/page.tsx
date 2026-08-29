@@ -41,7 +41,7 @@ export default function NowPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <h1 className="text-4xl font-extrabold tracking-tight">Now</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">
-        The things that are actually open on my desk. Updated as they move, not on a schedule.
+        Current active projects.
         {mostRecent ? ` Last update ${formatUpdateDate(mostRecent)}.` : ""}
       </p>
 

@@ -67,14 +67,19 @@ describe("vault invariants", () => {
     }
   });
 
-  it("sorts projects by tier, then newest first", () => {
+  it("sorts projects by Victor's explicit order, then newest first", () => {
     const projects = loadProjects();
     for (let i = 1; i < projects.length; i++) {
       const prev = projects[i - 1];
       const cur = projects[i];
-      expect(prev.tier <= cur.tier).toBe(true);
-      if (prev.tier === cur.tier) expect(prev.year >= cur.year).toBe(true);
+      expect(prev.order <= cur.order).toBe(true);
+      if (prev.order === cur.order) expect(prev.year >= cur.year).toBe(true);
     }
+  });
+
+  it("gives every project a distinct order, so the sequence is a decision not a tie-break", () => {
+    const orders = loadProjects().map((p) => p.order);
+    expect(new Set(orders).size).toBe(orders.length);
   });
 
   it("sorts experience newest first", () => {

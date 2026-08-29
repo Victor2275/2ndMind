@@ -48,6 +48,28 @@ export type TailorResult =
   | { ok: true; advice: TailorAdvice }
   | { ok: false; message: string };
 
+/**
+ * The answer to an application question — a plan for writing one, never the writing itself.
+ *
+ * `points` are bullet ids, under the same rule as `TailorAdvice.emphasise`: the model may
+ * only name material Victor already has. `angle` and `avoid` are free text and are labelled
+ * as guidance in the UI. There is deliberately no `draft` field. A drafted answer is the
+ * model's prose submitted under Victor's name, which is the one thing this feature must not
+ * produce -- and once a draft box exists, it is the box that gets pasted.
+ */
+export type QuestionAnswer = {
+  /** Bullet ids the answer should be built from, best first. */
+  points: string[];
+  /** How to frame it, in the model's words. */
+  angle: string;
+  /** What not to claim -- overreach the material does not support. */
+  avoid: string;
+};
+
+export type QuestionResult =
+  | { ok: true; answer: QuestionAnswer }
+  | { ok: false; message: string };
+
 export function bulletId(
   section: BulletRef["section"],
   slug: string,
@@ -178,4 +200,104 @@ export async function tailorResume(
   if (!result.ok) return { ok: false, message: result.text };
 
   return parseTailorResponse(result.text, new Set(bullets.map((b) => b.id)), variants);
+}
+
+
+export function buildQuestionPrompt(bullets: BulletRef[], question: string): string {
+  return [
+    "Victor is answering a written question on a job application. Your job is to tell him",
+    "WHICH of his existing experiences to build the answer from, and how to frame it.",
+    "You are not writing the answer. He writes it.",
+    "",
+    "Rules, all of them absolute:",
+    "- Refer to his experience ONLY by the ids given. Never quote, rewrite or improve one.",
+    "- Never invent an id. Every id you return must appear in the list below, exactly.",
+    "- Invent no claims, skills, numbers, motivations or opinions. He has not told you why he",
+    "  wants any particular job, so never assert a reason on his behalf.",
+    "- If the question cannot be answered honestly from this material, say so in `avoid`.",
+    "",
+    "His material:",
+    ...bullets.map((b) => `${b.id} | ${b.entry} | ${b.text}`),
+    "",
+    "The question:",
+    question.trim(),
+    "",
+    "Reply with JSON only, no prose and no code fence:",
+    '{"points":["<id>","<id>"],"angle":"<two or three sentences on how to frame it>",',
+    '"avoid":"<what not to claim, and any gap in the material>"}',
+  ].join("\n");
+}
+
+/**
+ * Same parser discipline as `parseTailorResponse`: an id it was not given fails the whole
+ * response. A fabricated reference is evidence about everything else in it, and this text
+ * ends up in front of an employer under Victor's name.
+ */
+export function parseQuestionResponse(
+  text: string,
+  allowedIds: Set<string>,
+): QuestionResult {
+  let raw: unknown;
+  try {
+    raw = extractJson(text);
+  } catch {
+    return { ok: false, message: "The model did not return JSON. Try again." };
+  }
+
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, message: "The model did not return an object." };
+  }
+
+  const body = raw as Record<string, unknown>;
+  const points =
+    Array.isArray(body.points) && body.points.every((v) => typeof v === "string")
+      ? (body.points as string[])
+      : null;
+
+  if (points === null) {
+    return { ok: false, message: "The model's `points` was not a list of ids." };
+  }
+
+  const unknown = points.filter((id) => !allowedIds.has(id));
+  if (unknown.length > 0) {
+    return {
+      ok: false,
+      message:
+        `The model referred to ${unknown.length} experience(s) that do not exist ` +
+        `(${unknown.slice(0, 3).join(", ")}), so the whole suggestion was discarded. ` +
+        `Nothing it said is being shown. Try again.`,
+    };
+  }
+
+  if (points.length === 0) {
+    return { ok: false, message: "The model found nothing in the vault to answer this with." };
+  }
+
+  return {
+    ok: true,
+    answer: {
+      points: [...new Set(points)],
+      angle: typeof body.angle === "string" ? body.angle : "",
+      avoid: typeof body.avoid === "string" ? body.avoid : "",
+    },
+  };
+}
+
+export async function answerQuestion(
+  bullets: BulletRef[],
+  question: string,
+): Promise<QuestionResult> {
+  // Lower than the posting threshold on purpose: "Why do you want to work here?" is a real
+  // question and is 30 characters. A posting that short is a job title with no content.
+  if (question.trim().length < 15) {
+    return { ok: false, message: "Paste the whole question." };
+  }
+  if (bullets.length === 0) {
+    return { ok: false, message: "No bullets found in the vault to answer from." };
+  }
+
+  const result = await callModel(buildQuestionPrompt(bullets, question));
+  if (!result.ok) return { ok: false, message: result.text };
+
+  return parseQuestionResponse(result.text, new Set(bullets.map((b) => b.id)));
 }

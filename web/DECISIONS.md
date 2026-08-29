@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,254 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-08-29 · Offline review round
+
+Victor reviewed a frozen snapshot of the site offline, wrote the case studies, and came back
+with a list of changes. These are the decisions that came out of it, answered question by
+question before any of it was built.
+
+### D-106 · The site freezes to standalone HTML for offline review
+
+**Decision.** `npm run freeze` (`web/scripts/freeze.mjs`) captures every public route — and,
+with a session cookie in `FREEZE_COOKIE`, every private one — into `.frozen/`: one
+self-contained HTML file per page, stylesheets and fonts and images inlined as data URIs,
+every `<script>` stripped, internal links rewritten to the sibling file so clicking through
+works from `file://`.
+
+**Why.** The public site already runs offline under `npm run dev` — that is what self-hosted
+fonts bought (D-002). The private side does not: `/private/*` redirects to sign-in, athletics
+needs Neon, and several pages read editable files through the GitHub Contents API. A snapshot
+sidesteps all three without building an offline mode nobody asked for.
+
+**Why JavaScript is stripped rather than kept.** A frozen page that still tries to hydrate
+reaches for chunks that are not there and fails visibly. Stripping it makes the page inert and
+faithful. The cost is that buttons and forms do nothing, which is correct for a document whose
+purpose is being looked at and annotated.
+
+**How to reverse.** Delete `web/scripts/freeze.mjs`, the `freeze` script in `package.json`,
+and the `.frozen/` line in `web/.gitignore`.
+
+### D-107 · Tiers are gone; projects carry an explicit `order`
+
+**Decision.** `tier` is removed from the project schema and replaced with `order`, an integer
+ascending. `/projects` renders in that order and its lede is deleted. New projects append by
+taking the next number. `project_catalog.md` becomes one table with a `#` column.
+
+**Why.** Two reasons, and only the second is about ordering. Tier published a ranking of his
+own work to hiring managers — the lede explicitly said "Tier 1 are the builds worth reading
+about in depth", which invites the reader to skip the rest. And the sequence Victor actually
+wanted (Proof, Micromouse, 5 Second Rule, Solenoid, TaskAble) is not derivable from tier then
+year under any tie-break, so the data had to hold the decision.
+
+**Also changed.** The project card no longer renders tier-1 titles larger, and a test now
+asserts every `order` is distinct — a duplicate would silently hand the decision back to the
+year tie-break.
+
+**How to reverse.** Restore `tier` in `schemas.ts`, `public.ts`, `load.ts` and
+`build_indexes.py`; the old sort was `a.tier - b.tier || b.year - a.year`.
+
+### D-108 · `archived` becomes `done`; Water Bottle Scale is deleted
+
+**Decision.** The project `status` enum is `["active", "done"]`. `water-bottle-scale.md` is
+deleted rather than archived.
+
+**Why the rename.** "Archived" reads as shelved or abandoned. These projects are finished, and
+the badge on every card said the wrong word about them.
+
+**Why the deletion.** It is superseded, not finished: Smart Bottle is the same idea built
+properly, and Victor's own assessment of the 10th-grade version was "pretty lackluster".
+Keeping both would put two entries on the site for one idea, the weaker one first by year.
+
+**How to reverse.** `git show HEAD:context/01_engineering/projects/water-bottle-scale.md`.
+Note that its case-study sections were placeholder text at deletion.
+
+### D-109 · An ongoing role says "Present" because the vault says it is ongoing
+
+**Decision.** `experienceSchema` gains `ongoing: boolean`. The About page renders "Present"
+when it is set, and the real `date_end` when it is not.
+
+**Why this shape.** "Present" was hard-coded in the page once, outlived the fact behind it,
+and told every reader that a finished internship was still running — so it was removed and
+replaced with the vault's own `date_end`. Dimaag is now genuinely ongoing, so the fix is not
+to un-remove the string but to make the claim data: `date_end` stays a real date that nothing
+has to parse, and the flag decides what is shown.
+
+**How to reverse.** Drop the field and render `dateEnd` unconditionally.
+
+### D-110 · Tailor becomes a sub-tab of Work
+
+**Decision.** `/private/tailor` moves to `/private/work/tailor`. The top-level nav loses
+"Tailor"; a `WorkTabs` sub-nav appears under the Work page header.
+
+**Why.** Victor asked for it, and the reason holds up: Tailor is used a handful of times a
+term and sat beside pages opened daily, in a nav that had grown to nine items and stayed one
+line only because it scrolls. It is career work and belongs with the career pages.
+
+**How to reverse.** Move the directory back, restore the nav entry, delete `work-tabs.tsx`.
+`scripts/shots.mjs` has the route too — it 404'd for one run after the move, which is how the
+oversight was caught.
+
+### D-111 · The inbox is a task row, not a notes table
+
+**Decision.** "Jot down random things" is a `tasks` row with `source: "inbox"` — undated,
+undomained, captured from a one-field box on Today. It nags on the **age of the oldest item**
+(7 days), not on count.
+
+**Why a task.** D-037 made everything actionable one model. The point of jotting something
+down is that it will later become actionable, so triage should be an edit to the row it
+already is, not a migration between two stores.
+
+**Why age and not count.** Ten things captured this morning is a productive morning; one thing
+untriaged for three weeks is the actual problem. A count cannot tell those apart. The list is
+also sorted oldest-first, because an inbox sorted newest-first hides its own backlog.
+
+**How to reverse.** Delete `inbox-panel.tsx`, `addInboxNote`, `listInbox`/`staleDays`, and the
+Inbox panel on Today. Existing rows stay valid tasks; they would reappear in Backlog once the
+`source !== "inbox"` filter goes.
+
+### D-112 · Today has one Goals panel, and the Backlog stays shut
+
+**Decision.** "This week's goals" and "Draft next week" merge into one **Goals** panel, with
+drafting nested inside it as a closed `<details>`. Backlog is now closed by default regardless
+of size.
+
+**Why.** Victor's words: "it feels weird how there is a this week's goals and draft next
+week's goals." As siblings they read as two competing lists of goals rather than one list and
+the tool that proposes next week's. And his read of the page overall was that it is too dense,
+which a nested disclosure and a closed backlog both answer. Drafting stays closed for the
+original reason — each press is a real API call against a ~$10/month budget.
+
+**How to reverse.** Split the panels back apart; the `ProposalReview` component is unchanged.
+
+### D-113 · The DARS audit is parsed into a derived file, never read directly
+
+**Decision.** `scripts/parse_dars.py` turns a saved DARS page into
+`context/01_engineering/degree_audit.md`. The private Academics page reads only the derived
+file. Raw `DARS*.html` is gitignored.
+
+**Why.** The saved audit carries Victor's student ID, his high school, and every grade he has
+ever received, in ~900 KB of page furniture. The site needs one thing from it: which
+requirements are unfulfilled and what satisfies them. Deriving that once, locally, means the
+identifiers are never in a file the app can read, rather than being present and trusted not to
+be rendered.
+
+**And it could not have worked otherwise.** `99_archive/` — where a transcript-shaped document
+belongs — is deliberately excluded from the Next.js file trace (D-023). A page reading the raw
+audit would work locally and 404 in production, which is the exact failure that exclusion
+exists to document.
+
+**One deliberate lossiness.** A GE subgroup's "SELECT FROM" is every qualifying course at
+UCLA. Those lists are truncated to ~320 characters with a count of what was dropped; the audit
+itself is the place to go for the rest.
+
+**How to reverse.** Delete the script and the derived file, and restore the Academics
+`Record` panel as the only vault document on the page.
+
+### D-114 · Pursuits publish bullets only, and feed the tailor library
+
+**Decision.** `facts` and `carryover` are removed from the public pursuit projection.
+Pursuit bullets are added to the tailoring bullet library.
+
+**Why removed rather than un-rendered.** Victor asked for the metrics and the italic
+carry-over hidden. Public pages are statically generated, so a field left in the projection
+ships inside the bundle whether or not anything renders it — and the facts here are erg
+splits, which he moved to private in the same round. "Hidden" that still ships is not hidden.
+
+**Why the library grew.** CAD, SolidWorks and 3D printing are real skills that live only in
+`pursuits/fabrication.md`, which contributed nothing, so a posting asking for mechanical
+design could not be answered with the one thing that answers it. What the model may *say* is
+still bounded by the ids it is handed, so this widens the advice without loosening the
+guardrail.
+
+**How to reverse.** Restore the two fields to `PublicPursuit`, `PUBLIC_PURSUIT_KEYS` and
+`toPublicPursuit`, and the markup on the About page; drop the pursuits loop in
+`collectBullets`.
+
+### D-115 · Resume entries may cap their own bullets per variant
+
+**Decision.** `resume_bullets: { <variant>: <n> }` on a project or experience entry overrides
+the global cap for that variant.
+
+**Why.** An entry can be worth listing on a variant without being worth three lines on it.
+Proof earns a place on the robotics resume for the engineering behind it; a robotics reader
+does not need its Socket.io timers.
+
+**Where it ended up.** Only Proof uses it: **2 bullets on robotics**, which was Victor's
+instruction ("put Proof on it if it can fit, but with less bullets"), not a page-pressure fix.
+
+An intermediate state is worth recording because it was wrong. MathCounts and Lifeguard were
+briefly added to all three variants, which pushed every one onto a second page — caught by
+`npm run shots`, not by looking (D-077) — and paid for with caps on Solenoid and TaskAble.
+Victor then clarified that those two roles were supplied **as Tailor context, never as resume
+content** (D-118). With them off, the variants print at 0.89–0.93 and both caps were removed
+again. The lesson is the ordinary one: trimming good content to fit content that should not
+have been there produces a worse document than asking.
+
+**How to reverse.** Delete the field from the schemas and the two `??` fallbacks in
+`resume.ts`; every entry returns to the global caps. Re-run `npm run shots` after.
+
+### D-116 · The Dimaag paper is published as a placeholder, deliberately
+
+**Decision.** `projects/dimaag-paper.md` exists, is `status: active` so it reaches `/now`, and
+says almost nothing: no vehicle class, no algorithm, no architecture, no numbers.
+`confidential_scope` in `experience/dimaag.md` is rewritten to name exactly what is and is not
+shareable.
+
+**Why.** Victor supplied a detailed technical brief and confirmed it is **internal until
+cleared**. The vault's existing boundary covered PPO, Isaac Lab, LiDAR raycasting, sim-to-real
+and tracking accuracy; the brief goes well past that and in places contradicts it. Writing any
+of it into a public file would have published uncleared material and desynchronised the vault
+from its own confidentiality note.
+
+**What is now cleared and changed.** Tracking is **>10 mph**, not >12; the internship is
+**ongoing**; the LLM-tooling bullet is cut at Victor's request; the **80% reduction in mean
+tracking error** is cleared and is now the strongest claim on the resume.
+
+**How to reverse when clearance lands.** Rewrite `confidential_scope` first, then the project
+body, then the bullets — in that order, so the boundary is never behind the content.
+
+### D-117 · Tailor answers posting questions, and never drafts the answer
+
+**Decision.** `/private/work/tailor` gains a second panel: paste one written application
+question, get the bullet ids to build the answer from, an angle, and a "do not claim" note.
+There is deliberately **no draft field**.
+
+**Why no draft.** A drafted answer is the model's prose submitted under Victor's name. The
+resume side already refuses to write a bullet for exactly this reason (D-069 and the id
+scheme above it), and an application answer is the same document class with a lower guard on
+it. Once a draft box exists, it is the box that gets pasted.
+
+**The failure mode specific to this half.** "Why do you want to work here" invites a model to
+assert a motivation Victor never gave, in the first person, on an application. The prompt
+forbids it explicitly and a test asserts the prompt still says so.
+
+**Same parser discipline.** `points` are ids from the list handed over; an id it was not given
+fails the whole response, for the same reason as the resume side — a fabricated reference is
+evidence about everything else in it.
+
+**How to reverse.** Delete `question-form.tsx`, `answerPostingQuestion`, and the
+`answerQuestion`/`buildQuestionPrompt`/`parseQuestionResponse` trio in `lib/ai/tailor.ts`.
+
+### D-118 · The Tailor library is vault-wide and ignores `resume_variants`
+
+**Decision.** `collectBullets` reads `publicExperience()`, `publicProjects()` and
+`publicPursuits()` directly, instead of unioning `buildResume()` across variants.
+
+**Why.** `resume_variants` decides what gets **printed**; the library decides what the model
+may **talk about**. Those are different questions, and building the library from the resume
+made them the same one — so MathCounts and Lifeguard could not be both "reachable when a
+posting asks about mentoring" and "off the printed page", which is exactly what Victor wanted.
+Pursuits had the same problem from the other end: CAD and 3D printing are on no variant.
+
+**What it does not loosen.** The guardrail is the id scheme, not the size of the list. A
+wider library means better advice about material that already exists; it does not let the
+model say anything it could not say before.
+
+**How to reverse.** Rebuild `collectBullets` from `buildResume(variant)` over
+`RESUME_VARIANTS`. Note that doing so silently drops every entry with `resume_variants: []`.
 
 ---
 

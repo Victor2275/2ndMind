@@ -3,17 +3,22 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { suggestTailoring } from "@/app/private/work/tailor/actions";
+import { answerPostingQuestion } from "@/app/private/work/tailor/actions";
 import type { TailorState } from "@/lib/tailor-state";
 
 /**
- * Paste a posting, get advice.
+ * The other half of an application: the written questions a posting asks directly.
+ *
+ * "Why do you want to work here", "describe a time you led something". Same guardrail as the
+ * resume side — the model points at material Victor already has and says how to frame it. It
+ * never drafts the answer, because a drafted answer is the model's prose submitted under his
+ * name, and once a draft box exists it is the box that gets pasted.
  *
  * Nothing sensitive is hard-coded here — this compiles into `/_next/static/chunks/`, served
  * without authentication. Bullet text arrives as a prop at render time, from the vault.
  */
 
-function SuggestButton() {
+function AskButton() {
   const { pending } = useFormStatus();
   return (
     <button
@@ -21,15 +26,18 @@ function SuggestButton() {
       disabled={pending}
       className="rounded-md border border-primary/50 px-4 py-2 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
     >
-      {pending ? "Reading the posting…" : "Suggest"}
+      {pending ? "Reading the question…" : "What do I draw on?"}
     </button>
   );
 }
 
-export function TailorForm({ variantLabels }: { variantLabels: Record<string, string> }) {
-  const [state, action] = useActionState<TailorState | null, FormData>(suggestTailoring, null);
+export function QuestionForm() {
+  const [state, action] = useActionState<TailorState | null, FormData>(
+    answerPostingQuestion,
+    null,
+  );
 
-  const advice = state?.ok ? state.advice : undefined;
+  const answer = state?.ok ? state.answer : undefined;
   const byId = new Map((state?.bullets ?? []).map((b) => [b.id, b]));
 
   return (
@@ -37,22 +45,22 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
       <form action={action} className="space-y-3">
         <div>
           <label
-            htmlFor="posting"
+            htmlFor="question"
             className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
           >
-            Job posting
+            Application question
           </label>
           <textarea
-            id="posting"
-            name="posting"
-            rows={8}
-            placeholder="Paste the whole description — requirements and responsibilities, not just the title."
+            id="question"
+            name="question"
+            rows={4}
+            placeholder="Paste one question — e.g. “Describe a technical project you are proud of and your role in it.”"
             className="mt-1 w-full rounded-md border border-border bg-card/70 px-3 py-2 text-sm leading-relaxed text-foreground focus:border-primary/60 focus:outline-none"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <SuggestButton />
+          <AskButton />
           {state && !state.ok && (
             <p role="status" className="text-xs text-destructive-foreground">
               {state.message}
@@ -61,32 +69,14 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
         </div>
       </form>
 
-      {advice && (
+      {answer && (
         <div className="space-y-6">
-          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
-            <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
-              Send this variant
-            </p>
-            <p className="mt-1 text-lg font-bold tracking-tight text-foreground">
-              {variantLabels[advice.variant] ?? advice.variant}
-            </p>
-            {advice.variantReason && (
-              <p className="mt-1.5 text-sm text-muted-foreground">{advice.variantReason}</p>
-            )}
-            <a
-              href={`/resume/${advice.variant}`}
-              className="link-wipe mt-2 inline-block font-mono text-xs text-primary"
-            >
-              Open it &rarr;
-            </a>
-          </div>
-
           <section>
             <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
-              Lead with
+              Build it from
             </h3>
             <ol className="mt-2 space-y-2">
-              {advice.emphasise.map((id, i) => {
+              {answer.points.map((id, i) => {
                 const bullet = byId.get(id);
                 if (!bullet) return null;
                 return (
@@ -94,7 +84,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
                     <span className="tabular font-mono text-xs text-primary">{i + 1}</span>
                     <span className="text-sm text-foreground">
                       {/* The vault's words, resolved from the id. The model never supplies
-                          bullet text — that is the entire point of the id scheme. */}
+                          this text — that is the entire point of the id scheme. */}
                       {bullet.text}
                       <span className="ml-2 font-mono text-[0.62rem] text-muted-foreground">
                         {bullet.entry}
@@ -106,35 +96,27 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
             </ol>
           </section>
 
-          {advice.deprioritise.length > 0 && (
+          {answer.angle && (
             <section>
               <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
-                Carries less weight here
+                Angle
               </h3>
-              <ul className="mt-2 space-y-1.5">
-                {advice.deprioritise.map((id) => {
-                  const bullet = byId.get(id);
-                  if (!bullet) return null;
-                  return (
-                    <li key={id} className="text-sm text-muted-foreground">
-                      {bullet.text}
-                    </li>
-                  );
-                })}
-              </ul>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{answer.angle}</p>
             </section>
           )}
 
-          {advice.notes && (
-            <section>
+          {answer.avoid && (
+            <section className="rounded-lg border border-highlight/40 bg-highlight/10 p-4">
               <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
-                Rationale
+                Do not claim
               </h3>
-              {/* Displayed as rationale, never as resume content. It is the one part of this
-                  screen the model wrote in its own words. */}
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{advice.notes}</p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">{answer.avoid}</p>
             </section>
           )}
+
+          <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+            Write the answer yourself. This is a plan, not a draft.
+          </p>
         </div>
       )}
     </div>

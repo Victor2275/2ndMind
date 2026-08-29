@@ -117,6 +117,33 @@ export async function listDoneBetween(db: Db, start: Date, end: Date): Promise<T
     .orderBy(asc(tasks.doneAt));
 }
 
+/**
+ * The inbox: undated, unfiled notes captured so they stop occupying attention.
+ *
+ * A task row with `source: "inbox"` rather than a notes table, per D-037 — everything
+ * actionable is one model, and the whole point of jotting something down is that it will
+ * later become actionable. Triaging one means giving it a domain or a due date, which is
+ * an edit to the row it already is, not a migration between two stores.
+ *
+ * Oldest first, deliberately. An inbox sorted newest-first hides its own backlog: the item
+ * you have been avoiding for three weeks sinks below the one you added this morning.
+ */
+export async function listInbox(db: Db, limit = 50): Promise<Task[]> {
+  return db
+    .select()
+    .from(tasks)
+    .where(and(alive, isNull(tasks.doneAt), eq(tasks.source, "inbox")))
+    .orderBy(asc(tasks.createdAt), asc(tasks.id))
+    .limit(limit);
+}
+
+/** How many days the oldest untriaged note has been sitting. 0 when the inbox is empty. */
+export function staleDays(items: Task[], now: Date): number {
+  if (items.length === 0) return 0;
+  const oldest = items.reduce((a, b) => (a.createdAt <= b.createdAt ? a : b));
+  return Math.floor((now.getTime() - oldest.createdAt.getTime()) / 86_400_000);
+}
+
 export async function createTask(db: Db, input: NewTask): Promise<Task> {
   const [row] = await db.insert(tasks).values(input).returning();
   return row;

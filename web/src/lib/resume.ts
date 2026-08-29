@@ -83,7 +83,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
       title: e.title,
       org: e.org,
       dates: `${formatResumeDate(e.date_start)} – ${formatResumeDate(e.date_end)}`,
-      bullets: e.bullets.slice(0, MAX_EXPERIENCE_BULLETS),
+      bullets: e.bullets.slice(0, e.resume_bullets?.[variant] ?? MAX_EXPERIENCE_BULLETS),
     }));
 
   // Projects and labs land in one section. A reader does not care which vault directory an
@@ -95,7 +95,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
       title: p.title,
       org: p.event ?? p.category,
       dates: String(p.year),
-      bullets: p.bullets.slice(0, MAX_PROJECT_BULLETS),
+      bullets: p.bullets.slice(0, p.resume_bullets?.[variant] ?? MAX_PROJECT_BULLETS),
     }));
 
   const labEntries: ResumeEntry[] = loadLabs()

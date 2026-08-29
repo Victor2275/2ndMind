@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Agenda } from "@/components/site/agenda";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
+import { InboxPanel } from "@/components/site/inbox-panel";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
 import { ProposalReview } from "@/components/site/proposal-review";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
@@ -15,7 +16,9 @@ import {
   dayBounds,
   listDoneBetween,
   listDueBy,
+  listInbox,
   listTasks,
+  staleDays,
   zoneOffsetMinutes,
 } from "@/lib/tasks/queries";
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
@@ -59,12 +62,15 @@ type Loaded = {
   goals: Task[];
   someday: Task[];
   doneToday: Task[];
+  inbox: Task[];
   overdue: number;
   failure: string | null;
 };
 
 async function load(): Promise<Loaded> {
-  const empty: Loaded = { due: [], goals: [], someday: [], doneToday: [], overdue: 0, failure: null };
+  const empty: Loaded = {
+    due: [], goals: [], someday: [], doneToday: [], inbox: [], overdue: 0, failure: null,
+  };
 
   if (!isDatabaseConfigured()) {
     return { ...empty, failure: "DATABASE_URL is not set, so tasks cannot load." };
@@ -75,18 +81,24 @@ async function load(): Promise<Loaded> {
 
   try {
     const handle = db();
-    const [due, goals, backlog, doneToday] = await Promise.all([
+    const [due, goals, backlog, doneToday, inbox] = await Promise.all([
       listDueBy(handle, end),
       currentGoals(handle),
       listTasks(handle, { limit: 50 }),
       listDoneBetween(handle, start, end),
+      listInbox(handle),
     ]);
 
     return {
       due,
       goals,
-      someday: backlog.filter((t) => t.dueAt === null && t.source !== "goal"),
+      // Inbox notes are undated by definition, so without this exclusion every captured
+      // thought would appear twice — once here and once in the backlog below it.
+      someday: backlog.filter(
+        (t) => t.dueAt === null && t.source !== "goal" && t.source !== "inbox",
+      ),
       doneToday,
+      inbox,
       overdue: due.filter((t) => t.dueAt && t.dueAt < start).length,
       failure: null,
     };
@@ -103,7 +115,7 @@ async function load(): Promise<Loaded> {
  * the shell paints immediately and only this region shows a placeholder.
  */
 async function Tasks() {
-  const { due, goals, someday, doneToday, overdue, failure } = await load();
+  const { due, goals, someday, doneToday, inbox, overdue, failure } = await load();
 
   const goalValues = Object.fromEntries(
     GOAL_DOMAINS.map((d) => [d.key, goals.find((g) => g.domain === d.key)?.title ?? ""]),
@@ -147,18 +159,36 @@ async function Tasks() {
       </div>
 
       <div className="mt-8 space-y-4">
-        <Panel title="This week's goals">
+        {/* One Goals panel, not two. "This week's goals" and "Draft next week" sat as
+            siblings and read as two competing lists of goals rather than one list and the
+            tool that proposes next week's — Victor's words: "it feels weird". Drafting is
+            now nested inside the thing it drafts, and still closed by default: each press
+            is a real API call against a ~$10/month budget, and this page opens daily. */}
+        <Panel title="Goals">
           <GoalsEditor values={goalValues} />
+
+          <details className="group mt-4 border-t border-border pt-3">
+            <summary className="cursor-pointer list-none font-mono text-xs text-muted-foreground transition-colors hover:text-foreground">
+              <span className="mr-1 inline-block transition-transform group-open:rotate-90">
+                &rsaquo;
+              </span>
+              Draft next week
+            </summary>
+            <div className="mt-3">
+              <ProposalReview />
+            </div>
+          </details>
         </Panel>
 
-        {/* Collapsed by default. Drafting is a weekly act, and an open panel with a model
-            button in it on the page Victor opens daily invites pressing it out of habit —
-            each press is a real API call against a ~$10/month budget. */}
-        <Panel title="Draft next week" collapsible defaultOpen={false}>
-          <ProposalReview />
+        {/* Somewhere to put a thought without deciding where it goes. Open, because a
+            capture box behind a click is a capture box that does not get used. */}
+        <Panel title="Inbox" meta={inbox.length > 0 ? `${inbox.length} to triage` : undefined}>
+          <InboxPanel items={inbox.map(toView)} staleDays={staleDays(inbox, new Date())} />
         </Panel>
 
-        <Panel title="Backlog" collapsible defaultOpen={someday.length > 0}>
+        {/* Closed by default now, regardless of size. Victor's read of this page was that it
+            is too dense; a backlog is reference, and reference does not open itself. */}
+        <Panel title="Backlog" collapsible defaultOpen={false}>
           {someday.length > 0 ? (
             <TaskList tasks={someday.map(toView)} emptyMessage="" showAdd={false} />
           ) : (

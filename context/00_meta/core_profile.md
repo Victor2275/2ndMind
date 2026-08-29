@@ -1,11 +1,11 @@
 ---
-updated: 2026-08-20
+updated: 2026-08-27
 domain: meta
 stability: stable
 summary: Identity facts — name, school, year, GPA, contact, timezone, graduation timeline.
 read_when: Always — load first, every session.
 name: Victor Gusev
-persona: Specialized Robotics Engineer
+persona: Robotics Engineer
 degree: B.S. Computer Science and Engineering
 school: University of California, Los Angeles
 school_short: UCLA

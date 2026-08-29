@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: archive
 stability: stable
 summary: Generated resume, all three variants. Not canonical for any entry.
@@ -34,20 +34,26 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 **Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
 
-- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
-- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
+- Implemented PPO algorithm training pipelines and 2D LiDAR sensor raycasting within NVIDIA Isaac Lab
 - Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
-- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
-- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
+- Reduced mean tracking error by 80% over the classical planner
 
 **Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
 
-- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Led software development for a 40+ member FIRST Robotics team, building semi-autonomous competition robots
 - Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
-- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
 - Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
 
 ### Projects
+
+**Proof** | *software* - 2026
+
+- Architected a full-stack progressive web application (PWA) with MongoDB and React to version-control recipe iterations and manage real-time inventory states
+- Integrated the Gemini API and web scraping (Cheerio) to autonomously extract, intelligently restructure, and import recipes directly from raw URLs
+- Engineered a real-time, cross-device timer synchronization system using Socket.io to track concurrent baking stages across multiple platforms
+- Maintained application stability by creating over 100 automated test cases to prevent bugs during new feature deployments
 
 **Solenoid Bit Reader** | *Physics 4BL* - 2026
 
@@ -86,17 +92,16 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 **Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
 
-- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
-- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
+- Implemented PPO algorithm training pipelines and 2D LiDAR sensor raycasting within NVIDIA Isaac Lab
 - Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
-- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
-- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
+- Reduced mean tracking error by 80% over the classical planner
 
 **Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
 
-- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Led software development for a 40+ member FIRST Robotics team, building semi-autonomous competition robots
 - Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
-- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
 - Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
 
 ### Projects
@@ -136,17 +141,16 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 **Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
 
-- Architected a hybrid Reinforcement Learning and classical local planner for autonomous vehicles to improve accuracy and speed of travel along complex curved paths
-- Implemented PPO algorithm training pipelines, 2D LiDAR sensor raycasting, and domain randomization within NVIDIA Isaac Lab
+- Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
+- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
+- Implemented PPO algorithm training pipelines and 2D LiDAR sensor raycasting within NVIDIA Isaac Lab
 - Bridged the sim-to-real gap by validating policies across various simulators, implementing domain randomization to ensure seamless hardware deployment
-- Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >12 mph with sub-decimeter trajectory accuracy
-- Integrated advanced LLM tooling into the engineering pipeline to automate architectural documentation, generate robust system test cases, and parse complex training logs
+- Reduced mean tracking error by 80% over the classical planner
 
 **Robotics Programming Lead** | *FIRST Robotics* - August 2021 - May 2025
 
-- Led software development for a 15-20 member robotics team, building semi-autonomous competition robots
+- Led software development for a 40+ member FIRST Robotics team, building semi-autonomous competition robots
 - Implemented PID control systems, vision tracking (Limelight), and LiDAR-based localization
-- Collaborated with mechanical and electrical leads to safely deploy and test software on the physical robot hardware
 - Engineered autonomous routines and vision pipelines that propelled the team to the FIRST World Championships, ranking in the top 5% of regional competitors
 
 ### Projects

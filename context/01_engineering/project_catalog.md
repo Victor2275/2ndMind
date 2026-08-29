@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: engineering
 stability: volatile
 summary: Generated index of all projects. Canonical data lives in projects/.
@@ -11,21 +11,15 @@ read_when: Portfolio, resume bullets, or "what have you built" questions.
 
 # Project Catalog
 
-## Tier 1
-
-| Project | Status | Year | Category | Stack | Links |
-|---|---|---|---|---|---|
-| [Proof](projects/proof.md) | active | 2026 | software | React, MongoDB, Cheerio, Gemini API, Socket.io | [Live](https://proof-cdvj.onrender.com) |
-| [Solenoid Bit Reader](projects/solenoid-bit-reader.md) | archived | 2026 | hardware | ESP32, LM358N op-amp, 387-turn copper coil | — |
-| [TaskAble](projects/taskable.md) | archived | 2026 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
-| [Micromouse Simulator](projects/micromouse-simulator.md) | archived | 2023 | robotics | Java, Java Graphics | [GitHub](https://github.com/Victor2275/MicroMouseSim) |
-
-## Tier 2
-
-| Project | Status | Year | Category | Stack | Links |
-|---|---|---|---|---|---|
-| [Water Bottle Scale](projects/water-bottle-scale.md) | active | 2026 | hardware | Arduino Uno, Load cell | — |
-| [5 Second Rule](projects/five-second-rule.md) | archived | 2025 | software | Unity, C# | [Itch.io](https://mcalmic.itch.io/5-second-rule) |
+| # | Project | Status | Year | Category | Stack | Links |
+|---|---|---|---|---|---|---|
+| 1 | [Proof](projects/proof.md) | done | 2026 | software | React, MongoDB, Cheerio, Gemini API, Socket.io | [Live](https://proof-cdvj.onrender.com) |
+| 2 | [Micromouse Simulator](projects/micromouse-simulator.md) | done | 2023 | robotics | Java, Java Graphics | [GitHub](https://github.com/Victor2275/MicroMouseSim) |
+| 3 | [5 Second Rule](projects/five-second-rule.md) | done | 2025 | software | Unity, C# | [Itch.io](https://mcalmic.itch.io/5-second-rule) |
+| 4 | [Solenoid Bit Reader](projects/solenoid-bit-reader.md) | done | 2026 | hardware | ESP32, LM358N op-amp, 387-turn copper coil | — |
+| 5 | [TaskAble](projects/taskable.md) | done | 2026 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
+| 6 | [Smart Bottle](projects/smart-bottle.md) | active | 2026 | hardware | - | — |
+| 7 | [Research Paper — RL for Autonomous Navigation](projects/dimaag-paper.md) | active | 2026 | robotics | NVIDIA Isaac Lab, ROS 2, Python | — |
 
 ## Confidentiality Notes
 

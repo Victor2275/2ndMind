@@ -22,6 +22,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Target roles, companies, locations, timeline | `context/01_engineering/career_targets.md` |
 | Languages, tooling, OS, code standards | `context/01_engineering/technical_standards.md` |
 | Courses, grades, academic background | `context/01_engineering/coursework_and_labs.md` |
+| What is left to graduate, course planning | `context/01_engineering/degree_audit.md` (generated — see below) |
 | Physics labs, ESP32 instrumentation work | `context/01_engineering/labs/` |
 | Jobs, internships, leadership roles | `context/01_engineering/experience/` (fast index: `experience_and_roles.md`) |
 | Projects, portfolio, "what have you built" | `context/01_engineering/projects/` (fast index: `project_catalog.md`) |
@@ -56,15 +57,24 @@ if the question is broad. It is not affordable to touch `99_archive/`.
   **generated indexes**: read them for a one-file overview, never edit them. Same for
   `99_archive/resume.md`, and the `## Lab Experiments` section of `coursework_and_labs.md`.
   After changing any entry, run `python scripts/build_indexes.py`.
+- **`degree_audit.md` is generated too**, by `python scripts/parse_dars.py <saved DARS.html>`.
+  Never edit it, and never read a raw `DARS*.html` — those carry Victor's student ID, high
+  school, and full grade history, and are gitignored for that reason (`web/DECISIONS.md`
+  D-113). Re-run the script when he saves a fresh audit.
+- **Projects are ordered by their `order:` field**, not by tier — tiers were removed on
+  2026-08-29 (D-107). A new project appends to the bottom by taking the next number. Project
+  `status:` is `active` or `done`; `active` is what puts it on the public `/now` page.
 - **`## Updates` in a project file is published.** `### YYYY-MM-DD` entries under that heading
   render on the public `/now` page and on the project page, newest first — see `web/DECISIONS.md`
   D-099. A project reaches `/now` by its frontmatter saying `status: active`, so that field is
   now load-bearing rather than descriptive. Write updates for a stranger, not as notes to self;
   anything internal belongs under `## Notes`, which is stripped.
-- **Dimaag.ai:** the technical specifics in `experience_and_roles.md` (PPO, Isaac Lab, LiDAR
-  raycasting, sim-to-real validation, tracking accuracy) are shareable — use them freely.
-  Anything beyond that documented scope is not recorded in this vault; say so rather than
-  guessing at it.
+- **Dimaag.ai:** the boundary is stated in full in `experience/dimaag.md` under
+  `confidential_scope` — read it there rather than assuming, because it changed on
+  2026-08-29. Summary: the bullets in that file are shareable; the research paper's technical
+  specifics are **internal until Dimaag clears them**, and the source repository is private
+  and has not been read. Anything beyond the documented scope is not recorded in this vault;
+  say so rather than guessing at it.
 - **Dates are ISO 8601.** Write new dates that way.
 
 ## When you change something

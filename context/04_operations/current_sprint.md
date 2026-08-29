@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -68,6 +68,27 @@ silently — the daily summary showed a fallback string and nothing else said so
 `gemini-3.6-flash` and verified working (D-085). Failures were also being cached for six
 hours (D-086). Both were blockers for feature 6 that no one knew about.
 
+
+### Offline review round — 2026-08-29
+
+Victor reviewed a frozen snapshot of the site while travelling (`npm run freeze`, D-106),
+wrote the six project case studies, and returned a change list. Answered as ~50 questions,
+then built. **Full status and what is left: `REVIEW_ROUND_PLAN.md` at the repo root.**
+
+Shipped: the About rewrite and hobbies trim, tiers replaced by explicit ordering, `archived`
+renamed to `done`, Water Bottle Scale deleted and Smart Bottle created, the Dimaag paper as a
+deliberately vague public placeholder, Proof onto the robotics resume, Tailor moved under
+Work, an inbox on Today, Today's two goal panels merged, and the DARS audit parsed into
+`01_engineering/degree_audit.md` and rendered on Academics. Decisions D-106 to D-116.
+
+Found while doing it: the erg split `2:17` was hard-coded as a placeholder in a client chunk
+served without authentication — harmless while it was public, not harmless after Victor made
+the splits private in the same round. Fixed, and `web/AGENTS.md` gained a rule about
+projections shipping whether or not they are rendered.
+
+**Still open from this round:** the paper is internal until Dimaag clears it; the three-year
+course planner is scoped at ~6-8h and recommended for V3; daily AI summaries are generated
+but not persisted (~2h, closes feature 6).
 
 Priority is Victor's: fix V1's findings and make it faster and cleaner before adding
 features. Four ship before term, two during. Full plan and reasoning in `web/DECISIONS.md`

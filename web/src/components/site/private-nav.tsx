@@ -18,7 +18,6 @@ const NAV = [
   { href: "/private/athletics", label: "Athletics" },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },
-  { href: "/private/tailor", label: "Tailor" },
   { href: "/private/calendar", label: "Calendar" },
   { href: "/private/hobbies", label: "Hobbies" },
 ];

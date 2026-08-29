@@ -51,7 +51,7 @@ export const CATEGORIES: readonly Category[] = [
       { name: "reps", label: "Reps", type: "number", placeholder: "5" },
       { name: "distance", label: "Distance", type: "distance", placeholder: "500" },
       // Accepts 2:17 as an erg monitor shows it, not just seconds.
-      { name: "duration", label: "Time", type: "duration", placeholder: "2:17" },
+      { name: "duration", label: "Time", type: "duration", placeholder: "m:ss" },
       { name: "spm", label: "SPM", type: "number", placeholder: "72" },
       { name: "rpe", label: "RPE", type: "number", placeholder: "1-10" },
     ],

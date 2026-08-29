@@ -17,3 +17,9 @@ Mastermind.md
 # Tool cache from the graphify skill: an AST index and content-hashed blobs regenerated on
 # demand. Not project content, and it churns on every file change.
 graphify-out/
+
+# Saved DARS audits. These carry the student ID, high school, and full grade history --
+# `scripts/parse_dars.py` derives `context/01_engineering/degree_audit.md` from one and the
+# site reads only that. Keep the raw page out of the repo.
+DARS*.html
+*Audit Results Tab_files/

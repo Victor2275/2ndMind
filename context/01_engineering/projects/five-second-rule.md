@@ -1,13 +1,13 @@
 ---
-updated: 2026-08-25
+updated: 2026-08-29
 domain: engineering
 stability: stable
 summary: Unity game built in a 72-hour Ludum Dare jam, with combat and enemy AI.
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: 5 Second Rule
 slug: five-second-rule
-tier: 2
-status: archived
+order: 3
+status: done
 year: 2025
 category: software
 tags: [game, hackathon, unity]
@@ -25,21 +25,18 @@ bullets: []
 
 ## The problem
 
-> **To write:** what were you actually solving, and what made it hard? The constraint
-> is the interesting part - what you could not do, or could not afford, or could not
-> measure. This is the section interviewers open with.
+The idea of this project was to accomplish the goal of making a fun game within a 72 hour time period with the prompt "Collection". However, due to the little time given and the large scope of our project, we needed to prioritize certain features while cutting others.
 
 ## Architecture
 
 Game created during Ludum Dare Game Jam 58 (72-hour cycle). Implemented player movement,
-combat, abilities, and enemy AI.
+combat, abilities, and enemy AI within the Unity Physics Engine.
 
 ## What did not work
 
-> **To write:** what you tried first and abandoned, and why. Almost no student
-> portfolio has this section, which is exactly why it is convincing to an engineer.
+Making the game fun meant keeping certain features out, like more complex enemies or bosses. While we wanted to add those features, within the time constraints it would have been too difficult and unpolished to add those features while keeping the game fun.
 
 ## Measured results
 
-> **To write:** one number, ideally more. Accuracy, latency, throughput, uptime, scale.
-> A result without a number reads as a claim; with one it reads as engineering.
+Finished in the top half of Ludum Dare 58, which drew 1,390 submitted entries against the
+theme "Collector".

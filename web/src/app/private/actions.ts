@@ -76,6 +76,31 @@ export async function addTask(
   }
 }
 
+/**
+ * Capture a note into the inbox. Deliberately one field and no options: a capture box that
+ * asks which domain something belongs to is a filing form, and filing is the work being
+ * deferred. Triage happens later, on the row this creates.
+ */
+export async function addInboxNote(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+  const missing = requireDatabase();
+  if (missing) return missing;
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (title === "") return { ok: false, message: "Write it down first." };
+
+  try {
+    await createTask(db(), { title, source: "inbox", domain: null, courseCode: null, dueAt: null });
+    refresh();
+    return { ok: true, message: "Captured." };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
 export async function toggleTask(
   _prev: ActionState | null,
   formData: FormData,
