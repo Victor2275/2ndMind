@@ -33,10 +33,7 @@ export type ImportResult = {
  * because otherwise a re-import would leave the workout row alone and append a duplicate
  * copy of all its sets — which would not be visible anywhere except in wrong PR numbers.
  */
-export async function importWorkouts(
-  db: Db,
-  plan: ParsedWorkout[],
-): Promise<ImportResult> {
+export async function importWorkouts(db: Db, plan: ParsedWorkout[]): Promise<ImportResult> {
   if (plan.length === 0) {
     return { insertedWorkouts: 0, skippedWorkouts: 0, insertedSets: 0 };
   }
@@ -93,7 +90,12 @@ export async function importWorkouts(
 /** One hand-logged session. Returns the new workout id. */
 export async function logWorkout(
   db: Db,
-  input: { performedAt: Date; title: string; notes: string; sets: Omit<NewWorkoutSet, "workoutId">[] },
+  input: {
+    performedAt: Date;
+    title: string;
+    notes: string;
+    sets: Omit<NewWorkoutSet, "workoutId">[];
+  },
 ): Promise<number> {
   const [row] = await db
     .insert(workouts)
@@ -109,9 +111,7 @@ export async function logWorkout(
     .returning({ id: workouts.id });
 
   if (input.sets.length > 0) {
-    await db.insert(workoutSets).values(
-      input.sets.map((s) => ({ ...s, workoutId: row.id })),
-    );
+    await db.insert(workoutSets).values(input.sets.map((s) => ({ ...s, workoutId: row.id })));
   }
 
   return row.id;
@@ -270,10 +270,7 @@ export async function toggleRehab(db: Db, day: string, slug: string): Promise<bo
 
   if (removed.length > 0) return false;
 
-  await db
-    .insert(rehabCompletions)
-    .values({ completedOn: day, slug })
-    .onConflictDoNothing();
+  await db.insert(rehabCompletions).values({ completedOn: day, slug }).onConflictDoNothing();
 
   return true;
 }

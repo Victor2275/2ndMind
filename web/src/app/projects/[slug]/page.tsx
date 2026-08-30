@@ -62,9 +62,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             title={project.title}
             image={project.image}
             priority
-            className={
-              project.imageFit === "contain" ? "object-contain p-3" : "object-cover"
-            }
+            className={project.imageFit === "contain" ? "object-contain p-3" : "object-cover"}
           />
         </div>
       )}
@@ -78,7 +76,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             {/* 0.62rem, matching the identical fact cards on the About page. They were
                 0.6rem here for no reason anyone recorded, which made this the only public
                 page carrying a fourth label size and the smallest text on the site. */}
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+            <dt className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
               {m.label}
             </dt>
             <dd className="mt-1 text-sm text-foreground">{m.value}</dd>
@@ -87,7 +85,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       </dl>
 
       <section className="mt-8">
-        <h2 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+        <h2 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
           Stack
         </h2>
         <div className="mt-2.5 flex flex-wrap gap-1.5">

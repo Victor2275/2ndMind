@@ -86,14 +86,16 @@ export async function listTasks(
   options: { includeDone?: boolean; limit?: number } = {},
 ): Promise<Task[]> {
   const where = options.includeDone ? alive : and(alive, isNull(tasks.doneAt));
-  return db
-    .select()
-    .from(tasks)
-    .where(where)
-    // Undated tasks sort last rather than first: `NULLS LAST` is not the default in Postgres
-    // for ascending order, and without it every undated task would sit above today's work.
-    .orderBy(sql`${tasks.dueAt} asc nulls last`, asc(tasks.id))
-    .limit(options.limit ?? 200);
+  return (
+    db
+      .select()
+      .from(tasks)
+      .where(where)
+      // Undated tasks sort last rather than first: `NULLS LAST` is not the default in Postgres
+      // for ascending order, and without it every undated task would sit above today's work.
+      .orderBy(sql`${tasks.dueAt} asc nulls last`, asc(tasks.id))
+      .limit(options.limit ?? 200)
+  );
 }
 
 /**
@@ -169,11 +171,7 @@ export async function deleteTask(db: Db, id: number): Promise<Task | null> {
 }
 
 export async function restoreTask(db: Db, id: number): Promise<Task | null> {
-  const [row] = await db
-    .update(tasks)
-    .set({ deletedAt: null })
-    .where(eq(tasks.id, id))
-    .returning();
+  const [row] = await db.update(tasks).set({ deletedAt: null }).where(eq(tasks.id, id)).returning();
   return row ?? null;
 }
 

@@ -46,7 +46,13 @@ export const CATEGORIES: readonly Category[] = [
         type: "select",
         options: ["lift", "erg", "water", "conditioning"],
       },
-      { name: "exercise", label: "Exercise / piece", type: "text", placeholder: "Bench Press", wide: true },
+      {
+        name: "exercise",
+        label: "Exercise / piece",
+        type: "text",
+        placeholder: "Bench Press",
+        wide: true,
+      },
       { name: "weightLbs", label: "Weight", type: "number", placeholder: "lbs" },
       { name: "reps", label: "Reps", type: "number", placeholder: "5" },
       { name: "distance", label: "Distance", type: "distance", placeholder: "500" },
@@ -126,7 +132,13 @@ export const CATEGORIES: readonly Category[] = [
     fields: [
       { name: "who", label: "Who", type: "text", placeholder: "Name", wide: true },
       { name: "where", label: "Where", type: "text", placeholder: "Practice, career fair…" },
-      { name: "about", label: "About", type: "text", placeholder: "What you talked about", wide: true },
+      {
+        name: "about",
+        label: "About",
+        type: "text",
+        placeholder: "What you talked about",
+        wide: true,
+      },
       { name: "followUp", label: "Follow up", type: "bool" },
     ],
   },
@@ -136,9 +148,7 @@ export const CATEGORIES: readonly Category[] = [
     // Deliberately no mood or energy scale: Victor put that in V3, and a 1-5 filled in from
     // habit rather than reflection is worse than nothing.
     hint: "How the day went. One box, no scales.",
-    fields: [
-      { name: "carryOver", label: "Carrying over to tomorrow", type: "text", wide: true },
-    ],
+    fields: [{ name: "carryOver", label: "Carrying over to tomorrow", type: "text", wide: true }],
   },
 ] as const;
 

@@ -1,9 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-} from "@simplewebauthn/server";
+import { generateRegistrationOptions, verifyRegistrationResponse } from "@simplewebauthn/server";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 
 import {
@@ -69,7 +66,11 @@ export async function GET(request: Request) {
   store.set(
     CHALLENGE_COOKIE,
     await signSession(
-      { sub: options.challenge, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300 },
+      {
+        sub: options.challenge,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 300,
+      },
       sessionSecret(),
     ),
     { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/" },

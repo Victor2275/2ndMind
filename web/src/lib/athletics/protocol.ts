@@ -126,9 +126,7 @@ function splitParenthetical(value: string): { head: string; note: string } {
  * bound is dropped: "85+" means no ceiling, and a range needs a number to compare against.
  */
 export function parseSpmTargets(markdown: string): SpmTarget[] {
-  const lines = sectionLines(toLines(markdown), (line) =>
-    /^#{2,6}\s+SPM\b/i.test(line.trim()),
-  );
+  const lines = sectionLines(toLines(markdown), (line) => /^#{2,6}\s+SPM\b/i.test(line.trim()));
 
   const targets: SpmTarget[] = [];
 

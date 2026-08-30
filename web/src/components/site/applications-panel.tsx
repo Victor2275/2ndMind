@@ -20,7 +20,7 @@ function Row({ application }: { application: Application }) {
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="text-sm font-medium text-foreground">{application.company}</span>
         {application.status !== "" && (
-          <span className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="font-mono text-[0.6rem] tracking-[0.14em] text-muted-foreground uppercase">
             {application.status}
           </span>
         )}
@@ -56,7 +56,7 @@ function Section({
 
   return (
     <section className="mt-6">
-      <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+      <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
         {title}
         {applications.length > 0 && ` · ${applications.length}`}
       </h3>
@@ -125,7 +125,7 @@ export function ApplicationsPanel({ sheet }: { sheet: SheetResult }) {
       />
 
       <section className="mt-6">
-        <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+        <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
           By status
         </h3>
         <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">

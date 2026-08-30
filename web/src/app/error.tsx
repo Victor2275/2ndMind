@@ -41,8 +41,8 @@ export default function PageError({
         Something broke on this page.
       </h1>
       <p className="mt-3 max-w-[52ch] text-sm text-muted-foreground">
-        The rest of the site is unaffected. Trying again is worth a shot — most failures here
-        are a database waking up or a feed timing out.
+        The rest of the site is unaffected. Trying again is worth a shot — most failures here are a
+        database waking up or a feed timing out.
       </p>
 
       {(error.digest || showMessage) && (

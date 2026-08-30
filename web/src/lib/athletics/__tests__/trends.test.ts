@@ -81,10 +81,7 @@ describe("bodyweightSeries", () => {
       { measuredOn: "2026-08-03", weightLbs: 215 },
       { measuredOn: "2026-08-01", weightLbs: 213 },
     ];
-    expect(bodyweightSeries(readings).map((p) => p.day)).toEqual([
-      "2026-08-01",
-      "2026-08-03",
-    ]);
+    expect(bodyweightSeries(readings).map((p) => p.day)).toEqual(["2026-08-01", "2026-08-03"]);
   });
 });
 
@@ -106,10 +103,7 @@ describe("e1rmSeries", () => {
 
   it("ignores warmups", () => {
     const points = e1rmSeries(
-      [
-        effort({ weightLbs: 95, reps: 5, setType: "warmup" }),
-        effort({ weightLbs: 145, reps: 5 }),
-      ],
+      [effort({ weightLbs: 95, reps: 5, setType: "warmup" }), effort({ weightLbs: 145, reps: 5 })],
       "Bench Press",
     );
     expect(points).toHaveLength(1);

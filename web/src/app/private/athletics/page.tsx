@@ -72,8 +72,8 @@ function Unconfigured() {
       <div className="mt-6 rounded-lg border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
         <p className="font-medium text-foreground">No database connected.</p>
         <p className="mt-2 text-muted-foreground">
-          Training data is tabular — thousands of sets, queried across exercises — so it lives
-          in Postgres rather than in the markdown vault. Create a free Neon project, then set{" "}
+          Training data is tabular — thousands of sets, queried across exercises — so it lives in
+          Postgres rather than in the markdown vault. Create a free Neon project, then set{" "}
           <code className="font-mono text-xs text-foreground">DATABASE_URL</code> and run{" "}
           <code className="font-mono text-xs text-foreground">npm run db:migrate</code>.
         </p>
@@ -92,17 +92,15 @@ function StrengthCard({ record }: { record: StrengthRecord }) {
 
       <dl className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <dt className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted-foreground">
+          <dt className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
             Heaviest
           </dt>
           <dd className="tabular mt-1 font-mono text-sm text-primary">
-            {record.heaviest
-              ? `${record.heaviest.weightLbs} × ${record.heaviest.reps}`
-              : "—"}
+            {record.heaviest ? `${record.heaviest.weightLbs} × ${record.heaviest.reps}` : "—"}
           </dd>
         </div>
         <div>
-          <dt className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted-foreground">
+          <dt className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
             Est. 1RM
           </dt>
           <dd className="tabular mt-1 font-mono text-sm text-foreground">
@@ -131,13 +129,7 @@ function StrengthCard({ record }: { record: StrengthRecord }) {
   );
 }
 
-function ErgTable({
-  records,
-  readings,
-}: {
-  records: ErgRecord[];
-  readings: BodyweightReading[];
-}) {
+function ErgTable({ records, readings }: { records: ErgRecord[]; readings: BodyweightReading[] }) {
   return (
     <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card/70">
       <table className="w-full min-w-[34rem] text-left">
@@ -146,7 +138,7 @@ function ErgTable({
             {["Piece", "Distance", "Time", "Split /500m", "Adjusted", "Date"].map((h) => (
               <th
                 key={h}
-                className="px-4 py-2 font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted-foreground"
+                className="px-4 py-2 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase"
               >
                 {h}
               </th>
@@ -158,13 +150,12 @@ function ErgTable({
             // The weight recorded closest to this piece, not the current one — adjusting a
             // piece from last spring by today's bodyweight would rewrite its history.
             const weight = weightOn(readings, isoDay(record.performedAt));
-            const adjusted =
-              weight === null ? null : adjustSeconds(record.splitPer500S, weight);
+            const adjusted = weight === null ? null : adjustSeconds(record.splitPer500S, weight);
 
             return (
               <tr
                 key={`${record.exercise}-${record.distanceM}`}
-                className="border-b border-border/60 last:border-0 transition-colors hover:bg-accent/40"
+                className="border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40"
               >
                 <td className="px-4 py-2 text-sm text-foreground">{record.exercise}</td>
                 <td className="tabular px-4 py-2 font-mono text-xs text-muted-foreground">
@@ -199,9 +190,7 @@ function History({ workouts }: { workouts: WorkoutSummary[] }) {
           <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
             {DAY.format(workout.performedAt)}
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-            {workout.title}
-          </span>
+          <span className="min-w-0 flex-1 truncate text-sm text-foreground">{workout.title}</span>
           {workout.source === "hevy" && (
             <span className="rounded border border-border/70 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
               hevy
@@ -209,8 +198,7 @@ function History({ workouts }: { workouts: WorkoutSummary[] }) {
           )}
           <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
             {workout.setCount} sets
-            {workout.volumeLbs > 0 &&
-              ` · ${Math.round(workout.volumeLbs).toLocaleString()} lb`}
+            {workout.volumeLbs > 0 && ` · ${Math.round(workout.volumeLbs).toLocaleString()} lb`}
           </span>
         </li>
       ))}
@@ -368,8 +356,8 @@ async function Training() {
       <section className="mt-10">
         <h2 className="text-lg font-bold tracking-tight">Trends</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Per-session values, not running maxima — a plateau and a deload should not look the
-          same as continued progress.
+          Per-session values, not running maxima — a plateau and a deload should not look the same
+          as continued progress.
         </p>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -404,9 +392,9 @@ async function Training() {
                   format={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${Math.round(v)}`)}
                 />
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Pounds moved per week, warmup sets included — they are load the body
-                  absorbed, even though they never set a record. The final bar is drawn hollow
-                  because the current week is still in progress.
+                  Pounds moved per week, warmup sets included — they are load the body absorbed,
+                  even though they never set a record. The final bar is drawn hollow because the
+                  current week is still in progress.
                 </p>
               </>
             ) : (
@@ -500,8 +488,8 @@ async function Training() {
         <section className="mt-10">
           <h2 className="text-lg font-bold tracking-tight">Erg records</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ranked by split rather than finishing time, so each distance is judged against
-            itself. The adjusted column uses the bodyweight recorded closest to that piece.
+            Ranked by split rather than finishing time, so each distance is judged against itself.
+            The adjusted column uses the bodyweight recorded closest to that piece.
           </p>
           <ErgTable records={erg} readings={readings} />
         </section>

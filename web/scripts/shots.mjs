@@ -105,9 +105,12 @@ async function mintSession(secret) {
  * against, so this is not optional dressing.
  */
 async function hideDevOverlay(page) {
-  await page.addStyleTag({
-    content: "nextjs-portal, [data-nextjs-dev-tools-button], #next-logo { display: none !important; }",
-  }).catch(() => {});
+  await page
+    .addStyleTag({
+      content:
+        "nextjs-portal, [data-nextjs-dev-tools-button], #next-logo { display: none !important; }",
+    })
+    .catch(() => {});
 }
 
 const RESUME_VARIANTS = ["swe", "ml", "robotics"];
@@ -433,9 +436,12 @@ const overLong = only ? 0 : await measureResumes(browser);
 await browser.close();
 console.log(`\n${faults} page/width combination(s) scroll sideways. Written to ${OUT}/`);
 if (!only) console.log(`${overLong} resume variant(s) print to more than one page.`);
-if (privateFaults > 0) console.log(`${privateFaults} private page(s) bury the answer or refused the session.`);
+if (privateFaults > 0)
+  console.log(`${privateFaults} private page(s) bury the answer or refused the session.`);
 if (returningFaults > 0)
-  console.log(`${returningFaults} width(s) where the signed-in header is missing its link or does not fit.`);
+  console.log(
+    `${returningFaults} width(s) where the signed-in header is missing its link or does not fit.`,
+  );
 
 // A non-zero exit is what lets this gate a commit, rather than being advice nobody reads.
 if (faults > 0 || overLong > 0 || privateFaults > 0 || returningFaults > 0) process.exitCode = 1;

@@ -32,10 +32,7 @@ function AskButton() {
 }
 
 export function QuestionForm() {
-  const [state, action] = useActionState<TailorState | null, FormData>(
-    answerPostingQuestion,
-    null,
-  );
+  const [state, action] = useActionState<TailorState | null, FormData>(answerPostingQuestion, null);
 
   const answer = state?.ok ? state.answer : undefined;
   const byId = new Map((state?.bullets ?? []).map((b) => [b.id, b]));
@@ -46,7 +43,7 @@ export function QuestionForm() {
         <div>
           <label
             htmlFor="question"
-            className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
+            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
           >
             Application question
           </label>
@@ -62,7 +59,7 @@ export function QuestionForm() {
         <div className="flex flex-wrap items-center gap-3">
           <AskButton />
           {state && !state.ok && (
-            <p role="status" className="text-xs text-destructive-foreground">
+            <p role="status" className="text-destructive-foreground text-xs">
               {state.message}
             </p>
           )}
@@ -72,7 +69,7 @@ export function QuestionForm() {
       {answer && (
         <div className="space-y-6">
           <section>
-            <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+            <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
               Build it from
             </h3>
             <ol className="mt-2 space-y-2">
@@ -98,7 +95,7 @@ export function QuestionForm() {
 
           {answer.angle && (
             <section>
-              <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
                 Angle
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{answer.angle}</p>
@@ -107,7 +104,7 @@ export function QuestionForm() {
 
           {answer.avoid && (
             <section className="rounded-lg border border-highlight/40 bg-highlight/10 p-4">
-              <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
                 Do not claim
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-foreground">{answer.avoid}</p>

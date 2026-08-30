@@ -88,11 +88,7 @@ describe("summarise", () => {
   });
 
   it("skips empty, null and false values rather than printing them", () => {
-    const line = summarise(
-      "people",
-      { who: "Ethan", where: "", about: null, followUp: false },
-      "",
-    );
+    const line = summarise("people", { who: "Ethan", where: "", about: null, followUp: false }, "");
     expect(line).toBe("Ethan");
   });
 
@@ -152,14 +148,26 @@ describe("createEntry and listEntries", () => {
   });
 
   it("accepts a backdated entry, since logging is not always immediate", async () => {
-    await createEntry(db, { category: "day", note: "yesterday", occurredAt: at("2026-08-20T20:00:00Z") });
+    await createEntry(db, {
+      category: "day",
+      note: "yesterday",
+      occurredAt: at("2026-08-20T20:00:00Z"),
+    });
     const [entry] = await listEntries(db);
     expect(entry.occurredAt.toISOString()).toBe("2026-08-20T20:00:00.000Z");
   });
 
   it("lists newest first", async () => {
-    await createEntry(db, { category: "day", note: "older", occurredAt: at("2026-08-19T10:00:00Z") });
-    await createEntry(db, { category: "day", note: "newer", occurredAt: at("2026-08-21T10:00:00Z") });
+    await createEntry(db, {
+      category: "day",
+      note: "older",
+      occurredAt: at("2026-08-19T10:00:00Z"),
+    });
+    await createEntry(db, {
+      category: "day",
+      note: "newer",
+      occurredAt: at("2026-08-21T10:00:00Z"),
+    });
     expect((await listEntries(db)).map((e) => e.note)).toEqual(["newer", "older"]);
   });
 

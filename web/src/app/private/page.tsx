@@ -44,8 +44,6 @@ function section(content: string, heading: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-
-
 function toView(task: Task): TaskView {
   return {
     id: task.id,
@@ -70,7 +68,13 @@ type Loaded = {
 
 async function load(): Promise<Loaded> {
   const empty: Loaded = {
-    due: [], goals: [], someday: [], doneToday: [], inbox: [], overdue: 0, failure: null,
+    due: [],
+    goals: [],
+    someday: [],
+    doneToday: [],
+    inbox: [],
+    overdue: 0,
+    failure: null,
   };
 
   if (!isDatabaseConfigured()) {
@@ -325,7 +329,7 @@ async function AiSummary() {
 
   return (
     <Panel title="Today, summarised" meta={MODEL}>
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
         {summary.text}
       </div>
     </Panel>
@@ -422,7 +426,7 @@ async function WeeklySummary() {
 
   return (
     <Panel title="This week, summarised" meta={MODEL}>
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
         {summary.text}
       </div>
     </Panel>
@@ -457,10 +461,10 @@ async function SummaryArchive() {
       <ol className="space-y-4">
         {earlier.map((row) => (
           <li key={row.id} className="border-l border-border pl-4">
-            <p className="tabular font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="tabular font-mono text-[0.62rem] tracking-[0.14em] text-muted-foreground uppercase">
               {row.periodStart}
             </p>
-            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
               {row.summary}
             </p>
           </li>

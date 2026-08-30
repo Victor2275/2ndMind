@@ -31,13 +31,7 @@ function PublishButton() {
   );
 }
 
-export function UpdateComposer({
-  projects,
-  today,
-}: {
-  projects: ActiveProject[];
-  today: string;
-}) {
+export function UpdateComposer({ projects, today }: { projects: ActiveProject[]; today: string }) {
   const [state, action] = useActionState<ActionState | null, FormData>(publishUpdate, null);
   const [slug, setSlug] = useState(projects[0]?.slug ?? "");
 
@@ -53,8 +47,8 @@ export function UpdateComposer({
   if (projects.length === 0) {
     return (
       <p className="rounded-md border border-border bg-card/40 px-4 py-3 text-sm text-muted-foreground">
-        No project is marked <code className="font-mono text-xs">status: active</code>. Set that
-        in a project&apos;s frontmatter and it appears here and on /now.
+        No project is marked <code className="font-mono text-xs">status: active</code>. Set that in
+        a project&apos;s frontmatter and it appears here and on /now.
       </p>
     );
   }
@@ -65,7 +59,7 @@ export function UpdateComposer({
         <div className="min-w-[12rem] flex-1">
           <label
             htmlFor="update-slug"
-            className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
+            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
           >
             Project
           </label>
@@ -88,7 +82,7 @@ export function UpdateComposer({
         <div>
           <label
             htmlFor="update-date"
-            className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
+            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
           >
             Date
           </label>
@@ -107,7 +101,7 @@ export function UpdateComposer({
       <div>
         <label
           htmlFor="update-body"
-          className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
+          className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
         >
           What happened
         </label>
@@ -128,9 +122,7 @@ export function UpdateComposer({
           <p
             role="status"
             className={
-              state.ok
-                ? "text-xs text-muted-foreground"
-                : "text-xs text-destructive-foreground"
+              state.ok ? "text-xs text-muted-foreground" : "text-destructive-foreground text-xs"
             }
           >
             {state.message}

@@ -83,7 +83,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       {/* No background here on purpose — globals.css paints the ground on <html>
           so body's ::before/::after atmosphere layers can sit above it. */}
-      <body className="min-h-full flex flex-col text-foreground">
+      <body className="flex min-h-full flex-col text-foreground">
         <SiteHeader name={profile.name} />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter profile={profile} />

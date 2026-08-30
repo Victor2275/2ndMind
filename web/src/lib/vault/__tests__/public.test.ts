@@ -32,9 +32,7 @@ import { VAULT_ROOT } from "../load";
 describe("public projections expose exactly the allowlisted fields", () => {
   it("projects", () => {
     for (const p of publicProjects()) {
-      expect(Object.keys(p).sort()).toEqual(
-        PUBLIC_PROJECT_KEYS.filter((k) => k in p).sort(),
-      );
+      expect(Object.keys(p).sort()).toEqual(PUBLIC_PROJECT_KEYS.filter((k) => k in p).sort());
     }
   });
 
@@ -155,7 +153,6 @@ describe("private data never reaches a public projection", () => {
     expect(serialized).not.toMatch(/\((?:A|B|C|D|F)[+-]?\)/);
   });
 
-
   it("never publishes a collaborator's name", () => {
     // The labs are group work and the vault records who Victor worked with, but those are
     // private individuals who did not agree to appear on a public portfolio. The names stay
@@ -163,9 +160,7 @@ describe("private data never reaches a public projection", () => {
     const names = loadLabs().flatMap((l) => l.collaborators);
     expect(names.length, "fixture missing: no lab records collaborators").toBeGreaterThan(0);
     for (const name of new Set(names)) {
-      expect(serialized, `collaborator name "${name}" reached public output`).not.toContain(
-        name,
-      );
+      expect(serialized, `collaborator name "${name}" reached public output`).not.toContain(name);
     }
   });
 
@@ -202,7 +197,9 @@ describe("public projection odds and ends", () => {
     // flipping the flag on an entry works the first time it is needed.
     const allSlugs = loadExperience().map((e) => e.slug);
     const publicSlugs = publicExperience().map((e) => e.slug);
-    const privateSlugs = loadExperience().filter((e) => !e.public).map((e) => e.slug);
+    const privateSlugs = loadExperience()
+      .filter((e) => !e.public)
+      .map((e) => e.slug);
     expect(publicSlugs).toEqual(allSlugs.filter((s) => !privateSlugs.includes(s)));
   });
 
@@ -278,8 +275,9 @@ describe("lab figures", () => {
         if (!fs.existsSync(path.join(pub, file))) missing.push(`${project.slug}: ${file}`);
       }
     }
-    expect(checked, "no project declares figures — this test would pass vacuously").
-      toBeGreaterThan(0);
+    expect(checked, "no project declares figures — this test would pass vacuously").toBeGreaterThan(
+      0,
+    );
     expect(missing).toEqual([]);
   });
 });
@@ -291,9 +289,7 @@ describe("client component payload", () => {
     for (const card of projectCards()) {
       expect(card).not.toHaveProperty("body");
       // `image` is optional — absent means the card draws a generated placeholder.
-      expect(Object.keys(card).sort()).toEqual(
-        PROJECT_CARD_KEYS.filter((k) => k in card).sort(),
-      );
+      expect(Object.keys(card).sort()).toEqual(PROJECT_CARD_KEYS.filter((k) => k in card).sort());
     }
   });
 });
@@ -319,9 +315,7 @@ describe("dropUnwritten", () => {
   it("removes a heading that has only a prompt under it", () => {
     // The important case. An empty "## Measured results" advertises a gap; a published
     // prompt asking Victor a question is worse still.
-    const out = dropUnwritten(
-      crlf(["## Measured results", "", "> **To write:** one number.", ""]),
-    );
+    const out = dropUnwritten(crlf(["## Measured results", "", "> **To write:** one number.", ""]));
     expect(out).toBe("");
   });
 

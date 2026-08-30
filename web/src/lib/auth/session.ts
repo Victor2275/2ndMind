@@ -62,10 +62,7 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-export async function signSession(
-  payload: SessionPayload,
-  secret: string,
-): Promise<string> {
+export async function signSession(payload: SessionPayload, secret: string): Promise<string> {
   const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const signature = await crypto.subtle.sign(
     "HMAC",
@@ -88,11 +85,7 @@ export async function verifySession(
 
   let expected: ArrayBuffer;
   try {
-    expected = await crypto.subtle.sign(
-      "HMAC",
-      await key(secret),
-      new TextEncoder().encode(body),
-    );
+    expected = await crypto.subtle.sign("HMAC", await key(secret), new TextEncoder().encode(body));
   } catch {
     return null;
   }

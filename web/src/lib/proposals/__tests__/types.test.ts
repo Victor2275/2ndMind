@@ -22,9 +22,7 @@ describe("fingerprint", () => {
 
   it("distinguishes a moved value from an unchanged one", () => {
     // "a=1 b=2" vs "a=2 b=1" — naive concatenation of values alone would collide.
-    expect(fingerprint(state({ a: "1", b: "2" }))).not.toBe(
-      fingerprint(state({ a: "2", b: "1" })),
-    );
+    expect(fingerprint(state({ a: "1", b: "2" }))).not.toBe(fingerprint(state({ a: "2", b: "1" })));
   });
 });
 

@@ -61,10 +61,7 @@ export function rawSplitForAdjustedTarget(
  * pieces logged before Victor started weighing in are still adjustable — with the caveat that
  * it is an extrapolation backwards, which is why the fallback is last rather than nearest.
  */
-export function weightOn(
-  readings: BodyweightReading[],
-  isoDay: string,
-): number | null {
+export function weightOn(readings: BodyweightReading[], isoDay: string): number | null {
   let before: BodyweightReading | null = null;
   let after: BodyweightReading | null = null;
 

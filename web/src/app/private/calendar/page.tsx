@@ -34,8 +34,8 @@ async function Schedule() {
         <p className="font-medium text-foreground">No calendar feeds connected.</p>
         <p className="mt-2 text-muted-foreground">
           Set <code className="font-mono text-xs">GOOGLE_CALENDAR_KEY</code> and{" "}
-          <code className="font-mono text-xs">CANVAS_CALENDAR</code> to the private iCal URLs.
-          No OAuth involved — but the URL is the credential, so treat it as a secret.
+          <code className="font-mono text-xs">CANVAS_CALENDAR</code> to the private iCal URLs. No
+          OAuth involved — but the URL is the credential, so treat it as a secret.
         </p>
       </div>
     );
@@ -88,15 +88,14 @@ async function Schedule() {
           </p>
         ) : canvas.empty ? (
           <p className="text-sm text-muted-foreground">
-            The feed is connected and valid, but has no entries yet. Canvas publishes nothing
-            until courses add assignments, which is expected before term.
+            The feed is connected and valid, but has no entries yet. Canvas publishes nothing until
+            courses add assignments, which is expected before term.
           </p>
         ) : (
           <>
             <p className="mb-3 text-sm text-muted-foreground">
               {canvas.events.length} entries in the next week. Use{" "}
-              <span className="text-foreground">Import Canvas</span> to turn assignments into
-              tasks.
+              <span className="text-foreground">Import Canvas</span> to turn assignments into tasks.
             </p>
             <Agenda events={canvas.events} />
           </>

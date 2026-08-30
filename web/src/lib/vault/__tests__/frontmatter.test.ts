@@ -178,9 +178,7 @@ describe("setLabelledBullet", () => {
   it("escapes regex metacharacters in the label", () => {
     const tricky = "- **C++ (advanced):** yes";
     expect(getLabelledBullet(tricky, "C++ (advanced)")).toBe("yes");
-    expect(setLabelledBullet(tricky, "C++ (advanced)", "no")).toContain(
-      "- **C++ (advanced):** no",
-    );
+    expect(setLabelledBullet(tricky, "C++ (advanced)", "no")).toContain("- **C++ (advanced):** no");
   });
 
   it("does not match a different label that shares a prefix", () => {

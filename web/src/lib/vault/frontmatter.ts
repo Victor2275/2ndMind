@@ -44,15 +44,15 @@ export function splitFrontmatter(raw: string): FrontmatterSplit | null {
   if (!yamlNode || !yamlNode.position) return null;
 
   const eol = raw.includes("\r\n") ? "\r\n" : "\n";
-  
+
   const startOffset = yamlNode.position.start.offset ?? 0;
   const endOffset = yamlNode.position.end.offset ?? 0;
   const yamlText = raw.slice(startOffset, endOffset);
-  
+
   const match = yamlText.match(/^---\r?\n([\s\S]*?)\r?\n---$/);
   if (!match) return null;
   const frontmatterString = match[1];
-  
+
   const afterYaml = raw.slice(endOffset);
   let body = afterYaml;
   if (body.startsWith("\r\n")) body = body.slice(2);
@@ -117,13 +117,13 @@ function getTree(raw: string): Root {
 
 function findSectionBounds(raw: string, heading: string) {
   const tree = getTree(raw);
-  
+
   let startIndex = -1;
   let endIndex = -1;
-  
+
   let found = false;
   let depth = 0;
-  
+
   for (let i = 0; i < tree.children.length; i++) {
     const node = tree.children[i];
     if (node.type === "heading") {
@@ -132,7 +132,7 @@ function findSectionBounds(raw: string, heading: string) {
         .filter((c) => c.type === "text")
         .map((c) => (c as Text).value)
         .join("");
-        
+
       if (!found && headingNode.depth === 2 && text.trim() === heading) {
         found = true;
         depth = headingNode.depth;
@@ -143,67 +143,73 @@ function findSectionBounds(raw: string, heading: string) {
       }
     }
   }
-  
+
   if (!found) {
     throw new Error(`no "## ${heading}" section found`);
   }
-  
+
   if (endIndex === -1) {
     endIndex = raw.length;
   }
-  
+
   return { startIndex, endIndex };
 }
 
 export function replaceSection(raw: string, heading: string, content: string): string {
   const { startIndex, endIndex } = findSectionBounds(raw, heading);
   const eol = raw.includes("\r\n") ? "\r\n" : "\n";
-  
+
   let start = startIndex;
-  while (start < raw.length && (raw[start] === '\r' || raw[start] === '\n' || raw[start] === ' ' || raw[start] === '\t')) {
-    if (raw[start] === '\n') {
+  while (
+    start < raw.length &&
+    (raw[start] === "\r" || raw[start] === "\n" || raw[start] === " " || raw[start] === "\t")
+  ) {
+    if (raw[start] === "\n") {
       start++;
       break;
     }
     start++;
   }
-  
+
   let end = endIndex;
   if (end < raw.length) {
-    while (end > start && (raw[end - 1] === '\r' || raw[end - 1] === '\n')) {
+    while (end > start && (raw[end - 1] === "\r" || raw[end - 1] === "\n")) {
       end--;
     }
   }
-  
+
   const normalised = content.replace(/\r?\n/g, eol).trimEnd();
-  
+
   return raw.slice(0, start) + normalised + eol + raw.slice(end);
 }
 
 export function appendToSection(raw: string, heading: string, content: string): string {
   const { startIndex, endIndex } = findSectionBounds(raw, heading);
   const eol = raw.includes("\r\n") ? "\r\n" : "\n";
-  
+
   let start = startIndex;
-  while (start < raw.length && (raw[start] === '\r' || raw[start] === '\n' || raw[start] === ' ' || raw[start] === '\t')) {
-    if (raw[start] === '\n') {
+  while (
+    start < raw.length &&
+    (raw[start] === "\r" || raw[start] === "\n" || raw[start] === " " || raw[start] === "\t")
+  ) {
+    if (raw[start] === "\n") {
       start++;
       break;
     }
     start++;
   }
-  
+
   let end = endIndex;
   if (end < raw.length) {
-    while (end > start && (raw[end - 1] === '\r' || raw[end - 1] === '\n')) {
+    while (end > start && (raw[end - 1] === "\r" || raw[end - 1] === "\n")) {
       end--;
     }
   }
-  
+
   const existing = raw.slice(start, end).trimEnd();
   const addition = content.replace(/\r?\n/g, eol).trimEnd();
   const merged = existing ? `${existing}${eol}${eol}${addition}` : addition;
-  
+
   return raw.slice(0, start) + merged + eol + raw.slice(end);
 }
 
@@ -211,7 +217,7 @@ const METACHARS = /[.*+?^${}()|[\]\\]/g;
 
 function findLabelledBullet(raw: string, label: string): ListItem | null {
   const tree = getTree(raw);
-  
+
   let targetNode: ListItem | null = null;
   let found = false;
 
@@ -242,41 +248,41 @@ function findLabelledBullet(raw: string, label: string): ListItem | null {
     }
   }
   walk(tree);
-  
+
   if (!found || !targetNode) {
     return null;
   }
-  
+
   return targetNode;
 }
 
 export function setLabelledBullet(raw: string, label: string, value: string): string {
   const node = findLabelledBullet(raw, label);
   if (!node) throw new Error(`no bullet labelled "${label}"`);
-  
+
   const startOffset = node.position!.start.offset!;
   const endOffset = node.position!.end.offset!;
-  
+
   const text = raw.slice(startOffset, endOffset);
   const escaped = label.replace(METACHARS, "\\$&");
   const pattern = new RegExp(`^([ \\t]*-[ \\t]*\\*\\*${escaped}:\\*\\*)[ \\t]*.*$`, "m");
-  
+
   const match = text.match(pattern);
   if (!match) throw new Error(`no bullet labelled "${label}"`);
-  
+
   const head = match[1];
   const replaced = text.replace(pattern, () => `${head} ${value.trim()}`);
-  
+
   return raw.slice(0, startOffset) + replaced + raw.slice(endOffset);
 }
 
 export function getLabelledBullet(raw: string, label: string): string | null {
   const node = findLabelledBullet(raw, label);
   if (!node) return null;
-  
+
   const startOffset = node.position!.start.offset!;
   const endOffset = node.position!.end.offset!;
-  
+
   const text = raw.slice(startOffset, endOffset);
   const escaped = label.replace(METACHARS, "\\$&");
   const pattern = new RegExp(`^[ \\t]*-[ \\t]*\\*\\*${escaped}:\\*\\*[ \\t]*(.*)$`, "m");

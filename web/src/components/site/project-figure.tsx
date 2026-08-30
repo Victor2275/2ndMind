@@ -19,12 +19,7 @@ function hash(seed: string): number {
   return h >>> 0;
 }
 
-const TRACE_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+const TRACE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-4)", "var(--chart-5)"];
 
 function tracePath(seed: number, width: number, height: number): string {
   // Three sine components with seed-derived frequency, phase, and amplitude. Summing them
@@ -34,7 +29,7 @@ function tracePath(seed: number, width: number, height: number): string {
     const s = (seed >> (i * 7)) & 0x7f;
     return {
       freq: 1 + (s % 4) + i,
-      phase: ((s >> 2) % 16) / 16 * Math.PI * 2,
+      phase: (((s >> 2) % 16) / 16) * Math.PI * 2,
       amp: (height / 5) * (1 - i * 0.28),
     };
   });
@@ -111,14 +106,7 @@ export function ProjectFigure({
 
       <rect width={w} height={h} fill="var(--card)" />
       <rect width={w} height={h} fill={`url(#grid-${slug})`} />
-      <line
-        x1="0"
-        y1={h / 2}
-        x2={w}
-        y2={h / 2}
-        stroke="var(--border)"
-        strokeWidth="1"
-      />
+      <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke="var(--border)" strokeWidth="1" />
       <path
         d={tracePath(seed, w, h)}
         fill="none"

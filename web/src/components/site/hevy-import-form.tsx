@@ -33,8 +33,8 @@ export function HevyImportForm() {
       />
 
       <p className="text-xs text-muted-foreground">
-        Hevy → Settings → Export Data. Importing the same export twice is safe: sessions
-        already stored are recognised and left alone.
+        Hevy → Settings → Export Data. Importing the same export twice is safe: sessions already
+        stored are recognised and left alone.
       </p>
 
       <div className="flex flex-wrap items-center gap-4">

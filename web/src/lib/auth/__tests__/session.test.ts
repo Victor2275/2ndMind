@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  newSessionPayload,
-  signSession,
-  verifySession,
-  type SessionPayload,
-} from "../session";
+import { newSessionPayload, signSession, verifySession, type SessionPayload } from "../session";
 
 /**
  * These are the tests that matter most in the codebase. A bug here does not throw or render
@@ -45,8 +40,9 @@ describe("forgery is rejected", () => {
     const token = await signSession(payload(), SECRET);
     const [, signature] = token.split(".");
     // Re-encode a payload claiming a far-future expiry, keeping the original signature.
-    const forged = Buffer.from(JSON.stringify(payload({ exp: 9_999_999_999 })))
-      .toString("base64url");
+    const forged = Buffer.from(JSON.stringify(payload({ exp: 9_999_999_999 }))).toString(
+      "base64url",
+    );
     expect(await verifySession(`${forged}.${signature}`, SECRET, 1_000_100)).toBeNull();
   });
 

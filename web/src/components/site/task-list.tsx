@@ -113,7 +113,7 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
           type="submit"
           aria-label={`Remove ${task.title}`}
           // Visible on hover for a mouse, always visible on touch where hover does not exist.
-          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
         >
           <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
             <path d="M3 3l8 8M11 3l-8 8" />

@@ -34,12 +34,7 @@ import type { TailorState } from "@/lib/tailor-state";
 export async function collectBullets(): Promise<BulletRef[]> {
   const seen = new Map<string, BulletRef>();
 
-  const add = (
-    section: BulletRef["section"],
-    slug: string,
-    entry: string,
-    bullets: string[],
-  ) => {
+  const add = (section: BulletRef["section"], slug: string, entry: string, bullets: string[]) => {
     bullets.forEach((text, index) => {
       const id = bulletId(section, slug, index);
       if (!seen.has(id)) seen.set(id, { id, text, entry, section });

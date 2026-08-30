@@ -72,7 +72,11 @@ describe("createTask and listTasks", () => {
 
   it("sorts undated tasks after dated ones", async () => {
     await createTask(db, { title: "someday", source: "manual" });
-    await createTask(db, { title: "tomorrow", source: "manual", dueAt: at("2026-08-22T12:00:00Z") });
+    await createTask(db, {
+      title: "tomorrow",
+      source: "manual",
+      dueAt: at("2026-08-22T12:00:00Z"),
+    });
     await createTask(db, { title: "today", source: "manual", dueAt: at("2026-08-21T12:00:00Z") });
 
     // The bug this guards: ascending order in Postgres puts NULLs *first* by default, so
@@ -150,7 +154,11 @@ describe("listDueBy", () => {
   it("returns overdue and due-today, but not later or undated", async () => {
     await createTask(db, { title: "overdue", source: "manual", dueAt: at("2026-08-19T12:00:00Z") });
     await createTask(db, { title: "today", source: "manual", dueAt: at("2026-08-21T12:00:00Z") });
-    await createTask(db, { title: "next week", source: "manual", dueAt: at("2026-08-28T12:00:00Z") });
+    await createTask(db, {
+      title: "next week",
+      source: "manual",
+      dueAt: at("2026-08-28T12:00:00Z"),
+    });
     await createTask(db, { title: "someday", source: "manual" });
 
     const due = await listDueBy(db, at("2026-08-22T07:00:00Z"));

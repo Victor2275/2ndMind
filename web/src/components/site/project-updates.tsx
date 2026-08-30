@@ -25,13 +25,7 @@ export function formatUpdateDate(iso: string): string {
   });
 }
 
-export function ProjectUpdates({
-  updates,
-  limit,
-}: {
-  updates: ProjectUpdate[];
-  limit?: number;
-}) {
+export function ProjectUpdates({ updates, limit }: { updates: ProjectUpdate[]; limit?: number }) {
   const shown = limit ? updates.slice(0, limit) : updates;
   if (shown.length === 0) return null;
 
@@ -41,7 +35,7 @@ export function ProjectUpdates({
         <li key={`${update.date}-${update.body.slice(0, 24)}`}>
           <time
             dateTime={update.date}
-            className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
+            className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
           >
             {formatUpdateDate(update.date)}
           </time>

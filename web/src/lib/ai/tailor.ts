@@ -44,9 +44,7 @@ export type TailorAdvice = {
   notes: string;
 };
 
-export type TailorResult =
-  | { ok: true; advice: TailorAdvice }
-  | { ok: false; message: string };
+export type TailorResult = { ok: true; advice: TailorAdvice } | { ok: false; message: string };
 
 /**
  * The answer to an application question — a plan for writing one, never the writing itself.
@@ -66,15 +64,9 @@ export type QuestionAnswer = {
   avoid: string;
 };
 
-export type QuestionResult =
-  | { ok: true; answer: QuestionAnswer }
-  | { ok: false; message: string };
+export type QuestionResult = { ok: true; answer: QuestionAnswer } | { ok: false; message: string };
 
-export function bulletId(
-  section: BulletRef["section"],
-  slug: string,
-  index: number,
-): string {
+export function bulletId(section: BulletRef["section"], slug: string, index: number): string {
   return `${section}:${slug}#${index}`;
 }
 
@@ -190,7 +182,10 @@ export async function tailorResume(
   if (posting.trim().length < 80) {
     // Short input produces confident nonsense: with two lines to go on the model pattern-matches
     // on a job title and recommends whatever sounds adjacent.
-    return { ok: false, message: "Paste more of the posting — a title alone is not enough to go on." };
+    return {
+      ok: false,
+      message: "Paste more of the posting — a title alone is not enough to go on.",
+    };
   }
   if (bullets.length === 0) {
     return { ok: false, message: "No resume bullets found in the vault to choose from." };
@@ -201,7 +196,6 @@ export async function tailorResume(
 
   return parseTailorResponse(result.text, new Set(bullets.map((b) => b.id)), variants);
 }
-
 
 export function buildQuestionPrompt(bullets: BulletRef[], question: string): string {
   return [
@@ -233,10 +227,7 @@ export function buildQuestionPrompt(bullets: BulletRef[], question: string): str
  * response. A fabricated reference is evidence about everything else in it, and this text
  * ends up in front of an employer under Victor's name.
  */
-export function parseQuestionResponse(
-  text: string,
-  allowedIds: Set<string>,
-): QuestionResult {
+export function parseQuestionResponse(text: string, allowedIds: Set<string>): QuestionResult {
   let raw: unknown;
   try {
     raw = extractJson(text);

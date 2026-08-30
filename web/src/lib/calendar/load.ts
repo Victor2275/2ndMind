@@ -49,11 +49,10 @@ export function isCalendarConfigured(): boolean {
  * Fifteen minutes is well inside how often a calendar actually changes and keeps a page load
  * off the network entirely.
  */
-const cachedBody = unstable_cache(
-  async (url: string) => fetchIcs(url),
-  ["ics-feed"],
-  { tags: ["calendar"], revalidate: 900 },
-);
+const cachedBody = unstable_cache(async (url: string) => fetchIcs(url), ["ics-feed"], {
+  tags: ["calendar"],
+  revalidate: 900,
+});
 
 async function loadFeed(url: string | null, from: Date, to: Date): Promise<FeedResult> {
   if (!url) return EMPTY;

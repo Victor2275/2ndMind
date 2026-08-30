@@ -151,8 +151,6 @@ describe("parity with scripts/audit_freshness.py", () => {
     const report = loadFreshness(TODAY);
     expect(report.checked).toBeGreaterThan(10);
     expect(report.rows.filter((r) => r.verdict === "stale")).toHaveLength(report.stale.length);
-    expect(report.rows.filter((r) => r.verdict === "unknown")).toHaveLength(
-      report.unknown.length,
-    );
+    expect(report.rows.filter((r) => r.verdict === "unknown")).toHaveLength(report.unknown.length);
   });
 });

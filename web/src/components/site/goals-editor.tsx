@@ -37,7 +37,7 @@ export function GoalsEditor({ values }: { values: Record<string, string> }) {
         <div key={domain.key}>
           <label
             htmlFor={`goal-${domain.key}`}
-            className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-muted-foreground"
+            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
           >
             {domain.label}
           </label>

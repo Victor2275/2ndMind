@@ -12,7 +12,6 @@ import { dayBounds, zoneOffsetMinutes } from "@/lib/tasks/queries";
 
 export const dynamic = "force-dynamic";
 
-
 const DAY = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -143,7 +142,13 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
 
       {query ? (
         <>
-          <Suspense fallback={<div className="mt-4"><SkeletonPanel rows={4} title={false} /></div>}>
+          <Suspense
+            fallback={
+              <div className="mt-4">
+                <SkeletonPanel rows={4} title={false} />
+              </div>
+            }
+          >
             <Results query={query} />
           </Suspense>
           <Link

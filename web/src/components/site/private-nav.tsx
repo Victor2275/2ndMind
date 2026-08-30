@@ -27,7 +27,7 @@ export function PrivateNav() {
 
   return (
     // Scrolls rather than wraps on a phone, so the bar stays one line at any width.
-    <nav className="-mx-1 flex items-center gap-0.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="-mx-1 flex [scrollbar-width:none] items-center gap-0.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
       {NAV.map((item) => {
         // Exact match for the index, prefix match for the rest — otherwise "/private" would
         // light up on every page underneath it.
@@ -47,10 +47,7 @@ export function PrivateNav() {
           >
             {item.label}
             {active && (
-              <span
-                aria-hidden
-                className="absolute inset-x-3 -bottom-1 h-px bg-primary"
-              />
+              <span aria-hidden className="absolute inset-x-3 -bottom-1 h-px bg-primary" />
             )}
           </Link>
         );

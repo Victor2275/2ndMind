@@ -41,9 +41,7 @@ function Item({ item, day, done }: { item: RehabItem; day: string; done: boolean
           <span
             aria-hidden
             className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border font-mono text-[0.6rem] leading-none transition-colors ${
-              done
-                ? "border-primary bg-primary/20 text-primary"
-                : "border-border text-transparent"
+              done ? "border-primary bg-primary/20 text-primary" : "border-border text-transparent"
             }`}
           >
             ✓
@@ -103,11 +101,7 @@ export function RehabChecklist({ items, done, day, history }: RehabState) {
                 key={entry.day}
                 title={`${entry.day}: ${entry.count}/${items.length}`}
                 className={`h-2.5 w-2.5 rounded-sm ${
-                  ratio >= 1
-                    ? "bg-primary"
-                    : ratio > 0
-                      ? "bg-primary/40"
-                      : "border border-border"
+                  ratio >= 1 ? "bg-primary" : ratio > 0 ? "bg-primary/40" : "border border-border"
                 }`}
               />
             );

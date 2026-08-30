@@ -45,10 +45,7 @@ function refresh() {
   revalidatePath("/private/academics");
 }
 
-export async function addTask(
-  _prev: ActionState | null,
-  formData: FormData,
-): Promise<ActionState> {
+export async function addTask(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
   await requireSession();
   const missing = requireDatabase();
   if (missing) return missing;

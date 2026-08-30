@@ -42,9 +42,7 @@ export async function publishUpdate(
   // weekend for something that happened on Wednesday, and misdating them is worse than
   // asking. Anything unparseable falls back rather than throwing at the user.
   const suppliedDate = String(formData.get("date") ?? "").trim();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(suppliedDate)
-    ? suppliedDate
-    : todayInLosAngeles();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(suppliedDate) ? suppliedDate : todayInLosAngeles();
 
   try {
     const path = projectVaultPath(slug);
@@ -54,11 +52,7 @@ export async function publishUpdate(
     const { content } = await readVaultFile(path);
     const next = insertUpdate(content, date, body);
 
-    const result = await writeVaultFile(
-      path,
-      next,
-      `docs(${slug}): update for ${date}`,
-    );
+    const result = await writeVaultFile(path, next, `docs(${slug}): update for ${date}`);
 
     // The public pages are statically generated, so nothing appears until they are rebuilt.
     // These calls cover the running server; production still needs the Vercel deploy that

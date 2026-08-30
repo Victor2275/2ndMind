@@ -42,7 +42,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
       {/* Controls — screen only. */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+          <span className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
             Variant
           </span>
           {variants.map((v) =>
@@ -132,7 +132,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
                     <div className="flex flex-wrap items-baseline justify-between gap-x-6">
                       <p className="text-sm font-semibold text-foreground">
                         {entry.title} <span className="text-muted-foreground">|</span>{" "}
-                        <span className="font-normal italic text-muted-foreground">
+                        <span className="font-normal text-muted-foreground italic">
                           {entry.org}
                         </span>
                       </p>
@@ -159,8 +159,8 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
       </article>
 
       <p className="mt-6 text-xs text-muted-foreground print:hidden">
-        Generated from the vault — every bullet above is the same text that feeds the project
-        and experience pages. Use Print to save as PDF.
+        Generated from the vault — every bullet above is the same text that feeds the project and
+        experience pages. Use Print to save as PDF.
       </p>
     </main>
   );

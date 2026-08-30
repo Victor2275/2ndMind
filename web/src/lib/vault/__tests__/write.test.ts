@@ -38,9 +38,7 @@ describe("assertVaultPath", () => {
   it("rejects backslash paths, which normalise differently on Windows", () => {
     // "context/a" and "context\\a" are the same file to Windows but different strings to
     // the GitHub API, so a backslash is rejected outright rather than normalised.
-    expect(() => assertVaultPath("context\\04_operations\\sprint.md")).toThrow(
-      /traversal/,
-    );
+    expect(() => assertVaultPath("context\\04_operations\\sprint.md")).toThrow(/traversal/);
   });
 
   it("rejects non-markdown files", () => {

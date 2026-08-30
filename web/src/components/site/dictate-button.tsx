@@ -124,9 +124,7 @@ export function DictateButton({ targetId }: { targetId: string }) {
           <path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2" />
         </svg>
       </button>
-      {listening && (
-        <span className="font-mono text-[0.6rem] text-primary">listening…</span>
-      )}
+      {listening && <span className="font-mono text-[0.6rem] text-primary">listening…</span>}
       {error && <span className="font-mono text-[0.6rem] text-destructive">{error}</span>}
     </span>
   );

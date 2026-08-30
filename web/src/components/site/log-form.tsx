@@ -48,7 +48,12 @@ function FieldInput({ field }: { field: Field }) {
       </label>
 
       {field.type === "select" ? (
-        <select id={`f-${field.name}`} name={field.name} defaultValue="" className={`${INPUT} mt-1`}>
+        <select
+          id={`f-${field.name}`}
+          name={field.name}
+          defaultValue=""
+          className={`${INPUT} mt-1`}
+        >
           <option value="">—</option>
           {field.options?.map((option) => (
             <option key={option} value={option}>

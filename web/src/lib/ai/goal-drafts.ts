@@ -20,9 +20,7 @@ export type GoalDraft = {
   why: string;
 };
 
-export type DraftResult =
-  | { ok: true; goals: GoalDraft[] }
-  | { ok: false; message: string };
+export type DraftResult = { ok: true; goals: GoalDraft[] } | { ok: false; message: string };
 
 /**
  * The model's output is untrusted input, so it is parsed rather than cast.

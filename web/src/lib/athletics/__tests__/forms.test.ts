@@ -60,7 +60,16 @@ function form(rows: Record<string, string>[]): FormData {
   for (const row of rows) {
     // Every row must append to every key, or the parallel arrays fall out of alignment and
     // one row's weight lands on another row's exercise.
-    for (const key of ["exercise", "weight", "reps", "distance", "distanceUnit", "duration", "spm", "setType"]) {
+    for (const key of [
+      "exercise",
+      "weight",
+      "reps",
+      "distance",
+      "distanceUnit",
+      "duration",
+      "spm",
+      "setType",
+    ]) {
       data.append(key, row[key] ?? "");
     }
   }
@@ -115,13 +124,7 @@ describe("readSetsFromForm", () => {
   });
 
   it("drops blank rows, so spare rows cost nothing", () => {
-    const sets = readSetsFromForm(
-      form([
-        { exercise: "Squat", weight: "225", reps: "3" },
-        {},
-        {},
-      ]),
-    );
+    const sets = readSetsFromForm(form([{ exercise: "Squat", weight: "225", reps: "3" }, {}, {}]));
     expect(sets).toHaveLength(1);
     expect(sets[0].exercise).toBe("Squat");
   });
@@ -129,12 +132,7 @@ describe("readSetsFromForm", () => {
   it("keeps rows aligned when an earlier row is blank", () => {
     // The alignment bug: skipping a blank row without indexing by position would shift
     // every later row's numbers onto the wrong exercise.
-    const sets = readSetsFromForm(
-      form([
-        {},
-        { exercise: "Deadlift", weight: "315", reps: "1" },
-      ]),
-    );
+    const sets = readSetsFromForm(form([{}, { exercise: "Deadlift", weight: "315", reps: "1" }]));
     expect(sets).toEqual([
       {
         exercise: "Deadlift",

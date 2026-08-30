@@ -43,7 +43,7 @@ export function SiteHeader({ name }: { name: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-md px-1.5 py-1.5 text-sm transition-colors min-[380px]:px-2 sm:px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  "relative rounded-md px-1.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-[380px]:px-2 sm:px-3",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -53,7 +53,7 @@ export function SiteHeader({ name }: { name: string }) {
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute inset-x-2 -bottom-px h-px origin-left bg-primary sm:inset-x-3 transition-transform duration-300 ease-out",
+                    "absolute inset-x-2 -bottom-px h-px origin-left bg-primary transition-transform duration-300 ease-out sm:inset-x-3",
                     active ? "scale-x-100" : "scale-x-0",
                   )}
                 />

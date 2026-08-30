@@ -79,15 +79,23 @@ export function parseHevyDate(raw: string): Date | null {
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
   if (iso) {
     const [, y, mo, d, h, mi, sec] = iso;
-    const date = new Date(
-      Date.UTC(+y, +mo - 1, +d, +h, +mi, sec ? +sec : 0),
-    );
+    const date = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, sec ? +sec : 0));
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   const MONTHS = [
-    "jan", "feb", "mar", "apr", "may", "jun",
-    "jul", "aug", "sep", "oct", "nov", "dec",
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
   ];
   const long = s.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4}),?\s+(\d{1,2}):(\d{2})/);
   if (long) {
@@ -103,7 +111,10 @@ export function parseHevyDate(raw: string): Date | null {
 
 /** Deterministic and stable across exports: the same session always yields the same id. */
 export function workoutExternalId(performedAt: Date, title: string): string {
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
   return `hevy:${performedAt.toISOString()}:${slug}`;
 }
 

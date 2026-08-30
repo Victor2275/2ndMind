@@ -28,20 +28,18 @@ const ROW = (over: Partial<Record<string, string>> = {}) => {
     rpe: "",
     ...over,
   };
-  return HEADER.split(",").map((h) => base[h] ?? "").join(",");
+  return HEADER.split(",")
+    .map((h) => base[h] ?? "")
+    .join(",");
 };
 
 describe("parseHevyDate", () => {
   it("reads the space-separated form Hevy emits", () => {
-    expect(parseHevyDate("2026-08-01 10:00:00")?.toISOString()).toBe(
-      "2026-08-01T10:00:00.000Z",
-    );
+    expect(parseHevyDate("2026-08-01 10:00:00")?.toISOString()).toBe("2026-08-01T10:00:00.000Z");
   });
 
   it("reads ISO", () => {
-    expect(parseHevyDate("2026-08-01T10:00:00Z")?.toISOString()).toBe(
-      "2026-08-01T10:00:00.000Z",
-    );
+    expect(parseHevyDate("2026-08-01T10:00:00Z")?.toISOString()).toBe("2026-08-01T10:00:00.000Z");
   });
 
   it("reads the long form used by older exports", () => {

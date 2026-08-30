@@ -25,7 +25,7 @@ export function PageHeader({
     <header className="border-b border-border pb-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-highlight">
+          <p className="font-mono text-[0.6rem] tracking-[0.18em] text-highlight uppercase">
             {eyebrow}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">{title}</h1>
@@ -116,7 +116,7 @@ export function Stat({
     // `px-3 sm:px-4` and the tighter tracking below are what let three of these sit across a
     // 390px screen instead of stacking into ~290px of vertical space for three numbers.
     <div className="rounded-lg border border-border bg-card/60 px-3 py-3 sm:px-4">
-      <p className="font-mono text-[0.55rem] uppercase tracking-[0.1em] text-muted-foreground sm:tracking-[0.16em]">
+      <p className="font-mono text-[0.55rem] tracking-[0.1em] text-muted-foreground uppercase sm:tracking-[0.16em]">
         {label}
       </p>
       <p className={`tabular mt-1.5 text-xl font-semibold ${valueTone}`}>{value}</p>

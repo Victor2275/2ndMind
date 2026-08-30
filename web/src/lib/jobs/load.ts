@@ -164,6 +164,10 @@ export async function loadJobSheet(): Promise<SheetResult> {
           ? `Google did not respond within ${REQUEST_TIMEOUT_MS / 1000}s.`
           : error.message
         : "unknown error";
-    return { ...EMPTY, configured: true, error: `The applications sheet could not be read: ${detail}` };
+    return {
+      ...EMPTY,
+      configured: true,
+      error: `The applications sheet could not be read: ${detail}`,
+    };
   }
 }

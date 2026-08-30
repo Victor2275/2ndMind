@@ -61,7 +61,9 @@ describe("buildGoalPrompt", () => {
 
 describe("draftSprintGoals", () => {
   it("returns parsed goals", async () => {
-    replies('{"goals":[{"domain":"engineering","title":"Write the Proof case study","why":"open"}]}');
+    replies(
+      '{"goals":[{"domain":"engineering","title":"Write the Proof case study","why":"open"}]}',
+    );
     const result = await draftSprintGoals(context);
     expect(result).toEqual({
       ok: true,
@@ -71,7 +73,9 @@ describe("draftSprintGoals", () => {
 
   it("drops a goal for a domain that does not exist", async () => {
     // It would render as a row with no label and approve into a column nothing reads.
-    replies('{"goals":[{"domain":"astrology","title":"x","why":""},{"domain":"athletics","title":"Erg thrice","why":""}]}');
+    replies(
+      '{"goals":[{"domain":"astrology","title":"x","why":""},{"domain":"athletics","title":"Erg thrice","why":""}]}',
+    );
     const result = await draftSprintGoals(context);
     expect(result.ok && result.goals.map((g) => g.domain)).toEqual(["athletics"]);
   });
@@ -79,7 +83,9 @@ describe("draftSprintGoals", () => {
   it("keeps only the first goal per domain", async () => {
     // Asked for one each, a model sometimes returns two for whichever it has most to say
     // about. The review UI is keyed by domain, so a duplicate would collide.
-    replies('{"goals":[{"domain":"athletics","title":"First","why":""},{"domain":"athletics","title":"Second","why":""}]}');
+    replies(
+      '{"goals":[{"domain":"athletics","title":"First","why":""},{"domain":"athletics","title":"Second","why":""}]}',
+    );
     const result = await draftSprintGoals(context);
     expect(result.ok && result.goals.map((g) => g.title)).toEqual(["First"]);
   });
@@ -112,6 +118,9 @@ describe("draftSprintGoals", () => {
   it("says so when nothing usable came back", async () => {
     replies('{"goals":[]}');
     const result = await draftSprintGoals(context);
-    expect(result).toEqual({ ok: false, message: "The model proposed nothing for any known domain." });
+    expect(result).toEqual({
+      ok: false,
+      message: "The model proposed nothing for any known domain.",
+    });
   });
 });

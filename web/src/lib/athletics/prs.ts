@@ -114,8 +114,8 @@ export function strengthRecords(efforts: Effort[]): StrengthRecord[] {
   }
 
   return records.sort(
-    (a, b) => b.lastPerformed.getTime() - a.lastPerformed.getTime() ||
-      a.exercise.localeCompare(b.exercise),
+    (a, b) =>
+      b.lastPerformed.getTime() - a.lastPerformed.getTime() || a.exercise.localeCompare(b.exercise),
   );
 }
 

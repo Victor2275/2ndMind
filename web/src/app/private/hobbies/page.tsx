@@ -30,33 +30,33 @@ async function Documents() {
   const docs = await Promise.all(DOCS.map((d) => loadVaultDoc(d.path)));
 
   return (
-      <div className="mt-8 space-y-4">
-        {DOCS.map((meta, i) => (
-          <Panel
-            key={meta.path}
-            title={meta.title}
-            meta={docs[i].updated ? `updated ${docs[i].updated}` : undefined}
-            collapsible
-            defaultOpen={false}
-          >
-            <VaultDocument doc={docs[i]} />
-          </Panel>
-        ))}
-
-        <Panel title="Recipes" meta="Proof">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Formulas live in Proof, not in this vault.
-          </p>
-          <a
-            href={PROOF_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-block rounded-md border border-primary/40 px-3.5 py-1.5 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
-          >
-            Open Proof &rarr;
-          </a>
+    <div className="mt-8 space-y-4">
+      {DOCS.map((meta, i) => (
+        <Panel
+          key={meta.path}
+          title={meta.title}
+          meta={docs[i].updated ? `updated ${docs[i].updated}` : undefined}
+          collapsible
+          defaultOpen={false}
+        >
+          <VaultDocument doc={docs[i]} />
         </Panel>
-      </div>
+      ))}
+
+      <Panel title="Recipes" meta="Proof">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Formulas live in Proof, not in this vault.
+        </p>
+        <a
+          href={PROOF_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-block rounded-md border border-primary/40 px-3.5 py-1.5 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
+        >
+          Open Proof &rarr;
+        </a>
+      </Panel>
+    </div>
   );
 }
 

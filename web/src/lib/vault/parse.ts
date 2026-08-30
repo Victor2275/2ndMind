@@ -31,9 +31,7 @@ export function parseEntry<T>(
   if (!result.success) {
     throw new VaultParseError(
       source,
-      result.error.issues.map(
-        (i) => `${i.path.join(".") || "(root)"}: ${i.message}`,
-      ),
+      result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
     );
   }
 

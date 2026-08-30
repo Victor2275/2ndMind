@@ -65,9 +65,7 @@ export function loadExperience(): Experience[] {
 }
 
 export function loadLabs(): Lab[] {
-  return loadDir(path.join(ENG, "labs"), labSchema).sort((a, b) =>
-    b.date.localeCompare(a.date),
-  );
+  return loadDir(path.join(ENG, "labs"), labSchema).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function loadPursuits(): Pursuit[] {

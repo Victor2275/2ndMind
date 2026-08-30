@@ -43,9 +43,7 @@ export async function listEntries(
   db: Db,
   options: { category?: string; limit?: number } = {},
 ): Promise<LogEntry[]> {
-  const where = options.category
-    ? and(alive, eq(logEntries.category, options.category))
-    : alive;
+  const where = options.category ? and(alive, eq(logEntries.category, options.category)) : alive;
 
   return db
     .select()
@@ -106,11 +104,7 @@ export async function restoreEntry(db: Db, id: number): Promise<LogEntry | null>
 }
 
 /** Which categories have an entry today — drives the daily prompt. */
-export async function categoriesLoggedBetween(
-  db: Db,
-  start: Date,
-  end: Date,
-): Promise<string[]> {
+export async function categoriesLoggedBetween(db: Db, start: Date, end: Date): Promise<string[]> {
   const rows = await db
     .selectDistinct({ category: logEntries.category })
     .from(logEntries)

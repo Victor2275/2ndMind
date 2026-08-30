@@ -227,7 +227,11 @@ describe("posting questions", () => {
     // `points` are ids only. Nothing in the parsed answer carries prose the model wrote in
     // place of a bullet — the UI resolves text from the id, exactly as the resume side does.
     const result = parseQuestionResponse(
-      JSON.stringify({ points: [BULLETS[0].id], angle: "Lead with the sim-to-real work.", avoid: "" }),
+      JSON.stringify({
+        points: [BULLETS[0].id],
+        angle: "Lead with the sim-to-real work.",
+        avoid: "",
+      }),
       IDS,
     );
     expect(result.ok).toBe(true);

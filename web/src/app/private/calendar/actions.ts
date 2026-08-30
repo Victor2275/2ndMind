@@ -22,9 +22,7 @@ import { upsertExternalTask } from "@/lib/tasks/queries";
 const LOOKAHEAD_DAYS = 120;
 const LOOKBEHIND_DAYS = 7;
 
-export async function syncCanvas(
-  _prev: ActionState | null,
-): Promise<ActionState> {
+export async function syncCanvas(_prev: ActionState | null): Promise<ActionState> {
   await requireSession();
 
   if (!isDatabaseConfigured()) {

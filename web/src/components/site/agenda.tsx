@@ -30,9 +30,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
       <span className="tabular w-16 shrink-0 font-mono text-[0.65rem] text-muted-foreground">
         {event.allDay ? "all day" : TIME.format(event.start)}
       </span>
-      <span className="min-w-0 flex-1 text-sm text-foreground">
-        {event.summary || "Untitled"}
-      </span>
+      <span className="min-w-0 flex-1 text-sm text-foreground">{event.summary || "Untitled"}</span>
       {event.location && (
         <span className="hidden max-w-[14ch] shrink-0 truncate font-mono text-[0.6rem] text-muted-foreground sm:block">
           {event.location}
@@ -50,7 +48,7 @@ export function AgendaDayBlock({ day }: { day: AgendaDay }) {
 
   return (
     <div>
-      <h3 className="mb-2 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground">
+      <h3 className="mb-2 font-mono text-[0.6rem] tracking-[0.14em] text-muted-foreground uppercase">
         {HEADING.format(date)}
       </h3>
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">

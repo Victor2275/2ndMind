@@ -147,9 +147,7 @@ export const pursuitSchema = baseFrontmatter.extend({
   order: z.number().int().positive(),
   kicker: z.string().min(1),
   discipline: z.string().min(1),
-  facts: z
-    .array(z.object({ label: z.string().min(1), value: z.string().min(1) }))
-    .default([]),
+  facts: z.array(z.object({ label: z.string().min(1), value: z.string().min(1) })).default([]),
   carryover: z.string().min(1),
 });
 

@@ -136,10 +136,7 @@ const cachedSummary = unstable_cache(
   { tags: [SUMMARY_CACHE_TAG], revalidate: SUMMARY_TTL_SECONDS },
 );
 
-export async function generateDailySummary(
-  logs: string,
-  sprint: string,
-): Promise<SummaryResult> {
+export async function generateDailySummary(logs: string, sprint: string): Promise<SummaryResult> {
   // Nothing to summarise is not a model call. This is the common case before the day starts.
   if (sprint.trim() === "" && logs.trim() === "") {
     return unavailable("Nothing logged yet today.");

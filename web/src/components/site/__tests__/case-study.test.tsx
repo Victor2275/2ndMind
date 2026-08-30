@@ -86,7 +86,9 @@ describe("CaseStudy", () => {
   });
 
   it("keeps a section's own heading rather than retitling it", () => {
-    render(<CaseStudy>{"## Design decisions\n\nPresence-based.\n\n## Results\n\n100%."}</CaseStudy>);
+    render(
+      <CaseStudy>{"## Design decisions\n\nPresence-based.\n\n## Results\n\n100%."}</CaseStudy>,
+    );
     expect(screen.getByRole("heading", { name: "Design decisions" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Results" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Architecture" })).toBeNull();

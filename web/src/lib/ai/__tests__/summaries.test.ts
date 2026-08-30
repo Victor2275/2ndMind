@@ -55,7 +55,9 @@ describe("recordSummary", () => {
   it("refuses to store an empty summary", async () => {
     // Fallback text like "Nothing logged yet today" must never land here: months on it is
     // indistinguishable from a day when nothing actually happened.
-    expect(await recordSummary(db, { kind: "daily", periodStart: "2026-08-30", summary: "   " })).toBeNull();
+    expect(
+      await recordSummary(db, { kind: "daily", periodStart: "2026-08-30", summary: "   " }),
+    ).toBeNull();
     expect(await recentSummaries(db)).toHaveLength(0);
   });
 

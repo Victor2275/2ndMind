@@ -23,9 +23,7 @@ export function FreshnessBadge({ report }: { report: FreshnessReport }) {
     <details className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-highlight/40 bg-highlight/10 px-2.5 py-1 transition-colors hover:border-highlight/70 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="size-1.5 rounded-full bg-highlight" />
-        <span className="font-mono text-[0.65rem] text-highlight">
-          {problems.length} stale
-        </span>
+        <span className="font-mono text-[0.65rem] text-highlight">{problems.length} stale</span>
       </summary>
 
       <div className="absolute right-0 z-20 mt-2 w-[min(22rem,calc(100vw-3rem))] rounded-lg border border-border bg-popover p-3 shadow-xl">

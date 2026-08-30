@@ -50,12 +50,7 @@ describe("roleFor", () => {
 describe("splitCaseStudy", () => {
   it("splits a complete case study into its four sections, in file order", () => {
     const sections = splitCaseStudy(FULL);
-    expect(sections.map((s) => s.role)).toEqual([
-      "problem",
-      "architecture",
-      "failure",
-      "results",
-    ]);
+    expect(sections.map((s) => s.role)).toEqual(["problem", "architecture", "failure", "results"]);
     expect(sections[3].body).toContain("100% accuracy");
   });
 

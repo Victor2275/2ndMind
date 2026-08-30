@@ -55,7 +55,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
       {/* Hero */}
-      <section className="rise flex flex-col gap-8 sm:flex-row sm:items-start">
+      <section className="flex rise flex-col gap-8 sm:flex-row sm:items-start">
         <div className="group relative shrink-0">
           {/* Soft teal bloom behind the portrait, brightening on hover. */}
           <div
@@ -77,7 +77,7 @@ export default function AboutPage() {
         </div>
 
         <div className="min-w-0">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-highlight">
+          <p className="font-mono text-xs tracking-[0.18em] text-highlight uppercase">
             {profile.persona}
           </p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
@@ -105,10 +105,8 @@ export default function AboutPage() {
                 href={c.href}
                 className={[
                   "link-wipe text-sm transition-colors",
-                  c.mono ? "font-mono " : "",
-                  c.accent
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                  c.mono ? "font-mono" : "",
+                  c.accent ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 ].join("")}
               >
                 {c.label}
@@ -120,7 +118,7 @@ export default function AboutPage() {
 
       {/* Facts */}
       <dl
-        className="rise mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="mt-12 grid rise grid-cols-2 gap-3 sm:grid-cols-4"
         style={{ animationDelay: "120ms" }}
       >
         {facts.map((f) => (
@@ -128,7 +126,7 @@ export default function AboutPage() {
             key={f.label}
             className="rounded-lg border border-border bg-card/70 p-4 transition-colors duration-300 hover:border-primary/50"
           >
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
+            <dt className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
               {f.label}
             </dt>
             <dd className="tabular mt-1.5 text-sm font-medium text-foreground">{f.value}</dd>
@@ -142,7 +140,7 @@ export default function AboutPage() {
           "what I'm working on now" section Victor asked for is about current *work* — 2ndMind,
           coursework — and is still to be built. */}
       {experience.length > 0 && (
-        <section className="rise mt-16" style={{ animationDelay: "200ms" }}>
+        <section className="mt-16 rise" style={{ animationDelay: "200ms" }}>
           <h2 className="text-xl font-bold tracking-tight">Most recent</h2>
           <div className="mt-6">
             <article className="group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_8px_30px_-12px_var(--primary)]">
@@ -163,7 +161,7 @@ export default function AboutPage() {
                 {experience[0].bullets.map((b) => (
                   <li
                     key={b}
-                    className="relative pl-5 before:absolute before:left-0 before:top-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-primary/60"
+                    className="relative pl-5 before:absolute before:top-1.5 before:left-0 before:h-1.5 before:w-1.5 before:rounded-full before:bg-primary/60"
                   >
                     {b}
                   </li>
@@ -176,7 +174,7 @@ export default function AboutPage() {
 
       {/* Previous Experience */}
       {experience.length > 1 && (
-        <section className="rise mt-16" style={{ animationDelay: "240ms" }}>
+        <section className="mt-16 rise" style={{ animationDelay: "240ms" }}>
           <h2 className="text-xl font-bold tracking-tight">Previous Experience</h2>
           <div className="mt-6 space-y-8">
             {experience.slice(1).map((role) => (
@@ -186,12 +184,14 @@ export default function AboutPage() {
               >
                 <span
                   aria-hidden
-                  className="absolute -left-[5px] top-2 size-2 rounded-full bg-border transition-all duration-300 group-hover:scale-125 group-hover:bg-primary/70"
+                  className="absolute top-2 -left-[5px] size-2 rounded-full bg-border transition-all duration-300 group-hover:scale-125 group-hover:bg-primary/70"
                 />
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <h3 className="text-base font-semibold text-foreground">
                     {role.title} <span className="text-muted-foreground">·</span>{" "}
-                    <span className="transition-colors group-hover:text-primary/80">{role.org}</span>
+                    <span className="transition-colors group-hover:text-primary/80">
+                      {role.org}
+                    </span>
                   </h3>
                   <p className="tabular font-mono text-xs text-muted-foreground">
                     {role.dateStart} — {role.ongoing ? "Present" : role.dateEnd}
@@ -217,7 +217,7 @@ export default function AboutPage() {
       <section className="mt-16 grid gap-4 sm:grid-cols-2">
         <Link
           href="/projects"
-          className="rise card-scan group rounded-lg border border-border bg-card/70 p-6"
+          className="group card-scan rise rounded-lg border border-border bg-card/70 p-6"
           style={{ animationDelay: "260ms" }}
         >
           <h2 className="text-base font-semibold transition-colors group-hover:text-primary">
@@ -237,10 +237,10 @@ export default function AboutPage() {
 
         <Link
           href={`/projects/${featured.slug}`}
-          className="rise card-scan group rounded-lg border border-border bg-card/70 p-6"
+          className="group card-scan rise rounded-lg border border-border bg-card/70 p-6"
           style={{ animationDelay: "320ms" }}
         >
-          <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
+          <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
             Most recent build
           </p>
           <h2 className="mt-2 text-base font-semibold transition-colors group-hover:text-primary">
@@ -260,9 +260,9 @@ export default function AboutPage() {
             <article
               key={p.slug}
               style={{ animationDelay: `${240 + i * 70}ms` }}
-              className="rise card-scan group flex flex-col rounded-lg border border-border bg-card/70 p-4"
+              className="group card-scan flex rise flex-col rounded-lg border border-border bg-card/70 p-4"
             >
-              <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-highlight">
+              <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
                 {p.kicker}
               </p>
               <h3 className="mt-1.5 text-base font-semibold tracking-tight transition-colors group-hover:text-primary">

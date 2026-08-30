@@ -54,7 +54,7 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
         <button
           type="submit"
           aria-label="Remove entry"
-          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
         >
           <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
             <path d="M3 3l8 8M11 3l-8 8" />
@@ -83,7 +83,7 @@ export function LogConsole({
     <div className="space-y-6">
       <div>
         {/* Scrolls rather than wraps, so the row stays one line on a phone. */}
-        <div className="-mx-1 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-1 flex [scrollbar-width:none] gap-1 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
           {CATEGORIES.map((c) => {
             const done = loggedToday.includes(c.key);
             return (
@@ -100,10 +100,7 @@ export function LogConsole({
               >
                 {c.label}
                 {done && (
-                  <span
-                    aria-label="logged today"
-                    className="size-1.5 rounded-full bg-primary/70"
-                  />
+                  <span aria-label="logged today" className="size-1.5 rounded-full bg-primary/70" />
                 )}
               </button>
             );

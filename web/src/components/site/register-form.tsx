@@ -19,9 +19,7 @@ export function RegisterForm() {
     setResult(null);
 
     try {
-      const optionsRes = await fetch(
-        `/api/auth/register?secret=${encodeURIComponent(secret)}`,
-      );
+      const optionsRes = await fetch(`/api/auth/register?secret=${encodeURIComponent(secret)}`);
       const optionsJSON = await optionsRes.json();
       if (!optionsRes.ok) throw new Error(optionsJSON.error ?? "could not start");
 
@@ -55,8 +53,7 @@ export function RegisterForm() {
       <div className="space-y-4">
         <p className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-foreground">
           Passkey enrolled. This line holds <em>every</em> enrolled device, so replace PASSKEYS
-          entirely — and delete PASSKEY_CREDENTIAL_ID and PASSKEY_PUBLIC_KEY if they are still
-          set.
+          entirely — and delete PASSKEY_CREDENTIAL_ID and PASSKEY_PUBLIC_KEY if they are still set.
         </p>
         <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 font-mono text-[0.68rem] text-muted-foreground">
           {env}
@@ -81,7 +78,7 @@ export function RegisterForm() {
       <div>
         <label
           htmlFor="secret"
-          className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
+          className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
         >
           Registration secret
         </label>
@@ -99,7 +96,7 @@ export function RegisterForm() {
       <div>
         <label
           htmlFor="label"
-          className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
+          className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
         >
           Device name
         </label>

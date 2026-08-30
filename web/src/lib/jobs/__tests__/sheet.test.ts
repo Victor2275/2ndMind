@@ -3,13 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  isHighPriority,
-  isOpen,
-  isSubmitted,
-  parseJobSheet,
-  toPipeline,
-} from "../sheet";
+import { isHighPriority, isOpen, isSubmitted, parseJobSheet, toPipeline } from "../sheet";
 
 /**
  * Parsed against Victor's real export, not a hand-written fixture.

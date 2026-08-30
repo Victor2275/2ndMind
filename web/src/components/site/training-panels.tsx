@@ -66,13 +66,7 @@ export function GoalCard({
         />
         <Stat
           label="To find"
-          value={
-            progress.gapS === null
-              ? "—"
-              : met
-                ? "met"
-                : `${progress.gapS.toFixed(1)}s`
-          }
+          value={progress.gapS === null ? "—" : met ? "met" : `${progress.gapS.toFixed(1)}s`}
           tone={progress.gapS === null ? "default" : met ? "accent" : "warn"}
           hint="per 500m"
         />
@@ -80,12 +74,10 @@ export function GoalCard({
 
       <p className="mt-3 text-xs text-muted-foreground">
         Concept2&rsquo;s adjustment multiplies an erg time by{" "}
-        <span className="tabular font-mono text-foreground">
-          {progress.factor.toFixed(4)}
-        </span>{" "}
-        at {progress.bodyweightLbs} lb
-        {weightSource === "vault" && " — taken from the vault, because no reading is logged yet"}
-        . It discounts lighter athletes, so{" "}
+        <span className="tabular font-mono text-foreground">{progress.factor.toFixed(4)}</span> at{" "}
+        {progress.bodyweightLbs} lb
+        {weightSource === "vault" && " — taken from the vault, because no reading is logged yet"}.
+        It discounts lighter athletes, so{" "}
         <span className="text-foreground">putting on mass makes this target harder</span>, not
         easier. Both lines are charted below for that reason.
       </p>
@@ -135,8 +127,8 @@ export function SpmPanel({
 
       {flags.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          No piece has a stroke rate recorded yet. The SPM field on the manual log is what
-          feeds this — an erg piece without one is stored, just not checked.
+          No piece has a stroke rate recorded yet. The SPM field on the manual log is what feeds
+          this — an erg piece without one is stored, just not checked.
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
@@ -207,18 +199,14 @@ export function WeekReview({ days, planFound }: { days: PlanDay[]; planFound: bo
             <span
               aria-hidden
               className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                day.logged > 0
-                  ? "bg-primary"
-                  : day.missed
-                    ? "bg-highlight"
-                    : "border border-border"
+                day.logged > 0 ? "bg-primary" : day.missed ? "bg-highlight" : "border border-border"
               }`}
             />
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-sm font-medium text-foreground">{day.name}</span>
                 {day.isToday && (
-                  <span className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-primary">
+                  <span className="font-mono text-[0.55rem] tracking-[0.14em] text-primary uppercase">
                     today
                   </span>
                 )}
@@ -233,9 +221,7 @@ export function WeekReview({ days, planFound }: { days: PlanDay[]; planFound: bo
                 </span>
               </p>
               {day.planned.length > 0 && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {day.planned.join(" · ")}
-                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{day.planned.join(" · ")}</p>
               )}
             </div>
           </li>
@@ -246,8 +232,8 @@ export function WeekReview({ days, planFound }: { days: PlanDay[]; planFound: bo
         {missed === 0
           ? "Nothing missed so far this week."
           : `${missed} day${missed === 1 ? "" : "s"} this week with a session planned and nothing logged.`}{" "}
-        A day counts as done when any session is logged against it — the programme is not
-        matched line by line, because nothing in the data supports that.
+        A day counts as done when any session is logged against it — the programme is not matched
+        line by line, because nothing in the data supports that.
       </p>
     </div>
   );

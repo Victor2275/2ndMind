@@ -26,10 +26,7 @@ import type { ActionState } from "@/lib/sprint-goals";
 const NAG_AFTER_DAYS = 7;
 
 export function InboxPanel({ items, staleDays }: { items: TaskView[]; staleDays: number }) {
-  const [state, action, pending] = useActionState<ActionState | null, FormData>(
-    addInboxNote,
-    null,
-  );
+  const [state, action, pending] = useActionState<ActionState | null, FormData>(addInboxNote, null);
   const form = useRef<HTMLFormElement>(null);
 
   // Clear on success so the next thought can go straight in. Capture is meant to be
@@ -47,7 +44,7 @@ export function InboxPanel({ items, staleDays }: { items: TaskView[]; staleDays:
           name="title"
           placeholder="Jot it down…"
           autoComplete="off"
-          className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground/70 focus:border-primary/60"
         />
         <button
           type="submit"
@@ -58,14 +55,11 @@ export function InboxPanel({ items, staleDays }: { items: TaskView[]; staleDays:
         </button>
       </form>
 
-      {state && !state.ok && (
-        <p className="mt-2 text-xs text-destructive">{state.message}</p>
-      )}
+      {state && !state.ok && <p className="mt-2 text-xs text-destructive">{state.message}</p>}
 
       {nagging && (
         <p className="mt-3 rounded-md border border-highlight/40 bg-highlight/10 px-3 py-2 text-xs text-foreground">
-          Oldest note has been sitting {staleDays} days. Give it a domain and a date, or
-          delete it.
+          Oldest note has been sitting {staleDays} days. Give it a domain and a date, or delete it.
         </p>
       )}
 

@@ -33,7 +33,8 @@ describe("normaliseSheetUrl", () => {
   it("leaves a published CSV link alone", () => {
     // The documented path. It must survive untouched, or the instructions in
     // docs/UPLOADS_NEEDED.md stop being true.
-    const pub = "https://docs.google.com/spreadsheets/d/e/2PACX-1vABC/pub?gid=0&single=true&output=csv";
+    const pub =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vABC/pub?gid=0&single=true&output=csv";
     expect(normaliseSheetUrl(pub)).toBe(pub);
   });
 

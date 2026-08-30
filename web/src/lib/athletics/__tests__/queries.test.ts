@@ -336,7 +336,14 @@ describe("stroke rate round trip", () => {
       title: "Erg",
       notes: "",
       sets: [
-        { exercise: "Row (Erg)", setIndex: 0, setType: "normal", distanceM: 500, durationS: 137, spm: 74 },
+        {
+          exercise: "Row (Erg)",
+          setIndex: 0,
+          setType: "normal",
+          distanceM: 500,
+          durationS: 137,
+          spm: 74,
+        },
       ],
     });
 

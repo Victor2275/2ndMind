@@ -141,10 +141,9 @@ export function WorkoutLogForm() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Blank rows are ignored. Weight and reps for lifts; distance, time and SPM for erg
-        pieces — a time may be typed as <span className="text-foreground">m:ss</span> or as
-        seconds. A stroke rate is what lets a piece be checked against the vault&rsquo;s
-        targets.
+        Blank rows are ignored. Weight and reps for lifts; distance, time and SPM for erg pieces — a
+        time may be typed as <span className="text-foreground">m:ss</span> or as seconds. A stroke
+        rate is what lets a piece be checked against the vault&rsquo;s targets.
       </p>
     </form>
   );

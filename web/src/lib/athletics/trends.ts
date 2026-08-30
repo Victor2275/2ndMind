@@ -202,9 +202,7 @@ export function weeklyVolume(efforts: Effort[], weeks = 12): WeekVolume[] {
     if (bucket) bucket.sessions = days.size;
   }
 
-  return [...byWeek.values()]
-    .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
-    .slice(-weeks);
+  return [...byWeek.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart)).slice(-weeks);
 }
 
 export type SpmFlag = {

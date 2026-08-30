@@ -21,9 +21,7 @@ export const metadata = { title: "Tailor" };
 export default async function TailorPage() {
   await requireSession();
 
-  const variantLabels = Object.fromEntries(
-    RESUME_VARIANTS.map((v) => [v, buildResume(v).label]),
-  );
+  const variantLabels = Object.fromEntries(RESUME_VARIANTS.map((v) => [v, buildResume(v).label]));
   const bullets = await collectBullets();
 
   return (
@@ -48,14 +46,17 @@ export default async function TailorPage() {
           <QuestionForm />
         </Panel>
 
-        <Panel title={`What both can choose from · ${bullets.length}`} collapsible defaultOpen={false}>
+        <Panel
+          title={`What both can choose from · ${bullets.length}`}
+          collapsible
+          defaultOpen={false}
+        >
           {/* Shown so the advice is checkable: if a bullet is not in this list, no suggestion
               can mention it, and the parser rejects any response that tries. */}
           <ul className="space-y-1.5">
             {bullets.map((b) => (
               <li key={b.id} className="text-sm text-muted-foreground">
-                <span className="font-mono text-[0.62rem] text-foreground">{b.entry}</span>{" "}
-                {b.text}
+                <span className="font-mono text-[0.62rem] text-foreground">{b.entry}</span> {b.text}
               </li>
             ))}
           </ul>

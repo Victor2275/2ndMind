@@ -55,7 +55,7 @@ export function Prose({ children, numbers = false }: { children: string; numbers
   const t = numbers ? emphasiseNumbers : (node: ReactNode) => node;
 
   return (
-    <div className="max-w-[68ch] space-y-4 text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+    <div className="max-w-[68ch] space-y-4 text-sm leading-relaxed [overflow-wrap:anywhere] text-muted-foreground">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

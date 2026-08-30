@@ -11,12 +11,12 @@ describe("Vault write path end-to-end", () => {
     "",
     "## Goals",
     "",
-    "- old goal"
+    "- old goal",
   ].join("\n");
 
   const MOCK_SHA_1 = "abc123old";
   const MOCK_SHA_2 = "def456new";
-  
+
   let fetchMock: ReturnType<typeof vi.spyOn>;
   let previousToken: string | undefined;
 
@@ -24,14 +24,14 @@ describe("Vault write path end-to-end", () => {
     // We mock global fetch which Octokit uses under the hood.
     fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (url, init) => {
       const urlStr = url.toString();
-      
+
       if (init?.method === "PUT") {
         // Mocking the write response
         const body = JSON.parse(init.body as string);
-        
+
         // Assert that the sha matches the one we returned in GET (to prove last-write-wins protection)
         expect(body.sha).toBe(MOCK_SHA_1);
-        
+
         // Assert the content was modified
         const decoded = Buffer.from(body.content, "base64").toString("utf8");
         expect(decoded).toContain("- new goal");
@@ -39,24 +39,33 @@ describe("Vault write path end-to-end", () => {
         // Assert updated date was bumped
         expect(decoded).toContain("updated: 2026-08-22");
 
-        return new Response(JSON.stringify({
-          commit: { sha: "commit-sha" },
-          content: { html_url: "https://github.com/test", sha: MOCK_SHA_2 }
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            commit: { sha: "commit-sha" },
+            content: { html_url: "https://github.com/test", sha: MOCK_SHA_2 },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
-      
+
       // Mocking the read response
-      if (urlStr.includes("/contents/context%2Ftest.md") || urlStr.includes("/contents/context/test.md")) {
-        return new Response(JSON.stringify({
-          type: "file",
-          content: Buffer.from(ORIGINAL_CONTENT, "utf8").toString("base64"),
-          sha: MOCK_SHA_1
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (
+        urlStr.includes("/contents/context%2Ftest.md") ||
+        urlStr.includes("/contents/context/test.md")
+      ) {
+        return new Response(
+          JSON.stringify({
+            type: "file",
+            content: Buffer.from(ORIGINAL_CONTENT, "utf8").toString("base64"),
+            sha: MOCK_SHA_1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
-      
+
       throw new Error(`Unhandled fetch mock: ${urlStr}`);
     });
-    
+
     previousToken = process.env.GITHUB_TOKEN;
     process.env.GITHUB_TOKEN = "fake-token-for-test";
   });
@@ -79,9 +88,11 @@ describe("Vault write path end-to-end", () => {
     const updatedContent = replaceSection(content, "Goals", "- new goal");
 
     // 3. Write
-    const result = await writeVaultFile("context/test.md", updatedContent, "Update goals", { today: "2026-08-22" });
-    
+    const result = await writeVaultFile("context/test.md", updatedContent, "Update goals", {
+      today: "2026-08-22",
+    });
+
     expect(result.commit).toBe("commit-sha");
-    expect(fetchMock).toHaveBeenCalledTimes(3); 
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

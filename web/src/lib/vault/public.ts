@@ -233,19 +233,57 @@ export function toPublicLab(l: Lab): PublicLab {
 
 /** Field allowlists, exported so the security test asserts against one source of truth. */
 export const PUBLIC_PROJECT_KEYS = [
-  "slug", "title", "summary", "order", "status", "year", "category",
-  "tags", "stack", "links", "event", "image", "imageFit", "figures", "groupSize",
-  "draft", "bullets", "body", "updates",
+  "slug",
+  "title",
+  "summary",
+  "order",
+  "status",
+  "year",
+  "category",
+  "tags",
+  "stack",
+  "links",
+  "event",
+  "image",
+  "imageFit",
+  "figures",
+  "groupSize",
+  "draft",
+  "bullets",
+  "body",
+  "updates",
 ] as const;
 
 export const PUBLIC_EXPERIENCE_KEYS = [
-  "slug", "title", "summary", "org", "type", "dateStart", "dateEnd", "ongoing",
-  "seasonal", "links", "bullets", "body",
+  "slug",
+  "title",
+  "summary",
+  "org",
+  "type",
+  "dateStart",
+  "dateEnd",
+  "ongoing",
+  "seasonal",
+  "links",
+  "bullets",
+  "body",
 ] as const;
 
 export const PUBLIC_LAB_KEYS = [
-  "slug", "title", "summary", "course", "term", "date", "groupSize",
-  "tags", "stack", "heroImage", "imageCount", "figures", "bullets", "body",
+  "slug",
+  "title",
+  "summary",
+  "course",
+  "term",
+  "date",
+  "groupSize",
+  "tags",
+  "stack",
+  "heroImage",
+  "imageCount",
+  "figures",
+  "bullets",
+  "body",
 ] as const;
 
 /**
@@ -260,8 +298,17 @@ export type ProjectCard = Pick<
 > & { image?: string; imageFit: "cover" | "contain"; draft: boolean };
 
 export const PROJECT_CARD_KEYS = [
-  "slug", "title", "summary", "order", "status", "year", "category", "stack",
-  "image", "imageFit", "draft",
+  "slug",
+  "title",
+  "summary",
+  "order",
+  "status",
+  "year",
+  "category",
+  "stack",
+  "image",
+  "imageFit",
+  "draft",
 ] as const;
 
 export function toProjectCard(p: PublicProject): ProjectCard {
@@ -285,15 +332,21 @@ export function projectCards(): ProjectCard[] {
 }
 
 export function publicProjects(): PublicProject[] {
-  return loadProjects().filter((p) => p.public).map(toPublicProject);
+  return loadProjects()
+    .filter((p) => p.public)
+    .map(toPublicProject);
 }
 
 export function publicExperience(): PublicExperience[] {
-  return loadExperience().filter((e) => e.public).map(toPublicExperience);
+  return loadExperience()
+    .filter((e) => e.public)
+    .map(toPublicExperience);
 }
 
 export function publicLabs(): PublicLab[] {
-  return loadLabs().filter((l) => l.public).map(toPublicLab);
+  return loadLabs()
+    .filter((l) => l.public)
+    .map(toPublicLab);
 }
 
 /**
@@ -311,7 +364,12 @@ export type PublicPursuit = {
 };
 
 export const PUBLIC_PURSUIT_KEYS = [
-  "slug", "title", "kicker", "discipline", "summary", "bullets",
+  "slug",
+  "title",
+  "kicker",
+  "discipline",
+  "summary",
+  "bullets",
 ] as const;
 
 export function toPublicPursuit(p: Pursuit): PublicPursuit {
@@ -326,7 +384,9 @@ export function toPublicPursuit(p: Pursuit): PublicPursuit {
 }
 
 export function publicPursuits(): PublicPursuit[] {
-  return loadPursuits().filter((p) => p.public).map(toPublicPursuit);
+  return loadPursuits()
+    .filter((p) => p.public)
+    .map(toPublicPursuit);
 }
 
 export type PublicProfile = {
@@ -345,8 +405,18 @@ export type PublicProfile = {
 };
 
 export const PUBLIC_PROFILE_KEYS = [
-  "name", "persona", "degree", "school", "schoolShort", "academicStage",
-  "admitted", "graduation", "fastTrack", "gpa", "gpaScale", "contact",
+  "name",
+  "persona",
+  "degree",
+  "school",
+  "schoolShort",
+  "academicStage",
+  "admitted",
+  "graduation",
+  "fastTrack",
+  "gpa",
+  "gpaScale",
+  "contact",
 ] as const;
 
 /**

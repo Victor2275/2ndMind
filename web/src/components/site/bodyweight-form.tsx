@@ -81,12 +81,7 @@ export function BodyweightForm() {
           <label className={LABEL} htmlFor="bw-note">
             Note
           </label>
-          <input
-            id="bw-note"
-            name="note"
-            className={`${FIELD} mt-1`}
-            placeholder="post-practice"
-          />
+          <input id="bw-note" name="note" className={`${FIELD} mt-1`} placeholder="post-practice" />
         </div>
       </div>
 

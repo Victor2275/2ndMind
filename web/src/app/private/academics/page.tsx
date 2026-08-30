@@ -136,11 +136,23 @@ export default function AcademicsPage() {
         <Outstanding />
       </Suspense>
 
-      <Suspense fallback={<div className="mt-8"><SkeletonPanel rows={4} /></div>}>
+      <Suspense
+        fallback={
+          <div className="mt-8">
+            <SkeletonPanel rows={4} />
+          </div>
+        }
+      >
         <Degree />
       </Suspense>
 
-      <Suspense fallback={<div className="mt-4"><SkeletonPanel rows={1} /></div>}>
+      <Suspense
+        fallback={
+          <div className="mt-4">
+            <SkeletonPanel rows={1} />
+          </div>
+        }
+      >
         <Record />
       </Suspense>
     </main>

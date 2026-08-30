@@ -62,7 +62,7 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             key={p.slug}
             href={`/projects/${p.slug}`}
             style={{ animationDelay: `${i * 60}ms` }}
-            className="rise card-scan group flex flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="group card-scan flex rise flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {/* Only a real photograph earns a figure.
                 Five of six projects have no image, and the generated stand-in was costing
@@ -92,45 +92,45 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
             )}
 
             <div className="flex flex-1 flex-col p-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
-                {p.title}
-              </h2>
-              <span className="tabular shrink-0 font-mono text-xs text-muted-foreground">
-                {p.year}
-              </span>
-            </div>
-
-            <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.summary}</p>
-
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              <Badge
-                variant={p.status === "active" ? "default" : "outline"}
-                className="text-[0.65rem]"
-              >
-                {p.status}
-              </Badge>
-              {p.stack.slice(0, 3).map((s) => (
-                <Badge key={s} variant="secondary" className="text-[0.65rem]">
-                  {s}
-                </Badge>
-              ))}
-              {p.stack.length > 3 && (
-                <span className="font-mono text-[0.65rem] text-muted-foreground">
-                  +{p.stack.length - 3}
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
+                  {p.title}
+                </h2>
+                <span className="tabular shrink-0 font-mono text-xs text-muted-foreground">
+                  {p.year}
                 </span>
-              )}
-            </div>
+              </div>
 
-            {/* Hover-only, so it must not exist at all where hovering does not.
+              <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.summary}</p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                <Badge
+                  variant={p.status === "active" ? "default" : "outline"}
+                  className="text-[0.65rem]"
+                >
+                  {p.status}
+                </Badge>
+                {p.stack.slice(0, 3).map((s) => (
+                  <Badge key={s} variant="secondary" className="text-[0.65rem]">
+                    {s}
+                  </Badge>
+                ))}
+                {p.stack.length > 3 && (
+                  <span className="font-mono text-[0.65rem] text-muted-foreground">
+                    +{p.stack.length - 3}
+                  </span>
+                )}
+              </div>
+
+              {/* Hover-only, so it must not exist at all where hovering does not.
                 It was `opacity-0` and still occupied its box on a phone: ~32px of permanently
                 invisible space per card, which no touch user could ever resolve into text. */}
-            <span
-              aria-hidden
-              className="mt-4 hidden font-mono text-xs text-primary opacity-0 transition-all duration-300 group-hover:opacity-100 [@media(hover:hover)]:block"
-            >
-              Read more &rarr;
-            </span>
+              <span
+                aria-hidden
+                className="mt-4 hidden font-mono text-xs text-primary opacity-0 transition-all duration-300 group-hover:opacity-100 [@media(hover:hover)]:block"
+              >
+                Read more &rarr;
+              </span>
             </div>
           </Link>
         ))}

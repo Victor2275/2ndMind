@@ -34,7 +34,10 @@ export default function NowPage() {
     // than jumping to the front on an empty string.
     .sort((a, b) => (b.updates[0]?.date ?? "").localeCompare(a.updates[0]?.date ?? ""));
 
-  const latest = active.flatMap((p) => p.updates.slice(0, 1)).map((u) => u.date).sort();
+  const latest = active
+    .flatMap((p) => p.updates.slice(0, 1))
+    .map((u) => u.date)
+    .sort();
   const mostRecent = latest[latest.length - 1];
 
   return (
@@ -85,11 +88,9 @@ export default function NowPage() {
                     </Link>
                   )}
                 </div>
-              ) : (
-                // Nothing rendered. A project with no dated updates yet shows its summary
-                // and stops there, rather than captioning its own emptiness.
-                null
-              )}
+              ) : // Nothing rendered. A project with no dated updates yet shows its summary
+              // and stops there, rather than captioning its own emptiness.
+              null}
             </section>
           ))}
         </div>
