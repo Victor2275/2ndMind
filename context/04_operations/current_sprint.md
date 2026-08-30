@@ -133,18 +133,18 @@ lists.
 portfolio, resume generator, passkey auth, vault writes, freshness audit, athletics with
 Hevy import, and the Work/Academics/Calendar/Hobbies surfaces are all live.
 
+**Closed 2026-08-30:** the domain (§7.1) is done and verified live — the apex serves 200,
+`www` 307s to it, and `sitemap.xml` advertises `https://victorgusev.com`. The old note here
+claiming sign-in was broken is stale twice over: the variable is set correctly in Vercel, and
+`relyingParty()` now derives the apex as `rpID` and accepts both origins, so a `www`/apex swap
+can no longer break a passkey. Note `web/.env.local` still says `www` — local only, cosmetic.
+
 **Open on Victor, in priority order:**
-1. **Make the apex primary in Vercel, set `NEXT_PUBLIC_SITE_URL=https://victorgusev.com`,
-   redeploy, then re-enrol the passkey.** The domain is connected but that variable is not set,
-   so the site still advertises `victorgusev.vercel.app` in its sitemap and — because the same
-   variable is the WebAuthn relying party — **sign-in on the live site does not work**. Order
-   matters: flip the primary *before* enrolling, so it is done once. See `docs/V2_PLAN.md` §7.1.
 2. **Publish the internship sheet as CSV** and send the URL — needs a connection, so before
    you fly. It unblocks §7.6. See `docs/UPLOADS_NEEDED.md` §1.2.
-3. **Write the five case studies.** The prompts wait in each project file under
-   `> **To write:**`. Nothing publishes until prose replaces them, and no agent will fill them
-   in — that is the point of the convention (D-073) and D-069 is what happens when one tries.
-   Plane work: no network, no computer beyond a text editor.
+3. ~~**Write the five case studies.**~~ **Done 2026-08-29** — all five are written and live;
+   `scripts/case_study_status.py` reports every real project complete. Only Smart Bottle has
+   unwritten sections, and it is new scope, `draft: true`, and off every resume.
 4. **Add Fall 2026 classes to Google Calendar.** No code is waiting on this — the schedule
    appears on its own once they exist.
 5. **`docs/UPLOADS_NEEDED.md`** — the data only you can supply, split into what needs a connection
