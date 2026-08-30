@@ -1,0 +1,37 @@
+#!/bin/sh
+# Prettier check on staged web/ files. Reasoning in web/DECISIONS.md D-142.
+#
+#   Enable in a clone:   git config core.hooksPath .githooks
+#   Disable:             git config --unset core.hooksPath
+#   Bypass one commit:   git commit --no-verify
+#
+# Committed to the repo rather than installed by husky, because husky is a dependency that
+# exists to copy a file into .git/hooks, and `core.hooksPath` already does that for free.
+# The one cost is that a fresh clone must run the enable line above — noted in web/context.md
+# under "Style guide", because that is the file agents are told to read before working here.
+#
+# Deliberately formatting-only. `npm test`, `npm run typecheck` and `npm run shots` are the
+# real gates and run before work is called done. A 15-second test suite in a pre-commit hook
+# trains you to reach for --no-verify, which would disable this check too.
+
+changed=$(git diff --cached --name-only --diff-filter=ACMR -- web/ |
+  grep -E '\.(ts|tsx|mjs|cjs|js|jsx|css|json)$')
+
+# Nothing formattable staged — common for a vault-only or docs-only commit.
+[ -z "$changed" ] && exit 0
+
+# Paths from git are repo-relative; Prettier runs inside web/, so drop the prefix.
+files=$(printf '%s\n' "$changed" | sed 's|^web/||')
+
+cd web || exit 0
+
+# Prettier applies .prettierignore even to explicitly named files, so a staged change to a
+# vendored ui/ component or a .md file resolves to "no matching files" — not a failure.
+if ! printf '%s\n' "$files" | xargs npx prettier --check --no-error-on-unmatched-pattern; then
+  echo ""
+  echo "  Commit blocked: staged files are not formatted."
+  echo "    cd web && npm run format"
+  echo "    git add -u"
+  echo ""
+  exit 1
+fi
