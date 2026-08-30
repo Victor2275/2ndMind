@@ -563,3 +563,33 @@
     margin: 0 !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The private app's navigation switch — V3 §0.5 (D-132, D-143).
+
+   Plain, *unlayered* CSS rather than Tailwind's responsive display utilities. Both spellings
+   were tried and both fail the same way — the base utility wins and the variant never
+   applies. Measured against a **production build**, not the dev server:
+
+     `hidden sm:flex`      computed to `none` at 360/390/768/1280   (wanted flex ≥640)
+     `flex max-sm:hidden`  computed to `flex` at 360/390/768/1280   (wanted none <640)
+
+   Variants are not broken in general — `sm:hidden` on the tab bar works, because nothing sets
+   `display` on it at base. The conflict appears only when a base utility and its own variant
+   both set the same property.
+
+   Unlayered rules outrank every `@layer` by specification, so these cannot lose to a utility
+   however the layers are ordered. Both selectors live here together on purpose: one mechanism,
+   one place, so the two navs cannot drift onto different ones.
+   --------------------------------------------------------------------------- */
+@media (width < 40rem) {
+  .nav-desktop {
+    display: none;
+  }
+}
+
+@media (width >= 40rem) {
+  .nav-mobile {
+    display: none;
+  }
+}
