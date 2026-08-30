@@ -321,6 +321,31 @@ copies, and the previous round edited only `CLAUDE.md`. Re-synced with `cp`.
 direction; every mention was updated in `current_sprint.md`, `DECISIONS.md`, the plans
 themselves, and `README.md`.
 
+### D-123 · Any Google Sheets link is accepted, and converted to a CSV endpoint
+
+**Decision.** `normaliseSheetUrl` turns an ordinary `/edit#gid=…` link into
+`/export?format=csv&gid=…`, fills in `output=csv` on a publish-to-web link that omitted it,
+and passes anything already CSV-shaped — or non-Google — through untouched.
+
+**Why.** The URL Victor will actually paste is the one in his address bar. That link serves an
+HTML application behind a login, so the old requirement was "use Publish to web instead" —
+correct, and useless, because the document id and the tab id are both sitting in the URL he
+already has. Deriving the CSV endpoint is a dozen lines; making him re-navigate a share menu
+to produce information the app could compute is a worse trade.
+
+**What it deliberately does not do.** Grant access. The site fetches with no Google
+credentials, so the sheet must be readable anonymously whichever URL form is used, and
+`fetchSheet` already detects the login page Google returns and says so. That check is what
+makes accepting the loose form safe: the failure is legible rather than silent.
+
+**The tradeoff Victor has to make, and it is not symmetric.** Publish-to-web exposes *one
+tab*; link-sharing exposes *the whole spreadsheet* to anyone holding the link. Both are
+recorded in `docs/UPLOADS_NEEDED.md` §1.2 with publish-to-web recommended, because the
+applications sheet is one tab of a document that may hold others.
+
+**How to reverse.** Delete `normaliseSheetUrl` and have `jobSheetUrl` return the raw value.
+Nine tests in `lib/jobs/__tests__/load.test.ts` cover the conversions.
+
 ---
 
 ## 2026-08-25 · Career tooling

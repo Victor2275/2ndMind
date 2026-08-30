@@ -12,10 +12,62 @@ import { EMPTY, parseJobSheet, type SheetResult } from "./sheet";
  * parsing code.
  */
 
-/** Google's "publish to web" CSV link. A credential: it grants read access to whoever holds it. */
+/**
+ * Turns whatever Google URL Victor has to hand into one that answers with CSV.
+ *
+ * This exists because the obvious thing to paste is the link in the browser's address bar,
+ * and that link does not work: `/edit#gid=0` serves an HTML application, not data, and behind
+ * a login at that. Rejecting it with "use Publish to web instead" is correct and useless —
+ * the sheet id and the tab id are both right there in the URL, so the CSV endpoint is
+ * derivable. Three shapes are accepted:
+ *
+ *   .../edit#gid=123           -> .../export?format=csv&gid=123   (needs link-sharing)
+ *   .../d/e/<id>/pub?...       -> left alone, already CSV if output=csv (needs publishing)
+ *   .../export?format=csv...   -> left alone
+ *
+ * What it cannot do is grant access. Whichever form the URL takes, the app fetches it with no
+ * Google credentials, so the sheet has to be readable by an anonymous request — either
+ * published to the web, or shared as "anyone with the link can view". That is a decision
+ * about the document, not about this function, and `fetchSheet` reports it clearly when the
+ * answer comes back as a login page.
+ */
+export function normaliseSheetUrl(raw: string): string {
+  const url = raw.trim();
+
+  // Already a CSV endpoint of either kind.
+  if (/\/export\?/.test(url) || /[?&]output=csv/.test(url) || /tqx=out:csv/.test(url)) {
+    return url;
+  }
+
+  // A "publish to web" link that did not specify a format. Ask for CSV explicitly rather than
+  // taking Google's default, which is HTML.
+  const published = url.match(/^(https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/[^/]+\/pub)/);
+  if (published) {
+    const gid = url.match(/[?&#]gid=(\d+)/);
+    return `${published[1]}?output=csv${gid ? `&gid=${gid[1]}` : ""}`;
+  }
+
+  // The ordinary editing link. The tab id lives in the fragment, which is why it is read from
+  // the whole string rather than from a parsed query.
+  const doc = url.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (doc) {
+    const gid = url.match(/[?&#]gid=(\d+)/);
+    return (
+      `https://docs.google.com/spreadsheets/d/${doc[1]}/export?format=csv` +
+      (gid ? `&gid=${gid[1]}` : "")
+    );
+  }
+
+  return url;
+}
+
+/**
+ * The sheet URL. A credential: it grants read access to whoever holds it, so it lives in
+ * Vercel's environment and never in the repo.
+ */
 export function jobSheetUrl(): string | null {
   const url = process.env.JOB_SHEET_CSV_URL?.trim();
-  return url && url.startsWith("http") ? url : null;
+  return url && url.startsWith("http") ? normaliseSheetUrl(url) : null;
 }
 
 export function isJobSheetConfigured(): boolean {
@@ -62,7 +114,9 @@ async function fetchSheet(url: string): Promise<string> {
   // so the status is not enough to tell whether this is a CSV.
   if (/^\s*</.test(text)) {
     throw new Error(
-      "the sheet returned a web page rather than CSV — re-check File → Share → Publish to web",
+      "the sheet answered with a web page rather than CSV, which is what Google returns when " +
+        "an anonymous request cannot read it. Either File → Share → Publish to web → CSV, or " +
+        "set general access to “Anyone with the link → Viewer”.",
     );
   }
 
@@ -91,8 +145,10 @@ export async function loadJobSheet(): Promise<SheetResult> {
     return {
       ...EMPTY,
       error:
-        "JOB_SHEET_CSV_URL is not set. In the sheet: File → Share → Publish to web → the " +
-        "applications tab → CSV, then put the link in Vercel. Everything else works without it.",
+        "JOB_SHEET_CSV_URL is not set. Paste any Google Sheets link for the applications tab " +
+        "into Vercel — the ordinary /edit link is fine, it is converted to a CSV export. The " +
+        "sheet must be readable without signing in: either Publish to web, or general access " +
+        "set to “Anyone with the link → Viewer”. Everything else works without it.",
     };
   }
 

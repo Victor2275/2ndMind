@@ -30,8 +30,21 @@ first means you enrol once instead of twice.
 
 ### 1.2 · Publish the internship spreadsheet as CSV — ~5 min — **still open**
 
-In the master Google Sheet: **File → Share → Publish to web → (the applications tab) → CSV →
-Publish**. Send me the URL it gives you.
+**Updated 2026-08-30: you can now paste the ordinary link from your address bar.** The app
+converts a `/edit#gid=…` URL into Google's CSV export endpoint, so there is nothing to
+reformat. What it cannot do is grant access — the site fetches with no Google credentials, so
+the sheet has to be readable by an anonymous request. Two ways, and they are not equivalent:
+
+| | What you paste | What becomes readable |
+|---|---|---|
+| **Publish to web** (File → Share → Publish to web → the applications tab → CSV) | the `/pub?output=csv` link | **only that tab**, as a snapshot Google re-publishes |
+| **Link sharing** (Share → General access → Anyone with the link → Viewer) | the ordinary `/edit` link | **the whole spreadsheet** — every tab, to anyone holding the link |
+
+**Prefer Publish to web** if the spreadsheet has any tab you would not put on the open
+internet. It is one extra menu and it exposes one tab instead of all of them. Link sharing is
+the faster path and the right one only if the entire document is already fine to expose.
+
+Either way, send me the URL — or set `JOB_SHEET_CSV_URL` in Vercel yourself.
 
 > **§7.6 is built and waiting for this URL.** The parser was written and tested against
 > your archived export, so the only thing missing is the live link: set
