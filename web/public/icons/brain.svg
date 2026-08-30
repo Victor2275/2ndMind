@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="2ndMind">
+  <title>2ndMind</title>
+  <!--
+    The 2ndMind mark: a simplified brain, magenta on near-black (V3 §0.6, brand_and_voice.md).
+
+    Built as a filled silhouette with the folds cut out in the ground colour rather than drawn
+    as strokes over it. At 48px — which is where a launcher icon actually lives — thin strokes
+    on a dark field disappear into the background, while a solid shape with negative-space
+    folds keeps its silhouette. The mark has to survive being small before it has to look good
+    large.
+
+    Only three folds and one central division. Anatomical accuracy at this size reads as noise.
+  -->
+  <defs>
+    <linearGradient id="lobe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f06fa8" />
+      <stop offset="1" stop-color="#c53f82" />
+    </linearGradient>
+  </defs>
+
+  <g id="mark">
+    <!-- Silhouette: bumpy on top and down the sides, the way a brain reads in outline. -->
+    <path
+      fill="url(#lobe)"
+      d="M256 108
+         C222 96 186 104 172 132
+         C138 134 118 162 124 192
+         C96 208 92 246 114 268
+         C104 296 118 330 148 342
+         C154 372 184 392 216 386
+         C228 404 254 408 256 392
+         C258 408 284 404 296 386
+         C328 392 358 372 364 342
+         C394 330 408 296 398 268
+         C420 246 416 208 388 192
+         C394 162 374 134 340 132
+         C326 104 290 96 256 108
+         Z" />
+
+    <!-- Folds, cut in the ground colour. Stroke width is deliberately heavy: at 48px a
+         hairline vanishes, and the gap is what makes the shape read as a brain. -->
+    <g fill="none" stroke="#100a0e" stroke-width="17" stroke-linecap="round">
+      <!-- The central division. -->
+      <path d="M256 116 C242 150 268 176 252 208 C238 240 266 268 252 300 C242 332 262 358 256 388" />
+      <!-- Left hemisphere. -->
+      <path d="M170 152 C202 168 208 198 182 216" />
+      <path d="M126 258 C164 252 192 268 190 300" />
+      <!-- Right hemisphere. -->
+      <path d="M342 152 C310 168 304 198 330 216" />
+      <path d="M386 258 C348 252 320 268 322 300" />
+    </g>
+  </g>
+</svg>
