@@ -23,6 +23,6 @@ graphify-out/
 # `scripts/parse_dars.py` derives `context/01_engineering/degree_audit.md` from one and the
 # site reads only that. The name patterns stay as a second line of defence in case a file is
 # ever saved outside this folder.
-private/
+/private/
 DARS*.html
 *Audit Results Tab_files/
