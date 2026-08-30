@@ -331,6 +331,22 @@ was found by chance. On a phone it would be worse: there is no log to stumble ac
 
 Retrying safely is what forces D-127's client UUIDs. The two decisions are one design.
 
+**Designed 2026-08-30 (V3 §0.3).** Spec in `docs/SYNC_DESIGN.md` §6. Failures are sorted into
+five classes, each with different behaviour, because treating them alike is what makes a retry
+loop either infinite or silently lossy:
+
+| Class | State | Behaviour | Prevents |
+|---|---|---|---|
+| Transient — offline, 5xx, timeout | `pending` | Backoff to 5 min, never dropped | Losing a log because the gym has no signal |
+| Permanent — 400, zod, schema skew | `failed` | Surfaced, never auto-retried | An infinite retry loop on data that can never succeed |
+| Auth — 401 | `pending`, **flush pauses** | Prompt sign-in | Burning 100 ops against a dead session |
+| Clock — HLC beyond drift | `failed` | Surfaced | A drifting clock being mistaken for noise |
+| Conflict | — | Cannot occur | — (LWW always decides; that is why it was chosen) |
+
+One ordering rule earns its own line: **a failed op blocks later ops on the same `clientId`, and
+nothing else.** Skip that and a rejected create is bypassed while its follow-up update lands on
+a row that does not exist; block globally instead and one bad row freezes all syncing.
+
 **How to reverse.** Add a drop-after-N policy. Do not do this without the aggregation in D-137
 already reporting.
 
@@ -349,6 +365,22 @@ as a server-verified one — there is no signature counter check against server 
 compromised device can be replayed against. A long-lived session with no lock was offered and is
 weaker; an encrypted cache behind a PIN was offered and is stronger. This is the middle, chosen
 deliberately.
+
+**Designed 2026-08-30 (V3 §0.3).** Spec in `docs/SYNC_DESIGN.md` §8. Credential id and public
+key are cached in IndexedDB at the first *online* unlock; offline unlock is
+`navigator.credentials.get()` with `userVerification: "required"`, verified locally through
+WebCrypto against that key. No cached credential means the app does not open without a network.
+
+*Prevents:* the app being unusable in exactly the places it was built for — a basement gym, a
+plane — which is what a server-only ceremony guarantees.
+
+**Three limits written down so nobody later assumes otherwise.** The challenge is generated
+locally, so there is no server-side replay protection. The signature counter is not checked,
+because platform authenticators report 0 (already noted in D-018) and there is nothing to check.
+And IndexedDB is not encrypted (D-131), so a forensic read of the device gets the vault —
+encryption was offered at ~6h and declined in favour of the biometric gate. Unlocking offline
+grants access to **local data only**; the server re-validates on the next request and 401s an
+expired session regardless.
 
 **How to reverse.** Fall back to requiring a server ceremony, and accept that the app does
 nothing offline.
@@ -373,10 +405,41 @@ rest of the day.
 for a week can still be overwritten. A conflict-resolution screen was offered (~6h) and declined
 as over-built for one user with two devices.
 
+**Designed 2026-08-30 (V3 §0.3).** Full spec in `docs/SYNC_DESIGN.md`. Reading the real schema
+in `lib/db/schema.ts` changed this decision in three ways that the plan could not see:
+
+**1 · Only four tables need a client id, not all seven.** Three already have natural keys that
+make an offline create idempotent for free — `bodyweight_entries` on `measured_on`,
+`rehab_completions` on `(completed_on, slug)`, `ai_summaries` on `(kind, period_start)`. Adding
+a UUID to those would be ceremony. The four that need one — `log_entries`, `tasks`, `workouts`,
+`workout_sets` — need it precisely because two identical rows are *legitimate* there: logging
+the same set twice in a session is a real thing to do, so content cannot identify a row.
+*Prevents:* a retried create becoming a second bench-press set that inflates a PR.
+
+**2 · `rehab_completions` cannot sync as built, and this was invisible from the plan.** It
+toggles by insert-or-**hard delete**. A hard delete leaves nothing to compare, so if the phone
+un-ticks an item offline and the laptop ticks it the same evening, there is no row on the phone
+and a row on the server — and no way to distinguish "deleted" from "never had it". It needs
+`deleted_at`, as do `workouts`, `workout_sets` and `bodyweight_entries`.
+*Prevents:* a silently non-deterministic result on every offline checklist toggle.
+
+**3 · The clock is a hybrid logical clock, not `Date.now()`.** Concretely: fly to Taiwan, the
+phone's wall clock jumps, and from that moment it wins every conflict for the rest of the day —
+including overwriting laptop edits made later in real time. The HLC keeps a counter so a
+device's own stamps always increase, drags forward when it sees a newer remote stamp so causality
+holds, and **rejects** any stamp more than 10 minutes ahead of physical time rather than clamping
+it silently. A rejected stamp is a surfaced sync error, because a drifting clock is a fault.
+*Prevents:* one timezone change making a device permanently authoritative.
+
+`updated_at` is added alongside as a human-readable server receipt and is deliberately **not**
+what LWW compares. Two clocks, two jobs — conflating them is how the timezone bug gets in.
+
 **How to reverse.** For duplicates: drop the UUID column and dedupe by content hash instead
 (offered, and it misses the case where you legitimately log the same set twice). For lost edits:
 add the conflict screen — the outbox already carries both versions, so nothing needs
-re-plumbing.
+re-plumbing. For the clock: HLC is ~40 lines in one module with no callers outside the outbox;
+replacing it with server-stamped arrival order is a contained change, and costs the ability to
+say *when* something was logged as opposed to when it was received.
 
 ### D-126 · V3 ships as an installed PWA, not a native app
 

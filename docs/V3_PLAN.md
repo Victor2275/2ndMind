@@ -197,10 +197,11 @@ Five phases. Ordered, and only Milestone A is date-locked.
 
 Design and offline-safe work at ~2h/day on partial connection. Nothing here needs a deploy.
 
-> **Progress · 2026-08-30** — §0.1 and §0.2 complete (3h of 18h). The network-dependent item is
-> closed and verified offline-capable, so the rest of Phase 0 no longer needs a connection.
-> Next: **§0.3, the sync model on paper** — the highest-leverage item in the phase and the one
-> whose absence would be most expensive in November.
+> **Progress · 2026-08-30** — §0.1, §0.2 and §0.3 complete (**6h of 18h**). The
+> network-dependent item is closed and verified offline-capable, so nothing left in Phase 0
+> needs a connection. The sync design is written and already paid for itself: three schema
+> problems found on paper that would each have been a migration mid-Phase-1.
+> Next: **§0.4, the mood and energy fields** — 2h, and the smallest thing left.
 
 #### 0.1 · Install every dependency in one pass — **1h** — ✅ **DONE 2026-08-30**
 
@@ -254,14 +255,41 @@ the format pass must land as its own commit before any V3 code.
 boilerplate and claims the project uses Geist, which is false — the three faces are self-hosted
 (D-002). Out of scope for §0.2. Recorded in §8.
 
-#### 0.3 · Design the sync model, on paper, into `DECISIONS.md` — **3h**
+#### 0.3 · Design the sync model, on paper — **3h** — ✅ **DONE 2026-08-30**
 
 The outbox schema, the UUID scheme, the LWW tiebreak rule, the flush triggers, and the failure
-states — written down and argued before a line of it exists. This is the item most likely to be
-skipped and the one whose absence costs the most: a sync bug found in November is a bug in code
-written in a hotel room in September.
+states — argued before a line of it exists. The item most likely to be skipped and the one whose
+absence costs the most: a sync bug found in November is a bug in code written in a hotel room in
+September.
 
-**Done when:** D-127 through D-129 are written, and each names the failure it prevents.
+Full spec is **`docs/SYNC_DESIGN.md`**. The decision entries stayed decisions; the schemas,
+algorithms and failure tables went into their own document rather than bloating a 133KB log.
+
+**Reading the real schema changed the design in three ways the plan could not see:**
+
+1. **Only four tables need a client id, not seven.** `bodyweight_entries`,
+   `rehab_completions` and `ai_summaries` already have natural keys that make an offline create
+   idempotent for free. The other four need one precisely because two identical rows are
+   *legitimate* there — logging the same set twice in a session is real, so content cannot
+   identify a row.
+2. **`rehab_completions` cannot sync as built.** It toggles by insert-or-**hard delete**, and a
+   hard delete leaves nothing to compare — un-tick on the phone versus tick on the laptop is
+   undecidable. It needs a tombstone, as do three other tables.
+3. **Almost nothing has an `updated_at`.** Every table has `created_at`; only two have
+   `deleted_at`. Last-write-wins needs a modification time, so this is a **migration**, not a
+   code change — and one that is far cheaper now than mid-Phase-1.
+
+The clock is a **hybrid logical clock**, not `Date.now()`. The failure it prevents is concrete:
+fly to Taiwan, the phone's wall clock jumps, and it wins every conflict for the rest of the day.
+
+`SYNC_DESIGN.md` §10 is the direct input to §1.4 — six test cases were named in the plan, and
+reading the schema added three more.
+
+**Done when:** ~~D-127 through D-129 are written, and each names the failure it prevents.~~ ✅
+All three carry a **Designed 2026-08-30** block naming what breaks without them.
+
+**Open, and it halves §1.2's migration — see §8:** does the phone create `workouts` at all, or
+only `log_entries` that a workout is derived from?
 
 #### 0.4 · Mood and energy on End of day — **2h**
 
@@ -538,6 +566,7 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 | 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
 | 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
 | 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
+| 5 | **Does the phone create `workouts`, or only `log_entries`?** `log_entries` already has a Training category carrying weight, reps and SPM, and Training is a fast log path. If the phone only ever writes log entries, `workouts` and `workout_sets` drop out of the outbox and §2 of the sync design halves. **Leaning: log-only** — smaller, and it matches how the fast path already works. `SYNC_DESIGN.md` §11.1. | §1.2 size |
 
 **Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
 and states the project uses Geist — false since D-002 put three self-hosted faces in

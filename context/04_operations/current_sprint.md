@@ -181,7 +181,7 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
 **Time budget:** ~2h/day 08-30 → 09-07 (18h, partial connection), **6h/day 09-08 → 09-18
 (66h)**, then ~7h/week taken flexibly (~104h). ~188h total.
 
-- [ ] **Phase 0 · In transit** (18h) — **3h done, 15h left.** Nothing left here needs a deploy
+- [ ] **Phase 0 · In transit** (18h) — **6h done, 12h left.** Nothing left here needs a deploy
       or a connection.
   - [x] **0.1 · Dependencies** (1h) — done 2026-08-30. 103 packages, exit 0.
         `@sentry/nextjs` resolved cleanly against Next 16.3.1. Verified offline-capable:
@@ -192,8 +192,14 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
         fresh clone). Scope in `.prettierignore`, reasoned in D-142. Hook is
         `.githooks/pre-commit` + `core.hooksPath`, not husky; all four paths tested.
         **Closes the `DECISION NEEDED` open in `web/context.md` since V1.**
-  - [ ] **0.3 · Sync model on paper** (3h) — next. Outbox schema, UUID scheme, LWW tiebreak,
-        flush triggers, failure states, written into D-127–D-129 before any code.
+  - [x] **0.3 · Sync model on paper** (3h) — done 2026-08-30. Spec in `docs/SYNC_DESIGN.md`;
+        D-127–D-129 each gained a *Designed* block naming the failure it prevents. Reading the
+        real schema found three problems the plan could not see: only 4 of 7 tables need a
+        client id (the rest have natural keys), `rehab_completions` **cannot sync as built**
+        because it hard-deletes on toggle, and almost nothing has an `updated_at` — so Phase 1
+        opens with a migration. Clock is an HLC, not `Date.now()`. Test list §10 feeds §1.4.
+        **Open for Victor:** does the phone create `workouts`, or only `log_entries`? Leaning
+        log-only; it halves the migration.
   - [ ] **0.4 · Mood/energy fields** (2h)
   - [ ] **0.5 · Bottom tab bar** (7h)
   - [ ] **0.6 · Icon, splash, manifest** (3h)
