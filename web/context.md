@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-08-30
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -186,20 +186,48 @@ route imports `lib/db` or `lib/athletics`, the public build has no `DATABASE_URL
 the built client chunks are scanned after each change with a positive control.
 
 
-## Style guide — DECISION NEEDED
+## Style guide — settled 2026-08-30
 
-`ai_directives.md` §6 says Victor is unopinionated on style guides and that tradeoffs should
-be outlined rather than chosen for him. Current state: ESLint via `eslint-config-next`, which
-catches correctness but says almost nothing about formatting.
+**Prettier**, chosen by Victor over Biome and over no formatter. Installed and applied in V3
+§0.2. This section was open from V1 until then; the tradeoff table that used to live here is
+preserved in `DECISIONS.md` D-136.
 
-| Option | Gets you | Costs you |
-|---|---|---|
-| **Prettier + eslint-config-next** | Zero formatting arguments, one command, universal in the React world | One more dev dependency and a pre-commit hook to keep honest |
-| **Biome** | Formatter and linter in one fast Rust binary; replaces Prettier and most of ESLint | Smaller ecosystem; some `eslint-config-next` rules have no equivalent |
-| **ESLint only, no formatter** | Nothing new to install | Diffs fill with whitespace churn; formatting gets argued in review |
+```bash
+npm run format         # write
+npm run format:check   # verify — what the hook and CI run
+```
 
-Recommendation: **Prettier**, because it is the boring choice and this project has 31 days.
-Not installed yet — Victor decides.
+Config is `prettier.config.mjs`. Everything is a Prettier default except two values, and both
+were measured rather than preferred — the reasoning is in the file's own comments and in D-136:
+
+- **`printWidth: 100`** — the codebase was written to ~100 columns (p90 87, p99 104). At
+  Prettier's default 80 the one-shot pass reflows 2,764 lines; at 100 it reflows 266.
+- **`endOfLine: "auto"`** — `.gitattributes` sets `eol=lf`, so files are committed as LF and
+  checked out CRLF on Windows. Forcing `"lf"` passes here and then fails `--check` on every
+  fresh clone, which would block commits through the hook below.
+
+**What Prettier does not touch** (`.prettierignore`, reasoning in D-142): `src/components/ui/*.tsx`
+because it is vendored from the shadcn registry, `drizzle/` because `drizzle-kit` regenerates
+it, and `*.md` because it is hand-wrapped prose — including `AGENTS.md`, whose
+`nextjs-agent-rules` block `next dev` rewrites on every run. `form.tsx` is the one file in
+`ui/` that *is* formatted: the registry never emitted it, so it is ours.
+
+### The pre-commit hook is not installed automatically
+
+`.githooks/pre-commit` is committed, but git does not use a hooks directory unless told to.
+**Once per clone:**
+
+```bash
+git config core.hooksPath .githooks     # enable
+git config --unset core.hooksPath       # disable
+git commit --no-verify                  # bypass once
+```
+
+It checks staged `web/` files only, and it is formatting-only on purpose — `npm test`,
+`npm run typecheck` and `npm run shots` are the real gates and are run before work is called
+done. Putting a 15-second suite in a pre-commit hook trains you to reach for `--no-verify`,
+which would disable the formatting check too. No husky: `core.hooksPath` does husky's whole
+job, and husky is a dependency whose purpose is to copy a file.
 
 ## Known accepted issues
 

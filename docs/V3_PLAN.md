@@ -1,149 +1,573 @@
-# 2ndMind — V3
+# 2ndMind — V3: the phone
 
-**Written 2026-08-25 · Starts when V2 ships · No deadline**
+**Rewritten 2026-08-30 · Replaces the 2026-08-25 draft · Ends ~2027-01-03**
 
-V2 has one: 2026-09-18, the code deadline before term. **V3 deliberately has none.** From
-2026-09-20 the budget is roughly **4h/week**, not 4h/day — a tenth of the rate this project has
-run at — and a dated plan against that budget would be fiction. What follows is ordered, sized,
-and picked up when there is time.
+V3 was a list of three additive features written against a budget of 4h/week and no deadline.
+That document is superseded. Victor's allocation changed to **~2h/day through travel, 6h/day
+until term, then ~7h/week**, and the goal changed with it: **2ndMind becomes an app on a
+Samsung phone that works with no internet connection and re-syncs when it reconnects.**
 
-`docs/V2_PLAN.md` is the live document until V2 ships. Nothing here starts before it does.
+The three old items are not deleted. Two of them survive, one is dropped, and §6 records why.
+
+Scope was settled by 44 questions on 2026-08-30. Every answer is in §2. Where an answer
+contradicts something already built or already written down, §2 says so and names the entry.
 
 ---
 
-## 0. The shape of the time
+## 0. TLDR
 
-| Window | Rate | What that means |
+| | |
+|---|---|
+| **Goal** | An installable, offline-first PWA. Log without signal, read without signal, show the portfolio without signal, sync on reconnect. |
+| **Delivery** | PWA installed to the home screen. Not Capacitor, not React Native. |
+| **Budget** | ~187h across 18h travel + 66h pre-term + ~104h term-time |
+| **Milestone A** | **2026-09-18** — installed, logs offline, syncs. The hard date. |
+| **Milestone D** | **~2027-01-03** — everything. Not a hard date. |
+| **Done when** | The app is on the home screen and two real weeks pass without reaching for the laptop to log. |
+| **Biggest risk** | Phase 1 is 65h of work in a 66h window. Named in §7. |
+
+---
+
+## 1. The shape of the time
+
+| Window | Dates | Rate | Hours |
+|---|---|---|---:|
+| In transit | 2026-08-30 → 09-07 | ~2h/day, partial connection | 18 |
+| Pre-term burst | 2026-09-08 → 09-18 | 6h/day | 66 |
+| Move-in | 2026-09-19 | — | 0 |
+| Fall term | 2026-09-20 → ~2027-01-03 | ~7h/week, taken flexibly | ~104 |
+| | | **Total** | **~188** |
+
+Three consequences, stated before the list because they shape every item in it.
+
+**1. The pre-term burst is the whole app.** 66h is the only block in this plan large enough to
+build a sync engine. A sync engine assembled in 60-minute term-time fragments will be wrong in
+ways that lose data. Everything that must be *correct* lives in Phase 1; everything that must
+merely be *nice* lives after it.
+
+**2. Term-time hours are taken in blocks, not daily.** Victor chose ~7h/week flexibly over
+1h/day. That is the right call for this work and it is why Phases 2–5 are sized in whole
+features rather than in evenings.
+
+**3. The end date grew during sizing, and that is the point.** The first estimate was 173h
+ending mid-December. Sizing it item by item produced 187h ending ~2027-01-03. A 14h drift
+appeared in one afternoon of closer reading, on a plan nobody has started yet. Every estimate
+in this project that was later checked was wrong in a way that mattered — 1.33 pages, 791px, a
+retired model. Treat the end date as a direction, and Milestone A as the only real date.
+
+### Travel constraint
+
+Phase 0 runs on partial connection. **Every new dependency installs in one pass, on the first
+available connection** (§3.0.1). This is the same reason fonts are self-hosted: a build that
+needs the network is a build that fails on a plane.
+
+---
+
+## 2. What was decided, and what it contradicts
+
+44 questions, 2026-08-30. Grouped by what they settle.
+
+### 2.1 · Delivery and platform
+
+| Question | Answer | Consequence |
 |---|---|---|
-| 2026-09-20 onward | ~4h/**week** | 46h of work is ~12 weeks of term-time evenings |
+| How does it reach the phone? | **PWA, installed to home screen** | One codebase. No Android toolchain, no APK signing, no Play Store, no Digital Asset Links. $0. |
+| Which device? | **Galaxy S-series** | `shots.mjs`'s 360px floor is already correct. No new widths, no fold event to survive. |
+| Home-screen identity | **"2ndMind" + custom icon** | Its own mark, distinct from the portfolio. Maskable variants so Samsung's launcher does not crop it. |
+| Native widget? | **No** | A PWA cannot publish an Android home-screen widget. Icon long-press shortcuts are the honest substitute. |
+| Share target? | **Not selected** | Deferred. Would have pre-filled an Applications entry from a shared job posting. Recorded in §8. |
 
-Two consequences worth stating before the list:
+**What this rules out, permanently, within V3:** background sync that survives Samsung's
+battery optimizer with a guarantee, a Play Store listing, native gesture physics, and a real
+widget. All four were on the table and all four were traded for one codebase.
 
-1. **Sequence matters more than estimates.** At 4h/week an item's cost is measured in weeks, so
-   finishing one thing beats starting three.
-2. **Every item must survive a two-week gap.** Term, midterms and racing will interrupt this.
-   Anything that cannot be put down mid-way and picked up from `DECISIONS.md` is the wrong
-   shape for V3.
+### 2.2 · Offline
+
+| Question | Answer |
+|---|---|
+| What works with zero signal? | **Log + read cached.** Writes queue; reads serve the last sync. |
+| Which private screens cache? | **Today, Athletics, Academics + Calendar.** Not Work. |
+| Browse the raw vault on the phone? | **No** — only what the existing pages already render. |
+| Public site offline? | **Everything public**, including all three resume variants and `/now`. |
+| How much history? | **Everything, forever.** Under 50MB for years with one user. |
+| Sensitive data at rest? | **Cache all of it, biometric-gated.** |
+| Search? | **Full-text, offline.** No embeddings. |
+| AI panels offline? | **Show the last stored summary**, with its date attached. |
+
+`Work` was not selected for caching, and that is coherent: `Tailor` needs a model call and
+cannot work offline at all, so caching half the page would advertise a capability that is not
+there.
+
+### 2.3 · Sync
+
+| Question | Answer |
+|---|---|
+| Conflict model | **Last-write-wins** on edits and deletes |
+| Creates | **Client-generated UUID** — a retried create is a no-op, not a duplicate |
+| Failed sync | **Hold + notify.** Nothing is discarded. One screen to inspect, fix, retry. |
+| Stale outbox | **Escalating warning** once entries are more than a day old |
+| Code updates | **Download in background, toast to reload** |
+| Test bar | **The database layer's bar** — real fake-IndexedDB, real outbox code |
+
+**On the create/edit split.** Victor first chose last-write-wins for everything. That conflicts
+with holding and retrying a failed write: without an idempotency key, a retry after a partial
+failure creates a duplicate row. D-026 settled the identical problem for Hevy imports with a
+derived `external_id`. The objection was raised, and the resolution — client UUIDs on creates,
+LWW on edits — was chosen deliberately. See **D-127**.
+
+### 2.4 · Auth
+
+| Question | Answer |
+|---|---|
+| Unlock when offline | **Device biometric** |
+| Mechanism | A WebAuthn assertion **verified locally** in the service worker against the cached credential public key |
+
+This is cryptographically sound with no network: the public key is already on the device after
+enrolment, and verifying an assertion against it is a local operation. It is not the same
+security property as a server-side ceremony — a compromised device can be replayed against —
+and that trade is accepted. See **D-128**.
+
+### 2.5 · Logging
+
+| Question | Answer |
+|---|---|
+| Mood / energy scale | **Yes, 1–5 on End of day** |
+| Fast paths (one-handed, <15s) | **Training, Applications, Reading + People** |
+| Voice | **Speak a whole entry → parsed → confirm before saving** |
+| Photos | **V4.** Explicitly deferred, not forgotten. |
+| Fastest entry point | **Icon long-press shortcuts** |
+
+**The mood scale reverses a comment in the code.** `categories.ts` says: *"Deliberately no mood
+or energy scale: Victor put that in V3, and a 1-5 filled in from habit rather than reflection is
+worse than nothing."* He wants it anyway, for the plottable series against training load. The
+objection stands and is now recorded as a known cost rather than a blocker. See **D-134**.
+
+**Voice is online-only.** "Speak a whole entry" needs a model call, so it does not work in the
+basement gym that motivates the fast paths. That is why the typed fast paths (§3.1.6) ship in
+Phase 1 and voice (§3.4.3) ships in Phase 4 — the offline case is served first, by the thing
+that actually works offline.
+
+### 2.6 · Visual and interaction
+
+| Question | Answer |
+|---|---|
+| Redesign scope | **Adapt, don't redesign.** Palette, fonts and motion utilities survive. |
+| Navigation | **Bottom tab bar.** Desktop nav **unchanged**. |
+| Density | **Same density, better order** — D-083's fix applied to every screen |
+| Motion | **Cut ambient drift on mobile.** Static gradient; purposeful transitions instead. |
+| Gestures | **Swipe to complete/delete, pull to refresh, haptics on save** |
+| Light mode | **Yes**, with a both-theme audit |
+
+Cutting ambient drift narrows **D-007** ("the background is not a flat fill") rather than
+reversing it: the three radial pools and the grain still render, they simply stop animating
+below the mobile breakpoint. Same screenshot, no ongoing GPU compositing. See **D-133**.
+
+### 2.7 · Privacy
+
+| Question | Answer |
+|---|---|
+| Handing the phone over to show the portfolio | **Accept the risk** — no "show" mode, no second install |
+
+This is the one answer worth restating plainly, because it is a decision to accept an exposure
+rather than a decision to build something. The whole public site is precached inside the
+private app. Handing someone the phone to look at your projects puts your GPA, bodyweight, and
+application pipeline one back-swipe away. A locked portfolio-only mode was offered at ~4h and
+declined; two separate installs were offered and declined. **D-130** records it so that
+reversing it later is a lookup.
+
+### 2.8 · Process
+
+| Question | Answer |
+|---|---|
+| Formatter | **Prettier** — closes the open `DECISION NEEDED` in `web/context.md` |
+| Error aggregation | **Scheduled in V3**, reversing the old plan's deferral |
+| Device testing | **Both** — automated offline tests *and* a manual USB checklist |
+| Overload | **Keep full scope, extend the timeline.** Nothing cut. |
+| Done when | **Installed + two weeks of use without reaching for the laptop** |
 
 ---
 
-## 1. Scheduled — Victor picked these on 2026-08-25
+## 3. The build
 
-Ordered by value per hour, not by size.
-
-### 1.1 · Upload your own resumes — **5h**
-
-**Blocked on a decision, not on code.** `docs/UPLOADS_NEEDED.md` §2.4 has it: does an uploaded PDF
-*replace* the generated resume, run *alongside* it, or act as a *fallback* where no upload
-exists?
-
-The reason it needs deciding rather than defaulting: the generated resume is built from the
-same vault entries as the project and experience pages, so it **cannot** drift from them. A PDF
-can, silently — it becomes a second source of truth for the same bullet points, and the first
-time that matters is an interview where the page and the PDF disagree. Fallback is the safe
-default; replace is the honest one if Victor stops maintaining the generator.
-
-Storage is the easy half: a PDF in `context/assets/resumes/`, served the way §7.3 of V2 serves
-images. Nothing here needs a database.
-
-**Done when:** an uploaded PDF is downloadable from the public site, the chosen relationship to
-the generated resume is implemented and tested, and `/resume` still resolves for someone who
-guesses the URL.
-
-### 1.2 · Filament and printer tracking — **9h**
-
-**Blocked on Victor's inventory** — the template is in `docs/UPLOADS_NEEDED.md` §2.1 and §2.2.
-
-Three things, of which only the first is really new:
-
-- **Filament inventory.** Material, brand, colour name, **colour hex**, amount remaining.
-  Postgres, alongside the other mutable rows — an amount that decreases every print is exactly
-  what markdown handles badly, which is the standing rule in `web/context.md`.
-- **Colour swatches.** The hex is what makes this page worth building. A swatch reads
-  instantly; a colour name does not, and "PLA — Galaxy Black" tells you nothing about whether
-  it matches the spool you used last week.
-- **Printer status.** Small, and the vocabulary is Victor's rather than invented — he was asked
-  for the states he actually uses rather than being given a taxonomy to translate in his head.
-
-The open design question, and it decides the layout: **is this "which printer is free right
-now" or "what do I need to reorder"?** They are different pages. The question is in
-`docs/UPLOADS_NEEDED.md` §2.2 and should be answered before any of this is built.
-
-**Done when:** the inventory is editable from `/private`, swatches render, and the page answers
-whichever of those two questions Victor named.
-
-### 1.3 · Edit the job sheet from the Jobs tab — **12h**
-
-**Do not start this until §7.6 of V2 has been used for a month.**
-
-Reading the sheet ships in V2 for 4h, using the published-CSV pattern the calendar feeds
-already use. Editing costs roughly ten times that: a Google Cloud project, a service account or
-OAuth flow, a refresh token to store and rotate, write scopes, and an error path for each.
-
-The question to answer first is not technical. It is whether, having watched the pipeline on
-`/private` for a month, the editing actually wanted turns out to be **"mark this one
-rejected"** — one field on one row, which is a far smaller feature than "edit the spreadsheet",
-and possibly a 3h one. A background script already maintains the sheet, and the Sheets app is
-already on Victor's phone.
-
-**Done when:** whichever of those two things is genuinely wanted works, and the credential
-handling is documented the way the calendar feeds are.
+Five phases. Ordered, and only Milestone A is date-locked.
 
 ---
 
-## 2. Recorded, not scheduled
+### Phase 0 · In transit — 2026-08-30 → 09-07 — **18h**
 
-Real, and none of them picked for V3. They are here so that "we decided not to" stays
-distinguishable from "we forgot".
+Design and offline-safe work at ~2h/day on partial connection. Nothing here needs a deploy.
 
-| Item | Est. | Why it is not scheduled |
-|---|---:|---|
-| **Semantic search** | 12h | Cut from V2 twice — on cost in rev 1, on time in rev 4. Vectors in Postgres, embed only files whose `updated:` changed, hard token ceiling per run. Health data may reach the model (D-071) but any search surface is private-only, with a test asserting no public route imports it. |
-| **Per-session revocation** | ~4h | A V1 finding. Sessions are HMAC tokens with an expiry; rotating `SESSION_SECRET` is the only revocation and it signs out every device. **Victor did not pick this for V3** — recorded, still open. |
-| **Error aggregation** | ~4h | A V1 finding. `app/error.tsx` is a boundary and logs to Vercel; what is missing is *aggregation*, and a failure nobody sees is still invisible. A free Sentry tier would close it, but payloads carry vault content and need scrubbing rules first. **Not picked** — see the note below. |
-| **Vault-write markdown diff** | 8h | Deferred from V2 rev 2 because nothing wrote markdown. V2 §7.9 changes that, so this becomes buildable — behind a real writer rather than ahead of one. Needed only when a *model* proposes markdown; a human writing needs no gate. |
-| **In-browser photo upload** | 4h | V2 §7.9 ships photo *prompts*. Uploading from a phone means committing binaries through the Contents API, and `writeVaultFile` is text-only. Worth it only if the prompts prove annoying in practice. |
-| **A separate "current work" list** | 3h | V2 §7.9 uses `status: active` vault projects. A separate list would allow showing motion on work that will never be a portfolio project — coursework, this vault, one-off experiments. Additive; nothing has to move to add it later. |
-| **Octokit retry/throttle** | 2h | Pointless for one user until something writes to the vault regularly. V2 §7.9 is the first such writer, so revisit once it has run for a while. |
-| **Vault write concurrency queue** | — | The `409` is optimistic concurrency working correctly. Over-engineering for one user. |
+> **Progress · 2026-08-30** — §0.1 and §0.2 complete (3h of 18h). The network-dependent item is
+> closed and verified offline-capable, so the rest of Phase 0 no longer needs a connection.
+> Next: **§0.3, the sync model on paper** — the highest-leverage item in the phase and the one
+> whose absence would be most expensive in November.
 
-**On error aggregation.** It was not picked, and that is Victor's call, but it is the one item
-on this list whose absence hides other items' failures. `gemini-2.5-flash` was retired and every
-AI call 404'd silently for an unknown length of time (D-085); it was found by reading a dev
-server log by chance while screenshotting an unrelated page. That is precisely the class of
-failure aggregation exists to catch, and it will happen again.
+#### 0.1 · Install every dependency in one pass — **1h** — ✅ **DONE 2026-08-30**
+
+`prettier`, `prettier-plugin-tailwindcss`, `fake-indexeddb`, `idb`, `web-push`,
+`@sentry/nextjs`. Everything else in Phase 0 assumes these are on disk.
+
+Installed in three passes, exit 0, **103 packages added**. `@sentry/nextjs@10.72.0` resolved
+cleanly against Next 16.3.1 — no `ERESOLVE`, no `--legacy-peer-deps`, which was the most likely
+failure. Vulnerability count held at 4: the same dev-only `drizzle-kit`/esbuild advisories
+already recorded under *Known accepted issues*, none new.
+
+**Done when:** ~~`npm ci` succeeds from a cold cache with the network off.~~ ✅ Verified —
+`npm ci --dry-run --offline` resolves the full tree from cache. A cold reinstall works on a plane.
+
+**Not yet done, and deliberately:** Sentry is installed but not wired into `next.config.ts`. It
+is inert until §2.4, and `npm run build` has not been run against it. No build risk either way,
+but it has not been proven through a production build.
+
+#### 0.2 · Prettier — **2h** — ✅ **DONE 2026-08-30**
+
+Closes the standing `DECISION NEEDED` in `web/context.md`, open since V1. Config, one-shot format
+pass, and a pre-commit hook. Doing it *before* V3's code lands means V3 ships formatted rather
+than being reformatted later in a diff that buries real changes.
+
+**Two config values deviate from Prettier's defaults, both measured rather than preferred**
+(D-136):
+
+| Value | Default | Chosen | Because |
+|---|---|---|---|
+| `printWidth` | 80 | **100** | Codebase p90 is 87, p99 104. At 80 the pass reflows 2,764 lines; at 100, 266. |
+| `endOfLine` | `lf` | **`auto`** | `.gitattributes` is `eol=lf`, so Windows checks out CRLF. `lf` would pass here and fail `--check` on every fresh clone — blocking commits through the hook. |
+
+**Result:** 91 files, **615 insertions / 620 deletions, net −5 lines**. Typecheck clean,
+582/582 tests passing, vendored `ui/` untouched, CRLF preserved.
+
+Scope is in `.prettierignore` and reasoned in **D-142**: vendored shadcn components, `drizzle/`,
+and all markdown are excluded. The markdown exclusion is not squeamishness — `next dev` rewrites
+`AGENTS.md`'s agent-rules block on every run, so formatting it makes the two tools fight forever.
+
+The hook is `.githooks/pre-commit` with `core.hooksPath`, **not husky** — husky is a dependency
+whose job is to copy a file, and git does that natively. All four paths tested: formatted passes,
+unformatted blocks, ignored-file-only passes without a spurious error, vault-only commit
+short-circuits.
+
+**Done when:** ~~`npx prettier --check .` exits 0~~ ✅ verified, ~~and the format-only commit is
+separate from every functional commit~~ — ⏸ **not committed.** The working tree holds the format
+pass plus the V3 planning docs; `main` is the current branch. Committing is Victor's call, and
+the format pass must land as its own commit before any V3 code.
+
+**One thing found and not fixed:** `web/README.md` is still untouched `create-next-app`
+boilerplate and claims the project uses Geist, which is false — the three faces are self-hosted
+(D-002). Out of scope for §0.2. Recorded in §8.
+
+#### 0.3 · Design the sync model, on paper, into `DECISIONS.md` — **3h**
+
+The outbox schema, the UUID scheme, the LWW tiebreak rule, the flush triggers, and the failure
+states — written down and argued before a line of it exists. This is the item most likely to be
+skipped and the one whose absence costs the most: a sync bug found in November is a bug in code
+written in a hotel room in September.
+
+**Done when:** D-127 through D-129 are written, and each names the failure it prevents.
+
+#### 0.4 · Mood and energy on End of day — **2h**
+
+Two `number` fields in `categories.ts`, a migration, and tests. Everything downstream — the
+form, validation, the summary line, the search index — is generated from that one array, which
+is what D-039 promised.
+
+**Done when:** both fields save, appear in the timeline summary, and the existing 582 tests
+still pass.
+
+#### 0.5 · Bottom tab bar — **7h**
+
+Four tabs plus a centre log action, below the mobile breakpoint only. **The desktop nav is not
+touched** (D-132) — two nav components over one shared route definition.
+
+| Tab | Route | Why it earns a tab |
+|---|---|---|
+| Today | `/private` | Opened most; tasks, goals, inbox |
+| Train | `/private/athletics` | The no-signal location |
+| **Log** | centre action | The point of the app |
+| School | `/private/academics` | Merged with Calendar's agenda |
+| More | sheet | Work, Hobbies, Goals, the public site, settings |
+
+**Done when:** every private route is reachable in ≤2 taps on a 360px viewport, the desktop
+layout is byte-identical, and `npm run shots` passes at all four widths.
+
+#### 0.6 · Icon, splash, manifest — **3h**
+
+The 2ndMind mark: magenta on near-black, per `brand_and_voice.md`. Maskable variants at every
+size Samsung's launcher asks for, a matching splash, and `manifest.webmanifest` authored (wired
+up in 1.1).
+
+**Done when:** the icon renders uncropped in a One UI launcher, checked on the real device.
 
 ---
 
-## 3. Ordered summary
+### Phase 1 · Pre-term burst — 2026-09-08 → 09-18 — **65h**
 
-| # | Item | Est. | Blocked on |
+**This is the app.** 6h/day for 11 days. Everything correctness-critical is here because this
+is the last contiguous block before term.
+
+#### 1.1 · PWA shell — **8h**
+
+Manifest wired, service worker registered, install flow, and **update-in-background with a
+reload toast**. The update path matters more than it looks: an offline app caches its own code
+and can run a version that is weeks old. The toast never interrupts a half-written entry.
+
+**Done when:** the app installs from Chrome on the Samsung, launches fullscreen with the splash,
+survives a cold start with the network off, and a deployed change produces a reload toast rather
+than a silent version skew.
+
+#### 1.2 · The offline store — **14h**
+
+IndexedDB schema mirroring the Postgres tables that matter (`log_entries`, `tasks`, `workouts`,
+`workout_sets`, `bodyweight_entries`, `rehab_completions`), plus the outbox. Client-generated
+UUIDs on every create. LWW on edits and deletes, tiebroken on a monotonic client clock, not
+`Date.now()` — a phone whose clock jumps must not silently win.
+
+**Done when:** an entry written with the radio off survives a force-quit and a reboot.
+
+#### 1.3 · The sync engine — **12h**
+
+A batch sync endpoint behind the existing session auth, and flush triggers: reconnect,
+app foreground, and manual pull-to-refresh. Bidirectional — push the outbox, pull what changed.
+
+**Done when:** airplane mode → log three entries → reconnect → all three appear in Neon exactly
+once, verified by row count, not by looking.
+
+#### 1.4 · Sync tests at the database layer's bar — **8h**
+
+The standard set by `@electric-sql/pglite`: real storage, real code, no mocks. Required cases —
+reconnect mid-flush, partial failure, duplicate flush, clock skew, schema version skew, and a
+create retried three times producing one row.
+
+**Done when:** each of those six is a named test that fails without its fix.
+
+#### 1.5 · Local biometric unlock — **9h**
+
+A WebAuthn assertion verified in the service worker against the cached credential public key.
+No network. Enrolment still happens online against the server, unchanged.
+
+**Done when:** the app opens offline after a biometric, and refuses to open after a cancelled
+one — both checked on the real device, since neither can be tested in Playwright.
+
+#### 1.6 · Fast log paths — **8h**
+
+Training, Applications, and Reading + People, each finishable one-handed in under 15 seconds.
+Sticky last values, recent-exercise chips, correct numeric keypads, clipboard detection for the
+Applications `link` field. Every field stays optional, per the rule already in `categories.ts`.
+
+**Done when:** each of the three is timed at under 15 seconds, one-handed, on the real phone,
+and the timings are written down.
+
+#### 1.7 · Failed sync — hold, surface, retry — **6h**
+
+A stuck entry stays in the outbox with a persistent badge, one screen to inspect and fix it, and
+an escalating warning past 24 hours. Nothing is ever discarded.
+
+**Done when:** a deliberately malformed entry survives ten launches, stays visible, and syncs
+after being corrected.
+
+> ### ⚑ Milestone A — 2026-09-18
+> **2ndMind is on the home screen. It logs with no signal and syncs on reconnect.**
+> The only hard date in this plan.
+
+---
+
+### Phase 2 · Term, first block — from 2026-09-20 — **28h**
+
+Milestone B: nothing needs signal.
+
+- **2.1 · Cached reads — 10h.** Today, Athletics, Academics + Calendar rendered from the local
+  store. Every panel shows the sync time — a cached screen must read as cached.
+- **2.2 · Public precache — 6h.** Every public route, all three resume variants including print
+  layout, and `/now` with a visible "as of" date. This is `npm run freeze` (D-106) turned into a
+  service-worker precache. *Done when: the portfolio and the resume render in airplane mode.*
+- **2.3 · Offline full-text search — 6h.** Over logs and cached content, running locally. No
+  embeddings, no model cost, no monthly bill. Semantic search stays cut for the fourth time.
+- **2.4 · Error aggregation — 4h.** Sentry free tier with scrubbing rules for vault content.
+  Reverses this plan's own deferral; see D-137.
+- **2.5 · Device checklist — 2h.** USB remote debugging documented, plus a per-release manual
+  list: install, airplane-mode log, reconnect, biometric, icon, thumb reach.
+
+> ### ⚑ Milestone B — ~2026-10-18
+> **Everything works with no signal, including showing the portfolio to a stranger.**
+
+---
+
+### Phase 3 · Term, second block — **31h**
+
+Milestone C: it stops feeling like a website.
+
+- **3.1 · Mobile layout and ordering pass — 10h.** D-083's fix applied to every private screen:
+  actionable content first, reference and charts below.
+- **3.2 · `shots.mjs` extension — 3h.** Report scroll depth to first actionable element on every
+  private screen. Measurement over opinion — the rule that caught 791px and 1.33 pages.
+- **3.3 · Gestures — 6h.** Swipe to complete/delete with an undo toast (`sonner` and soft-delete
+  already exist), pull to refresh wired to the outbox flush, `navigator.vibrate` on save and a
+  distinct pattern on sync failure.
+- **3.4 · Motion — 3h.** Static gradient below the mobile breakpoint; sheet and save transitions
+  added. Narrows D-007, does not reverse it.
+- **3.5 · Icon long-press shortcuts — 2h.** "Log training", "Log application", "End of day",
+  each straight into its form.
+- **3.6 · AI offline — 2h.** Stored summaries (D-124) render with their date when offline.
+- **3.7 · Playwright offline suite — 5h.** Drives the real service worker offline and back.
+  Covers what 1.4 cannot: the browser's actual caching behaviour.
+
+> ### ⚑ Milestone C — ~2026-11-15
+> **It behaves like an Android app, and the layout is gated by measurement.**
+
+---
+
+### Phase 4 · Term, third block — **29h**
+
+- **4.1 · Push notifications — 8h.** VAPID keys, subscription, and three triggers: stuck outbox,
+  end-of-day reminder, calendar/assignment alerts. Note the third duplicates notifications
+  Google Calendar and Canvas already send; if it becomes noise, it is one flag to disable.
+- **4.2 · Light mode — 8h.** `:root` redefined, `.dark` already mirrors it, `next-themes` already
+  installed. The work is the audit: every screen, both themes, and `npm run shots` in both.
+- **4.3 · Voice, whole-entry — 8h.** "Bench press 185 for 5, RPE 8" → a filled Training form.
+  **Always confirmed before saving** — an unreviewed transcription never writes.
+  Shows an explicit offline state, because it cannot work offline.
+- **4.4 · Upload your own resumes — 5h.** **Fallback** semantics: the generated resume shows
+  where no upload exists. PDFs in `context/assets/resumes/`, served like images (V2 §7.3), and
+  precached by 2.2. `/resume/[variant]` still resolves for a guessed URL.
+
+---
+
+### Phase 5 · Carried from the old plan — **16h**
+
+- **5.1 · Filament and printers — 9h.** **Reorder-first layout**: spools sorted by how little is
+  left, colour swatches prominent, low stock at the top. Printers are a secondary panel using
+  Victor's own status vocabulary. Postgres, alongside the other mutable rows. *Blocked on the
+  inventory in `docs/UPLOADS_NEEDED.md` §2.1–2.2.*
+- **5.2 · Three-year course planner, desktop-only — 7h.** Whether the remaining requirements fit
+  the remaining terms on a 3-year track to June 2028, built on the parsed `degree_audit.md`.
+  Deliberately no mobile work: this is a sit-down activity, and its first real use is Winter
+  enrollment.
+
+> ### ⚑ Milestone D — ~2027-01-03
+> **Full scope. Not a hard date.**
+
+---
+
+## 4. Ordered summary
+
+| Phase | Block | Hours | Ends |
 |---|---|---:|---|
-| 1.1 | Upload your own resumes | 5h | A decision — `docs/UPLOADS_NEEDED.md` §2.4 |
-| 1.2 | Filament and printer tracking | 9h | Victor's inventory — `docs/UPLOADS_NEEDED.md` §2.1–2.2 |
-| 1.3 | Edit the job sheet | 12h | A month of using V2 §7.6 first |
-| | **Scheduled total** | **26h** | ~7 weeks at 4h/week |
-| | Recorded, unscheduled | ~37h | |
-
-**Order.** §1.1 first: it is the smallest, it is career-facing, and it is blocked only on a
-decision Victor can make in a minute. §1.2 second, because it is blocked on data he will have
-written on the plane. §1.3 last, and deliberately gated on evidence rather than on a date.
+| 0 | In transit — Prettier, sync design, nav, icon | 18 | 2026-09-07 |
+| 1 | **The app** — PWA, store, sync, unlock, fast logs | 65 | **2026-09-18 ⚑A** |
+| 2 | Offline everything — cached reads, portfolio, search, errors | 28 | ~2026-10-18 ⚑B |
+| 3 | Feel — layout, gestures, motion, shortcuts, E2E | 31 | ~2026-11-15 ⚑C |
+| 4 | Push, light mode, voice, resumes | 29 | ~2026-12-13 |
+| 5 | Filament, course planner | 16 | ~2027-01-03 ⚑D |
+| | **Total** | **187** | |
 
 ---
 
-## 4. Rules carried forward from V2
+## 5. What the old V3 plan said, and what happened to it
 
-Unchanged, and restated because they are what an agent gets wrong.
+| Old item | Est. | Outcome |
+|---|---:|---|
+| §1.1 Upload your own resumes | 5h | **Kept** → 4.4. The blocking decision is answered: **fallback** (D-138). |
+| §1.2 Filament and printer tracking | 9h | **Kept** → 5.1. The layout question is answered: **reorder-first** (D-139). Still blocked on inventory data. |
+| §1.3 Edit the job sheet | 12h | **Dropped.** Not selected. The old plan's own gate — "use the read-only version for a month first" — expires ~2026-09-25, and its own note says the answer is probably a 3h "mark this rejected" button rather than a 12h Sheets integration. Revisit then, in V4. |
+| Semantic search | 12h | **Cut a fourth time.** It cannot work offline — embedding a query needs an API call — so it is the one feature that would break the core premise. Offline full-text (2.3) replaces it. |
+| Error aggregation | 4h | **Promoted into V3** → 2.4, reversing the old plan's deferral. See D-137. |
+| Per-session revocation | 4h | Still recorded, still not scheduled. |
+| In-browser photo upload | 4h | **Deferred to V4** at Victor's explicit request. |
+| Vault-write markdown diff | 8h | Still unscheduled. V3 adds no model-driven markdown writer, so the trigger has not fired. |
+| Octokit retry/throttle | 2h | Still unscheduled. |
+| A separate "current work" list | 3h | Still unscheduled. |
+| Vault write concurrency queue | — | Still over-engineering for one user. |
+
+**The old plan's framing, quoted, because it aged badly:** *"V3 deliberately has no deadline…
+a dated plan against that budget would be fiction."* The budget changed by roughly 4×, so
+Milestone A is now a real date. The rest of the plan keeps the old framing and stays ordered
+rather than scheduled.
+
+---
+
+## 6. What is deliberately not in V3
+
+Recorded so "we decided not to" stays distinguishable from "we forgot".
+
+| Item | Why not |
+|---|---|
+| Capacitor / native APK | Traded for one codebase. Revisit only if PWA background sync proves inadequate in practice. |
+| Android home-screen widget | Impossible in a PWA. Needs the native path. |
+| Share target (job posting → Applications entry) | Offered, not selected. ~3h, and it directly serves the 1+4 rule. Best candidate for the first V4 hour. |
+| A locked "show my portfolio" mode | Offered at ~4h, declined. See D-130 and §7. |
+| Photo capture and upload | Explicitly deferred to V4. |
+| Offline markdown editing | Would need a merge story for prose. Read-only sidesteps it entirely. |
+| Encrypted local cache | Declined in favour of the biometric gate. |
+| Semantic search | Fourth cut. Incompatible with offline. |
+| Editing the job sheet | Dropped from V3; revisit after a month of the read-only view. |
+
+---
+
+## 7. Risks, stated plainly
+
+**1. Phase 1 is 65h of work in a 66h window.** One hour of slack across eleven days, on the most
+technically demanding block in the project's history, against a hard date. V2 was planned with
+34% slack and still needed four revisions. **This will slip.** The mitigation is ordering, not
+optimism: 1.1 → 1.2 → 1.3 → 1.4 builds a working sync engine by roughly 09-14. If it slips, 1.6
+(fast log paths) and 1.7 (retry UI) are what move to Phase 2 — the app is still installable and
+still syncs, it is just slower to log into.
+
+**2. Full scope was kept over the objection.** 187h against ~188h available is 100% utilisation
+with zero slack. This was raised, and Victor's answer was to extend the timeline rather than cut.
+That is a legitimate call and it is recorded here so the consequence — a date that moves rather
+than a scope that shrinks — is not a surprise in November.
+
+**3. The private app is one back-swipe from a stranger's hands.** §2.7. Accepted deliberately.
+
+**4. A service worker fails invisibly.** This is why 2.4 is no longer optional. A failing
+service worker on a Samsung produces no log anyone will ever read. D-085 — a retired model
+404ing silently for an unknown length of time, found by chance — is the precedent, and a phone
+is strictly worse than a server for this.
+
+**5. Term-time estimates assume ~7h/week actually happens.** Against a 3-year fast track, 8–10
+weekly study hours front-loaded to Monday and Tuesday, and dragon boat resuming at move-in. If
+it turns out to be 4h/week, Milestone D lands in February and Phases 4–5 are the ones to
+renegotiate — not Phases 2–3, which is where the offline promise is actually kept.
+
+---
+
+## 8. Blocked on Victor
+
+| # | What | Blocks |
+|---|---|---|
+| 0 | **Commit the format pass.** 91 reformatted files are sitting uncommitted alongside the V3 planning docs, on `main`. It must land as its own commit before any V3 code, or the noise it was meant to prevent ends up mixed into the first feature diff. Needs a call on branch-vs-`main`. | §0.3 onward |
+| 1 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary you actually use. | 5.1 |
+| 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
+| 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
+| 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
+
+**Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
+and states the project uses Geist — false since D-002 put three self-hosted faces in
+`src/app/fonts/`. It is the first file a stranger opens in the repo. ~20 minutes, nobody's
+priority, recorded so it stays visible.
+
+**Enable the hook once per clone** — git ignores a hooks directory until told to use it:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+---
+
+## 9. Rules carried forward
+
+Unchanged from V2 and the old V3 plan, restated because they are what an agent gets wrong.
 
 - **Never invent a fact about Victor's work.** Unknown → a `> **To write:**` prompt, stripped
   from public output. D-069 is what the alternative looked like.
-- **Health data may go to the model** (D-071) but **may never be published**. Absolute, and
-  the two are different acts.
-- **Nothing writes to the vault on a model's say-so.** V2 §7.9 makes `writeVaultFile` live for
-  the first time, which raises the stakes on this rather than relaxing it.
+- **Health data may go to the model** (D-071) but **may never be published**. V3 adds a third
+  category: it may now be *cached on a device*. Storage is not publication, and the biometric
+  gate is the boundary (D-131).
+- **Public routes must never import a private loader.** The offline cache does not relax this —
+  the public precache and the private store are separate service-worker caches with separate
+  keys, and the existing test still enforces the import boundary.
+- **Nothing writes to the vault on a model's say-so.** V3 adds no model-driven writer.
 - **Add a `DECISIONS.md` entry** for every non-obvious choice, with how to reverse it.
 - **`npm run shots`, `npm test`, `npm run typecheck`** before calling anything done. All three
-  gate on exit code. The layout sweep now covers the private pages and the printed resume.
+  gate on exit code. V3 adds a fourth: **the device checklist** (2.5), because biometrics,
+  launcher icons, battery and thumb reach cannot be measured in Playwright.
 - **Measure, do not assume.** Every estimate in this project that was checked turned out to be
-  wrong in a way that mattered — 1.33 pages, 791px, a retired model — and each was found by
-  measuring something nobody had measured before.
+  wrong in a way that mattered. The end date in §0 is a direction. Milestone A is a date.

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-08-30
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -11,8 +11,9 @@ read_when: Always — anything about current priorities or scheduling.
 ## 1. Active Sprint Goals
 *Identify top 3 priorities across all domains for the week here.*
 - **Engineering / Career:** 2ndMind is live at https://victorgusev.com. V1 complete
-  2026-08-21. V2 features 0, 1, 2, 4 and 5 shipped; 3 is largely built; 6 (AI) is the only
-  one not started. Its scope is now decided (V2_PLAN rev 2, D-076 to D-080).
+  2026-08-21, **V2 complete 2026-08-30** — all seven features plus the offline review round.
+  **V3 is now active: the phone.** Scoped 2026-08-30, `docs/V3_PLAN.md`. Phase 0 starts
+  immediately at ~2h/day; the hard date is Milestone A on 2026-09-18.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -49,8 +50,8 @@ V2**: the domain, the uploads list, the four uploaded images, retiring culinary,
 **Semantic search is cut** to pay for them (D-087) — 12h out against 11.5h in, so V2 got
 shorter while gaining three features. It has now been assessed three times: cut on cost,
 reinstated when the budget turned out to be monthly, cut on time. **V3 is its own document,
-`docs/V3_PLAN.md`** — resumes, filament and printers, and editing the job sheet, ~26h scheduled at
-a term-time rate of ~4h/week.
+`docs/V3_PLAN.md`** — rewritten 2026-08-30 and no longer the three-feature list described here.
+See the V3 section below.
 
 Budget after all revisions: **~41.5h of my work against ~60h available**, ~34% slack.
 
@@ -86,9 +87,9 @@ served without authentication — harmless while it was public, not harmless aft
 the splits private in the same round. Fixed, and `web/AGENTS.md` gained a rule about
 projections shipping whether or not they are rendered.
 
-**Still open from this round:** the paper is internal until Dimaag clears it; the three-year
-course planner is scoped at ~6-8h and recommended for V3; daily AI summaries are generated
-but not persisted (~2h, closes feature 6).
+**Still open from this round:** the paper is internal until Dimaag clears it. The three-year
+course planner is now **scheduled — V3 Phase 5.2, desktop-only, 7h**. Daily AI summaries are
+**persisted as of 2026-08-30** (D-124), which closes feature 6.
 
 Priority is Victor's: fix V1's findings and make it faster and cleaner before adding
 features. Four ship before term, two during. Full plan and reasoning in `web/DECISIONS.md`
@@ -121,9 +122,9 @@ D-036 to D-039.
 - [ ] **7 · New scope, rev 3-4** (~14.5h) — domain, images, culinary retired, public `/now`
       page, public→private button, job sheet read-only. `docs/V2_PLAN.md` §7.
 
-**Time budget:** ~4h/day until 2026-09-20, then ~4h/week. Six features is 80-106h against
-~76h before term, which is why only 0-3 are pre-term. Taiwan 08-29 to 09-07 is assumed to
-be zero work.
+**Time budget (V2, historical):** ~4h/day until 2026-09-20, then ~4h/week. Six features is
+80-106h against ~76h before term, which is why only 0-3 are pre-term. **Superseded for V3** —
+see the V3 section below; the term-time rate is now ~7h/week and Taiwan is ~2h/day, not zero.
 
 **Biggest structural change:** everything actionable becomes one task model (D-037). Sprint
 goals, the academic tracker, daily to-dos, and Canvas assignments stop being four separate
@@ -159,6 +160,66 @@ The weekly summary (V2_PLAN §1.5) is the first thing that will notice if the ke
 **Retiring `/sprint-review`:** goal editing now lives on `/private` itself; the separate
 `/private/sprint` route no longer exists. The slash command comes out once Victor confirms
 he has used the editor at least once — still open.
+
+### V3 — scoped 2026-08-30. **The phone.**
+
+Full plan: `docs/V3_PLAN.md`, rewritten from scratch. Decisions **D-126 to D-141**.
+
+The old V3 (resumes, filament, job sheet — 26h at 4h/week, no deadline) is superseded. The
+goal is now: **2ndMind becomes an installed app on the Samsung that works with no internet
+and re-syncs on reconnect.** Scope settled by 44 questions.
+
+| | |
+|---|---|
+| Delivery | **PWA installed to the home screen.** Not Capacitor, not React Native (D-126). |
+| Offline | Log + read cached. Everything cached forever, biometric-gated (D-131). |
+| Sync | Client UUIDs on creates, LWW on edits (D-127). Failures held, never dropped (D-129). |
+| Unlock | WebAuthn assertion verified locally in the service worker (D-128). |
+| Nav | Bottom tab bar on mobile; desktop untouched (D-132). |
+| Also in | Light mode (D-135), Prettier (D-136), error aggregation (D-137). |
+
+**Time budget:** ~2h/day 08-30 → 09-07 (18h, partial connection), **6h/day 09-08 → 09-18
+(66h)**, then ~7h/week taken flexibly (~104h). ~188h total.
+
+- [ ] **Phase 0 · In transit** (18h) — **3h done, 15h left.** Nothing left here needs a deploy
+      or a connection.
+  - [x] **0.1 · Dependencies** (1h) — done 2026-08-30. 103 packages, exit 0.
+        `@sentry/nextjs` resolved cleanly against Next 16.3.1. Verified offline-capable:
+        `npm ci --dry-run --offline` resolves the whole tree from cache.
+  - [x] **0.2 · Prettier** (2h) — done 2026-08-30. 91 files reformatted, net −5 lines;
+        typecheck clean, 582/582 tests. Two measured deviations from defaults
+        (`printWidth: 100`, `endOfLine: "auto"` — the second prevents `--check` failing on a
+        fresh clone). Scope in `.prettierignore`, reasoned in D-142. Hook is
+        `.githooks/pre-commit` + `core.hooksPath`, not husky; all four paths tested.
+        **Closes the `DECISION NEEDED` open in `web/context.md` since V1.**
+  - [ ] **0.3 · Sync model on paper** (3h) — next. Outbox schema, UUID scheme, LWW tiebreak,
+        flush triggers, failure states, written into D-127–D-129 before any code.
+  - [ ] **0.4 · Mood/energy fields** (2h)
+  - [ ] **0.5 · Bottom tab bar** (7h)
+  - [ ] **0.6 · Icon, splash, manifest** (3h)
+- [ ] **Phase 1 · The app** (65h) — PWA shell, IndexedDB + outbox, sync engine, sync tests,
+      biometric unlock, fast log paths, failed-sync retry. **⚑ Milestone A — 2026-09-18.**
+- [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
+      offline full-text search, error aggregation, device checklist. ~10-18.
+- [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright
+      offline suite. ~11-15.
+- [ ] **Phase 4** (29h) — push, light mode, voice-parsed entry, resume upload. ~12-13.
+- [ ] **Phase 5** (16h) — filament (reorder-first), course planner (desktop-only). ~2027-01-03.
+
+**Done when:** the app is on the home screen and two real weeks pass without reaching for the
+laptop to log. Behaviour, not a date.
+
+**Named risk (D-140):** ~187h of scope against ~188h available. Full scope was kept over an
+explicit recommendation to cut ~60h — Victor's call, timeline extends rather than scope
+shrinking. Phase 1 in particular is 65h of work in a 66h window with a hard date. **It will
+slip**; when it does, 1.6 and 1.7 move to Phase 2 and the app still installs and still syncs.
+
+**Deferred to V4:** photo capture (Victor's explicit call), editing the job sheet (D-141),
+the Android share target, a portfolio-only "show" mode (D-130 accepts the exposure instead),
+semantic search (cut a fourth time — it cannot work offline).
+
+**Blocked on Victor:** filament inventory + printer status vocabulary (`UPLOADS_NEEDED.md`
+§2.1-2.2) blocks Phase 5.1; the resume PDFs themselves block Phase 4.4.
 
 ## 2. Operational Rules & Boundaries
 - **The Weekly Purge:** At the start of every sprint, any blocker or to-do that has rolled over twice must be: (1) Hard-scheduled into a calendar block, (2) Delegated to an AI, or (3) Ruthlessly deleted. No endless piling up.

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-08-30
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,394 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-08-30 · V3 scoping — the phone
+
+These are **planning** decisions, not decisions about code that exists. V3 turns 2ndMind into
+an installed, offline-first app on a Samsung phone. Scope was settled by 44 questions before
+anything was built, which is the same order the 2026-08-29 round used and for the same reason:
+the expensive mistakes here are architectural, and they are cheapest to argue on paper.
+
+The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
+built or already written down, it says so and names it.
+
+### D-142 · Prettier formats hand-written code in `web/`, and nothing else
+
+**Decision.** Three categories are in `.prettierignore` and stay unformatted:
+
+| Excluded | Why |
+|---|---|
+| `src/components/ui/*.tsx` | Vendored from the shadcn registry |
+| `drizzle/` | `drizzle-kit` regenerates it from its own serializer |
+| `*.md`, `public/`, lockfile, build output | Prose and generated artefacts |
+
+**Why each one.**
+
+**Vendored components.** These arrive from the registry with 500–1200 character class strings on
+one line — they are every long-line outlier in the repo (`sheet.tsx` peaks at 1,190). Formatting
+them means every future `shadcn add` produces a diff against *our* formatting instead of a clean
+re-vendor. Same principle as not formatting `node_modules`. One deliberate exception:
+`form.tsx` is negated back in, because the registry never emitted it and `context.md` already
+records that it is hand-authored — it is ours, so Prettier owns it.
+
+**`drizzle/`.** `npm run db:generate` rewrites `meta/*.json` from drizzle-kit's serializer. If
+Prettier formats them, the next generate reverts the formatting and `--check` fails on a clean
+tree through nobody's fault.
+
+**Markdown.** Default `proseWrap: "preserve"` leaves paragraphs alone but still rewrites tables
+and lists — 133KB of pure churn in this file alone, the one most often read to answer "why is
+this like this". The concrete case that settles it is `AGENTS.md`: `next dev` rewrites its
+`<!-- BEGIN:nextjs-agent-rules -->` block on every run, so a formatted version means the two
+tools fight forever and every dev session leaves an uncommitted change.
+
+The vault at `../context/` is outside `web/` and so already out of scope, but it must stay that
+way — `scripts/build_indexes.py` parses those files and their formatting is load-bearing.
+
+**One consequence, accepted rather than worked around.** Prettier has no "fill" mode for arrays:
+an array that does not fit on one line gets one element per line. The public-field allowlists in
+`lib/vault/public.ts` therefore went from compact rows to ~20 lines each. That reads worse in
+isolation — and it was left alone anyway, because it means **adding a field to the public
+projection is now exactly one line in a diff.** D-114 is the case for that: a field left in a
+projection shipped erg splits publicly, and the review signal that would have caught it is
+precisely "one new line in the allowlist". A `// prettier-ignore` was considered and rejected;
+re-introducing per-site judgement calls is the thing Prettier exists to remove.
+
+**How to reverse.** Delete lines from `.prettierignore` and run `npm run format`. Nothing depends
+on any file being unformatted.
+
+### D-141 · Editing the job sheet is dropped from V3
+
+**Decision.** V3_PLAN's §1.3 (12h) does not carry forward. Read-only access, shipped in V2 §7.6,
+is all V3 has.
+
+**Why.** The old plan gated it on "use the read-only version for a month first" and then answered
+its own question: what is probably wanted is **"mark this one rejected"** — one field on one row,
+maybe 3h — not "edit the spreadsheet", which costs a Google Cloud project, a service account or
+OAuth flow, a refresh token to store and rotate, write scopes, and an error path for each. The
+gate expires around 2026-09-25. It was not selected for V3, and the Sheets app is already on
+Victor's phone.
+
+**How to reverse.** The old estimate and reasoning survive in V3_PLAN §5. Revisit after a month
+of the read-only view, and size the 3h version first.
+
+### D-140 · V3 keeps full scope and extends the timeline rather than cutting
+
+**Decision.** ~187h of scope against ~188h of budget. Nothing cut. Milestone A (2026-09-18) is a
+hard date; every later milestone moves rather than shrinks.
+
+**Why.** The overload was raised explicitly — 173h against 144h on the first sizing, growing to
+187h on closer sizing — with a recommendation to cut ~60h and keep 25% slack. Victor's answer was
+to extend the timeline and cut nothing. That is his call, and this entry exists so that the
+consequence is not a surprise in November: **the date moves, the scope does not.**
+
+The comparison worth keeping: V2 was planned with 34% slack and still needed four revisions.
+
+**How to reverse.** V3_PLAN §7 names the cut order that was offered — voice (~8h), push (~8h),
+light mode (~8h), the carried items (~16h). Roughly 40h is recoverable without touching the
+offline promise.
+
+### D-139 · The filament page answers "what do I need to reorder"
+
+**Decision.** Inventory-first layout. Spools sorted by how little is left, colour swatches
+prominent, low stock at the top. Printers are a secondary panel using Victor's own status
+vocabulary rather than an invented taxonomy.
+
+**Why.** The old plan named this as the question that decides the layout, because "which printer
+is free right now" and "what do I need to reorder" are different pages and a page that tries to
+be both answers neither at a glance. Reorder-first is also the version that is useful on a
+phone — standing in a shop, or on a supplier's site.
+
+**How to reverse.** Swap the section order and re-sort. The data model is the same either way,
+which is why this is a layout decision and not a schema one.
+
+### D-138 · An uploaded resume PDF is a fallback, not a replacement
+
+**Decision.** The generated resume shows wherever no uploaded PDF exists. Uploads live in
+`context/assets/resumes/` and are served the way images are (V2 §7.3).
+
+**Why.** The generated resume is built from the same vault entries as the project and experience
+pages, so it **cannot** drift from them. A PDF can, silently — it becomes a second source of
+truth for the same bullet points, and the first place that matters is an interview where the
+page and the PDF disagree. Fallback keeps one source of truth wherever Victor has not
+deliberately overridden it, and it means `/resume/swe` still resolves for someone who guesses
+the URL.
+
+It also preserves `npm run shots`'s page-count gate, which has caught two regressions (D-077,
+D-115). "Replace" would have retired it.
+
+**How to reverse.** Flip the resolution order for *alongside*, or drop the generated route
+entirely for *replace*. Both were offered and declined.
+
+### D-137 · Error aggregation is scheduled in V3, reversing its own deferral
+
+**Decision.** Sentry's free tier with scrubbing rules for vault content, in Phase 2.
+
+**Why.** V3_PLAN already argued this against itself: it is the one unscheduled item whose absence
+hides other items' failures. D-085 — `gemini-2.5-flash` retired and every AI call 404ing silently
+for an unknown length of time — was found by reading a dev server log by chance while
+screenshotting an unrelated page.
+
+What changed is that V3 adds a service worker on a phone. A failing service worker on a Samsung
+produces **no log anyone will ever read**. The class of failure that was hard to see on a server
+becomes invisible on a device, at the same time as the code handling unsynced user data moves
+onto it. The scrubbing rules that blocked it before are still required.
+
+**How to reverse.** Remove the SDK. The alternative offered — errors POSTed to a private endpoint
+and counted on the dashboard, no vendor, no scrubbing rules needed — is a drop-in swap.
+
+### D-136 · Prettier
+
+**Decision.** Prettier plus `prettier-plugin-tailwindcss`, with a pre-commit hook. This closes the
+`## Style guide — DECISION NEEDED` section standing open in `web/context.md` since V1.
+
+**Why.** It is the boring choice, universal in the React world, and settling it now means V3's
+code — the largest addition since V1 — lands formatted rather than being reformatted later in a
+diff that buries real changes. The format-only commit stays separate from every functional one.
+
+Biome was the alternative: faster, one binary, but a smaller ecosystem and some
+`eslint-config-next` rules have no equivalent — and those rules are the ones catching
+Next-specific correctness bugs.
+
+**Implemented 2026-08-30 (V3 §0.2).** `prettier.config.mjs` is Prettier defaults except two
+values, and **both were measured, not preferred** — which matters because `ai_directives.md` §6
+says tradeoffs get outlined rather than chosen by taste:
+
+- **`printWidth: 100`** (default 80). Measured across `src/**`: p50 25, p90 87, p99 104 — the
+  codebase was already written to ~100 columns. At 80 the one-shot pass reflows **2,764 lines**;
+  at 100 it reflows **266**. Ten times less churn in the commit whose entire purpose is to be
+  ignorable.
+- **`endOfLine: "auto"`** (default `"lf"`). `.gitattributes` sets `* text=auto eol=lf` — committed
+  LF, checked out native, so the Windows working tree is CRLF (verified: sampled files are 100%
+  CRLF). Forcing `"lf"` would pass on this machine and then **fail `--check` on every fresh
+  clone**, and since the hook runs `--check`, it would block commits after any checkout. This one
+  is a latent trap, not a preference; it is written up here because the failure appears on a
+  machine that is not the one where the config was written.
+
+`prettier-plugin-tailwindcss` needs `tailwindStylesheet` rather than v3's `tailwindConfig` —
+Tailwind v4 has no JS config, `globals.css` *is* the config. Without it the plugin silently falls
+back to default ordering and misses the project's custom utilities (D-005).
+
+**Result:** 91 files reformatted, **615 insertions / 620 deletions — net −5 lines**. Typecheck
+clean, 582/582 tests passing, vendored `ui/` untouched, line endings preserved.
+
+**The hook is `.githooks/pre-commit`, not husky.** `core.hooksPath` does husky's entire job, and
+husky is a dependency whose purpose is to copy a file into `.git/hooks`. Cost of the trade: git
+ignores a hooks directory until told to use it, so **every clone must run
+`git config core.hooksPath .githooks` once** — documented in `context.md`. All four paths were
+tested rather than assumed: formatted files pass, unformatted files block with a fix hint,
+a staged `.md` passes without a spurious "no matching files" error, and a vault-only commit
+short-circuits.
+
+Deliberately formatting-only. `npm test`, `npm run typecheck` and `npm run shots` stay the real
+gates. A 15-second suite in a pre-commit hook trains you to reach for `--no-verify`, which would
+disable the formatting check too.
+
+**Not installed: `eslint-config-prettier`.** The usual reason to add it is to switch off ESLint
+formatting rules that fight the formatter. `eslint.config.mjs` extends only
+`eslint-config-next/core-web-vitals` and `/typescript`, which are correctness and a11y rules;
+nothing conflicted after the format pass. Measured rather than added speculatively — add it if a
+future config brings stylistic rules in.
+
+**How to reverse.** Uninstall, delete `prettier.config.mjs` and `.prettierignore`, drop the two
+scripts, and `git config --unset core.hooksPath`. The formatting stays until something reformats
+it; nothing depends on it.
+
+### D-135 · Light mode ships in V3
+
+**Decision.** `:root` gains a light palette. `.dark` already mirrors it, and `next-themes` is
+already installed, so the mechanism is nearly free. The cost is the audit.
+
+**Why.** The real argument is outdoors: an OLED dark UI in direct sun — a career fair, the water,
+a walk across campus — is close to unreadable, and V3's whole premise is that this becomes a
+phone app used in places a laptop is not. `context.md` already anticipated this: "adding light
+mode in V2 means redefining `:root` and nothing else."
+
+The work is not the palette. It is every screen in both themes, and `npm run shots` in both.
+
+**How to reverse.** Remove the light `:root` values and re-hardcode `dark` on `<html>`. The site
+has run dark-only since V1 (`brand_and_voice.md`) and reverting costs nothing structural.
+
+### D-134 · Mood and energy become 1–5 fields, reversing a comment in `categories.ts`
+
+**Decision.** Two `number` fields on the End of day category.
+
+**Why.** `categories.ts` currently says: *"Deliberately no mood or energy scale: Victor put that
+in V3, and a 1-5 filled in from habit rather than reflection is worse than nothing."* He wants
+it anyway, for a series he can plot against training load and erg splits. The objection was
+restated when the question was asked and he chose the scale over both a word picker and dropping
+it.
+
+**The objection stands and is now a known cost, not a blocker:** habitual 3s are noise, and a
+chart of noise looks exactly like a chart of data. If the series turns out to be flat for a
+month, that is the signal to reconsider — not a bug.
+
+Everything downstream (form, validation, summary line, search index) generates from the one
+array, which is what D-039 promised.
+
+**How to reverse.** Delete the two fields from the array and drop the column. Restore the comment,
+which should stay in the file either way as the record of why it was ever absent.
+
+### D-133 · Ambient background drift is static below the mobile breakpoint
+
+**Decision.** The three radial pools and the SVG grain still render on a phone. They stop
+animating. Purposeful motion — sheet transitions, save confirmations — is added in their place.
+
+**Why.** A continuously animating background forces GPU compositing forever. On a phone that is
+measurable battery drain and a scroll-smoothness cost, for an effect nobody registers on a 6"
+screen. In a screenshot the page looks identical.
+
+This **narrows D-007, it does not reverse it.** The ground is still not a flat fill, which was
+the point of that decision. Only the animation goes, and only on mobile.
+
+**How to reverse.** Remove the breakpoint guard on the drift keyframes. D-007's original
+reasoning is untouched and still applies at desktop widths.
+
+### D-132 · A bottom tab bar on mobile; the desktop nav is untouched
+
+**Decision.** Four tabs plus a centre log action below the mobile breakpoint — Today, Train,
+**Log**, School, More. Above the breakpoint, the existing top nav renders unchanged. Two nav
+components over one shared route definition.
+
+**Why.** `context.md` requires every write path to sit under three interactions from the
+dashboard, and D-083 already established that vertical distance on a phone is the thing that
+kills this feature. A horizontally scrolling top nav puts every target in the least reachable
+part of a 6.7" screen; a bottom bar puts the log action under the thumb from anywhere.
+
+Sharing one adaptive component was the alternative — cleaner architecture, one file — and it
+was declined because it means touching a desktop layout that works, three weeks before term.
+The duplication is deliberate and is the cheaper risk.
+
+**How to reverse.** Delete the mobile nav component. The desktop nav never changed, so there is
+nothing to restore.
+
+### D-131 · The phone caches everything, forever, behind the biometric gate
+
+**Decision.** The full history — logs, tasks, workouts, bodyweight, per-course grades — is
+replicated to IndexedDB and kept. The biometric unlock (D-128) is the only boundary.
+
+**Why.** With one user this is realistically under 50MB for years, so the eviction policy that
+"rolling 90 days" would have required is work with no beneficiary. Never being surprised by a
+missing record is worth more than the bytes.
+
+**On the health-data rule.** D-071 says health data may reach the model but may never be
+published. V3 adds a third category — it may now be **cached on a device**. Storage is not
+publication, and the two remain different acts. What makes this acceptable is that the data is
+already on Victor's laptop unencrypted, and Android encrypts app storage at the OS level with
+IndexedDB scoped to the origin.
+
+Encrypting the cache behind a PIN was offered (~6h) and declined. So was excluding bodyweight
+and grades specifically — which would have removed exactly the numbers you want in a gym.
+
+**How to reverse.** Add a field-level exclusion list to the sync payload, or a cap on rows
+retained. Both are additive to the store built in Phase 1.
+
+### D-130 · The public site is precached inside the private app, and the exposure is accepted
+
+**Decision.** Every public route — including all three resume variants with their print layout,
+and `/now` — is precached by the same service worker that serves the private app. One install,
+one icon. **No portfolio-only lock mode.**
+
+**Why.** The use case is real and was not previously scoped: showing the portfolio to someone
+with no signal — a career fair, a plane, a basement conference room. It is `npm run freeze`
+(D-106) turned into a precache, and it is cheap because public pages are already statically
+generated.
+
+**The cost, stated plainly.** Handing someone the phone to look at your projects puts your GPA,
+bodyweight and application pipeline one back-swipe away. A locked show-mode was offered at ~4h
+and a second install with its own scope was offered; both were declined in favour of accepting
+the risk. This entry exists so that reversing it is a lookup rather than a rediscovery.
+
+The precache is a separate cache key from the private store, so the standing rule that public
+routes never import a private loader is unaffected and its test still holds.
+
+**How to reverse.** Either build the show-mode (a locked route scope plus a biometric to leave
+it), or split the manifest into two scopes and install them separately.
+
+### D-129 · A failed sync is held and surfaced, never dropped
+
+**Decision.** An entry that fails on the server stays in the outbox. A persistent badge carries
+the count, one screen inspects and repairs it, and the warning escalates past 24 hours. Nothing
+is discarded after N retries.
+
+**Why.** The alternative — retry with backoff, give up, log it — loses data without telling you.
+That is the same shape as D-085, where a silent failure ran for an unknown length of time and
+was found by chance. On a phone it would be worse: there is no log to stumble across.
+
+Retrying safely is what forces D-127's client UUIDs. The two decisions are one design.
+
+**How to reverse.** Add a drop-after-N policy. Do not do this without the aggregation in D-137
+already reporting.
+
+### D-128 · The offline unlock is a WebAuthn assertion verified locally
+
+**Decision.** With no network, the app unlocks by performing a WebAuthn ceremony against the
+platform authenticator and verifying the assertion **in the service worker** against the cached
+credential public key. Enrolment is unchanged and still happens online against the server.
+
+**Why.** Auth is a server-side ceremony (D-018), so with no signal there is no session and the
+whole offline premise fails. Verifying locally is cryptographically sound: the public key is
+already on the device after enrolment, and checking a signature against it needs nobody else.
+
+**What it gives up, explicitly.** A locally verified assertion is not the same security property
+as a server-verified one — there is no signature counter check against server state, and a
+compromised device can be replayed against. A long-lived session with no lock was offered and is
+weaker; an encrypted cache behind a PIN was offered and is stronger. This is the middle, chosen
+deliberately.
+
+**How to reverse.** Fall back to requiring a server ceremony, and accept that the app does
+nothing offline.
+
+### D-127 · Offline creates carry a client UUID; edits are last-write-wins
+
+**Decision.** Every row created on the device gets a UUID generated on the device. Retrying a
+create is therefore a no-op rather than a duplicate. Edits and deletes resolve last-write-wins,
+tiebroken on a **monotonic client clock**, not `Date.now()`.
+
+**Why.** Victor's first answer was last-write-wins for everything. That is unsafe for creates
+over an unreliable link, and it conflicts directly with D-129's hold-and-retry: without an
+idempotency key, a retry after a partial failure writes the row twice. D-026 settled the
+identical problem for Hevy imports through a derived `external_id` — this is the same principle
+applied to a different writer. The objection was raised and the split was chosen deliberately.
+
+The monotonic clock matters for a phone specifically: a device whose clock jumps forward — a
+timezone change, an NTP correction after a flight — must not silently win every conflict for the
+rest of the day.
+
+**What it accepts.** LWW on edits means a change made on the laptop while the phone sat offline
+for a week can still be overwritten. A conflict-resolution screen was offered (~6h) and declined
+as over-built for one user with two devices.
+
+**How to reverse.** For duplicates: drop the UUID column and dedupe by content hash instead
+(offered, and it misses the case where you legitimately log the same set twice). For lost edits:
+add the conflict screen — the outbox already carries both versions, so nothing needs
+re-plumbing.
+
+### D-126 · V3 ships as an installed PWA, not a native app
+
+**Decision.** 2ndMind becomes an installable PWA added to the Samsung's home screen. Not
+Capacitor, not React Native.
+
+**Why.** One codebase. Every screen already built — Today, log, athletics, academics, calendar,
+work — works as-is; a React Native app would have required re-authoring all of them and would
+have consumed the entire budget while leaving two frontends to maintain forever. A Capacitor
+shell would have kept the codebase but added an Android toolchain on Windows, app signing, and
+Digital Asset Links — without which WebAuthn breaks inside the WebView, taking the passkey auth
+with it. Both cost real money or real complexity against a **$0 budget**.
+
+**What this permanently rules out inside V3,** all four traded knowingly:
+
+- **A real Android home-screen widget.** Impossible in a PWA. Icon long-press shortcuts are the
+  honest substitute.
+- **Guaranteed background sync.** Samsung's battery optimizer can suspend a service worker.
+  Flush-on-foreground and flush-on-reconnect are what actually work.
+- **A Play Store listing** ($25 one-time, not taken).
+- **Native gesture physics.**
+
+**How to reverse.** Capacitor wraps the same build with no rewrite — that path stays open and is
+the first thing to reach for if background sync proves inadequate in practice. Budget ~15h plus
+the assetlinks work.
 
 ---
 
