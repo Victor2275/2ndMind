@@ -346,6 +346,60 @@ applications sheet is one tab of a document that may hold others.
 **How to reverse.** Delete `normaliseSheetUrl` and have `jobSheetUrl` return the raw value.
 Nine tests in `lib/jobs/__tests__/load.test.ts` cover the conversions.
 
+### D-124 · AI summaries are stored, and fallback text never is
+
+**Decision.** A new `ai_summaries` table (migration `0004`) holds one row per period per kind,
+upserted. The Today page writes the daily and weekly summaries after generating them, and an
+"Earlier summaries" panel — closed, fourteen days — reads them back.
+
+**Why.** Victor's condition for the feature was "as long as it logs the summaries somewhere".
+Until now they were generated, rendered and lost: the cache held one for a few hours and then
+the day was gone. A summary of a day you can no longer reconstruct is the kind worth keeping.
+
+**Why upsert rather than insert.** The daily summary is regenerated as the day fills in. A
+plain insert would leave a pile of half-days with no way to tell which described the day as
+it ended.
+
+**Why `kind` is in the unique index.** A week is keyed by its first day, which is frequently
+also a day with its own summary. Keyed on the date alone, one would silently overwrite the
+other — asserted by a test.
+
+**What is deliberately not stored.** Anything with `ok: false`. "Nothing logged yet today" and
+the missing-key notice are fallback strings, and months later they are indistinguishable from
+a day when nothing actually happened. The write is guarded at the call site *and* in
+`recordSummary`, because the check that matters is the one next to the write.
+
+**Why Postgres and not the vault.** It is time-series, one row per period, queried by range —
+`web/context.md`'s own rule. It is also model output, and D-080 says nothing AI-driven writes
+to the vault in V2; a table keeps that boundary without needing an approval gate on something
+Victor never has to accept.
+
+**Failures are never fatal.** A storage error logs and the summary still renders. Losing the
+archive copy is not a reason to fail the page it sits on.
+
+**How to reverse.** Drop the table, delete `lib/ai/summaries.ts`, the two `recordSummary`
+calls and the archive panel. 13 tests, against real Postgres in PGlite.
+
+### D-125 · The layout gate hid a defect behind the Next dev overlay
+
+**Decision.** `shots.mjs` hides `nextjs-portal` before measuring, and reports small text
+grouped by size rather than as a bare count.
+
+**Why the overlay matters.** It is `position: fixed`, so in a full-page screenshot it lands
+wherever the viewport happened to be — mid-page, over real content. It was sitting squarely on
+a stack badge on the Solenoid case study. `next dev` is the only server these run against, so
+the tool built to catch layout defects was covering one up.
+
+**Why the count was not enough.** "28 elements under 12px" reads identically whether it is 28
+labels at a deliberate 9.9px or one element at 7px. The breakdown (`5@9.6px 15@9.9px
+8@11.2px`) is what turned §1.2b from a worry into a decision.
+
+**What it found.** The project-detail fact cards were `0.6rem` where the identical cards on
+the About page are `0.62rem` — the only public page carrying a fourth label size, and the
+smallest text on the site, for no recorded reason. Unified; the public floor is now 9.9px.
+
+**How to reverse.** Remove `hideDevOverlay` and the `tinyBy` grouping.
+
 ---
 
 ## 2026-08-25 · Career tooling

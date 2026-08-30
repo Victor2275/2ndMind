@@ -95,6 +95,21 @@ async function mintSession(secret) {
   return `${body}.${b64url(new Uint8Array(signature))}`;
 }
 
+/**
+ * Hides the Next.js dev-tools button before anything is measured or shot.
+ *
+ * It is `position: fixed`, so in a full-page screenshot it lands wherever the viewport
+ * happened to be — mid-page, on top of real content. It was sitting squarely over a stack
+ * badge on the Solenoid case study, which is exactly the failure this whole script exists to
+ * catch, hidden by the tool meant to catch it. `next dev` is the only server these run
+ * against, so this is not optional dressing.
+ */
+async function hideDevOverlay(page) {
+  await page.addStyleTag({
+    content: "nextjs-portal, [data-nextjs-dev-tools-button], #next-logo { display: none !important; }",
+  }).catch(() => {});
+}
+
 const RESUME_VARIANTS = ["swe", "ml", "robotics"];
 
 /** Letter at 0.5in margins, in CSS pixels at 96dpi: 7.5in x 10in. */
@@ -132,6 +147,7 @@ async function measureResumes(browser) {
     // its px-6 in print, and so does this — the inset is real in the PDF too.
     const page = await browser.newPage({ viewport: { width: PAGE_W, height: PAGE_H } });
     await page.goto(`${BASE}/resume/${variant}`, { waitUntil: "networkidle" });
+    await hideDevOverlay(page);
 
     // `print:hidden` controls are display:none under print media, so they stop counting
     // toward the height — which is the point of emulating rather than measuring on screen.
@@ -201,6 +217,7 @@ for (const width of widths) {
     });
 
     await page.goto(BASE + target.url, { waitUntil: "networkidle" });
+    await hideDevOverlay(page);
     await page.screenshot({
       path: path.join(OUT, `${target.name}-${width}.png`),
       fullPage: true,
@@ -232,12 +249,20 @@ for (const width of widths) {
       }).length;
 
       // Text under 12px is uncomfortable on a phone regardless of how tidy it looks.
-      const tiny = [...document.querySelectorAll("body *")].filter((el) => {
+      // Grouped by size and class, because a bare count cannot be acted on: 28 elements at
+      // the same 0.62rem as every other eyebrow label on the page is a style, and one
+      // element at 9px is a bug, and the count reads identically for both.
+      const tinyEls = [...document.querySelectorAll("body *")].filter((el) => {
         if (!el.textContent?.trim() || el.children.length > 0) return false;
         return parseFloat(getComputedStyle(el).fontSize) < 12;
-      }).length;
+      });
+      const tinyBy = {};
+      for (const el of tinyEls) {
+        const px = parseFloat(getComputedStyle(el).fontSize).toFixed(1);
+        tinyBy[px] = (tinyBy[px] ?? 0) + 1;
+      }
 
-      return { overflow, wide: wide.slice(0, 4), small, tiny };
+      return { overflow, wide: wide.slice(0, 4), small, tiny: tinyEls.length, tinyBy };
     });
 
     const bad = report.overflow > 0;
@@ -247,6 +272,12 @@ for (const width of widths) {
         ` overflow=${String(report.overflow).padStart(4)}px` +
         ` tap<40px=${String(report.small).padStart(3)}` +
         ` text<12px=${String(report.tiny).padStart(3)}` +
+        (report.tiny > 0
+          ? ` (${Object.entries(report.tinyBy)
+              .sort((a, b) => Number(a[0]) - Number(b[0]))
+              .map(([px, n]) => `${n}@${px}px`)
+              .join(" ")})`
+          : "") +
         (bad ? "  <-- " + report.wide.map((w) => `${w.tag}.${w.cls}`).join(" | ") : ""),
     );
 
@@ -283,6 +314,7 @@ if (process.env.SHOTS_RETURNING !== "0") {
 
     const page = await context.newPage();
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    await hideDevOverlay(page);
     await page.screenshot({ path: path.join(OUT, `home-returning-${width}.png`) });
 
     const header = await page.evaluate(() => {
@@ -353,6 +385,7 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
 
       const page = await context.newPage();
       const response = await page.goto(BASE + target.url, { waitUntil: "networkidle" });
+      await hideDevOverlay(page);
       await page.screenshot({
         path: path.join(OUT, `${target.name}-${width}.png`),
         fullPage: true,

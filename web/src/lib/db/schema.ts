@@ -227,3 +227,44 @@ export const rehabCompletions = pgTable(
 );
 
 export type RehabCompletion = typeof rehabCompletions.$inferSelect;
+
+/**
+ * AI summaries, kept after they are shown.
+ *
+ * Victor's condition for the summary feature was "as long as it logs the summaries
+ * somewhere" (2026-08-29). Until now they were generated, rendered, and lost — the cache held
+ * one for a few hours and then the day was gone. A summary of a day you can no longer
+ * reconstruct is the one kind that has value later, so it is stored.
+ *
+ * Postgres rather than the vault, for the reason in `web/context.md`: this is time-series,
+ * one row per period, queried by range. It is also model output, and D-080 says nothing
+ * AI-driven writes to the vault in V2 — a table keeps that boundary intact without needing an
+ * approval gate on something Victor never has to accept.
+ *
+ * `periodStart` is a local date, not a timestamp, so "the 3rd" means the same thing in
+ * Taiwan as in Los Angeles.
+ */
+export const aiSummaries = pgTable(
+  "ai_summaries",
+  {
+    id: serial("id").primaryKey(),
+    /** "daily" | "weekly". */
+    kind: text("kind").notNull(),
+    /** ISO `YYYY-MM-DD` — the day, or the first day of the week. */
+    periodStart: date("period_start", { mode: "string" }).notNull(),
+    summary: text("summary").notNull(),
+    /** Which model wrote it, so a summary outlives the model that produced it. */
+    model: text("model").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One row per period per kind. The summary is regenerated as the day fills in, and each
+    // regeneration should replace the last rather than leaving a pile of drafts to read
+    // through later.
+    uniqueIndex("ai_summaries_kind_period_idx").on(t.kind, t.periodStart),
+    index("ai_summaries_period_idx").on(t.periodStart),
+  ],
+);
+
+export type AiSummary = typeof aiSummaries.$inferSelect;
+export type NewAiSummary = typeof aiSummaries.$inferInsert;

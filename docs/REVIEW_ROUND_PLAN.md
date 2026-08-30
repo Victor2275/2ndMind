@@ -7,7 +7,7 @@ and returned a change list on 2026-08-29. This tracks what came out of it.
 that the rate drops to ~4h/week. V2 feature 6 (AI) and §7 were the open items before this
 round; the domain (§7.1) is still parked on Victor.
 
-Decisions from this round: `web/DECISIONS.md` **D-106 – D-122**.
+Decisions from this round: `web/DECISIONS.md` **D-106 – D-125**.
 
 ---
 
@@ -142,11 +142,9 @@ published.
      Your three-year track is not reflected in it, so the planner is also how you would show
      the plan closes a year early.
 8. **Calendar month view** — you said V3. Noted in `docs/V3_PLAN.md` territory, not started.
-9. **V2 feature 6 (AI), remainder** — summarise-the-week and draft-sprint-goals are built;
-   resume tailoring is built and now moved under Work. The daily-summary logging you asked
-   for in Q38 ("as long as it logs the summaries somewhere") is **not built** — summaries are
-   generated and rendered but not persisted. ~2h: a `summaries` table or an append to the
-   logbook, plus a place to read them back.
+9. ~~**V2 feature 6 (AI), remainder**~~ — **done 2026-08-30.** Summaries are stored in an
+   `ai_summaries` table (migration 0004, applied to Neon) and read back in an "Earlier
+   summaries" panel on Today. Fallback text is never stored. D-124.
 
 ### Suggested order before 09-18
 

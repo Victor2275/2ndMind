@@ -25,6 +25,7 @@ import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 import { readVaultFileCached } from "@/lib/vault/write";
 import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
+import { localDay, recentSummaries, recordSummary } from "@/lib/ai/summaries";
 import { entriesBetween } from "@/lib/log/queries";
 import { summarise } from "@/lib/log/categories";
 
@@ -201,6 +202,10 @@ async function Tasks() {
             <TaskList tasks={doneToday.map(toView)} emptyMessage="" showAdd={false} />
           </Panel>
         )}
+
+        <Suspense fallback={null}>
+          <SummaryArchive />
+        </Suspense>
       </div>
     </>
   );
@@ -290,6 +295,25 @@ async function AiSummary() {
 
   const summary = await generateDailySummary(logs, sprint);
 
+  // Kept, not just shown. The cache holds one for a few hours and then the day is gone, and a
+  // summary of a day you can no longer reconstruct is the kind worth having later. Fallback
+  // text is never stored — "nothing logged yet" would be indistinguishable, months on, from a
+  // day when nothing happened.
+  if (summary.ok && isDatabaseConfigured()) {
+    try {
+      await recordSummary(db(), {
+        kind: "daily",
+        periodStart: localDay(now, zoneOffsetMinutes(now)),
+        summary: summary.text,
+        model: MODEL,
+      });
+    } catch (error) {
+      // Never fatal. The summary is on screen either way, and losing the archive copy is not
+      // a reason to fail the page it sits on.
+      console.error("AI summary: could not store today's summary:", error);
+    }
+  }
+
   // A failed or empty summary gets a line, not a panel. Measured at 390px: the panel spent
   // ~170px of the top of the page saying "The summary could not be generated just now" —
   // which is the loudest possible way to report the failure of the least urgent thing here.
@@ -338,10 +362,12 @@ async function WeeklySummary() {
   }
 
   const lines: string[] = [];
+  // Hoisted out of the try: the stored row is keyed by the week this describes, so the write
+  // below needs the same window the query used, not a second computation of it.
+  const weekStart = new Date(today.start.getTime() - 6 * 86_400_000);
   try {
     if (isDatabaseConfigured()) {
       const handle = db();
-      const weekStart = new Date(today.start.getTime() - 6 * 86_400_000);
       const entries = await entriesBetween(handle, weekStart, today.end);
 
       // One pass, bucketed by local day. Querying seven times would be seven round trips to
@@ -377,6 +403,19 @@ async function WeeklySummary() {
     ? await generateWeeklySummary(lines.join("\n"), sprint)
     : { text: "Nothing logged this week yet.", ok: false };
 
+  if (summary.ok && isDatabaseConfigured()) {
+    try {
+      await recordSummary(db(), {
+        kind: "weekly",
+        periodStart: localDay(weekStart, zoneOffsetMinutes(weekStart)),
+        summary: summary.text,
+        model: MODEL,
+      });
+    } catch (error) {
+      console.error("Weekly summary: could not store this week's summary:", error);
+    }
+  }
+
   if (!summary.ok) {
     return <p className="px-1 text-xs text-muted-foreground">{summary.text}</p>;
   }
@@ -386,6 +425,47 @@ async function WeeklySummary() {
       <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
         {summary.text}
       </div>
+    </Panel>
+  );
+}
+
+/**
+ * The summary archive.
+ *
+ * Storing summaries only matters if they can be read back, and the place to read them is the
+ * page that writes them. Closed by default and capped at fourteen days: this is a record, and
+ * a record does not open itself on a page Victor already found too dense.
+ */
+async function SummaryArchive() {
+  if (!isDatabaseConfigured()) return null;
+
+  let rows: Awaited<ReturnType<typeof recentSummaries>> = [];
+  try {
+    rows = await recentSummaries(db(), { kind: "daily", limit: 14 });
+  } catch (error) {
+    console.error("Summary archive: could not read stored summaries:", error);
+    return null;
+  }
+
+  // Today's is already on the page above, in its own panel.
+  const now = new Date();
+  const earlier = rows.filter((r) => r.periodStart !== localDay(now, zoneOffsetMinutes(now)));
+  if (earlier.length === 0) return null;
+
+  return (
+    <Panel title="Earlier summaries" meta={`${earlier.length}`} collapsible defaultOpen={false}>
+      <ol className="space-y-4">
+        {earlier.map((row) => (
+          <li key={row.id} className="border-l border-border pl-4">
+            <p className="tabular font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
+              {row.periodStart}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {row.summary}
+            </p>
+          </li>
+        ))}
+      </ol>
     </Panel>
   );
 }

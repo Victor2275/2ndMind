@@ -75,7 +75,10 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             key={m.label}
             className="rounded-lg border border-border bg-card/70 p-3 transition-colors duration-300 hover:border-primary/50"
           >
-            <dt className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">
+            {/* 0.62rem, matching the identical fact cards on the About page. They were
+                0.6rem here for no reason anyone recorded, which made this the only public
+                page carrying a fourth label size and the smallest text on the site. */}
+            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
               {m.label}
             </dt>
             <dd className="mt-1 text-sm text-foreground">{m.value}</dd>

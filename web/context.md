@@ -120,8 +120,8 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **550 tests across 34 files** as of
-2026-08-29, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **582 tests across 36 files** as of
+2026-08-30, all passing. A drop from that count is a regression, not noise.
 
 ### Layout is checked by measurement, not by looking
 
@@ -160,6 +160,9 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `tasks` — one model for everything actionable (D-037).
 - `log_entries` — structured daily logging, per-category fields in JSONB.
 - `bodyweight_entries` / `rehab_completions` — feature 5 (D-058, D-059).
+- `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
+  text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
+  nothing happened.
 
 Rules that hold the athletics side together, each with a decision entry:
 
