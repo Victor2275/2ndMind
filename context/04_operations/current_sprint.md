@@ -181,8 +181,9 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
 **Time budget:** ~2h/day 08-30 → 09-07 (18h, partial connection), **6h/day 09-08 → 09-18
 (66h)**, then ~7h/week taken flexibly (~104h). ~188h total.
 
-- [ ] **Phase 0 · In transit** (18h) — **6h done, 12h left.** Nothing left here needs a deploy
-      or a connection.
+- [x] **Phase 0 · In transit** (18h) — **COMPLETE 2026-08-30.** All six items done. Gates
+      green: 590 tests, typecheck and lint clean, `npm run shots` passing at four widths, and
+      everything verified against a **production build** rather than the dev server.
   - [x] **0.1 · Dependencies** (1h) — done 2026-08-30. 103 packages, exit 0.
         `@sentry/nextjs` resolved cleanly against Next 16.3.1. Verified offline-capable:
         `npm ci --dry-run --offline` resolves the whole tree from cache.
@@ -198,15 +199,34 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
         client id (the rest have natural keys), `rehab_completions` **cannot sync as built**
         because it hard-deletes on toggle, and almost nothing has an `updated_at` — so Phase 1
         opens with a migration. Clock is an HLC, not `Date.now()`. Test list §10 feeds §1.4.
-        **Answered same day:** the phone creates full workouts, not just log entries. That
-        keeps `workouts`/`workout_sets` in the outbox and brings the parent-child FK problem
-        with it — a workout create is now **one aggregate op** carrying its sets, applied in a
-        server-side transaction (`SYNC_DESIGN.md` §4a). §1.2 grows 14h → 19h, so **Phase 1 is
-        now 70h in a 66h window — 4h over, not 1h under.** Mitigation is unchanged and already
-        planned: 1.6 and 1.7 move to Phase 2 if it slips; the app still installs and syncs.
-  - [ ] **0.4 · Mood/energy fields** (2h)
-  - [ ] **0.5 · Bottom tab bar** (7h)
-  - [ ] **0.6 · Icon, splash, manifest** (3h)
+        **Closed same day: log entries only.** Answered "workouts too" first, then reversed —
+        the excursion is worth keeping because it found the parent-child FK problem and its fix
+        (`SYNC_DESIGN.md` §4a, designed but not built). Log-only means `workouts`/`workout_sets`
+        are pull-only, §1.2 stays at 14h, and **Phase 1 fits its window again at 65h of 66h.**
+        Nothing is lost: the Training log category already carries exercise, weight, reps,
+        distance, duration, SPM and RPE.
+  - [x] **0.4 · Mood/energy fields** (2h) — done 2026-08-30. New `scale` field type, fixed at
+        1-5, anchored at the ends (*wrecked...great*, *empty...wired*) — the mitigation for the
+        standing objection, not a withdrawal of it. Five tap targets rather than a number
+        input. Out-of-range values are dropped, not clamped: a fabricated point is worse than a
+        missing one. `readField` moved to `lib/log/form.ts` to be testable. **590 tests**, up
+        from 582; the old test asserting these fields' *absence* was inverted, not deleted.
+  - [x] **0.5 · Bottom tab bar** (7h) — done 2026-08-30. **Today · Train · [Log] · Next ·
+        More.** Victor chose Calendar over Academics for the fourth tab. **First task on a
+        phone: 356px → 265px**, because the mobile layout no longer carries the scrolling nav
+        row; D-083 took it 791px → 356px, this takes another 91px. Desktop untouched at 330px.
+  - [x] **0.6 · Icon, splash, manifest** (3h) — done 2026-08-30. A simplified brain in magenta,
+        drawn as a silhouette with the folds cut out because thin strokes vanish at 48px.
+        `brain.svg` + `scripts/render-icons.mjs` (Playwright, offline). Separate maskable
+        variant at 58% fill, because One UI crops to a squircle. No splash asset needed —
+        Android composes it. **Still open: look at it on the actual phone.**
+
+**Found while building (D-143), and worth knowing generally:** Tailwind's `hidden sm:flex` and
+`flex max-sm:hidden` *both* fail here — a base display utility beats its own responsive variant,
+confirmed in a production build. The nav switch is plain unlayered CSS instead. Nearly recorded
+wrong: the first diagnosis came from `next dev`, which was also reporting `px-5` and `pb-24` as
+computing to `0px` when a real build applies them correctly. **A CSS finding is not a finding
+until it reproduces in `npm run build`.**
 - [ ] **Phase 1 · The app** (65h) — PWA shell, IndexedDB + outbox, sync engine, sync tests,
       biometric unlock, fast log paths, failed-sync retry. **⚑ Milestone A — 2026-09-18.**
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,

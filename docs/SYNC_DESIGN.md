@@ -34,7 +34,8 @@ None of these were visible from the plan. All three are cheap now and expensive 
 
 | | Direction | Mechanism |
 |---|---|---|
-| Postgres rows — logs, tasks, workouts, bodyweight, rehab | **Both ways** | Outbox + pull cursor (this document) |
+| Postgres rows — logs, tasks, bodyweight, rehab | **Both ways** | Outbox + pull cursor (this document) |
+| Workouts and sets | Server → phone only | Pull only — the phone logs training as a `log_entry`; workouts come from Hevy imports on the laptop (§11.1) |
 | AI summaries | Server → phone only | Pull only; the phone never creates one |
 | Rendered vault pages — Today, Athletics, School | Server → phone only | Service-worker cache, no writes |
 | The public site | Server → phone only | Service-worker precache (D-130) |
@@ -59,8 +60,9 @@ with a derived `external_id`.
 |---|---|
 | `log_entries` | Logging "Bench Press 185×5" twice in one session is a real thing to do |
 | `tasks` | Two tasks may legitimately share a title and a due date |
-| `workouts` | `external_id` is null for hand-logged sessions — only Hevy imports have one |
-| `workout_sets` | Same set, same weight, same reps, twice in a row is normal |
+*(Two tables, not four. `workouts` and `workout_sets` were on this list until §11.1 was closed
+as log-only — the phone never creates one, so neither needs a client id. They still need
+`updated_at`, `deleted_at` and `server_seq` for the pull side.)*
 
 **Tables that do not** — a natural key already makes the write idempotent:
 
@@ -173,10 +175,14 @@ operation).
 
 ---
 
-## 4a. Workouts are one aggregate, not two tables
+## 4a. Workouts as one aggregate — **designed, not built**
 
-*This section exists only because the phone creates workouts (§11.1). Log-only would not have
-had this problem at all.*
+> **Not in V3.** §11.1 was answered "workouts too" and reversed to log-only the same day, so
+> the phone never creates a workout and this problem does not arise. The section stays because
+> the design is correct and cost real thought: if phone-side workout logging is ever wanted,
+> this is the answer, and reverting §11.1 is the only other change needed.
+
+*Everything below applies only if the phone creates workouts.*
 
 `workout_sets.workout_id` is an `integer` foreign key to `workouts.id`, which is a `serial`.
 Offline, that number **does not exist yet** — the phone creates a workout with a `client_id` and
@@ -383,20 +389,28 @@ real outbox code, no mocks. Six cases were named in the plan; reading the schema
 | 7 | Rehab un-tick offline vs tick online → deterministic | `deleted_at` tombstone (§4) |
 | 8 | Failed op blocks its own row, not the queue | Per-`clientId` block (§5) |
 | 9 | Bodyweight same day, two devices → one row, later HLC wins | Natural-key upsert (§2) |
-| 10 | Workout + 12 sets created offline → one session, 12 sets, correct FK | Aggregate op (§4a) |
-| 11 | Aggregate op fails halfway → no partial workout exists | Server-side transaction (§4a) |
-| 12 | Delete a workout offline → its sets vanish from reads, rows survive | Parent-filtered reads (§4a) |
+| 10 | A workout deleted on the laptop disappears from the phone | Tombstone reaches the pull (§7) |
+
+*Cases 11 and 12 were about creating workouts offline and are dropped with §4a. If phone-side
+workout logging is ever revived, they come back with it.*
 
 ---
 
 ## 11. Open questions — decide before §1.2, not during
 
-1. ~~Does the phone create workouts at all?~~ **Answered 2026-08-30: yes — full structured
-   workout logging on the phone.** Not the log-only option this document originally leaned
-   toward. It is the more faithful model: a phone-logged session lands as a real workout with
-   sets, so it reaches PR calculations directly instead of needing a conversion step later.
-   Consequences are folded into §4a, which exists *only* because of this answer, and Phase 1
-   §1.2 grows by ~5h.
+1. ~~Does the phone create workouts at all?~~ **Closed 2026-08-30: log entries only.**
+
+   Answered "workouts too" first, then reversed the same day. Both answers are recorded because
+   the reversal is the useful part: choosing workouts surfaced the parent-child foreign-key
+   problem in §4a and cost §1.2 five hours, taking Phase 1 from 65h in a 66h window to 70h.
+   Reverting gives that back — `workouts` and `workout_sets` become **pull-only**, §4a is not
+   built, and Phase 1 fits again.
+
+   The phone writes `log_entries`. Its Training category already carries exercise, weight,
+   reps, distance, duration, SPM and RPE, so nothing about gym logging is lost. Workouts keep
+   arriving from Hevy imports on the laptop.
+
+   *If this is ever reversed again, §4a is the design — it does not need rediscovering.*
 2. **Should `ai_summaries` be pull-only, or should the phone be able to request one?** Pull-only
    in this document. Requesting one offline needs a second queue for read-requests, which the
    scoping session declined.

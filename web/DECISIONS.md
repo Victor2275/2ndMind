@@ -27,6 +27,69 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-144 · The app icon is a brain, drawn as a silhouette with the folds cut out
+
+**Decision.** `public/icons/brain.svg` is the source; `scripts/render-icons.mjs` produces
+`icon-192.png`, `icon-512.png` and `maskable-512.png` from it with Playwright, which is already
+a dev dependency. Magenta gradient on the near-black ground, per `brand_and_voice.md`.
+
+**Why a silhouette rather than an outline.** The first instinct is a line-drawn brain. At 48px —
+which is where a launcher icon actually lives — thin strokes on a dark field disappear into the
+background and the mark turns to mush. A solid shape with the folds cut *out* in the ground
+colour keeps its outline at any size. Only three folds and one central division: anatomical
+detail reads as noise once the icon is small.
+
+**Two variants, and the difference is not cosmetic.** Android crops a `maskable` icon to a
+squircle and keeps roughly the inner 80%. The maskable file is therefore full-bleed with the
+mark at 58% of the canvas, which looks over-padded on its own and correct once cropped. The
+`any` variant is a rounded tile with the mark at 74%. Shipping one file for both purposes gets
+the edges shaved off in the launcher.
+
+The first render put the mark at ~55% of the tile because the script scaled the whole canvas
+rather than the drawing's bounding box — the brain occupies only the middle ~64% of the
+viewBox. Fixed by scaling about the box's own centre. Caught by looking at the PNG, which is
+the only way this class of error is ever caught.
+
+**Splash screen: there is no asset.** Android composes it from `name`, `background_color` and
+the icon. Both colours are the ground colour from `globals.css`, so the launch screen is
+continuous with the app rather than flashing white.
+
+**How to reverse.** Replace `brain.svg` and re-run `node scripts/render-icons.mjs`. The manifest
+references files, not shapes, so nothing else changes.
+
+### D-143 · A Tailwind base display utility beats its own responsive variant, so the nav switch is plain CSS
+
+**Decision.** The private app's two navigations are switched by unlayered CSS in `globals.css`
+(`.nav-desktop` / `.nav-mobile`), not by `hidden sm:flex`.
+
+**Why.** Both Tailwind spellings fail, in opposite directions. Measured **against a production
+build** at four widths:
+
+| Classes | Wanted | Got |
+|---|---|---|
+| `hidden sm:flex` | `flex` at ≥640px | `none` at 360 / 390 / 768 / 1280 |
+| `flex max-sm:hidden` | `none` at <640px | `flex` at 360 / 390 / 768 / 1280 |
+
+The base utility wins both times. Variants are not broken in general — `sm:hidden` on the tab
+bar works correctly, because nothing sets `display` on it at base. **The conflict appears only
+when a base utility and its own variant set the same property.** Unlayered rules outrank every
+`@layer` by specification, so the replacement cannot lose however the layers are ordered.
+
+**The part worth remembering is how nearly this was recorded wrong.** The first diagnosis was
+made against `next dev`, which was also reporting `px-5`, `pt-8` and `pb-24` as computing to
+`0px` on an element whose classes plainly contained them. Those were **stale dev CSS** and are
+completely correct in a production build — `px-5` → 20px, `pb-24` → 96px. Had the entry been
+written then, it would have claimed a general Tailwind cascade fault that does not exist, in
+the file this project relies on to explain itself.
+
+**Rule this establishes: a CSS finding is not a finding until it reproduces in `npm run build`.**
+`next dev` served three utilities as absent that a build applies correctly, and clearing
+`.next` fixed only one of them.
+
+**How to reverse.** Delete the two blocks at the foot of `globals.css` and the `nav-desktop` /
+`nav-mobile` class names, and put `hidden sm:flex` back — but re-measure against a build first,
+because if this is ever fixed upstream the utilities become the simpler option.
+
 ### D-142 · Prettier formats hand-written code in `web/`, and nothing else
 
 **Decision.** Three categories are in `.prettierignore` and stay unformatted:
@@ -240,6 +303,35 @@ month, that is the signal to reconsider — not a bug.
 Everything downstream (form, validation, summary line, search index) generates from the one
 array, which is what D-039 promised.
 
+**Implemented 2026-08-30 (V3 §0.4).** A new `scale` field type in `categories.ts`, fixed at
+1–5 — configurable maximums were considered and rejected, because two scales with different
+ranges cannot be read on one chart and a chart is the only reason to collect these.
+
+**Anchored at the ends, not throughout.** `mood` is *wrecked … great*, `energy` is *empty …
+wired*. This is the mitigation for the objection above rather than a withdrawal of it: a number
+with a word attached has to be chosen, where a bare 1–5 gets tapped from habit. Anchoring all
+five was offered and declined — it costs more width than a 360px screen has.
+
+**Rendered as five tap targets, not a number input.** `inputMode="decimal"` raises a full
+numeric keypad to collect one digit out of five, which is three interactions where there should
+be one — in the least forgiving context in the app, one-handed and in bed. Radios rather than
+buttons so the value reaches `FormData` with no plumbing and arrow keys work. Controlled only so
+a `clear` control can exist: without it a mis-tap is unrecoverable, and every field in this form
+is optional by design.
+
+**Out of range is dropped, not clamped.** A Server Action is a POST endpoint with a guessable
+id, so the range is enforced server-side rather than trusted from the form. Clamping a 9 to a 5
+would put a point in the series that nobody chose, and a fabricated point is worse than a
+missing one.
+
+`readField` moved from `app/private/log/actions.ts` to `lib/log/form.ts` to make that testable —
+a `"use server"` module may only export async functions (AGENTS.md rule 4), so it could not be
+reached from a test where it was.
+
+One existing test asserted the *absence* of these fields ("has no mood or energy scale, which
+Victor deferred to V3"). It is inverted rather than deleted, so a silent disappearance still
+fails. 590 tests, up from 582.
+
 **How to reverse.** Delete the two fields from the array and drop the column. Restore the comment,
 which should stay in the file either way as the record of why it was ever absent.
 
@@ -273,8 +365,31 @@ Sharing one adaptive component was the alternative — cleaner architecture, one
 was declined because it means touching a desktop layout that works, three weeks before term.
 The duplication is deliberate and is the cheaper risk.
 
-**How to reverse.** Delete the mobile nav component. The desktop nav never changed, so there is
-nothing to restore.
+**Implemented 2026-08-30 (V3 §0.5).** `components/site/private-tabbar.tsx`. Tabs are **Today ·
+Train · [Log] · Next · More** — Victor picked Calendar ("Next") over Academics, on the grounds
+that "what do I have next" is the on-the-move question and Academics is a sit-down page. More
+holds Now, Academics, Work, Hobbies and sign-out in a bottom sheet.
+
+**Measured result: the first task on a phone moved from 356px to 265px**, because the mobile
+layout no longer carries the horizontally scrolling nav row at all. D-083 got that number from
+791px to 356px; this takes another 91px off it. Desktop is unaffected at 330px, with its nav
+intact — verified at four widths against a production build.
+
+Two details that are not obvious:
+
+- **The sheet stores which page it was opened on, not a boolean.** A boolean plus an effect that
+  resets it on `pathname` change is what `react-hooks/set-state-in-effect` exists to prevent,
+  and it is also worse: it renders one frame with the overlay covering the new page, and never
+  fires at all for a back-button navigation. Deriving `moreOpen === (openedAt === pathname)`
+  closes it for free in both cases.
+- **`env(safe-area-inset-bottom)`** keeps the row clear of Android's gesture pill. Without it
+  the bar's lower third is unhittable on a modern Samsung.
+
+The switch itself could not be done in Tailwind — see **D-143**, which is the more important
+entry of the two.
+
+**How to reverse.** Delete the mobile nav component and the `nav-desktop` class name. The
+desktop nav never changed, so there is nothing to restore.
 
 ### D-131 · The phone caches everything, forever, behind the biometric gate
 

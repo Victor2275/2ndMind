@@ -20,11 +20,11 @@ contradicts something already built or already written down, §2 says so and nam
 |---|---|
 | **Goal** | An installable, offline-first PWA. Log without signal, read without signal, show the portfolio without signal, sync on reconnect. |
 | **Delivery** | PWA installed to the home screen. Not Capacitor, not React Native. |
-| **Budget** | ~192h across 18h travel + 66h pre-term + ~104h term-time |
+| **Budget** | ~187h across 18h travel + 66h pre-term + ~104h term-time |
 | **Milestone A** | **2026-09-18** — installed, logs offline, syncs. The hard date. |
 | **Milestone D** | **~2027-01-03** — everything. Not a hard date. |
 | **Done when** | The app is on the home screen and two real weeks pass without reaching for the laptop to log. |
-| **Biggest risk** | Phase 1 is 70h of work in a 66h window. Named in §7. |
+| **Biggest risk** | Phase 1 is 65h of work in a 66h window. Named in §7. |
 
 ---
 
@@ -197,11 +197,17 @@ Five phases. Ordered, and only Milestone A is date-locked.
 
 Design and offline-safe work at ~2h/day on partial connection. Nothing here needs a deploy.
 
-> **Progress · 2026-08-30** — §0.1, §0.2 and §0.3 complete (**6h of 18h**). The
-> network-dependent item is closed and verified offline-capable, so nothing left in Phase 0
-> needs a connection. The sync design is written and already paid for itself: three schema
-> problems found on paper that would each have been a migration mid-Phase-1.
-> Next: **§0.4, the mood and energy fields** — 2h, and the smallest thing left.
+> **Phase 0 complete · 2026-08-30 — 18h of 18h.** All six items done, gates green: 590 tests,
+> typecheck and lint clean, `npm run shots` passing at four widths, and a production build
+> verified rather than a dev server.
+>
+> Two things came out of it that were not on the list. The sync design found three schema
+> problems on paper (§0.3), each of which would otherwise have been a migration discovered
+> mid-Phase-1. And the tab bar found a real Tailwind fault (**D-143**) — plus a near-miss where
+> a stale `next dev` almost got a fault recorded that does not exist.
+>
+> **Next: Phase 1 opens on 09-08.** One thing is carried forward — the launcher icon has not
+> been seen on the actual phone.
 
 #### 0.1 · Install every dependency in one pass — **1h** — ✅ **DONE 2026-08-30**
 
@@ -291,42 +297,70 @@ All three carry a **Designed 2026-08-30** block naming what breaks without them.
 **Open, and it halves §1.2's migration — see §8:** does the phone create `workouts` at all, or
 only `log_entries` that a workout is derived from?
 
-#### 0.4 · Mood and energy on End of day — **2h**
+#### 0.4 · Mood and energy on End of day — **2h** — DONE 2026-08-30
 
-Two `number` fields in `categories.ts`, a migration, and tests. Everything downstream — the
-form, validation, the summary line, the search index — is generated from that one array, which
-is what D-039 promised.
+A new `scale` field type in `categories.ts`, fixed at 1-5, plus the two fields. Everything
+downstream - form, validation, summary line, search index - generates from that one array,
+which is what D-039 promised.
 
-**Done when:** both fields save, appear in the timeline summary, and the existing 582 tests
-still pass.
+**Anchored at the ends** (*wrecked ... great*, *empty ... wired*), which is the mitigation for
+the standing objection rather than a withdrawal of it: a number with a word attached has to be
+chosen, where a bare 1-5 gets tapped from habit.
 
-#### 0.5 · Bottom tab bar — **7h**
+Three things that were not in the plan:
 
-Four tabs plus a centre log action, below the mobile breakpoint only. **The desktop nav is not
-touched** (D-132) — two nav components over one shared route definition.
+- **Five tap targets, not a number input.** A decimal keypad to collect one digit out of five is
+  three interactions where there should be one, in the least forgiving context in the app.
+- **Out of range is dropped, not clamped.** A Server Action is a POST endpoint with a guessable
+  id. Clamping a 9 to a 5 puts a point in the series nobody chose, and a fabricated point is
+  worse than a missing one.
+- **`readField` moved to `lib/log/form.ts`** so the range check is testable - a `"use server"`
+  module may only export async functions, so it could not be reached where it lived.
 
-| Tab | Route | Why it earns a tab |
-|---|---|---|
-| Today | `/private` | Opened most; tasks, goals, inbox |
-| Train | `/private/athletics` | The no-signal location |
-| **Log** | centre action | The point of the app |
-| School | `/private/academics` | Merged with Calendar's agenda |
-| More | sheet | Work, Hobbies, Goals, the public site, settings |
+**Done when:** ~~both fields save, appear in the timeline summary, and the existing 582 tests
+still pass.~~ Done - **590 tests**, up from 582. One existing test asserted these fields'
+*absence* and was inverted rather than deleted, so a silent disappearance still fails.
 
-**Done when:** every private route is reachable in ≤2 taps on a 360px viewport, the desktop
-layout is byte-identical, and `npm run shots` passes at all four widths.
+#### 0.5 · Bottom tab bar — **7h** — DONE 2026-08-30
 
-#### 0.6 · Icon, splash, manifest — **3h**
+Tabs are **Today - Train - [Log] - Next - More**. Victor picked Calendar ("Next") over
+Academics: "what do I have next" is the on-the-move question, Academics is a sit-down page.
+More holds Now, Academics, Work, Hobbies and sign-out in a bottom sheet.
 
-The 2ndMind mark: magenta on near-black, per `brand_and_voice.md`. Maskable variants at every
-size Samsung's launcher asks for, a matching splash, and `manifest.webmanifest` authored (wired
-up in 1.1).
+**Measured result: the first task on a phone moved from 356px to 265px** - the mobile layout no
+longer carries the scrolling nav row at all. D-083 took that number from 791px to 356px; this
+takes another 91px off. Desktop is unaffected at 330px with its nav intact.
 
-**Done when:** the icon renders uncropped in a One UI launcher, checked on the real device.
+**The switch could not be written in Tailwind.** Both `hidden sm:flex` and `flex max-sm:hidden`
+fail, in opposite directions, in a production build - see **D-143**, which is the more important
+outcome of this item than the tab bar is.
+
+**Done when:** ~~every private route is reachable in <=2 taps on a 360px viewport, the desktop
+layout is byte-identical, and `npm run shots` passes at all four widths.~~ All three verified
+against a production build at 360 / 390 / 768 / 1280.
+
+#### 0.6 · Icon, splash, manifest — **3h** — DONE 2026-08-30
+
+A simplified brain, magenta on near-black. `public/icons/brain.svg` is the source and
+`scripts/render-icons.mjs` renders the PNGs with Playwright, which was already a dev dependency
+- so this, like the rest of Phase 0, runs with the network off.
+
+Drawn as a **silhouette with the folds cut out**, not as an outline: at 48px, thin strokes on a
+dark field vanish into the background. Two variants, because Android crops a `maskable` icon to
+a squircle and keeps ~80% - the maskable file is full-bleed with the mark at 58%, which looks
+over-padded alone and correct once cropped.
+
+There is no splash asset: Android composes it from `name`, `background_color` and the icon, both
+colours taken from `globals.css` so the launch screen is continuous with the app.
+
+**Done when:** ~~the icon renders uncropped in a One UI launcher, checked on the real device.~~
+Rendered, inspected at 192px, and served - **but the device check is still outstanding.** It
+needs the phone, and it is the one part of Phase 0 that cannot be finished from a laptop. See
+Section 8.
 
 ---
 
-### Phase 1 · Pre-term burst — 2026-09-08 → 09-18 — **70h in a 66h window**
+### Phase 1 · Pre-term burst — 2026-09-08 → 09-18 — **65h in a 66h window**
 
 **This is the app.** 6h/day for 11 days. Everything correctness-critical is here because this
 is the last contiguous block before term.
@@ -341,7 +375,7 @@ and can run a version that is weeks old. The toast never interrupts a half-writt
 survives a cold start with the network off, and a deployed change produces a reload toast rather
 than a silent version skew.
 
-#### 1.2 · The offline store — **19h** *(was 14h — see below)*
+#### 1.2 · The offline store — **14h** *(was briefly 19h — see below)*
 
 Opens with a **migration**, not with code: `client_id` on the four tables that need it,
 `updated_hlc` and `updated_at` everywhere, `deleted_at` on the four tables missing it, and a
@@ -351,15 +385,15 @@ Then the IndexedDB store mirroring those tables, plus the outbox. Client-generat
 creates, LWW on edits, tiebroken by a hybrid logical clock — a phone whose clock jumps after a
 flight must not silently win every conflict for the rest of the day.
 
-**+5h on 2026-08-30.** Victor chose full structured workout logging on the phone over the
-smaller log-only option. That keeps `workouts` and `workout_sets` in the outbox and brings the
-parent-child problem with it: `workout_sets.workout_id` points at a `serial` that does not exist
-yet when a session is created offline. Solved by treating a workout create as **one aggregate
-op** carrying its sets, applied server-side in a transaction (`SYNC_DESIGN.md` §4a) — so there
-is no ordering to get wrong and no partial workout can exist.
+**Sized at 19h for part of 2026-08-30, then back to 14h.** Full workout logging on the phone was
+chosen, then reversed to log-only the same day. Worth recording because the excursion found
+something: creating a workout offline means `workout_sets.workout_id` pointing at a `serial`
+that does not exist yet, which needs the aggregate op in `SYNC_DESIGN.md` §4a. That design is
+kept but not built. Log-only avoids it entirely — the Training log category already carries
+exercise, weight, reps, distance, duration, SPM and RPE, so nothing about gym logging is lost,
+and `workouts`/`workout_sets` become pull-only.
 
-**Done when:** an entry written with the radio off survives a force-quit and a reboot, and a
-workout with twelve sets created offline lands as one session with the right foreign keys.
+**Done when:** an entry written with the radio off survives a force-quit and a reboot.
 
 #### 1.3 · The sync engine — **12h**
 
@@ -490,12 +524,12 @@ Milestone C: it stops feeling like a website.
 | Phase | Block | Hours | Ends |
 |---|---|---:|---|
 | 0 | In transit — Prettier, sync design, nav, icon | 18 | 2026-09-07 |
-| 1 | **The app** — PWA, store, sync, unlock, fast logs | 70 | **2026-09-18 ⚑A** |
+| 1 | **The app** — PWA, store, sync, unlock, fast logs | 65 | **2026-09-18 ⚑A** |
 | 2 | Offline everything — cached reads, portfolio, search, errors | 28 | ~2026-10-18 ⚑B |
 | 3 | Feel — layout, gestures, motion, shortcuts, E2E | 31 | ~2026-11-15 ⚑C |
 | 4 | Push, light mode, voice, resumes | 29 | ~2026-12-13 |
 | 5 | Filament, course planner | 16 | ~2027-01-03 ⚑D |
-| | **Total** | **192** | vs ~188 available |
+| | **Total** | **187** | vs ~188 available |
 
 ---
 
@@ -542,9 +576,7 @@ Recorded so "we decided not to" stays distinguishable from "we forgot".
 
 ## 7. Risks, stated plainly
 
-**1. Phase 1 is 70h of work in a 66h window — four hours *over*.** It was 65h with one hour of
-slack until 2026-08-30, when full workout logging on the phone was chosen over the log-only
-option and §1.2 grew by 5h. There is now no version of this that fits. Eleven days, on the most
+**1. Phase 1 is 65h of work in a 66h window.** One hour of slack across eleven days, on the most
 technically demanding block in the project's history, against a hard date. V2 was planned with
 34% slack and still needed four revisions. **This will slip.** The mitigation is ordering, not
 optimism: 1.1 → 1.2 → 1.3 → 1.4 builds a working sync engine by roughly 09-14. If it slips, 1.6
@@ -575,11 +607,12 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 | # | What | Blocks |
 |---|---|---|
 | 0 | **Commit the format pass.** 91 reformatted files are sitting uncommitted alongside the V3 planning docs, on `main`. It must land as its own commit before any V3 code, or the noise it was meant to prevent ends up mixed into the first feature diff. Needs a call on branch-vs-`main`. | §0.3 onward |
+| 0 | **Look at the icon on the phone.** Open `victorgusev.com` in Chrome on the Samsung → menu → *Add to Home screen*. The manifest is live, so this works today. It is the one part of Phase 0 that cannot be finished from a laptop, and a launcher icon cannot be judged from a desktop screenshot. If the brain is cropped or the folds close up at launcher size, that is a 20-minute fix now and an annoyance for a year otherwise. | closes §0.6 |
 | 1 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary you actually use. | 5.1 |
 | 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
 | 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
 | 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
-| ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Answered 2026-08-30: workouts too.** §1.2 grew 14h → 19h and Phase 1 is now 4h over its window. `SYNC_DESIGN.md` §4a. | ~~§1.2 size~~ |
+| ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Closed 2026-08-30: log entries only.** Answered "workouts too", reversed the same day. §1.2 is back to 14h and Phase 1 fits its window again. `SYNC_DESIGN.md` §11.1. | ~~§1.2 size~~ |
 
 **Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
 and states the project uses Geist — false since D-002 put three self-hosted faces in
