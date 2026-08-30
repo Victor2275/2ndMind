@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { parseDistanceToMetres, parseTimeToSeconds } from "@/lib/athletics/forms";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
-import { categoryByKey, type Field } from "@/lib/log/categories";
+import { categoryByKey } from "@/lib/log/categories";
+import { readField } from "@/lib/log/form";
 import { createEntry, deleteEntry, restoreEntry } from "@/lib/log/queries";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -23,34 +23,6 @@ function describe(error: unknown): string {
     return "The log_entries table is missing. Run `npm run db:migrate`.";
   }
   return message;
-}
-
-/** Reads one field out of the form, converting to the type the category declared. */
-function readField(formData: FormData, field: Field): unknown {
-  const raw = formData.get(field.name);
-
-  if (field.type === "bool") return formData.get(field.name) === "on";
-  if (typeof raw !== "string") return null;
-
-  const value = raw.trim();
-  if (value === "") return null;
-
-  switch (field.type) {
-    case "number": {
-      const parsed = Number(value);
-      // Reject "12abc" rather than letting a partial parse through as 12.
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    case "duration":
-      // Accepts "2:17" as an erg monitor shows it, or bare seconds.
-      return parseTimeToSeconds(value);
-    case "distance": {
-      const unit = String(formData.get(`${field.name}Unit`) ?? "m");
-      return parseDistanceToMetres(value, unit);
-    }
-    default:
-      return value;
-  }
 }
 
 export async function createLogEntry(

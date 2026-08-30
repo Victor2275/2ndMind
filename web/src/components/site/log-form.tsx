@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { createLogEntry } from "@/app/private/log/actions";
 import { DictateButton } from "@/components/site/dictate-button";
-import type { Category, Field } from "@/lib/log/categories";
+import { SCALE_MAX, SCALE_MIN, type Category, type Field } from "@/lib/log/categories";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -27,7 +27,73 @@ function todayLocal(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
+/**
+ * A 1-5 scale as five tap targets, not a number input.
+ *
+ * `inputMode="decimal"` on a phone raises a full numeric keypad to collect one digit out of
+ * five, which is three interactions where there should be one — and this field is filled in
+ * one-handed, in bed, which is the least forgiving context in the app.
+ *
+ * Radios rather than buttons so the value reaches `FormData` with no extra plumbing, and so
+ * arrow keys work. Controlled only to render the clear affordance: without it a mis-tap is
+ * unrecoverable, and every field in this form is optional by design.
+ */
+function ScaleField({ field }: { field: Field }) {
+  const [value, setValue] = useState<number | null>(null);
+  const [low, high] = field.anchors ?? ["", ""];
+  const steps = Array.from({ length: SCALE_MAX - SCALE_MIN + 1 }, (_, i) => SCALE_MIN + i);
+
+  return (
+    <fieldset className="col-span-2 sm:col-span-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <legend className={LABEL}>{field.label}</legend>
+        {value !== null && (
+          <button
+            type="button"
+            onClick={() => setValue(null)}
+            className="font-mono text-[0.55rem] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            clear
+          </button>
+        )}
+      </div>
+
+      <div className="mt-1 flex gap-1">
+        {steps.map((step) => (
+          <label
+            key={step}
+            className={`flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-md border text-sm transition-colors ${
+              value === step
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            <input
+              type="radio"
+              name={field.name}
+              value={step}
+              checked={value === step}
+              onChange={() => setValue(step)}
+              className="sr-only"
+            />
+            {step}
+          </label>
+        ))}
+      </div>
+
+      {(low || high) && (
+        <div className="mt-1 flex justify-between font-mono text-[0.55rem] text-muted-foreground">
+          <span>{low}</span>
+          <span>{high}</span>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function FieldInput({ field }: { field: Field }) {
+  if (field.type === "scale") return <ScaleField field={field} />;
+
   if (field.type === "bool") {
     return (
       <label className="flex items-center gap-2 pt-5">

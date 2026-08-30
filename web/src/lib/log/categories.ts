@@ -13,7 +13,13 @@
  * one-handed, is a log that will not be written. Every field here is optional.
  */
 
-export type FieldType = "text" | "number" | "select" | "duration" | "distance" | "bool";
+export type FieldType = "text" | "number" | "select" | "duration" | "distance" | "bool" | "scale";
+
+/** Every `scale` field is 1–5. Fixed rather than configurable: two scales that ran to
+ *  different maximums could not be read on the same chart, which is the only reason to
+ *  collect them. */
+export const SCALE_MIN = 1;
+export const SCALE_MAX = 5;
 
 export type Field = {
   name: string;
@@ -22,6 +28,12 @@ export type Field = {
   /** Shown in the input. Concrete examples beat instructions. */
   placeholder?: string;
   options?: readonly string[];
+  /**
+   * `scale` only — the words under 1 and under 5. Ends are anchored and the middle is not,
+   * deliberately: a number with a word attached has to be chosen rather than tapped from
+   * habit, and anchoring all five costs more width than a 360px screen has.
+   */
+  anchors?: readonly [string, string];
   /** Narrow fields sit side by side on a phone; wide ones take the row. */
   wide?: boolean;
 };
@@ -145,10 +157,20 @@ export const CATEGORIES: readonly Category[] = [
   {
     key: "day",
     label: "End of day",
-    // Deliberately no mood or energy scale: Victor put that in V3, and a 1-5 filled in from
-    // habit rather than reflection is worse than nothing.
-    hint: "How the day went. One box, no scales.",
-    fields: [{ name: "carryOver", label: "Carrying over to tomorrow", type: "text", wide: true }],
+    // V1-V2 carried a note here saying there was deliberately no mood or energy scale, because
+    // "a 1-5 filled in from habit rather than reflection is worse than nothing". Victor added
+    // them in V3 anyway, for a series he can plot against training load and splits (D-134).
+    //
+    // The objection was mitigated rather than withdrawn: the ends carry words, so a tap is a
+    // choice between "wrecked" and "great" rather than a reflex on a bare number. It is still
+    // possible to fill these in on autopilot, and a month of flat 3s is the signal to take them
+    // out again — not a bug.
+    hint: "How the day went, and how you felt.",
+    fields: [
+      { name: "mood", label: "Mood", type: "scale", anchors: ["wrecked", "great"] },
+      { name: "energy", label: "Energy", type: "scale", anchors: ["empty", "wired"] },
+      { name: "carryOver", label: "Carrying over to tomorrow", type: "text", wide: true },
+    ],
   },
 ] as const;
 
@@ -172,6 +194,12 @@ export function summarise(category: string, data: Record<string, unknown>, note:
     if (value === undefined || value === null || value === "" || value === false) continue;
     if (field.type === "bool") {
       parts.push(field.label.toLowerCase());
+      continue;
+    }
+    // A bare "4" in a timeline says nothing, and two scales side by side would read as "4 · 2"
+    // with no way to tell which was which. The label travels with the number.
+    if (field.type === "scale") {
+      parts.push(`${field.label.toLowerCase()} ${value}`);
       continue;
     }
     parts.push(String(value));

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { resetTestDb } from "@/test/pg";
 import { CATEGORIES, categoryByKey, searchTextFor, summarise } from "../categories";
+import { readField } from "../form";
 import {
   categoriesLoggedBetween,
   countEntries,
@@ -60,10 +61,13 @@ describe("category definitions", () => {
     }
   });
 
-  it("has no mood or energy scale, which Victor deferred to V3", () => {
+  // Was: "has no mood or energy scale, which Victor deferred to V3" — this test asserted the
+  // absence, and V3 §0.4 is where that deferral ends (D-134). Inverted rather than deleted:
+  // the pair is now load-bearing, and a silent disappearance should fail.
+  it("has the mood and energy scales V3 added", () => {
     const names = CATEGORIES.flatMap((c) => c.fields.map((f) => f.name.toLowerCase()));
-    expect(names).not.toContain("mood");
-    expect(names).not.toContain("energy");
+    expect(names).toContain("mood");
+    expect(names).toContain("energy");
   });
 
   it("resolves a category by key and returns undefined for junk", () => {
@@ -299,5 +303,71 @@ describe("entriesBetween and the daily prompt", () => {
       at("2026-08-22T00:00:00Z"),
     );
     expect(logged).toEqual([]);
+  });
+});
+
+describe("1-5 scales (D-134)", () => {
+  const day = categoryByKey("day")!;
+  const mood = day.fields.find((f) => f.name === "mood")!;
+  const energy = day.fields.find((f) => f.name === "energy")!;
+
+  const form = (name: string, value: string) => {
+    const fd = new FormData();
+    fd.set(name, value);
+    return fd;
+  };
+
+  it("puts both scales on End of day, with anchored ends", () => {
+    expect(mood.type).toBe("scale");
+    expect(energy.type).toBe("scale");
+    // Ends are anchored so a tap is a choice, not a reflex. The middle is deliberately bare.
+    expect(mood.anchors).toEqual(["wrecked", "great"]);
+    expect(energy.anchors).toEqual(["empty", "wired"]);
+  });
+
+  it("gives every scale field anchors", () => {
+    for (const category of CATEGORIES) {
+      for (const field of category.fields) {
+        if (field.type === "scale") {
+          expect(field.anchors, `${category.key}.${field.name}`).toHaveLength(2);
+        }
+      }
+    }
+  });
+
+  it("accepts every value in range", () => {
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(readField(form("mood", String(n)), mood)).toBe(n);
+    }
+  });
+
+  it("drops out-of-range values rather than clamping them", () => {
+    // Clamping a 9 to a 5 would put a point in the series that nobody chose, and these fields
+    // exist to be plotted. A fabricated point is worse than a missing one.
+    for (const bad of ["0", "6", "9", "-1", "999"]) {
+      expect(readField(form("mood", bad), mood), bad).toBeNull();
+    }
+  });
+
+  it("rejects non-integers and junk", () => {
+    for (const bad of ["3.5", "4abc", "abc", "NaN", "Infinity", " "]) {
+      expect(readField(form("mood", bad), mood), bad).toBeNull();
+    }
+  });
+
+  it("treats an unanswered scale as absent, not as zero", () => {
+    // Every field in this form is optional; a skipped scale must not become a 0 in the series.
+    expect(readField(new FormData(), mood)).toBeNull();
+  });
+
+  it("carries the label into the timeline summary", () => {
+    // A bare "4 · 2" gives no way to tell mood from energy.
+    expect(summarise("day", { mood: 4, energy: 2 }, "")).toBe("mood 4 · energy 2");
+    expect(summarise("day", { mood: 1 }, "rough one")).toBe("mood 1 — rough one");
+  });
+
+  it("makes scale values searchable", () => {
+    expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("5");
+    expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("good day");
   });
 });
