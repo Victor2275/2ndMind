@@ -20,11 +20,11 @@ contradicts something already built or already written down, §2 says so and nam
 |---|---|
 | **Goal** | An installable, offline-first PWA. Log without signal, read without signal, show the portfolio without signal, sync on reconnect. |
 | **Delivery** | PWA installed to the home screen. Not Capacitor, not React Native. |
-| **Budget** | ~187h across 18h travel + 66h pre-term + ~104h term-time |
+| **Budget** | ~192h across 18h travel + 66h pre-term + ~104h term-time |
 | **Milestone A** | **2026-09-18** — installed, logs offline, syncs. The hard date. |
 | **Milestone D** | **~2027-01-03** — everything. Not a hard date. |
 | **Done when** | The app is on the home screen and two real weeks pass without reaching for the laptop to log. |
-| **Biggest risk** | Phase 1 is 65h of work in a 66h window. Named in §7. |
+| **Biggest risk** | Phase 1 is 70h of work in a 66h window. Named in §7. |
 
 ---
 
@@ -326,7 +326,7 @@ up in 1.1).
 
 ---
 
-### Phase 1 · Pre-term burst — 2026-09-08 → 09-18 — **65h**
+### Phase 1 · Pre-term burst — 2026-09-08 → 09-18 — **70h in a 66h window**
 
 **This is the app.** 6h/day for 11 days. Everything correctness-critical is here because this
 is the last contiguous block before term.
@@ -341,14 +341,25 @@ and can run a version that is weeks old. The toast never interrupts a half-writt
 survives a cold start with the network off, and a deployed change produces a reload toast rather
 than a silent version skew.
 
-#### 1.2 · The offline store — **14h**
+#### 1.2 · The offline store — **19h** *(was 14h — see below)*
 
-IndexedDB schema mirroring the Postgres tables that matter (`log_entries`, `tasks`, `workouts`,
-`workout_sets`, `bodyweight_entries`, `rehab_completions`), plus the outbox. Client-generated
-UUIDs on every create. LWW on edits and deletes, tiebroken on a monotonic client clock, not
-`Date.now()` — a phone whose clock jumps must not silently win.
+Opens with a **migration**, not with code: `client_id` on the four tables that need it,
+`updated_hlc` and `updated_at` everywhere, `deleted_at` on the four tables missing it, and a
+shared `sync_seq` sequence bumped by a trigger. `docs/SYNC_DESIGN.md` §2–§4 is the spec.
 
-**Done when:** an entry written with the radio off survives a force-quit and a reboot.
+Then the IndexedDB store mirroring those tables, plus the outbox. Client-generated UUIDs on
+creates, LWW on edits, tiebroken by a hybrid logical clock — a phone whose clock jumps after a
+flight must not silently win every conflict for the rest of the day.
+
+**+5h on 2026-08-30.** Victor chose full structured workout logging on the phone over the
+smaller log-only option. That keeps `workouts` and `workout_sets` in the outbox and brings the
+parent-child problem with it: `workout_sets.workout_id` points at a `serial` that does not exist
+yet when a session is created offline. Solved by treating a workout create as **one aggregate
+op** carrying its sets, applied server-side in a transaction (`SYNC_DESIGN.md` §4a) — so there
+is no ordering to get wrong and no partial workout can exist.
+
+**Done when:** an entry written with the radio off survives a force-quit and a reboot, and a
+workout with twelve sets created offline lands as one session with the right foreign keys.
 
 #### 1.3 · The sync engine — **12h**
 
@@ -479,12 +490,12 @@ Milestone C: it stops feeling like a website.
 | Phase | Block | Hours | Ends |
 |---|---|---:|---|
 | 0 | In transit — Prettier, sync design, nav, icon | 18 | 2026-09-07 |
-| 1 | **The app** — PWA, store, sync, unlock, fast logs | 65 | **2026-09-18 ⚑A** |
+| 1 | **The app** — PWA, store, sync, unlock, fast logs | 70 | **2026-09-18 ⚑A** |
 | 2 | Offline everything — cached reads, portfolio, search, errors | 28 | ~2026-10-18 ⚑B |
 | 3 | Feel — layout, gestures, motion, shortcuts, E2E | 31 | ~2026-11-15 ⚑C |
 | 4 | Push, light mode, voice, resumes | 29 | ~2026-12-13 |
 | 5 | Filament, course planner | 16 | ~2027-01-03 ⚑D |
-| | **Total** | **187** | |
+| | **Total** | **192** | vs ~188 available |
 
 ---
 
@@ -531,7 +542,9 @@ Recorded so "we decided not to" stays distinguishable from "we forgot".
 
 ## 7. Risks, stated plainly
 
-**1. Phase 1 is 65h of work in a 66h window.** One hour of slack across eleven days, on the most
+**1. Phase 1 is 70h of work in a 66h window — four hours *over*.** It was 65h with one hour of
+slack until 2026-08-30, when full workout logging on the phone was chosen over the log-only
+option and §1.2 grew by 5h. There is now no version of this that fits. Eleven days, on the most
 technically demanding block in the project's history, against a hard date. V2 was planned with
 34% slack and still needed four revisions. **This will slip.** The mitigation is ordering, not
 optimism: 1.1 → 1.2 → 1.3 → 1.4 builds a working sync engine by roughly 09-14. If it slips, 1.6
@@ -566,7 +579,7 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 | 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
 | 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
 | 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
-| 5 | **Does the phone create `workouts`, or only `log_entries`?** `log_entries` already has a Training category carrying weight, reps and SPM, and Training is a fast log path. If the phone only ever writes log entries, `workouts` and `workout_sets` drop out of the outbox and §2 of the sync design halves. **Leaning: log-only** — smaller, and it matches how the fast path already works. `SYNC_DESIGN.md` §11.1. | §1.2 size |
+| ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Answered 2026-08-30: workouts too.** §1.2 grew 14h → 19h and Phase 1 is now 4h over its window. `SYNC_DESIGN.md` §4a. | ~~§1.2 size~~ |
 
 **Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
 and states the project uses Geist — false since D-002 put three self-hosted faces in

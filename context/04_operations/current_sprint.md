@@ -198,8 +198,12 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
         client id (the rest have natural keys), `rehab_completions` **cannot sync as built**
         because it hard-deletes on toggle, and almost nothing has an `updated_at` — so Phase 1
         opens with a migration. Clock is an HLC, not `Date.now()`. Test list §10 feeds §1.4.
-        **Open for Victor:** does the phone create `workouts`, or only `log_entries`? Leaning
-        log-only; it halves the migration.
+        **Answered same day:** the phone creates full workouts, not just log entries. That
+        keeps `workouts`/`workout_sets` in the outbox and brings the parent-child FK problem
+        with it — a workout create is now **one aggregate op** carrying its sets, applied in a
+        server-side transaction (`SYNC_DESIGN.md` §4a). §1.2 grows 14h → 19h, so **Phase 1 is
+        now 70h in a 66h window — 4h over, not 1h under.** Mitigation is unchanged and already
+        planned: 1.6 and 1.7 move to Phase 2 if it slips; the app still installs and syncs.
   - [ ] **0.4 · Mood/energy fields** (2h)
   - [ ] **0.5 · Bottom tab bar** (7h)
   - [ ] **0.6 · Icon, splash, manifest** (3h)

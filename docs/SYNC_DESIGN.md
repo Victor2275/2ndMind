@@ -173,6 +173,51 @@ operation).
 
 ---
 
+## 4a. Workouts are one aggregate, not two tables
+
+*This section exists only because the phone creates workouts (§11.1). Log-only would not have
+had this problem at all.*
+
+`workout_sets.workout_id` is an `integer` foreign key to `workouts.id`, which is a `serial`.
+Offline, that number **does not exist yet** — the phone creates a workout with a `client_id` and
+no server id, so its sets have nothing to point at.
+
+Three ways out, and only one is good:
+
+| Option | Why not |
+|---|---|
+| Sets carry `parent_client_id`; server resolves it at apply time | Works, but the child op is now ordering-dependent on the parent op, and §5's per-`clientId` block does not cover it — a failed parent would let its orphaned children through |
+| Extend the block rule to cover parent ids | Fixes the orphan, and adds a dependency graph to the outbox for one relationship |
+| **Send the workout and its sets as one operation** | ✅ |
+
+**Decision: a workout create is an aggregate op.** One outbox entry carries the session and all
+its sets; the server applies them in a single transaction and assigns the FK itself. There is no
+ordering to get wrong, no orphan to guard against, and no partial workout can exist.
+
+This matches how the data is actually produced — you finish a session and save it once. It is
+not a workaround; a workout without its sets was never a meaningful thing to write.
+
+```ts
+// op: "create", entity: "workout"
+{
+  clientId: "<workout uuid>",
+  payload: {
+    performedAt, title, notes,
+    sets: [ { clientId, exercise, setIndex, setType, weightLbs, reps, ... } ],
+  },
+}
+```
+
+**After creation, sets are independent.** Editing or deleting one set is its own op, keyed by
+that set's `client_id` — so fixing a typo in set 3 does not resend the session. Only the initial
+create is atomic.
+
+**Deleting a workout** soft-deletes the parent only. Reads filter children by the parent's
+`deleted_at`, which is why §4 adds the column to both tables. The `ON DELETE CASCADE` stays for
+genuine hard deletes; there are none in normal operation.
+
+---
+
 ## 5. The outbox
 
 IndexedDB store, in queue order:
@@ -338,16 +383,20 @@ real outbox code, no mocks. Six cases were named in the plan; reading the schema
 | 7 | Rehab un-tick offline vs tick online → deterministic | `deleted_at` tombstone (§4) |
 | 8 | Failed op blocks its own row, not the queue | Per-`clientId` block (§5) |
 | 9 | Bodyweight same day, two devices → one row, later HLC wins | Natural-key upsert (§2) |
+| 10 | Workout + 12 sets created offline → one session, 12 sets, correct FK | Aggregate op (§4a) |
+| 11 | Aggregate op fails halfway → no partial workout exists | Server-side transaction (§4a) |
+| 12 | Delete a workout offline → its sets vanish from reads, rows survive | Parent-filtered reads (§4a) |
 
 ---
 
 ## 11. Open questions — decide before §1.2, not during
 
-1. **Does the phone create workouts at all,** or only log entries that a workout is derived
-   from? Training is a fast log path (§1.6) and `log_entries` already has a Training category
-   with weight/reps/SPM. If the phone only ever writes `log_entries`, `workouts` and
-   `workout_sets` drop out of the outbox entirely and §2's migration halves.
-   *Leaning: log-only. It is the smaller design and matches how the fast path already works.*
+1. ~~Does the phone create workouts at all?~~ **Answered 2026-08-30: yes — full structured
+   workout logging on the phone.** Not the log-only option this document originally leaned
+   toward. It is the more faithful model: a phone-logged session lands as a real workout with
+   sets, so it reaches PR calculations directly instead of needing a conversion step later.
+   Consequences are folded into §4a, which exists *only* because of this answer, and Phase 1
+   §1.2 grows by ~5h.
 2. **Should `ai_summaries` be pull-only, or should the phone be able to request one?** Pull-only
    in this document. Requesting one offline needs a second queue for read-requests, which the
    scoping session declined.
