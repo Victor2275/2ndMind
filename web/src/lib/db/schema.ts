@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  bigint,
   date,
   index,
   integer,
@@ -9,6 +11,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -25,6 +28,64 @@ import {
  * columns apply and PR logic branches on what is populated.
  */
 
+/**
+ * The four columns every syncable table carries (V3 §1.2, `docs/SYNC_DESIGN.md` §3–§4, §7,
+ * D-150). A function rather than a shared object because Drizzle's column builders are
+ * stateful — spreading one object into seven tables makes them share builder instances.
+ *
+ * Each column does a different job, and conflating any two of them is a bug waiting to happen:
+ *
+ * - `updatedHlc` is what last-write-wins actually compares. A hybrid logical clock, not a
+ *   timestamp: `Date.now()` on a phone is not a comparable clock. Fly to Taiwan, the clock
+ *   jumps, and from that moment the phone wins every conflict for the rest of the day —
+ *   including overwriting edits made later on the laptop.
+ * - `updatedAt` is a human-readable server-side receipt. It is deliberately NOT what LWW
+ *   compares. Two clocks, two jobs; conflating them is how the timezone bug gets in.
+ * - `serverSeq` is the pull cursor, drawn from one sequence shared by every table. Timestamps
+ *   are unsafe cursors — two rows can share one, and any clock adjustment reorders history.
+ * - `deletedAt` is the tombstone. A row has to survive its own deletion or a delete made on
+ *   one device is indistinguishable from a row the other device never had.
+ *
+ * `serverSeq` and `updatedAt` are written by the `bump_sync_seq` trigger, not by application
+ * code. Application discipline fails silently here, and the failure mode is "changes stop
+ * reaching the phone", which nobody notices until data is missing.
+ */
+function syncColumns() {
+  return {
+    updatedHlc: text("updated_hlc").notNull().default("0-0-server"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    serverSeq: bigint("server_seq", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('sync_seq')`),
+    /**
+     * Soft delete. For `tasks` and `log_entries` this was already here and already made undo
+     * possible (Q81); for the rest it arrived with sync, because a hard delete leaves nothing
+     * to compare and LWW cannot decide between a device that deleted and one that never knew.
+     */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  };
+}
+
+/**
+ * A client-generated identity, so a create is safe to retry.
+ *
+ * Retrying is required — failed writes are held and retried rather than dropped (D-129) — so
+ * without an idempotency key every flaky connection manufactures duplicate rows. Same problem
+ * D-026 solved for Hevy imports with a derived `external_id`.
+ *
+ * Only two tables need this. `bodyweight_entries` (`measured_on`), `rehab_completions`
+ * (`completed_on, slug`) and `ai_summaries` (`kind, period_start`) already have natural keys
+ * that make an offline create idempotent for free, and `workouts`/`workout_sets` are pull-only
+ * — the phone never creates one (`SYNC_DESIGN.md` §11.1).
+ *
+ * The `gen_random_uuid()` default matters: rows created on the laptop get an id too, so this
+ * is the global identity for every row rather than a phone-only marker. The phone therefore
+ * never needs to learn a server `serial` id after a create is accepted.
+ */
+function clientId() {
+  return uuid("client_id").notNull().defaultRandom();
+}
+
 export const workouts = pgTable(
   "workouts",
   {
@@ -40,12 +101,14 @@ export const workouts = pgTable(
     source: text("source").notNull().default("manual"),
     notes: text("notes").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    ...syncColumns(),
   },
   (t) => [
     // Partial-unique in spirit: manual entries leave externalId null, and Postgres treats
     // each null as distinct, so hand-logged workouts never collide with each other.
     uniqueIndex("workouts_external_id_idx").on(t.externalId),
     index("workouts_performed_at_idx").on(t.performedAt),
+    index("workouts_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -69,10 +132,12 @@ export const workoutSets = pgTable(
     /** Strokes per minute. Erg work only; the vault tracks SPM targets per race distance. */
     spm: integer("spm"),
     rpe: numeric("rpe", { precision: 4, scale: 2, mode: "number" }),
+    ...syncColumns(),
   },
   (t) => [
     index("workout_sets_workout_id_idx").on(t.workoutId),
     index("workout_sets_exercise_idx").on(t.exercise),
+    index("workout_sets_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -111,18 +176,18 @@ export const tasks = pgTable(
     externalId: text("external_id"),
     dueAt: timestamp("due_at", { withTimezone: true }),
     doneAt: timestamp("done_at", { withTimezone: true }),
-    /**
-     * Soft delete, which is what makes undo possible (Q81). A hard delete would need the
-     * git history to recover, and these rows are not in git.
-     */
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     notes: text("notes").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Two tasks may legitimately share a title and a due date, so there is no natural key. */
+    clientId: clientId(),
+    ...syncColumns(),
   },
   (t) => [
     uniqueIndex("tasks_external_id_idx").on(t.externalId),
+    uniqueIndex("tasks_client_id_idx").on(t.clientId),
     index("tasks_due_at_idx").on(t.dueAt),
     index("tasks_source_idx").on(t.source),
+    index("tasks_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -150,13 +215,17 @@ export const logEntries = pgTable(
     /** Category-specific fields, shaped by `lib/log/categories.ts`. */
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
     searchText: text("search_text").notNull().default(""),
-    /** Soft delete, so a mis-tap is recoverable. */
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Logging "Bench Press 185x5" twice in one session is a real thing to do, so two
+     *  identical rows are legitimate and there is no natural key. */
+    clientId: clientId(),
+    ...syncColumns(),
   },
   (t) => [
     index("log_entries_occurred_at_idx").on(t.occurredAt),
     index("log_entries_category_idx").on(t.category),
+    uniqueIndex("log_entries_client_id_idx").on(t.clientId),
+    index("log_entries_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -187,11 +256,14 @@ export const bodyweightEntries = pgTable(
     weightLbs: numeric("weight_lbs", { precision: 6, scale: 2, mode: "number" }).notNull(),
     note: text("note").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    ...syncColumns(),
   },
   (t) => [
     // One reading per day. Re-weighing overwrites rather than appending, so a chart cannot
-    // show two contradictory points for the same morning.
+    // show two contradictory points for the same morning. This is also the natural key that
+    // makes an offline create idempotent without a client id.
     uniqueIndex("bodyweight_measured_on_idx").on(t.measuredOn),
+    index("bodyweight_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -217,12 +289,16 @@ export const rehabCompletions = pgTable(
     /** Slug of the protocol item, derived from its vault heading. */
     slug: text("slug").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    ...syncColumns(),
   },
   (t) => [
-    // Toggling is insert-or-delete against this key, which makes a double-tap idempotent
-    // rather than a second row.
+    // Toggling is upsert-and-set-`deletedAt` against this key, which makes a double-tap
+    // idempotent rather than a second row. It used to be insert-or-*hard*-delete, which could
+    // not sync: a hard delete leaves nothing to compare, so there was no way to tell a phone
+    // that un-ticked from a phone that never had the row (`SYNC_DESIGN.md` §4).
     uniqueIndex("rehab_day_slug_idx").on(t.completedOn, t.slug),
     index("rehab_completed_on_idx").on(t.completedOn),
+    index("rehab_server_seq_idx").on(t.serverSeq),
   ],
 );
 
@@ -256,13 +332,16 @@ export const aiSummaries = pgTable(
     /** Which model wrote it, so a summary outlives the model that produced it. */
     model: text("model").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    ...syncColumns(),
   },
   (t) => [
     // One row per period per kind. The summary is regenerated as the day fills in, and each
     // regeneration should replace the last rather than leaving a pile of drafts to read
-    // through later.
+    // through later. Also the natural key: the phone never creates one of these, but the same
+    // uniqueness is what would make it idempotent if it ever did.
     uniqueIndex("ai_summaries_kind_period_idx").on(t.kind, t.periodStart),
     index("ai_summaries_period_idx").on(t.periodStart),
+    index("ai_summaries_server_seq_idx").on(t.serverSeq),
   ],
 );
 
