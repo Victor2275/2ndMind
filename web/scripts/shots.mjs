@@ -387,7 +387,14 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
       ]);
 
       const page = await context.newPage();
-      const response = await page.goto(BASE + target.url, { waitUntil: "networkidle" });
+      // 90s, not Playwright's default 30. `/private` renders the daily AI summary, and on a
+      // cold cache that is a live Gemini call from the server — measured past 30s on the first
+      // run after a build, which failed this gate twice with a timeout that had nothing to do
+      // with layout. Subsequent runs are fast because the summary is persisted (D-124).
+      const response = await page.goto(BASE + target.url, {
+        waitUntil: "networkidle",
+        timeout: 90_000,
+      });
       await hideDevOverlay(page);
       await page.screenshot({
         path: path.join(OUT, `${target.name}-${width}.png`),
