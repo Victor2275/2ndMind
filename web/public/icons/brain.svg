@@ -1,33 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="2ndMind">
   <title>2ndMind</title>
   <!--
-    The 2ndMind mark: a brain seen from the side, magenta on near-black (V3 §0.6, D-145,
-    brand_and_voice.md). The first version was a top view; a profile is what actually reads
-    as "brain" at a glance, because the recognisable outline is the side one.
+    The 2ndMind mark: a brain seen from the side, magenta on near-black (V3 §0.6, D-145, D-148,
+    brand_and_voice.md). Facing left, the convention for anatomical profiles.
 
-    Facing left — front of the brain to the left, the convention for anatomical profiles.
-    Three masses, drawn as separate filled paths that overlap into one silhouette:
-    cerebrum, cerebellum tucked under the back, and the stem dropping below.
+    Proportion is what carries this. The cerebrum is roughly 1.65 : 1 wide to tall; the version
+    before it was 1.05 : 1 — a circle with bumps — and no amount of interior detail rescues a
+    silhouette that is the wrong shape.
 
-    Still built as a filled silhouette with the folds cut out in the ground colour rather
-    than drawn as strokes over it. At 48px — which is where a launcher icon actually lives —
-    thin strokes on a dark field disappear into the background, while a solid shape with
-    negative-space folds keeps its silhouette. The mark has to survive being small before it
-    has to look good large.
+    Three things were tried and rejected on the way here, all three of them the obvious idea:
 
-    The long cut running front-to-back low on the shape is the Sylvian fissure, which lifts
-    the temporal lobe away from the mass. It is the single feature that makes a side view
-    legible; without it the outline is just a lumpy oval. The rest is six grooves, each
-    reaching an outer edge so it looks cut rather than floating.
+    - THE FISSURE AS A WEDGE CUT INTO THE OUTLINE. Anatomically the Sylvian fissure is dramatic,
+      so opening it as a V in the silhouette seems right. It is not: it eats the temporal lobe
+      down to a thin forward spike and the mark reads as a shrimp. The fissure is a deep but
+      NARROW slot, cut as a heavy stroke in from the front edge, with a blunt rounded temporal
+      lobe left below it.
+    - EVENLY SPACED PARALLEL FOLDS. Nine arcs of one length at one angle read as a rib cage.
+      Real gyri vary; the cuts here alternate long and short, and that variation does more for
+      realism than the count does.
+    - A CEREBELLUM SITTING BEHIND THE OCCIPITAL. Placed level with the back of the cerebrum it
+      hangs off the silhouette as a separate striped blob. It belongs *under* the occipital,
+      inside the cerebrum's footprint, overlapping it.
 
-    Overshooting a fold past the silhouette is harmless: the cut colour and the tile colour
-    are the same, so a stroke that runs off the edge simply stops being visible.
+    THE SPACING RULE, which caps how many folds are possible. At 48px — where a launcher icon
+    actually lives — the mark spans ~35px, so one screen pixel is ~11 viewBox units. A cut needs
+    ~14 units to read as a line, and the magenta between two cuts needs ~20 units to survive as
+    magenta. So nothing sits closer than ~33 units centre to centre, and every fold base is
+    checked against the fissure and the divide, not just against its neighbours. That is the
+    ceiling: 13 cuts, up from 7. More does not read as more detail, it reads as grey.
+
+    Overshooting a fold past the silhouette is harmless: the cut colour and the tile colour are
+    the same, so a stroke that runs off the edge simply stops being visible.
   -->
   <defs>
     <!-- userSpaceOnUse, not the default objectBoundingBox. The mark is three separate paths;
          per-object gradients would restart the ramp on each one and leave a seam where the
          stem meets the cerebrum. -->
-    <linearGradient id="lobe" gradientUnits="userSpaceOnUse" x1="256" y1="117" x2="256" y2="434">
+    <linearGradient id="lobe" gradientUnits="userSpaceOnUse" x1="256" y1="133" x2="256" y2="426">
       <stop offset="0" stop-color="#f06fa8" />
       <stop offset="1" stop-color="#c53f82" />
     </linearGradient>
@@ -35,68 +44,101 @@
 
   <g id="mark">
     <g fill="url(#lobe)">
-      <!-- Cerebrum. Four bumps across the top, occipital bulge at the back, temporal lobe
-           hanging at the front-bottom. -->
+      <!-- Cerebrum. Clockwise from the frontal pole: up the front, five gyrus bumps across the
+           top, down the occipital, then forward along the underside to a blunt temporal pole.
+           The temporal lobe is part of this shape rather than a separate one — the fissure is
+           cut into it below. -->
       <path
-        d="M104 250
-           C102 210 118 176 150 158
-           C156 132 182 116 208 140
-           C224 110 252 106 266 132
-           C284 108 314 112 326 142
-           C350 140 378 152 386 186
-           C406 200 418 224 416 250
-           C414 278 404 298 386 306
-           C372 320 352 328 330 326
-           C310 324 290 332 272 330
-           C260 356 248 368 226 368
-           C202 372 176 362 162 342
-           C138 330 118 314 116 288
-           C114 272 104 266 104 250
+        d="M58 246
+           C54 210 70 178 100 164
+           C108 142 144 134 168 150
+           C182 130 220 126 240 146
+           C258 124 296 126 314 148
+           C334 130 368 138 378 162
+           C404 154 428 174 434 200
+           C450 216 452 240 442 262
+           C436 288 422 310 400 322
+           C378 334 352 342 328 344
+           C302 358 268 368 232 368
+           C196 368 156 360 128 346
+           C108 336 92 322 94 306
+           C96 288 74 274 64 264
+           C58 258 56 252 58 246
            Z" />
 
-      <!-- Cerebellum, tucked under the occipital lobe. Overlaps the cerebrum on purpose; the
-           gap between them is cut back in below, not left as a join. -->
+      <!-- Cerebellum, tucked under the occipital lobe and inside the cerebrum's footprint.
+           Deliberately chunky: on a real brain it is a substantial lobe, and the small oval two
+           versions ago was both wrong and the first thing to vanish when the icon shrank. -->
       <path
-        d="M304 336
-           C314 318 348 312 372 322
-           C400 330 408 356 394 372
-           C378 388 342 392 322 378
-           C308 368 296 350 304 336
+        d="M322 356
+           C334 332 368 322 396 330
+           C426 340 438 370 426 394
+           C412 414 370 422 342 410
+           C322 398 310 376 322 356
            Z" />
 
-      <!-- Brain stem, tapering as it drops. Starts well up inside the cerebrum so the two
-           read as one mass rather than a shape with something stuck to it. -->
+      <!-- Brain stem: short and thick, as it actually is. The long thin tail of the previous
+           version was the least realistic part of the mark and the least likely to survive
+           shrinking. Starts well up inside the cerebrum so the two read as one mass, and sits
+           far enough left that the cerebellum divide does not cut it off at the shoulder. -->
       <path
-        d="M280 320
-           C292 352 300 390 306 420
-           C308 432 288 436 278 428
-           C268 396 256 358 244 328
+        d="M288 340
+           C298 366 302 394 300 414
+           C298 428 262 430 258 414
+           C254 390 248 362 240 344
            Z" />
     </g>
 
-    <!-- Folds, cut in the ground colour. Stroke width is deliberately heavy: at 48px a
-         hairline vanishes, and the gap is what makes the shape read as a brain. Every cut is
-         at least ~30 units from its neighbours, or the magenta between them closes up when
-         the icon is scaled down. -->
-    <g fill="none" stroke="#140a10" stroke-width="17" stroke-linecap="round">
-      <!-- Sylvian fissure: lifts the temporal lobe. Cut from the front only, so the lobe
-           stays attached at the back the way it actually is. -->
-      <path d="M128 288 C172 316 224 324 264 304" />
-      <!-- The cerebrum/cerebellum divide. The two masses are drawn overlapping and this cut
-           runs through the overlap, so it has to stay between the cerebellum's top edge and
-           the cerebrum's underside along its whole length — drawn short of either, a thin
-           magenta crescent leaks through and the cerebellum reads as a blob stuck on. -->
-      <path d="M296 328 C334 316 376 316 414 342" />
-      <!-- Grooves, front to back. The back one comes in across the edge rather than running
-           parallel to it: a cut that follows the outline just reads as an outline. -->
-      <path d="M132 216 C172 194 212 202 224 232" />
-      <path d="M244 128 C254 168 244 200 258 232" />
-      <path d="M330 142 C310 176 316 210 344 246" />
-      <path d="M416 268 C396 262 382 250 378 232" />
-      <!-- One long groove above the fissure, filling the middle of the mass. It stops short
-           of the front edge on purpose; the fissure below it is the cut that breaks out, and
-           two breaking out side by side fray the left edge into fingers. -->
-      <path d="M130 256 C176 254 244 274 282 258" />
+    <!-- Folds, cut in the ground colour. -->
+    <g fill="none" stroke="#140a10" stroke-width="14" stroke-linecap="round">
+      <!-- Eight gyri sweeping up and back, the way real ones run. Lengths alternate on purpose.
+           Every base sits clear of the fissure below it — the first draft had them landing on
+           it, which welded the whole set into one dark band across the middle of the mark. -->
+      <path d="M88 250 C108 224 114 200 108 176" />
+      <path d="M130 262 C152 244 158 228 156 214" />
+      <path d="M172 262 C200 240 210 208 204 176" />
+      <path d="M216 258 C244 232 252 210 246 180" />
+      <path d="M266 316 C288 288 294 262 292 240" />
+      <path d="M302 322 C328 292 338 246 332 200" />
+      <path d="M350 296 C370 276 378 256 376 236" />
+      <path d="M388 276 C406 258 416 238 414 216" />
+
+      <!-- One cut in the temporal lobe. Only one: the lobe is ~40 units deep, so a second would
+           leave sub-pixel magenta on both sides of it. -->
+      <path d="M156 336 C182 346 210 348 232 342" />
+
+      <!-- One ridge on the cerebellum. Two fit geometrically and neither survived 48px. -->
+      <path d="M330 388 C360 380 398 380 428 388" />
+
+      <!-- The midline crease down the stem. -->
+      <path d="M266 358 C274 382 276 402 274 416" />
     </g>
+
+    <!-- The Sylvian fissure: deep, narrow, cut in from the front edge and running back to an
+         apex. This one stroke is what makes a side view legible — without it the outline is
+         just a lumpy oval — and it is what makes the temporal lobe below read as its own lobe.
+         Heavier than a fold because it is a structural separation, not a groove. -->
+    <path
+      fill="none"
+      stroke="#140a10"
+      stroke-width="20"
+      stroke-linecap="round"
+      d="M44 268 C98 300 176 306 246 292" />
+
+    <!-- The cerebrum/cerebellum divide, also structural. The two masses are drawn overlapping
+         and this has to stay inside that overlap along its whole length: drawn short of either
+         edge, a thin magenta crescent leaks through and the cerebellum reads as a blob stuck on
+         rather than tucked under. Getting this right is mostly about the cerebellum's *height*,
+         not the stroke's width: sitting it high makes the overlap 30 units deep, which no
+         sane stroke covers, and widening the stroke to chase that is what makes the two masses
+         read as separated. Dropped until the overlap is ~14, then a 24 covers it. It also
+         starts at x=330 rather than following the overlap forward, because its round cap would
+         otherwise sever the stem at the shoulder. -->
+    <path
+      fill="none"
+      stroke="#140a10"
+      stroke-width="24"
+      stroke-linecap="round"
+      d="M330 346 C358 332 386 326 416 334" />
   </g>
 </svg>

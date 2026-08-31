@@ -27,6 +27,59 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-148 · The brain is proportioned like a brain — and three obvious ideas that made it worse
+
+**Decision.** Third drawing of the mark. The cerebrum is now ~1.65 : 1 wide to tall (it was
+1.05 : 1), the Sylvian fissure is a deep narrow slot with a blunt temporal lobe below it, the
+cerebellum is chunky and tucked *under* the occipital, the stem is short and thick, and the
+fold count is 13, up from 7. Level, not tilted — an icon sits in a grid of other icons, and a
+tilted mark reads as accidentally rotated.
+
+**Why the previous one failed.** It was a correct side profile that was still essentially
+round, and that is the only thing anyone notices. **No amount of interior detail rescues a
+silhouette that is the wrong shape** — the fix was proportion, and everything else here is
+secondary to it.
+
+**Three things were tried and reverted, all three of them the obvious idea.** They are recorded
+because each looked right in the plan and wrong on the screen:
+
+1. **The fissure as a wedge cut into the outline.** Anatomically the Sylvian fissure is
+   dramatic, so opening it as a V in the silhouette seems right. It eats the temporal lobe down
+   to a thin forward spike and **the whole mark reads as a shrimp.** The fissure has to be deep
+   but *narrow* — a heavy stroke in from the front edge — leaving a blunt rounded lobe below.
+2. **Evenly spaced parallel folds.** Nine arcs of one length at one angle read as a rib cage or
+   a striped shell, not as tissue. Real gyri vary. Alternating long and short cuts did more for
+   realism than the count did.
+3. **A cerebellum level with the back of the cerebrum.** It hangs off the silhouette as a
+   separate striped bean. It belongs inside the cerebrum's footprint, overlapping it.
+
+**Fixing the cerebellum is about its height, not the divide's width.** Sat high, the overlap
+with the cerebrum is ~30 units deep, which no sane stroke covers; widening the stroke to chase
+that is exactly what makes the two masses read as separated rather than joined. Drop the
+cerebellum until the overlap is ~14 and a 24 covers it.
+
+**Fold bases must be checked against the fissure, not just against each other.** The first
+draft had eight folds landing on the Sylvian slot, which welded the whole set into one dark
+band across the middle of the mark.
+
+**The spacing rule, which is what caps the fold count.** At 48px the mark spans ~35px, so one
+screen pixel is ~11 viewBox units. A cut needs ~14 units to read as a line, and the magenta
+between two cuts needs ~20 units to survive as magenta. Nothing sits closer than ~33 units
+centre to centre. **13 cuts is the ceiling; past that it does not read as more detail, it reads
+as grey.**
+
+**Honest limit.** Victor asked for many fine folds *and* said legibility governs when the two
+conflict. They do conflict, and legibility won: 13, not the 16+ a photograph would suggest. The
+result was checked by downscaling to 36 / 48 / 64 / 96px with no smoothing. It holds at 48 and
+above. **At 36px it is degrading** — the folds start to close up. That is the cost of the fold
+count and it is a real cost, not a rounding error; if the icon ever needs to work smaller,
+folds come out.
+
+**How to reverse.** `git show` this commit for the previous path data, restore `brain.svg` and
+the matching `BOX` in `render-icons.mjs`, re-run `node scripts/render-icons.mjs`. The `BOX` must
+be re-measured on every redraw or the render floats in dead space — that has now caught us
+twice.
+
 ### D-147 · One ground colour, pinned by a test
 
 **Decision.** `src/lib/brand.ts` exports `GROUND = "#140a10"`. `manifest.ts`, the root layout's
