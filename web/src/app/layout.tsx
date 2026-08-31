@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { PublicChrome } from "@/components/site/public-chrome";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
@@ -89,9 +90,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* No background here on purpose — globals.css paints the ground on <html>
           so body's ::before/::after atmosphere layers can sit above it. */}
       <body className="flex min-h-full flex-col text-foreground">
-        <SiteHeader name={profile.name} />
-        <div className="flex flex-1 flex-col">{children}</div>
-        <SiteFooter profile={profile} />
+        {/* The header and footer are passed in rather than rendered here, so that
+            `PublicChrome` can drop them on /private without `SiteFooter` having to become a
+            Client Component — it reads the vault, which a client component cannot (D-149). */}
+        <PublicChrome
+          header={<SiteHeader name={profile.name} />}
+          footer={<SiteFooter profile={profile} />}
+        >
+          {children}
+        </PublicChrome>
         {/* Registers the worker and offers the reload when a new build is waiting. Mounted at
             the root rather than under /private because Chrome only offers to install from a
             page inside the worker's scope, and a first visit lands on the portfolio. */}

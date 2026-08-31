@@ -13,6 +13,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { InstallButton } from "@/components/site/install-button";
+import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SignOutButton } from "@/components/site/sign-out-button";
 
 /**
@@ -129,10 +130,15 @@ export function PrivateTabBar() {
             </nav>
 
             {/* `InstallButton` renders nothing unless Chrome says the app is installable, so
-                this row collapses to just the sign-out control in every other case. */}
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-              <InstallButton />
-              <SignOutButton />
+                this row collapses to the public-site link and sign-out in every other case.
+                Since D-149 the public header does not render on /private, which makes
+                `PublicSiteLink` the only way back to the portfolio from a phone. */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <PublicSiteLink className="min-h-10 px-1 text-sm" />
+              <div className="flex items-center gap-2">
+                <InstallButton />
+                <SignOutButton />
+              </div>
             </div>
           </div>
         </div>

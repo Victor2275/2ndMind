@@ -1,5 +1,6 @@
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
+import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SignOutButton } from "@/components/site/sign-out-button";
 import { requireSession } from "@/lib/auth/dal";
 
@@ -22,10 +23,16 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
     <div className="mx-auto w-full max-w-5xl flex-1 px-5 pt-8 pb-24 sm:px-6 sm:pb-8">
       {/* Desktop navigation, untouched by V3 (D-132). Hidden on a phone, where the bottom bar
           owns navigation — showing both would put two navs on one small screen and waste the
-          vertical space D-083 spent a whole feature reclaiming. */}
+          vertical space D-083 spent a whole feature reclaiming.
+
+          Since D-149 this is the topmost thing on the page: the public header no longer renders
+          here, so `PublicSiteLink` is the only way back to the portfolio on a desktop. */}
       <div className="nav-desktop mb-8 flex items-center justify-between gap-4 border-b border-border pb-3">
         <PrivateNav />
-        <SignOutButton />
+        <div className="flex shrink-0 items-center gap-4">
+          <PublicSiteLink className="font-mono text-xs" />
+          <SignOutButton />
+        </div>
       </div>
 
       {children}
