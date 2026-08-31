@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -131,7 +131,10 @@ export async function allEfforts(db: Db): Promise<Effort[]> {
       spm: workoutSets.spm,
     })
     .from(workoutSets)
-    .innerJoin(workouts, eq(workoutSets.workoutId, workouts.id));
+    .innerJoin(workouts, eq(workoutSets.workoutId, workouts.id))
+    // Both sides. A soft delete does not cascade the way the foreign key does, so a deleted
+    // session leaves its sets behind and they would go on counting toward PRs (SYNC_DESIGN §4).
+    .where(and(isNull(workouts.deletedAt), isNull(workoutSets.deletedAt)));
 
   return rows;
 }
@@ -160,7 +163,14 @@ export async function recentWorkouts(db: Db, limit = 20): Promise<WorkoutSummary
       ), 0)::float8`,
     })
     .from(workouts)
-    .leftJoin(workoutSets, eq(workoutSets.workoutId, workouts.id))
+    // The set filter belongs in the join condition, not in a WHERE: on a LEFT JOIN a WHERE
+    // that mentions the right-hand table turns it back into an inner join, and a session whose
+    // sets were all deleted would vanish from the list instead of showing zero.
+    .leftJoin(
+      workoutSets,
+      and(eq(workoutSets.workoutId, workouts.id), isNull(workoutSets.deletedAt)),
+    )
+    .where(isNull(workouts.deletedAt))
     .groupBy(workouts.id)
     .orderBy(desc(workouts.performedAt))
     .limit(limit);
@@ -169,13 +179,25 @@ export async function recentWorkouts(db: Db, limit = 20): Promise<WorkoutSummary
 }
 
 export async function countWorkouts(db: Db): Promise<number> {
-  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(workouts);
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(workouts)
+    .where(isNull(workouts.deletedAt));
   return row?.n ?? 0;
 }
 
+/**
+ * Soft delete, since V3 §1.2. It used to be a hard `DELETE` relying on `ON DELETE CASCADE`.
+ *
+ * A hard delete cannot sync: it leaves nothing to compare, so there is no way to tell a device
+ * that deleted a row from one that never had it. The foreign key still cascades, but only for
+ * a genuine hard delete — of which there are now none in normal operation — so the sets are
+ * soft-deleted explicitly here and every read filters them.
+ */
 export async function deleteWorkout(db: Db, id: number): Promise<void> {
-  // Sets go with it via ON DELETE CASCADE.
-  await db.delete(workouts).where(eq(workouts.id, id));
+  const deletedAt = new Date();
+  await db.update(workoutSets).set({ deletedAt }).where(eq(workoutSets.workoutId, id));
+  await db.update(workouts).set({ deletedAt }).where(eq(workouts.id, id));
 }
 
 /** Every logged session's local day, for checking the week's plan against reality. */
@@ -183,7 +205,7 @@ export async function workoutDates(db: Db, since: Date): Promise<Date[]> {
   const rows = await db
     .select({ performedAt: workouts.performedAt })
     .from(workouts)
-    .where(gte(workouts.performedAt, since))
+    .where(and(gte(workouts.performedAt, since), isNull(workouts.deletedAt)))
     .orderBy(desc(workouts.performedAt));
 
   return rows.map((r) => r.performedAt);
@@ -200,6 +222,7 @@ export async function listBodyweight(db: Db, limit = 400): Promise<BodyweightRea
       note: bodyweightEntries.note,
     })
     .from(bodyweightEntries)
+    .where(isNull(bodyweightEntries.deletedAt))
     .orderBy(desc(bodyweightEntries.measuredOn))
     .limit(limit);
 
@@ -226,12 +249,19 @@ export async function recordBodyweight(
     })
     .onConflictDoUpdate({
       target: bodyweightEntries.measuredOn,
-      set: { weightLbs: input.weightLbs, note: input.note ?? "" },
+      // `deletedAt: null` revives a day that was deleted earlier. Without it the row is
+      // updated with the new weight and stays invisible, which reads as the save silently
+      // failing — the natural key means there is no second row to fall back on.
+      set: { weightLbs: input.weightLbs, note: input.note ?? "", deletedAt: null },
     });
 }
 
+/** Soft delete, since V3 §1.2 — a hard delete leaves nothing for sync to compare. */
 export async function deleteBodyweight(db: Db, measuredOn: string): Promise<void> {
-  await db.delete(bodyweightEntries).where(eq(bodyweightEntries.measuredOn, measuredOn));
+  await db
+    .update(bodyweightEntries)
+    .set({ deletedAt: new Date() })
+    .where(eq(bodyweightEntries.measuredOn, measuredOn));
 }
 
 /* --------------------------------------------------------------------- rehab */
@@ -245,7 +275,13 @@ export async function rehabCompletionsBetween(
   const rows = await db
     .select({ completedOn: rehabCompletions.completedOn, slug: rehabCompletions.slug })
     .from(rehabCompletions)
-    .where(and(gte(rehabCompletions.completedOn, from), lte(rehabCompletions.completedOn, to)));
+    .where(
+      and(
+        gte(rehabCompletions.completedOn, from),
+        lte(rehabCompletions.completedOn, to),
+        isNull(rehabCompletions.deletedAt),
+      ),
+    );
 
   const byDay = new Map<string, Set<string>>();
   for (const row of rows) {
@@ -259,16 +295,32 @@ export async function rehabCompletionsBetween(
 /**
  * Ticks or un-ticks one protocol item for one day. Returns its state afterwards.
  *
- * Delete-then-insert against the unique key rather than a read-modify-write, so a double-tap
- * on a phone cannot produce two rows.
+ * Upsert against the unique key rather than a read-modify-write, so a double-tap on a phone
+ * cannot produce two rows.
+ *
+ * Un-ticking sets `deletedAt` instead of deleting the row (V3 §1.2, `SYNC_DESIGN.md` §4). The
+ * old version hard-deleted, and that could not sync:
+ *
+ * > The phone un-ticks an item for Tuesday while offline. The laptop ticks it the same
+ * > evening. On sync there is no row on the phone and a row on the server — and no way to tell
+ * > whether the phone deleted it or simply never had it.
+ *
+ * A tombstone makes both states comparable, so last-write-wins has something to decide with.
  */
 export async function toggleRehab(db: Db, day: string, slug: string): Promise<boolean> {
-  const removed = await db
-    .delete(rehabCompletions)
-    .where(and(eq(rehabCompletions.completedOn, day), eq(rehabCompletions.slug, slug)))
-    .returning({ id: rehabCompletions.id });
+  const [existing] = await db
+    .select({ id: rehabCompletions.id, deletedAt: rehabCompletions.deletedAt })
+    .from(rehabCompletions)
+    .where(and(eq(rehabCompletions.completedOn, day), eq(rehabCompletions.slug, slug)));
 
-  if (removed.length > 0) return false;
+  if (existing) {
+    const ticked = existing.deletedAt !== null;
+    await db
+      .update(rehabCompletions)
+      .set({ deletedAt: ticked ? null : new Date() })
+      .where(eq(rehabCompletions.id, existing.id));
+    return ticked;
+  }
 
   await db.insert(rehabCompletions).values({ completedOn: day, slug }).onConflictDoNothing();
 

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { rehabCompletions, workouts, workoutSets } from "@/lib/db/schema";
 import { resetTestDb } from "@/test/pg";
 import { parseHevyCsv } from "../hevy";
 import { ergRecords, strengthRecords } from "../prs";
@@ -232,6 +233,40 @@ describe("deleteWorkout", () => {
     // Orphaned sets would keep inflating PRs invisibly.
     expect(await allEfforts(db)).toEqual([]);
   });
+
+  it("leaves the rows in place, because a hard delete cannot sync", async () => {
+    // Since V3 §1.2 this is a tombstone, not a DELETE. Every read filters it, so the
+    // behaviour above is unchanged — but the row survives, which is what gives
+    // last-write-wins something to compare when the phone and the laptop disagree.
+    await importWorkouts(db, parseHevyCsv(exportCsv(PUSH_DAY)).workouts);
+    const [summary] = await recentWorkouts(db);
+    await deleteWorkout(db, summary.id);
+
+    const rows = await db.select().from(workouts);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].deletedAt).not.toBeNull();
+
+    const sets = await db.select().from(workoutSets);
+    expect(sets.length).toBeGreaterThan(0);
+    // The foreign key still cascades, but only for a genuine hard delete. A soft delete does
+    // not cascade, so the sets have to be tombstoned explicitly or they go on counting.
+    expect(sets.every((row) => row.deletedAt !== null)).toBe(true);
+  });
+
+  it("still lists a session whose sets were all deleted, showing zero", async () => {
+    // The trap this guards: filtering the right-hand table of a LEFT JOIN in a WHERE clause
+    // silently turns it into an INNER JOIN, and the session disappears from the list entirely
+    // rather than showing an empty one. The filter belongs in the join condition.
+    await importWorkouts(db, parseHevyCsv(exportCsv(PUSH_DAY)).workouts);
+    const [summary] = await recentWorkouts(db);
+    await db.update(workoutSets).set({ deletedAt: new Date() });
+
+    const after = await recentWorkouts(db);
+    expect(after).toHaveLength(1);
+    expect(after[0].id).toBe(summary.id);
+    expect(after[0].setCount).toBe(0);
+    expect(after[0].volumeLbs).toBe(0);
+  });
 });
 
 describe("bodyweight", () => {
@@ -263,6 +298,20 @@ describe("bodyweight", () => {
     expect(reading.weightLbs).toBe(214.75);
   });
 
+  it("revives a deleted day when it is re-recorded", async () => {
+    // The natural key means there is no second row to fall back on: without clearing the
+    // tombstone the upsert writes the new weight into an invisible row, and the save looks
+    // like it silently failed.
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 215 });
+    await deleteBodyweight(db, "2026-08-20");
+    expect(await listBodyweight(db)).toEqual([]);
+
+    await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 212 });
+    const rows = await listBodyweight(db);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].weightLbs).toBe(212);
+  });
+
   it("deletes one day without touching the others", async () => {
     await recordBodyweight(db, { measuredOn: "2026-08-19", weightLbs: 214 });
     await recordBodyweight(db, { measuredOn: "2026-08-20", weightLbs: 215 });
@@ -279,6 +328,24 @@ describe("rehab completions", () => {
 
     const done = await rehabCompletionsBetween(db, "2026-08-20", "2026-08-20");
     expect(done.get("2026-08-20")).toBeUndefined();
+  });
+
+  it("un-ticks by tombstone rather than by deleting, and never grows a second row", async () => {
+    // The scenario this exists for: the phone un-ticks an item offline while the laptop ticks
+    // it the same evening. Hard-deleted, there is no row on one side and a row on the other,
+    // and no way to tell a delete from a row that was never there (SYNC_DESIGN §4).
+    await toggleRehab(db, "2026-08-31", "banded-external-rotation");
+    await toggleRehab(db, "2026-08-31", "banded-external-rotation");
+
+    const rows = await db.select().from(rehabCompletions);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].deletedAt).not.toBeNull();
+
+    // Re-ticking revives the same row rather than inserting beside it.
+    expect(await toggleRehab(db, "2026-08-31", "banded-external-rotation")).toBe(true);
+    const after = await db.select().from(rehabCompletions);
+    expect(after).toHaveLength(1);
+    expect(after[0].deletedAt).toBeNull();
   });
 
   it("keeps the same item on different days apart", async () => {
