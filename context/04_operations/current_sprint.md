@@ -215,11 +215,16 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
         More.** Victor chose Calendar over Academics for the fourth tab. **First task on a
         phone: 356px → 265px**, because the mobile layout no longer carries the scrolling nav
         row; D-083 took it 791px → 356px, this takes another 91px. Desktop untouched at 330px.
-  - [x] **0.6 · Icon, splash, manifest** (3h) — done 2026-08-30. A simplified brain in magenta,
-        drawn as a silhouette with the folds cut out because thin strokes vanish at 48px.
-        `brain.svg` + `scripts/render-icons.mjs` (Playwright, offline). Separate maskable
-        variant at 58% fill, because One UI crops to a squircle. No splash asset needed —
-        Android composes it. **Still open: look at it on the actual phone.**
+  - [x] **0.6 · Icon, splash, manifest** (3h) — done 2026-08-30, **verified on the phone**.
+        A brain **seen from the side** in magenta, drawn as a silhouette with the folds cut out
+        because thin strokes vanish at 48px. `brain.svg` + `scripts/render-icons.mjs`
+        (Playwright, offline). Separate maskable variant at 58% fill, because One UI crops to a
+        squircle. No splash asset needed — Android composes it.
+        Shipped first as a **top view**; installing it showed the install path and the launcher
+        tile were both fine and the *shape* was the problem — a top view is a lumpy oval, and
+        the outline people recognise is the profile. Redrawn left-facing with cerebellum and
+        stem (**D-145**). Note what happened: the device check was written to catch cropping
+        and fold legibility, and it caught neither of those — it caught the drawing.
 
 **Found while building (D-143), and worth knowing generally:** Tailwind's `hidden sm:flex` and
 `flex max-sm:hidden` *both* fail here — a base display utility beats its own responsive variant,

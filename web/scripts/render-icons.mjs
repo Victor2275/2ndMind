@@ -36,11 +36,13 @@ async function markBody() {
 
 /**
  * The mark's bounding box inside the 512 viewBox, measured from the path data in brain.svg.
- * The drawing is symmetric about x=256 but sits slightly high, so its centre is not the
- * canvas centre — scaling the whole canvas instead of the box is what left the first render
- * floating in dead space.
+ * The profile drawing is off-centre in both axes — it leans right and hangs low, because the
+ * cerebellum and stem sit at the bottom-right. Scaling the whole canvas instead of the box is
+ * what left the first render floating in dead space, so this must be re-measured whenever the
+ * mark is redrawn. Fold strokes are ignored: they are cut in the tile colour, so overshoot is
+ * invisible and does not belong in the box.
  */
-const BOX = { x: 92, y: 96, w: 328, h: 312 };
+const BOX = { x: 102, y: 117, w: 315, h: 317 };
 
 /**
  * @param body  inner SVG markup

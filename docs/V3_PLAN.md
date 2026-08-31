@@ -206,8 +206,11 @@ Design and offline-safe work at ~2h/day on partial connection. Nothing here need
 > mid-Phase-1. And the tab bar found a real Tailwind fault (**D-143**) — plus a near-miss where
 > a stale `next dev` almost got a fault recorded that does not exist.
 >
-> **Next: Phase 1 opens on 09-08.** One thing is carried forward — the launcher icon has not
-> been seen on the actual phone.
+> **Phase 0 is closed.** The icon was installed on the Samsung on 08-30: the manifest, the
+> install prompt and the launcher tile all worked, and the shape was redrawn from a top view to
+> a side profile off the back of seeing it there (**D-145**). Nothing is carried forward.
+>
+> **Next: Phase 1 opens on 09-08.**
 
 #### 0.1 · Install every dependency in one pass — **1h** — ✅ **DONE 2026-08-30**
 
@@ -341,7 +344,7 @@ against a production build at 360 / 390 / 768 / 1280.
 
 #### 0.6 · Icon, splash, manifest — **3h** — DONE 2026-08-30
 
-A simplified brain, magenta on near-black. `public/icons/brain.svg` is the source and
+A brain **seen from the side**, magenta on near-black. `public/icons/brain.svg` is the source and
 `scripts/render-icons.mjs` renders the PNGs with Playwright, which was already a dev dependency
 - so this, like the rest of Phase 0, runs with the network off.
 
@@ -353,10 +356,14 @@ over-padded alone and correct once cropped.
 There is no splash asset: Android composes it from `name`, `background_color` and the icon, both
 colours taken from `globals.css` so the launch screen is continuous with the app.
 
+The first version was a **top view** and it shipped that way. Installed on the phone it worked -
+manifest, install prompt, launcher tile - but the shape read as a lumpy oval rather than as a
+brain, because the outline people recognise is the profile one. Redrawn left-facing with
+cerebellum and stem: **D-145**, which also records the three drawing rules that came out of
+fixing it. Recognisability at a glance was always the goal here, not anatomy.
+
 **Done when:** ~~the icon renders uncropped in a One UI launcher, checked on the real device.~~
-Rendered, inspected at 192px, and served - **but the device check is still outstanding.** It
-needs the phone, and it is the one part of Phase 0 that cannot be finished from a laptop. See
-Section 8.
+Verified on the Samsung on 2026-08-30. Redrawn the same day off what that showed.
 
 ---
 
@@ -606,8 +613,8 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 
 | # | What | Blocks |
 |---|---|---|
-| 0 | **Commit the format pass.** 91 reformatted files are sitting uncommitted alongside the V3 planning docs, on `main`. It must land as its own commit before any V3 code, or the noise it was meant to prevent ends up mixed into the first feature diff. Needs a call on branch-vs-`main`. | §0.3 onward |
-| 0 | **Look at the icon on the phone.** Open `victorgusev.com` in Chrome on the Samsung → menu → *Add to Home screen*. The manifest is live, so this works today. It is the one part of Phase 0 that cannot be finished from a laptop, and a launcher icon cannot be judged from a desktop screenshot. If the brain is cropped or the folds close up at launcher size, that is a 20-minute fix now and an annoyance for a year otherwise. | closes §0.6 |
+| ~~0~~ | ~~**Commit the format pass.**~~ **Closed 2026-08-30:** landed on its own as `946c5f7`, ahead of any V3 code, so no feature diff carries the noise. | ~~§0.3 onward~~ |
+| ~~0~~ | ~~**Look at the icon on the phone.**~~ **Closed 2026-08-30:** installed from Chrome on the Samsung. Install path and launcher tile both correct. The shape was wrong — top view, redrawn as a side profile, **D-145**. Worth noting that the thing the device check caught was not the thing it was written to catch: cropping and fold legibility were both fine, and the fault was the drawing itself, which is exactly the class of error a desktop screenshot lets you talk yourself past. | ~~closes §0.6~~ |
 | 1 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary you actually use. | 5.1 |
 | 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
 | 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |

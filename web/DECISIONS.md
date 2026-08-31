@@ -27,7 +27,56 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-145 · The brain is seen from the side, not from above
+
+**Decision.** `brain.svg` is redrawn as a left-facing profile: cerebrum, cerebellum tucked
+under the back, brain stem dropping below. It replaces the top view D-144 shipped. The
+silhouette-with-cut-folds technique is unchanged and is the half of D-144 that survives.
+
+**Why.** Victor installed the icon on the Samsung and it worked — the manifest, the install
+prompt and the launcher tile were all correct. The shape was the problem: a top view is a
+symmetrical lumpy oval, and the outline that people actually recognise as a brain is the side
+one. Anatomical correctness was never the point; recognisability at a glance is.
+
+**Facing left**, which is the convention for anatomical profiles, so it reads as intended
+without a second look.
+
+**Three drawing rules came out of getting this right**, and they generalise past this icon:
+
+1. _The overlap between two masses has to be cut, not joined._ The cerebellum is drawn
+   overlapping the cerebrum and separated by a ground-colour stroke. The stroke must stay
+   between the cerebellum's top edge and the cerebrum's underside along its whole length —
+   drawn a few units short, a thin magenta crescent leaks through and the cerebellum stops
+   reading as tucked-under and starts reading as a blob stuck on.
+2. _A cut that follows the outline reads as an outline._ The first back groove ran parallel to
+   the occipital edge and isolated a curl of magenta that looked like a stray comma. Redrawn
+   to come in across the edge.
+3. _Only one cut breaks out of any given edge._ The Sylvian fissure — the long front-to-back
+   cut that lifts the temporal lobe, and the single feature that makes a side view legible —
+   breaks the front edge. The groove above it now stops short. Two adjacent cuts leaving the
+   same edge fray it into fingers.
+
+Cuts are kept ≥30 viewBox units apart centre to centre. At stroke-width 17 that leaves ~13
+units of magenta between them, which is about 1.2px once the icon is 48px. Closer than that
+and neighbouring folds merge into one blob when the icon is scaled down.
+
+**The gradient is `userSpaceOnUse`.** The mark is three separate paths now, and the SVG default
+of `objectBoundingBox` restarts the colour ramp on each one, putting a visible seam where the
+stem meets the cerebrum.
+
+**`BOX` in `render-icons.mjs` was re-measured** to `{x:102, y:117, w:315, h:317}`. The profile is
+off-centre in both axes because the cerebellum and stem hang bottom-right; the old box was
+measured for a drawing that was symmetric about x=256. This has to be redone every time the
+mark is redrawn or the render floats in dead space again — the same failure D-144 records.
+
+**How to reverse.** `git show` this commit for the top-view path data, restore `brain.svg` and
+the old `BOX`, and re-run `node scripts/render-icons.mjs`. The manifest references files, not
+shapes, so nothing else changes.
+
 ### D-144 · The app icon is a brain, drawn as a silhouette with the folds cut out
+
+**Amended by D-145:** the mark is now a side profile. Everything below about *technique* still
+holds; "only three folds and one central division" described the top view and no longer does.
 
 **Decision.** `public/icons/brain.svg` is the source; `scripts/render-icons.mjs` produces
 `icon-192.png`, `icon-512.png` and `maskable-512.png` from it with Playwright, which is already
