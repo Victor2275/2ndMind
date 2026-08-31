@@ -226,7 +226,16 @@ and re-syncs on reconnect.** Scope settled by 44 questions.
         stem (**D-145**). Note what happened: the device check was written to catch cropping
         and fold legibility, and it caught neither of those — it caught the drawing.
 
-**Found while building (D-143), and worth knowing generally:** Tailwind's `hidden sm:flex` and
+**Found while building 1.1, and the more useful of the two findings:** three files each
+claimed to state the app's ground colour and all three disagreed — the page was `#140a10`, the
+Android splash `#100a0e`, and the status bar `#0a161b`, a leftover teal from the palette D-002
+replaced. None of it is visible on a laptop; the status bar only exists on a phone and the
+splash colour shows for about 200ms. **The device check had just been run and missed both**,
+because someone watching a launch animation is looking at the icon. Now one constant with a
+test pinning all four sites (D-147). The rule: *a value that only shows up somewhere you rarely
+look needs a test, not an inspection.*
+
+**Found while building 0.5 (D-143), and worth knowing generally:** Tailwind's `hidden sm:flex` and
 `flex max-sm:hidden` *both* fail here — a base display utility beats its own responsive variant,
 confirmed in a production build. The nav switch is plain unlayered CSS instead. Nearly recorded
 wrong: the first diagnosis came from `next dev`, which was also reporting `px-5` and `pb-24` as
@@ -234,6 +243,21 @@ computing to `0px` when a real build applies them correctly. **A CSS finding is 
 until it reproduces in `npm run build`.**
 - [ ] **Phase 1 · The app** (65h) — PWA shell, IndexedDB + outbox, sync engine, sync tests,
       biometric unlock, fast log paths, failed-sync retry. **⚑ Milestone A — 2026-09-18.**
+      Opened early, on 2026-08-30, because Phase 0 closed on day one of its nine-day window.
+  - [x] **1.1 · PWA shell** (8h) — done 2026-08-30. Service worker registered, install button,
+        and a persistent "new version is ready" bar. **608 tests**, up from 590, plus a
+        nine-check browser run against a production build.
+        The load-bearing idea is the **build stamp** (D-146): a browser only re-installs a
+        service worker when the file's bytes change, so `scripts/build-sw.mjs` writes
+        `public/sw.js` with the commit baked in. Without it every deploy that does not touch
+        the worker ships silently and the phone keeps running old code against a new server.
+        Two honest corrections to the plan. The "reload toast" does **not** auto-dismiss — one
+        that vanishes on a timer is one you miss while typing. And "survives a cold start with
+        the network off" was moved to Milestone A: opening on the *dashboard* offline needs the
+        precached shell, the local store and offline auth together, none of which are §1.1.
+        What §1.1 does guarantee is that a cold offline start lands on the app rather than a
+        browser error page.
+  - [ ] **1.2 · The offline store** (14h) — next. Migration first, then IndexedDB + outbox.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

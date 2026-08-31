@@ -27,6 +27,105 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-147 · One ground colour, pinned by a test
+
+**Decision.** `src/lib/brand.ts` exports `GROUND = "#140a10"`. `manifest.ts`, the root layout's
+`viewport.themeColor`, `brain.svg` and `scripts/render-icons.mjs` all take the colour from it,
+and `lib/__tests__/brand.test.ts` fails if any of them drifts.
+
+**Why, and this is the uncomfortable part.** There were three different colours in the codebase
+claiming to be the app's ground:
+
+| Where | Value | What it painted |
+|---|---|---|
+| `globals.css` `--background` | `#140a10` | the actual page |
+| `manifest.ts` | `#100a0e` | the Android splash screen |
+| `layout.tsx` `viewport.themeColor` | `#0a161b` | the Samsung status bar |
+
+`#0a161b` is teal. It is a survivor of the palette **D-002** replaced, and it had been sitting
+in the root layout ever since, putting a blue-green status bar above a magenta app. `#100a0e`
+was hand-typed while writing the manifest and the icon renderer, and it is close enough to
+`#140a10` to pass every review anyone would ever give it on a laptop.
+
+Neither is visible in a screenshot, on a desktop, or in any test that existed. The status bar
+only exists on a phone; the splash colour only shows for the ~200ms between tapping the icon
+and the first paint. **The one thing that would have caught either is the device check, and the
+device check had just been run** — Victor installed the app, confirmed the icon, and reported
+back. It caught the drawing and missed both of these, because a person looking at a launch
+animation is looking at the drawing.
+
+So the rule this produces is not "check on the device". It is: **a value that only manifests
+somewhere you rarely look needs a test, not an inspection.** Four files, one assertion each.
+
+`render-icons.mjs` runs under node rather than the bundler and cannot import a `.ts` module, so
+it keeps the literal and the test pins the literal. `layout.tsx` is asserted as source text
+rather than by importing it — it calls `next/font/local`, which only exists as a build-time
+transform and throws under vitest. That is weaker than an import, and it is enough: the failure
+being guarded against is a hex typed in by hand, and reading the source sees a hex.
+
+**How to reverse.** Change `GROUND`, re-run `node scripts/render-icons.mjs`. Nothing else moves.
+
+### D-146 · The service worker is generated with the commit stamped in
+
+**Decision.** `src/lib/pwa/sw-template.js` is the source. `scripts/build-sw.mjs` copies it to
+`public/sw.js` on `predev` and `prebuild`, replacing `__BUILD_ID__` with the commit SHA.
+`public/sw.js` is generated and gitignored.
+
+**Why this exists at all.** A browser only re-installs a service worker when the script's
+*bytes* differ from the copy it holds. Without a per-build stamp the worker file is identical
+across every deploy that does not happen to touch it — so `registration.update()` fetches the
+same file, fires nothing, and an installed PWA goes on running weeks-old JavaScript against a
+current API. That is the exact failure §1.1 names, and it is silent by construction: the app
+looks fine, and only misbehaves where the old client and the new server disagree.
+
+Stamping the commit makes every deploy a byte change, which turns "there is a new version" from
+something we would have to invent into something the platform tells us for free.
+
+**Two caches, both of which have to be dealt with.** `updateViaCache: "none"` on the
+registration covers the browser's own service-worker script cache. The `no-store` header on
+`/sw.js` in `next.config.ts` covers the HTTP cache in front of it — `public/` is otherwise
+served with a long max-age, which would pin the previous worker for the life of the cache
+entry. Doing only one of these looks like it works, because the other cache is usually cold.
+
+**The waiting worker is never skipped automatically.** `install` does not call `skipWaiting()`.
+A new worker sits in `waiting` until the user presses Reload, because activating it swaps the
+app's code out from under whatever is on screen — and `context.md` requires that a log entry in
+progress survives anything the app decides to tell you about itself. The prompt is dismissable;
+"Later" postpones without losing the update, since the worker is still waiting on the next load.
+
+**The prompt is not a toast, despite the plan calling it one.** It does not auto-dismiss.
+An update notice that disappears on a timer is one the user can miss entirely while typing,
+which defeats the purpose of having it.
+
+**Update detection covers both paths.** A worker can install while the page is open
+(`updatefound` → `statechange`), or it can have installed during a previous visit and still be
+waiting at load time, in which case *no event ever fires* and only `registration.waiting` says
+so. Handling only the event is the common bug and produces a prompt that appears once, if you
+happen to be looking, and never again. Both paths are tested.
+
+**Reload is driven by `controllerchange`, not by the click.** `skipWaiting()` is asynchronous;
+reloading immediately can land back on the old worker and leave the new one waiting, which
+reads as a Reload button that does nothing. A guard makes the reload fire once — the failure
+worth defending against is a loop, which on a phone looks like an app that will not open.
+
+**What this worker deliberately does not do.** It does not precache the app's own JavaScript
+(that needs a build-time manifest of hashed URLs, and is Phase 2). It never writes a private
+route into Cache Storage — caching personal data on the device is a decision with its own
+threat model, made explicitly in §2.1, not a side effect of the shell landing. And it only ever
+handles GET, because Server Actions are POSTs and a replayed mutation is far worse than a
+failed one. `lib/pwa/__tests__/sw-template.test.ts` asserts all three by reading the source,
+which is blunt but appropriate: what is being defended is a policy, and the way a policy gets
+broken is somebody adding a plausible-looking cache rule in six weeks.
+
+**Fallback if git is unavailable** (a tarball with no `.git`): a timestamp. That is worse — it
+makes every build a "new version" even when nothing changed — but it is the safe direction to
+be wrong in. A spurious update prompt is an annoyance; a missed one is an app running stale
+code for a month.
+
+**How to reverse.** Delete `scripts/build-sw.mjs`, drop it from `predev`/`prebuild`, and remove
+`<ServiceWorker />` from the root layout. Un-ignoring `public/sw.js` and committing a static
+file is the smaller reversal, and costs exactly the update detection this entry is about.
+
 ### D-145 · The brain is seen from the side, not from above
 
 **Decision.** `brain.svg` is redrawn as a left-facing profile: cerebrum, cerebellum tucked

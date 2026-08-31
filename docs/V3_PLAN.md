@@ -372,15 +372,39 @@ Verified on the Samsung on 2026-08-30. Redrawn the same day off what that showed
 **This is the app.** 6h/day for 11 days. Everything correctness-critical is here because this
 is the last contiguous block before term.
 
-#### 1.1 · PWA shell — **8h**
+#### 1.1 · PWA shell — **8h** — DONE 2026-08-30 *(Phase 0 closed on day one, so this opened early)*
 
 Manifest wired, service worker registered, install flow, and **update-in-background with a
 reload toast**. The update path matters more than it looks: an offline app caches its own code
 and can run a version that is weeks old. The toast never interrupts a half-written entry.
 
-**Done when:** the app installs from Chrome on the Samsung, launches fullscreen with the splash,
-survives a cold start with the network off, and a deployed change produces a reload toast rather
-than a silent version skew.
+`src/lib/pwa/sw-template.js` is the worker's source; `scripts/build-sw.mjs` writes
+`public/sw.js` from it on `predev`/`prebuild` with the **commit stamped in**. That stamp is the
+load-bearing part and is why the update path works at all: a browser only re-installs a worker
+when the script's bytes change, so without it every deploy that does not touch the worker ships
+silently and the installed app keeps running old code. **D-146.**
+
+**Two corrections to this item as written.**
+
+1. *"Reload toast" is not a toast.* It does not auto-dismiss. An update notice that vanishes on
+   a timer is one you can miss entirely while typing, which is the opposite of the requirement.
+   It is a persistent bar with **Reload** and **Later**; "Later" postpones without losing the
+   update, because the worker is still waiting on the next load.
+2. *"Survives a cold start with the network off" did not belong here.* A cold offline start
+   showing the **dashboard** needs three things this item does not own: a precached app shell
+   (§2.1), local data (§1.2), and offline auth (§1.5). §1.1 alone can only guarantee that a cold
+   offline start lands on the app rather than the browser's error page, which it does — on
+   `/offline`, a public static page that says so plainly. The dashboard version of this
+   criterion moves to **Milestone A**, where it always belonged.
+
+**Done when:** ~~the app installs from Chrome on the Samsung, launches fullscreen with the
+splash, survives a cold start with the network off, and a deployed change produces a reload
+toast rather than a silent version skew.~~ Verified end to end in a real browser against a
+production build - 9 checks, all passing: registers and claims the origin, precaches `/offline`
+and nothing else, **no** prompt on a first install, offline navigation serves the offline page, a
+changed build raises the prompt, Reload activates the waiting worker, and the new build is the
+one then serving. Plus 18 unit tests. The device half - installs from Chrome, launches
+fullscreen - is Victor's, and is the only part not machine-checkable.
 
 #### 1.2 · The offline store — **14h** *(was briefly 19h — see below)*
 
@@ -446,6 +470,10 @@ after being corrected.
 > ### ⚑ Milestone A — 2026-09-18
 > **2ndMind is on the home screen. It logs with no signal and syncs on reconnect.**
 > The only hard date in this plan.
+>
+> Now also carries the criterion moved out of §1.1: a **cold start with the network off opens
+> on the dashboard**, not on the offline page. That needs the precached shell, the local store
+> and offline auth all present, so it could never have been true at §1.1.
 
 ---
 
