@@ -257,6 +257,22 @@ until it reproduces in `npm run build`.**
         precached shell, the local store and offline auth together, none of which are §1.1.
         What §1.1 does guarantee is that a cold offline start lands on the app rather than a
         browser error page.
+  - [x] **Interlude, 2026-08-31** — two fixes Victor asked for before 1.2.
+        **The icon is proportioned like a brain** (D-148). The side profile was still
+        essentially round at 1.05 : 1; it is now 1.65 : 1, with a proper temporal lobe, a chunky
+        cerebellum tucked under the occipital, a short thick stem, and 13 folds instead of 7.
+        Three obvious ideas made it worse and were reverted — cutting the fissure as a wedge in
+        the outline (turns the mark into a shrimp), spacing the folds evenly (reads as a rib
+        cage), and sitting the cerebellum behind the occipital rather than under it. Checked by
+        downscaling with no smoothing: holds at 48px and above, **degrading at 36px**, which is
+        the honest cost of the fold count.
+        **The private app no longer wears the public header and footer** (D-149). It had three
+        navigations stacked on a phone. First task on `/private`: **265px → 208px** on a phone,
+        342px → 285px on a desktop. A "Public site" link in the desktop nav row and the phone
+        More sheet is the way back. **611 tests**, up from 608.
+        Also fixed a gate failure that looked like a flake and was not: the first `npm run
+        shots` after any build timed out on `/private`, because the daily AI summary is a live
+        Gemini call on a cold cache and Playwright's default `goto` timeout is 30s.
   - [ ] **1.2 · The offline store** (14h) — next. Migration first, then IndexedDB + outbox.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.

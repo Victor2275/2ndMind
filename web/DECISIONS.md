@@ -27,6 +27,43 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-149 · The private app does not wear the public site's header and footer
+
+**Decision.** `/private` and everything under it renders without `SiteHeader` and `SiteFooter`.
+The way back to the portfolio is a **Public site** link in the desktop nav row and in the phone
+More sheet. `lib/chrome.ts` holds the one predicate; `PublicChrome` in the root layout applies
+it.
+
+**Why.** The private app already has two navigations — the desktop nav row and the phone tab
+bar. The public header was a third, stacked above them, pointing at pages the app is not about,
+with Victor's own name at the top of a site only he can see. On a phone it cost 56px at the top
+of every private screen, which is a feature and a half of the vertical distance D-083 and D-132
+were spent reclaiming. The footer was the same problem below the fold, and on a phone it sat
+behind the fixed tab bar.
+
+**The header and footer are passed into `PublicChrome` as props**, not imported by it.
+`SiteFooter` reads the vault through `publicProfile()` and so must stay a Server Component; a
+Client Component cannot call it. React allows server-rendered elements to cross a client
+boundary as props, so the client component decides *whether* to render them without knowing
+what they are. Making the footer a client component to get the same effect would have pushed a
+vault read into the browser bundle.
+
+**No flash.** `usePathname` runs during server rendering too, so a private page never ships the
+header and then removes it.
+
+**Why a route group was not used.** `app/(site)/` with its own layout is the idiomatic Next
+answer and would keep the public header out of the private bundle entirely. It also means
+moving six route directories, three weeks before term, to change where two components render.
+The predicate is one file and one test. If the app grows a second private surface, revisit.
+
+**`hasPublicChrome` matches the segment, not the prefix.** `pathname.startsWith("/private")`
+also swallows `/privateer` and `/private-beta`. Neither exists; the point is that a route added
+later would quietly lose its header, and that is a confusing thing to debug from the symptom.
+
+**How to reverse.** Render `SiteHeader` and `SiteFooter` directly in the root layout again and
+delete `PublicChrome`. The `PublicSiteLink` in the two private navigations then becomes
+redundant rather than wrong, so it can stay or go independently.
+
 ### D-148 · The brain is proportioned like a brain — and three obvious ideas that made it worse
 
 **Decision.** Third drawing of the mark. The cerebrum is now ~1.65 : 1 wide to tall (it was
