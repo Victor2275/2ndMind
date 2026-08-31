@@ -73,14 +73,17 @@ as log-only — the phone never creates one, so neither needs a client id. They 
 | `ai_summaries` | `(kind, period_start)` | Never created on the phone; pull-only |
 
 ```sql
-ALTER TABLE log_entries  ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
-ALTER TABLE tasks        ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
-ALTER TABLE workouts     ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
-ALTER TABLE workout_sets ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE log_entries ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE tasks       ADD COLUMN client_id uuid NOT NULL DEFAULT gen_random_uuid();
 
-CREATE UNIQUE INDEX log_entries_client_id_idx  ON log_entries  (client_id);
--- …one per table
+CREATE UNIQUE INDEX log_entries_client_id_idx ON log_entries (client_id);
+CREATE UNIQUE INDEX tasks_client_id_idx       ON tasks       (client_id);
 ```
+
+*(Corrected 2026-08-31, when this was built. This block listed `workouts` and `workout_sets`
+too — left over from before §11.1 was reversed to log-only. They are pull-only, so neither
+needs a client id. The prose above the block was already right; the SQL was not, which is the
+usual way a spec rots.)*
 
 The default matters: existing rows and rows created on the laptop get an id too, so
 `client_id` is the **global identity for every row**, not just phone-created ones. The phone
@@ -231,8 +234,8 @@ IndexedDB store, in queue order:
 ```ts
 type OutboxOp = {
   opId:     string;   // uuid — primary key, and what the retry screen addresses
-  entity:   "log_entry" | "task" | "workout" | "workout_set"
-          | "bodyweight" | "rehab";
+  entity:   "log_entry" | "task" | "bodyweight" | "rehab";
+          // Not workouts — those are pull-only (§11.1). Corrected 2026-08-31.
   op:       "create" | "update" | "delete";
   clientId: string;   // uuid, or the natural key for the three tables that have one
   payload:  Record<string, unknown>;

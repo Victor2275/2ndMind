@@ -424,7 +424,26 @@ kept but not built. Log-only avoids it entirely — the Training log category al
 exercise, weight, reps, distance, duration, SPM and RPE, so nothing about gym logging is lost,
 and `workouts`/`workout_sets` become pull-only.
 
-**Done when:** an entry written with the radio off survives a force-quit and a reboot.
+**Done when:** ~~an entry written with the radio off survives a force-quit and a reboot.~~
+The migration and the client store landed 2026-08-31 and that case is a test. **660 tests**, up
+from 611. What is *not* here and was never in this item: the flush, the batch endpoint and the
+merge-on-pull are §1.3, so nothing is actually sent yet — the outbox fills and waits.
+
+Three things the build found that the spec did not:
+
+1. **A soft delete does not cascade.** `workout_sets` is `ON DELETE CASCADE` from `workouts`,
+   which does nothing for a tombstone — a deleted session left its sets behind, still counting
+   toward PRs.
+2. **Filtering a LEFT JOIN's right-hand table in a `WHERE` turns it into an INNER JOIN**, which
+   would have made a session whose sets were all deleted vanish from the list rather than show
+   zero.
+3. **`recordBodyweight` has to clear the tombstone on upsert.** The natural key means there is
+   no second row to fall back on, so re-recording a deleted day would write the new weight into
+   an invisible row and look like a silent failure.
+
+Two places in `SYNC_DESIGN.md` had also gone stale when workouts were reverted to pull-only -
+the §2 SQL block and §5's entity union both still listed them, while the prose above each was
+already right. Corrected. **D-150.**
 
 #### 1.3 · The sync engine — **12h**
 

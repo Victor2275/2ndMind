@@ -273,7 +273,23 @@ until it reproduces in `npm run build`.**
         Also fixed a gate failure that looked like a flake and was not: the first `npm run
         shots` after any build timed out on `/private`, because the daily AI summary is a live
         Gemini call on a cold cache and Playwright's default `goto` timeout is 30s.
-  - [ ] **1.2 · The offline store** (14h) — next. Migration first, then IndexedDB + outbox.
+  - [x] **1.2 · The offline store** (14h) — done 2026-08-31. **660 tests**, up from 611.
+        Three pieces. A **migration** giving every syncable table a clock, a cursor and a
+        tombstone, with the cursor maintained by a database trigger rather than by code —
+        because code that forgets to bump it does not error, the row just stops reaching the
+        phone, and nobody notices until data is missing. A **hybrid logical clock**, which is
+        what decides who wins when the phone and the laptop disagree: a plain timestamp means
+        a phone whose clock jumps on a flight wins every conflict for the rest of the day. And
+        the **local database plus outbox** on the phone, where a write lands first and waits.
+        The last three hard deletes are gone. `rehab_completions` was genuinely broken for
+        sync: it toggled by insert-or-delete, and offline there is no way to tell a phone that
+        un-ticked an item from a phone that never had it.
+        Found while building, none of it in the spec: a soft delete does not cascade (deleted
+        workouts left their sets counting toward PRs); filtering a LEFT JOIN's right side in a
+        `WHERE` silently makes it an INNER JOIN; and re-recording a deleted bodyweight day
+        needed the tombstone cleared or the save looks like it failed.
+        **Nothing is sent yet** — that is 1.3. The outbox fills and waits.
+  - [ ] **1.3 · The sync engine** (12h) — next. Batch endpoint, flush triggers, the pull side.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

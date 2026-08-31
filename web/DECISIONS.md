@@ -27,6 +27,65 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-150 · The sync cursor is a trigger-maintained sequence, and every hard delete is gone
+
+**Decision.** Migration `0005_sync_columns.sql` gives all seven syncable tables `updated_hlc`,
+`updated_at`, `server_seq` and `deleted_at`; gives `log_entries` and `tasks` a `client_id`; and
+adds one `sync_seq` sequence with a `bump_sync_seq` trigger on every table. The three remaining
+hard deletes — workouts, bodyweight, rehab — became soft deletes, and every read that touches
+those tables now filters tombstones.
+
+**Four columns, four different jobs, and conflating any two is a bug.**
+
+| | What it is | Who writes it |
+|---|---|---|
+| `updated_hlc` | What last-write-wins compares | the client |
+| `updated_at` | A human-readable server-side receipt | the trigger |
+| `server_seq` | The pull cursor | the trigger |
+| `deleted_at` | The tombstone | the app |
+
+`updated_at` is deliberately **not** what LWW compares. Two clocks, two jobs; conflating them
+is how the timezone bug gets in.
+
+**Why the cursor is a sequence and not a timestamp.** Two rows can share a timestamp, and any
+clock adjustment reorders history — so a timestamp cursor either skips rows or replays them
+forever. One sequence shared across all seven tables, rather than one per table, because the
+phone needs *one* watermark and a total order across tables, not seven.
+
+**Why a trigger and not application code.** Application discipline fails silently here. A new
+code path that forgets to bump the sequence does not error; the row simply stops reaching the
+phone, and nobody notices until data is missing. A trigger cannot be forgotten. It is also the
+reason `src/lib/db/__tests__/sync-schema.test.ts` exists and asserts the trigger is installed
+on every table by name — the way this breaks is a table added later that nobody wires up.
+
+**Drizzle cannot express either.** `drizzle-kit generate` diffs table definitions and has no
+concept of a sequence or a trigger, so `0005` is a generated file with a hand-written head and
+tail. The sequence has to be created *before* the ALTERs, because every `server_seq` column
+defaults to `nextval('sync_seq')`.
+
+**Hard deletes had to go, and one of them was a real bug in waiting.** `rehab_completions`
+toggled by insert-or-*hard*-delete. Offline that is undecidable: the phone un-ticks an item
+while the laptop ticks it, and on sync there is no row on one side and a row on the other, with
+no way to tell a delete from a row that was never there.
+
+Two smaller traps came out of converting the others:
+
+- **A soft delete does not cascade.** `workout_sets` is `ON DELETE CASCADE` from `workouts`,
+  which does nothing for a tombstone — so a deleted session left its sets behind, still
+  counting toward PRs. They are now tombstoned explicitly and both sides of the join filter.
+- **Filtering a LEFT JOIN's right-hand table in a `WHERE` turns it into an INNER JOIN.** Doing
+  that in `recentWorkouts` would have made a session whose sets were all deleted vanish from
+  the list instead of showing zero. The filter belongs in the join condition. Both have tests.
+
+**`recordBodyweight` clears the tombstone on upsert.** The natural key means there is no second
+row to fall back on: without it, re-recording a deleted day writes the new weight into an
+invisible row and the save looks like it silently failed.
+
+**How to reverse.** The migration is additive — every column is nullable or defaulted, and
+nothing existing changed shape — so reverting the code without reverting the schema is safe and
+leaves unused columns. To reverse the schema too: drop the triggers, the function, the sequence
+and the columns, and restore the three hard deletes from this commit's parent.
+
 ### D-149 · The private app does not wear the public site's header and footer
 
 **Decision.** `/private` and everything under it renders without `SiteHeader` and `SiteFooter`.
