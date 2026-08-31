@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { InstallButton } from "@/components/site/install-button";
 import { SignOutButton } from "@/components/site/sign-out-button";
 
 /**
@@ -127,7 +128,10 @@ export function PrivateTabBar() {
               ))}
             </nav>
 
-            <div className="mt-3 flex justify-end border-t border-border pt-3">
+            {/* `InstallButton` renders nothing unless Chrome says the app is installable, so
+                this row collapses to just the sign-out control in every other case. */}
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+              <InstallButton />
               <SignOutButton />
             </div>
           </div>

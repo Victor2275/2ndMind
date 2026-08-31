@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { GROUND } from "@/lib/brand";
@@ -91,6 +92,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader name={profile.name} />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter profile={profile} />
+        {/* Registers the worker and offers the reload when a new build is waiting. Mounted at
+            the root rather than under /private because Chrome only offers to install from a
+            page inside the worker's scope, and a first visit lands on the portfolio. */}
+        <ServiceWorker />
         <Analytics />
       </body>
     </html>

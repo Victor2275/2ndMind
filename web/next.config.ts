@@ -30,6 +30,32 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["../context/99_archive/**"],
   },
+
+  /**
+   * The service worker must never be served from a cache (V3 §1.1, D-146).
+   *
+   * `public/` is served with a long-lived `Cache-Control` by default, which is right for
+   * fonts and icons and actively harmful here: a cached `/sw.js` pins the *previous* worker
+   * for as long as the entry lives, so a deploy lands and the installed app keeps running the
+   * old code with no way to find out. `updateViaCache: "none"` on the registration covers the
+   * browser's own service-worker cache; this covers the HTTP cache in front of it. Both are
+   * needed — they are different caches.
+   *
+   * `Service-Worker-Allowed` lets the worker claim the whole origin, which is what the
+   * manifest's `scope: "/"` promises.
+   */
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

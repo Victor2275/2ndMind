@@ -44,5 +44,9 @@ next-env.d.ts
 # Lab figures copied from ../context/assets by scripts/sync-lab-assets.mjs
 /public/labs/
 /public/assets/
+
+# Service worker, generated from src/lib/pwa/sw-template.js by scripts/build-sw.mjs with the
+# commit stamped in. Generated rather than committed so the stamp is never stale in git.
+/public/sw.js
 .shots/
 .frozen/
