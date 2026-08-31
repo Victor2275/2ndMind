@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { GROUND } from "@/lib/brand";
+
 /**
  * The web app manifest — what makes 2ndMind installable on the Samsung (V3 §0.6, D-126).
  *
@@ -36,8 +38,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // Android composes the splash screen itself from these three plus `name` — there is no
     // splash image to author. Both are the ground colour from `globals.css` so the launch
     // screen is continuous with the app rather than flashing white first.
-    background_color: "#100a0e",
-    theme_color: "#100a0e",
+    background_color: GROUND,
+    theme_color: GROUND,
 
     icons: [
       // `any` — browser tabs, the app switcher, and launchers that do not mask.

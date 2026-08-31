@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
+import { GROUND } from "@/lib/brand";
 import { publicProfile } from "@/lib/vault/public";
 
 import "./globals.css";
@@ -68,8 +69,11 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+// Tints the Samsung status bar above the installed app. It was #0a161b until 2026-08-30 —
+// a leftover from the teal palette D-002 replaced — which put a blue-green bar above a
+// magenta app and only ever showed on a phone. See lib/brand.ts.
 export const viewport = {
-  themeColor: "#0a161b",
+  themeColor: GROUND,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

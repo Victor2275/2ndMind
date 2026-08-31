@@ -78,7 +78,7 @@
          hairline vanishes, and the gap is what makes the shape read as a brain. Every cut is
          at least ~30 units from its neighbours, or the magenta between them closes up when
          the icon is scaled down. -->
-    <g fill="none" stroke="#100a0e" stroke-width="17" stroke-linecap="round">
+    <g fill="none" stroke="#140a10" stroke-width="17" stroke-linecap="round">
       <!-- Sylvian fissure: lifts the temporal lobe. Cut from the front only, so the lobe
            stays attached at the back the way it actually is. -->
       <path d="M128 288 C172 316 224 324 264 304" />
