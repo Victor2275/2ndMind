@@ -45,7 +45,7 @@ async function markBody() {
  * mark is redrawn. Fold strokes are ignored: they are cut in the tile colour, so overshoot is
  * invisible and does not belong in the box.
  */
-const BOX = { x: 56, y: 133, w: 391, h: 297 };
+const BOX = { x: 68, y: 102, w: 382, h: 302 };
 
 /**
  * @param body  inner SVG markup

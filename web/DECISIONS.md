@@ -27,6 +27,40 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-151 · The mark is the 🧠 emoji, not an anatomical brain — **reverses part of D-145 and D-148**
+
+**Decision.** Fourth drawing. `brain.svg` is now shaped like the brain emoji: a rounded lobed
+blob at ~1.27 : 1, six wavy grooves, **no brain stem and no cerebellum**.
+
+**What this gives up, stated plainly.** D-145 established a left-facing anatomical profile and
+D-148 proportioned it at 1.65 : 1 with a deep Sylvian fissure, a chunky cerebellum and a short
+thick stem. The emoji is a different object. It is rounder than the 1.7 : 1 Victor picked, and
+it has none of that anatomy. Asked for the emoji, the anatomy goes; both entries stay in the
+log because the reasoning in them is what makes this trade legible rather than a drift.
+
+**What actually makes it read as the emoji**, in order of how much each buys:
+
+1. **Wavy grooves.** The single biggest difference and the cheapest. Parallel arcs read as a rib
+   cage; a groove that S-bends twice on its way down reads as tissue.
+2. **A bumpy outline all the way round.** Not just across the top — the underside is lobed too,
+   which is what stops it looking like a bitten circle.
+3. **Fewer, heavier cuts.** Six at stroke 18, against thirteen at 13.
+
+**It is better at small sizes, not worse.** D-148 recorded the fold count as sitting at the
+legibility ceiling and degrading by 36px. This has ~45 units between neighbours instead of ~33,
+which is about 4px of magenta at launcher size, and it holds cleanly at 36. Simplifying for the
+emoji happened to buy back the headroom the realism had spent.
+
+**The fingers trap, arriving from the other direction.** D-148's rejected idea was evenly spaced
+parallel arcs. Five *wavy* verticals of equal length hit the same wall: the wiggle carries the
+shape at 512px and flattens out by 36px, and what is left is five fingers. Lengths now
+alternate long/short. **Any set of similar cuts at similar spacing will read as a texture rather
+than as a subject, however organic each one is on its own.**
+
+**How to reverse.** `git show` this commit's parent for the anatomical path data, restore
+`brain.svg` and the matching `BOX` in `render-icons.mjs`, re-run `node scripts/render-icons.mjs`.
+`BOX` must be re-measured on every redraw — that has now caught us three times.
+
 ### D-150 · The sync cursor is a trigger-maintained sequence, and every hard delete is gone
 
 **Decision.** Migration `0005_sync_columns.sql` gives all seven syncable tables `updated_hlc`,
