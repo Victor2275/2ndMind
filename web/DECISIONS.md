@@ -27,6 +27,61 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-157 · The lock arms itself, and the offline page stops claiming there is no signal
+
+Two things reported from the installed app on 2026-09-03. Different code, same shape: **a
+failure that presents as an absence**, so there is nothing to investigate and no reason to
+suspect anything is wrong.
+
+**"There is no biometric login."** D-154 armed the lock from the sign-in response, which is the
+one moment the credential is already in hand. That turned out to be the wrong *only* moment: a
+session lasts seven days, so a device signed in before the feature shipped never runs that code
+again. And because an unarmed lock **opens** — deliberately, D-154 — there was no lock screen,
+no error, and nothing anywhere saying why. The feature was working exactly as written and was
+invisible.
+
+**Decision.** `GET /api/auth/local-credentials` returns every enrolled passkey's public half to
+a signed-in session, and `LocalLock` asks for it the first time it finds nothing cached and has
+signal. Nothing in the response is secret — a credential id and a public key, both public by
+definition, which is the same reason they can sit in IndexedDB at all. The session check is
+still first: an unauthenticated caller has no business learning which devices are enrolled.
+`getSession`, not `requireSession`, because the latter redirects and would deliver an HTML
+sign-in page where JSON was expected.
+
+The sign-in path still caches too. It arms sooner and costs nothing.
+
+**"This page needs a signal" — on a phone with signal.** Tapping Log in the installed app landed
+on the offline page. Three separate faults, and the third is the one that matters:
+
+- The service worker gave up after **one** attempt. A dropped request on a phone is ordinary —
+  a radio handing between cells, wifi associated but not yet authenticated — so one retry is
+  most of the fix and costs one request when it is not needed.
+- The page **asserted** the cause. It said there was no signal without ever reading
+  `navigator.onLine`. Wrong is worse than vague: it sends you looking for a network problem that
+  is not there.
+- The page was a **dead end**. No retry, no way back, and no indication of what had failed. A
+  page shown *because* something went wrong is the worst possible place to leave someone with no
+  action.
+
+**Decision.** The worker retries once, then hands over the offline page with the failed path
+attached. The page reads the connection before saying anything — `false` is conclusive, `true`
+means "something else went wrong", which is a different sentence and a different action — and
+carries Retry and a way back to the dashboard. The `?from=` path is validated as same-origin
+before Retry uses it: it arrives in a URL on a page anyone can reach, and an absolute URL there
+would make the button an open redirect.
+
+**Tested by executing the worker**, not by reading it. `sw-template.test.ts` asserts on source
+text, which is the right tool for "never caches a private route" — a property about what the
+file *says* — and the wrong tool for anything about what it *does*. The retry is one line and is
+invisible to every other kind of test here, so `sw-navigation.test.ts` loads the worker into a
+sandbox with fake globals and runs its fetch handler.
+
+**How to reverse.** Delete the credentials route and the `fetchCredentials` call in `LocalLock`
+to go back to arming only at sign-in. Remove the inner `try` in the worker's navigation handler
+to go back to one attempt. Neither is load-bearing for anything else.
+
+---
+
 ### D-156 · One database-error translator, and it reads the cause chain
 
 **What happened.** `0005_sync_columns` was generated on 2026-08-31 for V3 §1.2 and **never

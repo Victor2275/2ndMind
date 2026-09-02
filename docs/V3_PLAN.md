@@ -531,6 +531,12 @@ test signed by a real key pair. The data-gate version (encrypt the mirror under 
 key) is a much larger piece of work with a real hazard attached — lose the authenticator, lose
 the data — and D-154 records why it was not taken now.
 
+**Corrected 2026-09-03, after the phone said there was no biometric login.** The key was
+cached only by the sign-in response — the one moment it is already in hand, and also a moment a
+seven-day session may not reach for a week. An unarmed lock opens, so the symptom was an
+absence with nothing to investigate. It now asks the server for the public halves the first time
+it has signal, so **no fresh sign-in is needed** to arm it. **D-157.**
+
 **Still Victor's to close, on the phone:** airplane mode → open the app → unlock with a
 fingerprint; then again, cancelling the prompt, and confirm it stays shut.
 
@@ -753,7 +759,7 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 | # | What to do | Closes |
 |---|---|---|
 | 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
-| 2 | **Biometric unlock, twice.** Sign in on the phone once **while online** — that is what caches the key and arms the lock. Then: airplane mode → open the app → unlock with a fingerprint. Then again, **cancelling** the prompt, and confirm it stays shut. | §1.5 |
+| 2 | **Biometric unlock, twice.** Airplane mode → open the app → unlock with a fingerprint. Then again, **cancelling** the prompt, and confirm it stays shut. Since D-157 the lock arms itself the first time the phone has signal, so no fresh sign-in is needed. | §1.5 |
 | 3 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Applications, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. | §1.6 |
 
 ### Then these, in no particular order

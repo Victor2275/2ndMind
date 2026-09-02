@@ -362,6 +362,19 @@ until it reproduces in `npm run build`.**
         run npm run db:migrate". Writing that fix turned up a second bug: four copies of the
         error message code existed and **all four had never worked**, because the real error
         was nested one level deeper than any of them looked.
+  - [x] **Fixed 2026-09-03: the two things you found on the phone.** **841 tests**, up from 816.
+        **No biometric login.** The lock only remembered your passkey at the moment you signed
+        in — and since a sign-in lasts a week, a phone signed in before that shipped never got
+        one. An unarmed lock just opens, so there was nothing to see and nothing to report
+        except its absence. It now fetches what it needs the first time it has signal, so you
+        do not have to sign in again.
+        **"This page needs a signal" with full bars.** Three faults stacked. The app gave up
+        after one failed request, when a single dropped request on a phone is completely
+        ordinary. The page then blamed the network without checking — being wrong is worse
+        than being vague, because it sends you hunting for a problem that is not there. And it
+        was a dead end: no retry, no way back. It now retries once on its own, says which page
+        failed, checks whether you are actually online before claiming anything, and gives you
+        a button.
   - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
