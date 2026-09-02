@@ -30,12 +30,17 @@ type FetchEventLike = {
 };
 
 /** Loads the worker with its globals replaced, and hands back the handlers it registered. */
-function load(options: { fetch: typeof globalThis.fetch; offlineHtml?: string | null }) {
+function load(options: {
+  fetch: typeof globalThis.fetch;
+  offlineHtml?: string | null;
+  onLine?: boolean;
+}) {
   const handlers = new Map<string, Handler>();
 
   const self = {
     addEventListener: (type: string, handler: Handler) => handlers.set(type, handler),
     location: { origin: ORIGIN },
+    navigator: { onLine: options.onLine ?? true },
     clients: { claim: async () => {} },
     skipWaiting: () => {},
   };
@@ -151,6 +156,19 @@ describe("a navigation that keeps failing", () => {
     const html = await (await response()).text();
 
     expect(html).toContain(encodeURIComponent("/private/log?q=squat"));
+  });
+
+  it("does not retry with the radio off, so the offline page appears at once", async () => {
+    // Reported 2026-09-04, the day after the retry landed: with no network the retry buys
+    // nothing and doubles how long the screen sits blank. `onLine === false` is the one thing
+    // that property can say conclusively, and it is all this needs.
+    const handlers = load({ fetch: flaky(99), onLine: false });
+    const { event, response } = navigateTo("/private/log");
+
+    handlers.get("fetch")!(event);
+    await response();
+
+    expect(attempts).toBe(1);
   });
 
   it("still answers when the offline page was never cached", async () => {

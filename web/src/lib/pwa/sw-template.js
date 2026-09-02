@@ -83,15 +83,26 @@ self.addEventListener("fetch", (event) => {
         try {
           return await fetch(request);
         } catch {
-          // One retry before giving up. A navigation that fails on a phone is very often a
-          // single dropped request — a radio handing between cells, wifi that has associated
-          // but not finished authenticating — and the first version of this had no retry, so
-          // one blip put the user on a dead-end page that told them they had no signal. The
-          // cost of being wrong here is one extra request; the cost of not retrying is landing
-          // on the offline page while online, which was reported from the phone on 2026-09-03.
-          try {
-            return await fetch(request);
-          } catch {
+          // One retry before giving up — but only when the device thinks it has a network.
+          //
+          // The retry exists because a navigation that fails on a phone is very often a single
+          // dropped request: a radio handing between cells, wifi associated but not yet
+          // authenticated. Landing on a dead-end page for one of those was reported on
+          // 2026-09-03.
+          //
+          // Retrying with the radio off is the opposite mistake, and was reported the day
+          // after: it buys nothing and doubles how long the screen sits blank before the
+          // offline page appears. `onLine` is weak evidence in general — it cannot tell you
+          // anything answers — but `false` is conclusive, and conclusive is all this needs.
+          if (self.navigator.onLine !== false) {
+            try {
+              return await fetch(request);
+            } catch {
+              // Fall through to the offline page.
+            }
+          }
+
+          {
             // Still nothing. Hand over the offline page, and tell it what was being loaded so
             // its Retry button goes back to the right place rather than to the dashboard.
             const cache = await caches.open(CACHE);

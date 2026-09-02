@@ -10,8 +10,13 @@ import { useState, useSyncExternalStore } from "react";
  * landed here **while the phone was online**. Whatever made that one request fail, the page
  * turned a blip into a dead end and blamed the wrong thing on the way.
  *
- * So it now reads the connection before saying anything, and offers the two actions that fix
- * the two cases: retry the page you were going to, or go back to the dashboard.
+ * So it now reads the connection before saying anything, and offers to retry the page that
+ * actually failed.
+ *
+ * **It only ever adds.** The page's own escape links are server-rendered and are what is on
+ * screen whether or not this component ever runs — because the first version of this put the
+ * only way out behind a JavaScript chunk, on the one page whose job is to work when things are
+ * not loading (D-158). Nothing here is the sole route to anything.
  *
  * `navigator.onLine` is weak evidence and is treated as such — it only knows whether the device
  * has *a* network, not whether anything answers, so hotel wifi with a sign-in page reports
@@ -58,49 +63,42 @@ export function OfflineRecovery() {
   const target = useSyncExternalStore(noSubscribe, readTarget, () => null);
   const [retrying, setRetrying] = useState(false);
 
+  // Nothing until hydration has an answer. The server snapshot is `null` for both values, so
+  // this renders empty on the server and on the first client pass — which is correct rather
+  // than merely safe: the page's own links are already on screen underneath.
+  if (online === null && target === null) return null;
+
   const explanation =
     online === false
       ? "There is no network right now. Anything already logged on this device is safe — entries are written to the phone first and sent when the connection comes back."
       : online === true
-        ? "Your phone says it is online, so this was one request failing rather than a lost connection — often a moment's drop, or wifi that has not finished connecting. Try again. Anything already logged on this device is safe."
-        : "Anything already logged on this device is safe — entries are written to the phone first and sent when the connection comes back.";
+        ? "Your phone says it is online, so this was one request failing rather than a lost connection — often a moment's drop, or wifi that has not finished connecting. Anything already logged on this device is safe."
+        : null;
 
   return (
     <>
-      <p className="mt-4 max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
-        {explanation}
-      </p>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={retrying}
-          onClick={() => {
-            setRetrying(true);
-            // `replace`, not `assign`: a failed navigation should not leave the offline page
-            // sitting in history for the back button to land on.
-            window.location.replace(target ?? "/private");
-          }}
-          className="min-h-11 rounded-md border border-primary/50 px-4 py-2.5 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
-        >
-          {retrying ? "Trying…" : "Try again"}
-        </button>
-
-        {target && target !== "/private" && (
-          <button
-            type="button"
-            onClick={() => window.location.replace("/private")}
-            className="min-h-11 rounded-md px-3 py-2.5 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Back to Today
-          </button>
-        )}
-      </div>
+      {explanation && (
+        <p className="mt-4 max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
+          {explanation}
+        </p>
+      )}
 
       {target && (
-        <p className="mt-4 font-mono text-[0.6rem] tracking-wide text-muted-foreground">
-          could not load {target}
-        </p>
+        <div className="mt-6">
+          <button
+            type="button"
+            disabled={retrying}
+            onClick={() => {
+              setRetrying(true);
+              // `replace`, not `assign`: a failed navigation should not leave the offline page
+              // sitting in history for the back button to land on.
+              window.location.replace(target);
+            }}
+            className="min-h-11 rounded-md border border-primary/50 px-4 py-2.5 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
+          >
+            {retrying ? "Trying…" : `Try ${target} again`}
+          </button>
+        </div>
       )}
     </>
   );
