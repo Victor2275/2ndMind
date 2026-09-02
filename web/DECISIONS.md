@@ -27,6 +27,52 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-156 · One database-error translator, and it reads the cause chain
+
+**What happened.** `0005_sync_columns` was generated on 2026-08-31 for V3 §1.2 and **never
+applied to Neon**. Drizzle went on building every query with `client_id`, `updated_hlc` and
+`server_seq`; the database had none of them. Three days later every page touching tasks, the
+log, workouts, bodyweight or rehab failed at once, and what it printed was the failed SQL and
+its fifteen column names — a message naming everything except the one thing wrong. Applied
+2026-09-03 against a database holding six rows, so nothing was lost.
+
+**Why nothing caught it, which is the part worth keeping.** `src/test/pg.ts` builds a fresh
+PGlite and applies *every* migration file, so the schema under test is by construction the
+schema the code expects. That is the right default and it is also the one arrangement in which
+drift cannot occur — the suite was structurally incapable of noticing, and 808 passing tests
+said nothing about the database that actually serves.
+
+**A second bug found while writing the test for the first.** Four hand-written `describe(error)`
+helpers existed across four `actions.ts` files, each translating *"relation does not exist"*
+into "run db:migrate". **Every one of them was dead code.** Drizzle wraps what the driver threw:
+its own `message` is the SQL, and the Postgres error — with the SQLSTATE and the sentence that
+says what is wrong — hangs off `cause`. Matching on the top-level message never matched, and
+nobody noticed because the fallback still printed *something*. Four copies, one bug, four times.
+
+**Decision.** One `describeDbError` in `lib/db/describe.ts`, used by every action and every page
+that renders a database failure. It walks the `cause` chain for both message and SQLSTATE, and
+separates the three cases that need different fixes:
+
+- **missing table** (42P01) — a fresh clone; migrate.
+- **missing column** (42703) — *the database is behind this build*; migrate. This is the case
+  none of the four copies had, and it is the one that only appears once you have been shipping
+  for a while.
+- **missing function** (42883) — a migration's trigger function never ran; migrate. Worth
+  naming, because otherwise it reads as a code bug.
+
+Anything else passes through untouched. A connection timeout told to "run db:migrate" would
+send him to the one place the answer is not.
+
+**And a way to see it before it bites:** `npm run db:status` lists repo migrations against
+applied ones and exits non-zero when any are pending. Deliberately **not** wired into `predev`
+or `prebuild` — both would put a network round trip in front of every start and fail on a plane.
+
+**How to reverse.** Delete `lib/db/describe.ts` and restore the local helpers; nothing depends
+on it structurally. Do not restore them as four copies. Remove `db:status` from `package.json`
+to drop the check.
+
+---
+
 ### D-155 · The form remembers context, never measurements — and chips print what they fill
 
 **Decision.** Three shortcuts, all declared per field in `lib/log/categories.ts` rather than

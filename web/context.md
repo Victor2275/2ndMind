@@ -165,6 +165,15 @@ fails without its fix.
 
 ## Postgres holds what markdown cannot
 
+**Before assuming a database failure is a code bug, run `npm run db:status`.** It compares the
+migrations in the repo against the ones applied to whatever `DATABASE_URL` points at. On
+2026-09-03 a migration had been sitting unapplied for three days while the whole suite passed:
+the tests build a fresh PGlite and apply every migration, so the schema they check is by
+construction the one the code expects, and drift is the single thing they cannot see. Database
+errors are now translated by `lib/db/describe.ts`, which says *"the database is behind this
+build"* rather than printing the query (D-156).
+
+
 Everything not listed here is markdown. Four tables live in Neon via Drizzle, with migrations
 committed under `drizzle/` and applied with `npm run db:migrate`:
 

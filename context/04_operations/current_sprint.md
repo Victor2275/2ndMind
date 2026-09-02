@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-02
+updated: 2026-09-03
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -348,6 +348,20 @@ until it reproduces in `npm run build`.**
         Also fixed: a save that failed used to wipe what you had typed. It puts it back now.
         **Yours to close:** log one Training, one Applications and one Reading or People entry
         one-handed with a stopwatch, and tell me the three numbers. Under 15s each is the bar.
+  - [x] **Fixed 2026-09-03: the app was down, and it was my fault.** The database change that
+        §1.2 needed was written three days ago and never actually run against Neon. The code
+        kept asking for columns that were not there, so every page that touches tasks, the
+        log, workouts, bodyweight or rehab broke at once. Applied now; nothing was lost (there
+        were six rows in the whole database).
+        **Why no test caught it:** the tests build a throwaway database and apply every change
+        to it from scratch, so the version they check is always exactly the version the code
+        expects. Drift between the code and the *real* database is the one thing they are
+        structurally unable to see. 808 passing tests said nothing about it.
+        Two things now guard it. `npm run db:status` says whether the real database is behind.
+        And the error you saw — a wall of SQL — now reads "the database is behind this build,
+        run npm run db:migrate". Writing that fix turned up a second bug: four copies of the
+        error message code existed and **all four had never worked**, because the real error
+        was nested one level deeper than any of them looked.
   - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
