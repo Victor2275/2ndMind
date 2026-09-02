@@ -252,6 +252,13 @@ needed — `clientId` alone stops duplicate creates, but `opId` is what lets the
 "already applied" distinctly from "applied", which is the difference between a working retry
 and a silent no-op nobody can debug.
 
+> **Changed in the build (2026-08-31, D-152).** There is no server-side table of applied
+> operation ids. The stored HLC already answers the question for free: stamps are unique per
+> device and strictly increasing, so an op whose stamp *equals* the row's is by definition the
+> one that wrote it — a retry after a lost response. `opId` still travels with the op and still
+> addresses it on the retry screen; it is simply not persisted server-side. Every distinction
+> above survives: `applied`, `duplicate`, `stale` and `superseded` are all reported.
+
 ### Ordering rule
 
 FIFO globally, with one exception that matters:
@@ -346,14 +353,19 @@ pressure, and it matches D-131's "everything, forever".
 | **Enrolment** | Unchanged. Online, server-verified, existing WebAuthn flow. |
 | **Cached at first online unlock** | Credential id + public key, in IndexedDB |
 | **Offline unlock** | `navigator.credentials.get()` with `userVerification: "required"`, assertion verified locally against the cached key via WebCrypto |
-| **No cached credential** | Online sign-in required. The app does not open. |
+| **No cached credential** | ~~Online sign-in required. The app does not open.~~ **Changed in the build (2026-09-02, D-154): it opens, and says the lock is unarmed.** With no cached key there is nothing to check a fingerprint against, and refusing would strand him outside his own app with no network to fix it from. Anyone able to clear IndexedDB to reach that state could read the unencrypted mirror directly, so the refusal bought nothing it did not already cost. |
 
 **What it protects:** casual access to a running app by someone holding the unlocked phone.
 
 **What it does not protect, stated so nobody assumes otherwise:**
 
 - The challenge is generated locally, so there is no server-side replay protection. An attacker
-  who can run code on the device can replay an assertion.
+  who can run code on the device can replay an assertion. *(A fresh 32-byte challenge per
+  attempt means a **captured** assertion is refused; what is not defended is code running in
+  the origin, which can skip the check entirely.)*
+- The ceremony runs in the page, **not in the service worker** as §1.5 originally specified.
+  `navigator.credentials` is `[Exposed=Window]`; a service worker has no `CredentialsContainer`
+  at all, so the prompt cannot be raised from one. D-154.
 - The signature counter is not checked. Platform authenticators report 0 (already noted in
   D-018), so there is nothing to check.
 - IndexedDB is **not encrypted** (D-131). A forensic read of the device gets the vault. This was

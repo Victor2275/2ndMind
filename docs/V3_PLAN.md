@@ -540,8 +540,31 @@ Training, Applications, and Reading + People, each finishable one-handed in unde
 Sticky last values, recent-exercise chips, correct numeric keypads, clipboard detection for the
 Applications `link` field. Every field stays optional, per the rule already in `categories.ts`.
 
-**Done when:** each of the three is timed at under 15 seconds, one-handed, on the real phone,
-and the timings are written down.
+**Done when:** ~~each of the three is timed at under 15 seconds, one-handed, on the real phone,
+and the timings are written down.~~ **Built 2026-09-02; the stopwatch is Victor's** — the whole
+criterion is a measurement on a device, and no test can stand in for it. **808 tests**, up from
+761. Each of the four claims was checked by breaking it and watching the right test go red.
+
+**What was built.** Sticky values, recent-value chips, per-field keypads and a clipboard button
+for the Applications `link` — all declared per field in `categories.ts`, none special-cased in
+the form. **D-155.**
+
+**The rule that governs it:** a value may come back on its own only if it is *context*. Sticky
+covers `kind`, `action`, `effort`, `course`, `where`. **Never a measurement** — a stale weight
+pre-filled and saved without looking is a number in the log that reads as measured, and the
+log's value is entirely that its numbers can be trusted. That rule is one word per field and is
+therefore asserted over every category rather than trusted.
+
+**Measurements still come back, through a chip that prints them.** "Bench Press · 185 × 5" fills
+all three. Same data the sticky rule forbids, and the difference is that it is a visible choice
+about a number on the button rather than something that appeared while he was not looking.
+
+**A bug fixed on the way past:** a failed save used to cost the entry as well. React blanks a
+`<form action={fn}>` as soon as the action returns, success or not, so a save rejected for a
+reason outside the form took the typing with it. It now puts back what was there.
+
+**Still Victor's to close:** log one Training, one Applications and one Reading-or-People entry
+one-handed on the phone, with a stopwatch, and write the three numbers into this section.
 
 #### 1.7 · Failed sync — hold, surface, retry — **6h**
 
@@ -723,16 +746,33 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 
 ## 8. Blocked on Victor
 
-| # | What | Blocks |
+Everything here needs a person, a device or a file. Nothing in it is waiting on code.
+
+### Check these three, on the phone — they close three finished sections
+
+| # | What to do | Closes |
 |---|---|---|
-| ~~0~~ | ~~**Commit the format pass.**~~ **Closed 2026-08-30:** landed on its own as `946c5f7`, ahead of any V3 code, so no feature diff carries the noise. | ~~§0.3 onward~~ |
-| ~~0~~ | ~~**Look at the icon on the phone.**~~ **Closed 2026-08-30:** installed from Chrome on the Samsung. Install path and launcher tile both correct. The shape was wrong — top view, redrawn as a side profile, **D-145**. Worth noting that the thing the device check caught was not the thing it was written to catch: cropping and fold legibility were both fine, and the fault was the drawing itself, which is exactly the class of error a desktop screenshot lets you talk yourself past. | ~~closes §0.6~~ |
-| 1 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary you actually use. | 5.1 |
-| 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
-| 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
-| 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
-| 1 | **Confirm the round trip on the phone.** Airplane mode → log three entries → reconnect → check they are in Neon once each. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into your real log, and since §1.2 there are no hard deletes left to clean them up with. | closes §1.3 |
-| ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Closed 2026-08-30: log entries only.** Answered "workouts too", reversed the same day. §1.2 is back to 14h and Phase 1 fits its window again. `SYNC_DESIGN.md` §11.1. | ~~§1.2 size~~ |
+| 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
+| 2 | **Biometric unlock, twice.** Sign in on the phone once **while online** — that is what caches the key and arms the lock. Then: airplane mode → open the app → unlock with a fingerprint. Then again, **cancelling** the prompt, and confirm it stays shut. | §1.5 |
+| 3 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Applications, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. | §1.6 |
+
+### Then these, in no particular order
+
+| # | What to do | Blocks |
+|---|---|---|
+| 4 | **Re-add the app to the home screen.** Android caches the old icon, so the emoji-shaped mark (D-151) will not appear until the shortcut is removed and re-added. | Nothing — cosmetic |
+| 5 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary actually used. | §5.1 |
+| 6 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | §4.4 |
+| 7 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
+| 8 | **Confirm the goals editor has been used once**, so `/sprint-review` can be retired. | Housekeeping |
+
+### Closed
+
+| # | What | Closed |
+|---|---|---|
+| ~~0~~ | ~~**Commit the format pass.**~~ Landed on its own as `946c5f7`, ahead of any V3 code, so no feature diff carries the noise. | 2026-08-30 |
+| ~~0~~ | ~~**Look at the icon on the phone.**~~ Installed from Chrome on the Samsung; install path and launcher tile both correct. The shape was wrong — top view, redrawn as a side profile (**D-145**), then again as the emoji (**D-151**). Worth keeping: the thing the device check caught was not the thing it was written to catch. Cropping and fold legibility were both fine, and the fault was the drawing itself — exactly the class of error a desktop screenshot lets you talk yourself past. | 2026-08-30 |
+| ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Log entries only.** Answered "workouts too", reversed the same day. §1.2 is back to 14h and Phase 1 fits its window again. `SYNC_DESIGN.md` §11.1. | 2026-08-30 |
 
 **Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
 and states the project uses Geist — false since D-002 put three self-hosted faces in

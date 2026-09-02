@@ -27,6 +27,59 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-155 · The form remembers context, never measurements — and chips print what they fill
+
+**Decision.** Three shortcuts, all declared per field in `lib/log/categories.ts` rather than
+special-cased in the form: `sticky` values pre-filled from the last entry in that category,
+`chips` offering recent values as one-tap buttons, and an explicit `keypad` per field.
+
+**The line that matters is which values may come back on their own.** A sticky field is
+*context* — which kind of session, which course, where you were. **Never a measurement.** A
+stale `kind` is obvious at a glance and costs nothing; a stale weight pre-filled and saved
+without looking is a number in the log that reads as measured, and the log's entire value is
+that its numbers can be trusted. `sticky.test.ts` asserts this over every category rather than
+trusting the one word per field that enforces it, because adding `sticky: true` to a number
+field is exactly the change someone makes without thinking.
+
+**Measurements do come back — through a chip, which prints them.** Tapping
+"Bench Press · 185 × 5" fills the exercise, the weight and the reps. That is the same data the
+sticky rule forbids, and it is fine for one reason: it is a visible choice about a number shown
+on the button. A silently pre-filled 185 and a tapped 185 differ only in whether anyone decided
+it, which is the whole difference between a convenience and a fabricated record.
+
+**Keypads are declared, not derived from the field type.** Reps wants digits, weight wants a
+decimal point, and a duration typed as `2:17` needs the full keyboard because no numeric keypad
+on Android offers a colon. Deriving them from `type` gets two of those wrong, and the failure is
+invisible on a laptop — it costs a keyboard switch per field, which is most of the fifteen
+seconds the section is budgeted against.
+
+**Two smaller calls.**
+
+- **A clipboard button, not a clipboard read.** The Applications `link` is always pasted, but
+  reading the clipboard on focus raises a permission prompt nobody asked for and means the app
+  looks at the clipboard on every visit to a field that is usually empty. One tap, only when he
+  means it.
+- **A failed save puts back what was typed.** React blanks a `<form action={fn}>` as soon as
+  the action returns, success or not — so before this, a save rejected for a reason outside the
+  form (`DATABASE_URL` unset, say) also cost the entry. Fixed while in here; it is the same
+  bug class as everything else in this section, which is *the log has to be cheap or it does
+  not get written*.
+
+**One design note that is not obvious from the code.** Sticky values are read through
+`useSyncExternalStore`, not into state in an effect. `localStorage` cannot be read during SSR,
+so anything read at render time differs between the server's HTML and the client's first paint;
+a store with an explicit empty server snapshot says that in one place instead of spreading it
+across an effect and a cascading re-render. Its `version` is also what remounts the fields after
+a save — React's own form reset restores the defaults the inputs were *mounted* with, which
+would be the previous sticky values.
+
+**How to reverse.** Remove the field's flag in `categories.ts` — `sticky`, `chips`, `carries`,
+`keypad`, `clipboard` are all opt-in and absent means the old behaviour. To drop the whole
+feature, remove the `chips` prop from `LogConsole` and the `recentForChips` call in the log
+page; nothing else depends on either.
+
+---
+
 ### D-154 · Local unlock is a real signature check, in the page — not in the service worker
 
 **Decision.** `/private` sits behind a lock screen that verifies a WebAuthn assertion against a

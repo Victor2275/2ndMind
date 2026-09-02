@@ -334,7 +334,21 @@ until it reproduces in `npm run build`.**
         work and carries a real risk: lose the passkey, lose the data.
         **Yours to check, on the phone:** airplane mode, open the app, unlock with a
         fingerprint. Then do it again and cancel the prompt — it should stay shut.
-  - [ ] **1.6 · Fast log paths** (8h) — next.
+  - [x] **1.6 · Fast log paths** (8h) — built 2026-09-02. **808 tests**, up from 761.
+        Logging is much faster now. The form remembers the things that repeat — which kind of
+        session, which course, whether an application was tailored or a quick apply — and
+        recent exercises, companies, books and people appear as buttons you tap instead of
+        typing. A training chip brings last time's numbers with it: tap "Bench Press · 185 × 5"
+        and all three fields fill.
+        **The line I drew, and why.** The form will never quietly pre-fill a *measurement*.
+        A remembered "erg" is obvious if it is wrong; a remembered 185 lbs that you save
+        without looking is a number in your log that reads as measured. Weights and times come
+        back only through a chip — which prints them on the button, so it is your choice
+        rather than something that happened while you were not looking.
+        Also fixed: a save that failed used to wipe what you had typed. It puts it back now.
+        **Yours to close:** log one Training, one Applications and one Reading or People entry
+        one-handed with a stopwatch, and tell me the three numbers. Under 15s each is the bar.
+  - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

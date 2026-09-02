@@ -68,9 +68,21 @@ removed.
 
 There is exactly one user, forever. That makes Clerk's actual job — multi-tenant identity,
 org management, session UI for arbitrary sign-ups — pure overhead here. Auth is a WebAuthn
-ceremony (`@simplewebauthn/server` + `@simplewebauthn/browser`) against one row in the Neon DB
-holding Victor's registered credential, plus a signed session cookie. No vendor, no recurring
-cost, no dashboard to configure. Built in Days 16-20 alongside the vault-write flow.
+ceremony (`@simplewebauthn/server` + `@simplewebauthn/browser`) plus a signed session cookie.
+No vendor, no recurring cost, no dashboard to configure.
+
+The registered credential lives in **environment variables, not the database** — `PASSKEYS`,
+one indivisible `label:id:publicKey` string per device (`lib/auth/config.ts`). Neither value is
+secret; the private key never leaves the authenticator. The cost is that enrolling a device
+means pasting a new value into Vercel, which for a personal tool happens roughly never, and it
+takes a database out of the auth path entirely.
+
+**Local unlock (V3 §1.5, D-154).** Since 2026-09-02, `/private` also sits behind a lock screen
+that verifies a WebAuthn assertion in the browser against a public key cached in IndexedDB at
+the last online sign-in — no server, so it works with no signal. It is a **display gate, not a
+data gate**: the page's payload has already been sent and the offline mirror is unencrypted, so
+it defends against a phone handed over already unlocked, not against someone with developer
+tools. Read D-154 before assuming it does more than that.
 
 ## Fonts are self-hosted on purpose
 
@@ -158,7 +170,10 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 
 - `workouts` / `workout_sets` — training data, tabular and queried across rows.
 - `tasks` — one model for everything actionable (D-037).
-- `log_entries` — structured daily logging, per-category fields in JSONB.
+- `log_entries` — structured daily logging, per-category fields in JSONB. The form's
+  shortcuts are declared per field in `lib/log/categories.ts` and nowhere else: `sticky`,
+  `chips`, `carries`, `keypad`, `clipboard` (D-155). One rule is load-bearing —
+  **`sticky` is for context, never for a measurement.**
 - `bodyweight_entries` / `rehab_completions` — feature 5 (D-058, D-059).
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
