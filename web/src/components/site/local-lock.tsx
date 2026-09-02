@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LocalCredential } from "@/lib/auth/cose";
-import { forgetLocalUnlock, listCredentials, openAuthDb } from "@/lib/auth/local-credential";
+import {
+  forgetLocalUnlock,
+  listCredentials,
+  openAuthDb,
+  rememberCredential,
+} from "@/lib/auth/local-credential";
 import { unlockLocally } from "@/lib/auth/local-unlock";
 import { AUTO_LOCK_MS, decideLock, readUnlockedAt, writeUnlockedAt } from "@/lib/auth/lock-state";
 
@@ -28,10 +33,35 @@ import { AUTO_LOCK_MS, decideLock, readUnlockedAt, writeUnlockedAt } from "@/lib
  *
  * *It opens when nothing is cached.* An unarmed lock cannot be enforced — there is no key to
  * check a fingerprint against — and refusing to open would strand Victor outside his own app
- * with no network to fix it from. So it fails open and says so, and arms itself on the next
- * online sign-in. Someone who can clear IndexedDB could also read the mirror directly, so this
- * is not the weak point it looks like.
+ * with no network to fix it from. So it fails open and says so. Someone who can clear
+ * IndexedDB could also read the mirror directly, so this is not the weak point it looks like.
+ *
+ * **How it arms, and why that changed (D-157).** Originally only the sign-in response cached
+ * the key. That is the one moment the credential is already in hand, and it is also a moment
+ * that may not come round for a week — a session lasts seven days, so a phone signed in before
+ * this shipped would never run that code and the lock would sit unarmed for days. Since an
+ * unarmed lock opens silently, the symptom was simply "there is no biometric login", with
+ * nothing anywhere to say why. So an unarmed device now asks the server for the public halves
+ * the first time it has signal, and arms itself.
  */
+/**
+ * Ask the server for the enrolled passkeys' public halves.
+ *
+ * Every failure is the same answer — no credentials, so the lock stays unarmed — because none
+ * of them should stop the app opening: offline, a 401 from an expired session, or a build
+ * without the route deployed yet.
+ */
+async function fetchCredentials(): Promise<LocalCredential[]> {
+  try {
+    const response = await fetch("/api/auth/local-credentials", { credentials: "same-origin" });
+    if (!response.ok) return [];
+    const body = (await response.json()) as { credentials?: LocalCredential[] };
+    return Array.isArray(body.credentials) ? body.credentials : [];
+  } catch {
+    return [];
+  }
+}
+
 export function LocalLock({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
@@ -62,6 +92,23 @@ export function LocalLock({ children }: { children: React.ReactNode }) {
       } catch {
         // A browser that refuses IndexedDB cannot hold a key, so it cannot arm the lock.
       }
+
+      // Nothing cached and there is signal: arm now rather than waiting for the next sign-in,
+      // which on a seven-day session may be a week away (D-157). Deliberately after the local
+      // read, so an armed device never makes this request at all.
+      if (cached.length === 0 && navigator.onLine) {
+        cached = await fetchCredentials();
+        if (cached.length > 0) {
+          try {
+            const db = await openAuthDb();
+            for (const credential of cached) await rememberCredential(db, credential);
+            db.close();
+          } catch {
+            // Unable to persist it. The lock still works for this session; it will ask again.
+          }
+        }
+      }
+
       if (cancelled) return;
 
       credentials.current = cached;

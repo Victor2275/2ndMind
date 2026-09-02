@@ -26,7 +26,8 @@ vi.mock("@/lib/auth/local-unlock", () => ({ unlockLocally: () => unlockLocally()
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
 
 const { LocalLock } = await import("../local-lock");
-const { openAuthDb, rememberCredential } = await import("@/lib/auth/local-credential");
+const { listCredentials, openAuthDb, rememberCredential } =
+  await import("@/lib/auth/local-credential");
 
 const CREDENTIAL = {
   id: "Y3JlZGVudGlhbC1pZA",
@@ -49,12 +50,21 @@ const app = () => (
 
 const showsApp = () => screen.queryByText("Bodyweight 178.4") !== null;
 
+const fetchMock = vi.fn<() => Promise<Response>>();
+
 beforeEach(() => {
   unlockLocally.mockReset();
   window.sessionStorage.clear();
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  // Reset, not just re-stub: `mockResolvedValue` leaves the call history behind, and half of
+  // what these assert is how many times the server was asked.
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ credentials: [] }), { status: 200 }));
+  vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   const db = await openAuthDb();
   await db.clear("meta");
   db.close();
@@ -132,5 +142,70 @@ describe("with nothing cached", () => {
 
     await waitFor(() => expect(showsApp()).toBe(true));
     expect(screen.queryByRole("heading", { name: "Locked" })).toBeNull();
+  });
+
+  it("arms itself from the server rather than waiting for the next sign-in", async () => {
+    // The bug reported from the phone on 2026-09-03 — "there is no biometric login" (D-157).
+    // The key was cached only by the sign-in response, and a session lasts seven days, so a
+    // device signed in before the feature shipped never ran that code. The lock sat unarmed,
+    // and an unarmed lock opens silently, so there was nothing at all to see.
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ credentials: [CREDENTIAL] }), { status: 200 }),
+    );
+
+    render(app());
+
+    await screen.findByRole("heading", { name: "Locked" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/auth/local-credentials", expect.anything());
+    expect(showsApp()).toBe(false);
+  });
+
+  it("keeps what it fetched, so the next launch works with no signal", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ credentials: [CREDENTIAL] }), { status: 200 }),
+    );
+    render(app());
+    await screen.findByRole("heading", { name: "Locked" });
+
+    const db = await openAuthDb();
+    const stored = await listCredentials(db);
+    db.close();
+    expect(stored).toEqual([CREDENTIAL]);
+  });
+
+  it("does not ask when there is no signal, and opens rather than hanging", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    render(app());
+
+    await waitFor(() => expect(showsApp()).toBe(true));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("opens when the session has expired, instead of locking him out of a page he can see", async () => {
+    // A 401 here means the server will redirect him to sign in anyway. Refusing to render
+    // would replace that redirect with a lock screen no fingerprint can open.
+    fetchMock.mockResolvedValue(new Response("{}", { status: 401 }));
+    render(app());
+
+    await waitFor(() => expect(showsApp()).toBe(true));
+  });
+
+  it("opens when the request itself fails", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    render(app());
+
+    await waitFor(() => expect(showsApp()).toBe(true));
+  });
+});
+
+describe("with a passkey already cached", () => {
+  it("does not ask the server again", async () => {
+    // One network request per launch is one too many when the answer is already on the device,
+    // and it would also make the lock depend on signal it is supposed to work without.
+    await arm();
+    render(app());
+
+    await screen.findByRole("heading", { name: "Locked" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
