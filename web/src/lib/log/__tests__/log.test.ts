@@ -11,10 +11,12 @@ import {
   deleteEntry,
   entriesBetween,
   listEntries,
+  recentForChips,
   restoreEntry,
   searchEntries,
   type Db,
 } from "../queries";
+import { allChipSets } from "../chips";
 
 let db: Db;
 
@@ -369,5 +371,63 @@ describe("1-5 scales (D-134)", () => {
   it("makes scale values searchable", () => {
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("5");
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("good day");
+  });
+});
+
+describe("recent values for the chips (§1.6)", () => {
+  it("hands back newest first, so the chip row is in the order he last used them", async () => {
+    await createEntry(db, {
+      category: "athletics",
+      data: { exercise: "Squat" },
+      occurredAt: at("2026-08-01T18:00:00Z"),
+    });
+    await createEntry(db, {
+      category: "athletics",
+      data: { exercise: "Bench Press" },
+      occurredAt: at("2026-08-30T18:00:00Z"),
+    });
+
+    const recent = await recentForChips(db);
+    expect(recent.map((r) => r.data.exercise)).toEqual(["Bench Press", "Squat"]);
+  });
+
+  it("leaves out a deleted entry, so removing a mistake removes its chip", async () => {
+    const gone = await createEntry(db, { category: "athletics", data: { exercise: "Typo Lift" } });
+    await createEntry(db, { category: "athletics", data: { exercise: "Squat" } });
+
+    await deleteEntry(db, gone.id);
+
+    const recent = await recentForChips(db);
+    expect(recent.map((r) => r.data.exercise)).toEqual(["Squat"]);
+  });
+
+  it("brings the numbers with it, which is the point of the chip", async () => {
+    await createEntry(db, {
+      category: "athletics",
+      data: { kind: "lift", exercise: "Bench Press", weightLbs: 185, reps: 5 },
+    });
+
+    const sets = allChipSets(await recentForChips(db));
+    expect(sets.athletics.exercise[0]).toMatchObject({
+      label: "Bench Press · 185 × 5",
+      fills: { exercise: "Bench Press", weightLbs: "185", reps: "5" },
+    });
+  });
+
+  it("covers every category in one query rather than one query each", async () => {
+    await createEntry(db, { category: "athletics", data: { exercise: "Squat" } });
+    await createEntry(db, { category: "work", data: { company: "Anthropic" } });
+    await createEntry(db, { category: "people", data: { who: "Coach" } });
+
+    const sets = allChipSets(await recentForChips(db));
+    expect(Object.keys(sets).sort()).toEqual(["athletics", "people", "work"]);
+  });
+
+  it("respects its limit, so a long history cannot make the log page slow", async () => {
+    for (let i = 0; i < 12; i += 1) {
+      await createEntry(db, { category: "athletics", data: { exercise: `Lift ${i}` } });
+    }
+
+    expect(await recentForChips(db, 5)).toHaveLength(5);
   });
 });

@@ -53,6 +53,29 @@ export async function listEntries(
     .limit(options.limit ?? 50);
 }
 
+/**
+ * Recent entries, reduced to what the chips need (V3 §1.6, D-155).
+ *
+ * One query rather than one per category. Five separate `LIMIT 20`s would each be cheap and
+ * would still be five round trips in front of a form whose entire promise is that it appears
+ * instantly; two hundred rows of `(category, data)` is a single index scan and covers months
+ * of every category at once.
+ *
+ * Only the two columns the chips read. `select *` here would drag every note and search
+ * vector across the wire to be thrown away.
+ */
+export async function recentForChips(
+  db: Db,
+  limit = 200,
+): Promise<{ category: string; data: Record<string, unknown> }[]> {
+  return db
+    .select({ category: logEntries.category, data: logEntries.data })
+    .from(logEntries)
+    .where(alive)
+    .orderBy(desc(logEntries.occurredAt), desc(logEntries.id))
+    .limit(limit);
+}
+
 export async function entriesBetween(db: Db, start: Date, end: Date): Promise<LogEntry[]> {
   return db
     .select()
