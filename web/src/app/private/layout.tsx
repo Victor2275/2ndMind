@@ -1,4 +1,3 @@
-import { LocalLock } from "@/components/site/local-lock";
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PublicSiteLink } from "@/components/site/public-site-link";
@@ -19,11 +18,14 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
   // prefetches and may be served from a CDN, so it is not trusted as the boundary.
   await requireSession();
 
+  // The local biometric lock is **built and not mounted** (§1.5, D-158). Wrapping the return
+  // below in `<LocalLock>` — and restoring the import above — is the whole of turning it back
+  // on; `components/site/local-lock.tsx`, its ceremony, its verifier and their tests are all
+  // still here and still green. It was removed on 2026-09-04 because it asked for a
+  // fingerprint on every cold start, which is most launches, to protect against a threat the
+  // phone's own lock screen already covers.
   return (
-    // Everything under here sits behind the local lock (§1.5, D-154). It is a display gate,
-    // not a data gate — this page's payload has already been sent — and it exists for the
-    // case the device lock does not cover: a phone handed over already unlocked.
-    <LocalLock>
+    <>
       {/* `pb-24` on a phone clears the fixed tab bar, which would otherwise cover the last
           ~68px of every page — including the save button at the foot of a log form. */}
       <div className="mx-auto w-full max-w-5xl flex-1 px-5 pt-8 pb-24 sm:px-6 sm:pb-8">
@@ -50,6 +52,6 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
 
         <PrivateTabBar />
       </div>
-    </LocalLock>
+    </>
   );
 }
