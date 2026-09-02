@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { draftSprintGoals } from "@/lib/ai/goal-drafts";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
+import { describeDbError } from "@/lib/db/describe";
 import { isCalendarConfigured, loadCalendars } from "@/lib/calendar/load";
 import { summarise } from "@/lib/log/categories";
 import { entriesBetween } from "@/lib/log/queries";
@@ -32,14 +33,7 @@ import {
 
 const WEEK_MS = 7 * 86_400_000;
 
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("DATABASE_URL")) return message;
-  if (message.includes("relation") && message.includes("does not exist")) {
-    return "The tasks table is missing. Run `npm run db:migrate`.";
-  }
-  return message;
-}
+const describe = (error: unknown) => describeDbError(error, { subject: "The tasks table" });
 
 /** Current goals as the proposal layer sees them: one entry per domain, blank when unset. */
 async function goalState(): Promise<{ key: string; value: string }[]> {

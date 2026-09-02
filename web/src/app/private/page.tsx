@@ -1,3 +1,4 @@
+import { describeDbError } from "@/lib/db/describe";
 import { Suspense } from "react";
 
 import { Agenda } from "@/components/site/agenda";
@@ -108,7 +109,7 @@ async function load(): Promise<Loaded> {
       failure: null,
     };
   } catch (error) {
-    return { ...empty, failure: error instanceof Error ? error.message : String(error) };
+    return { ...empty, failure: describeDbError(error, { subject: "The tasks table" }) };
   }
 }
 

@@ -1,3 +1,4 @@
+import { describeDbError } from "@/lib/db/describe";
 import { Suspense } from "react";
 
 import { BodyweightForm } from "@/components/site/bodyweight-form";
@@ -237,7 +238,7 @@ async function Training() {
       workoutDates(handle, new Date(`${shiftDay(weekStart, -7)}T00:00:00Z`)),
     ]);
   } catch (error) {
-    failure = error instanceof Error ? error.message : String(error);
+    failure = describeDbError(error, { subject: "The athletics tables" });
   }
 
   // Vault reads are separate from the database ones: a GitHub outage must not take the

@@ -1,3 +1,4 @@
+import { describeDbError } from "@/lib/db/describe";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -70,7 +71,7 @@ async function Console() {
       <div className="mt-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
         <p className="text-sm font-medium text-foreground">The log is unavailable.</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {error instanceof Error ? error.message : String(error)}
+          {describeDbError(error, { subject: "The log_entries table" })}
         </p>
       </div>
     );

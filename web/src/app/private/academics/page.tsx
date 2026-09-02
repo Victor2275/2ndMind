@@ -1,3 +1,4 @@
+import { describeDbError } from "@/lib/db/describe";
 import { Suspense } from "react";
 
 import { PageHeader, Panel, Stat } from "@/components/site/page-shell";
@@ -34,7 +35,7 @@ async function Outstanding() {
       const all = await listTasks(db(), { limit: 200 });
       academic = all.filter((t) => t.domain === "academics" || t.courseCode !== null);
     } catch (error) {
-      failure = error instanceof Error ? error.message : String(error);
+      failure = describeDbError(error, { subject: "The tasks table" });
     }
   } else {
     failure = "DATABASE_URL is not set, so coursework tasks cannot load.";

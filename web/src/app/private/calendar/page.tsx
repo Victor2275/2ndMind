@@ -1,3 +1,4 @@
+import { describeDbError } from "@/lib/db/describe";
 import { Suspense } from "react";
 
 import { Agenda, AgendaDayBlock } from "@/components/site/agenda";
@@ -112,7 +113,7 @@ async function Rules() {
   try {
     rules = section((await readVaultFileCached(SPRINT)).content, RULES_HEADING);
   } catch (error) {
-    failure = error instanceof Error ? error.message : String(error);
+    failure = describeDbError(error, { subject: "The tasks table" });
   }
 
   return (

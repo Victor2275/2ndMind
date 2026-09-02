@@ -17,6 +17,7 @@
     "build:sw": "node scripts/build-sw.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
+    "db:status": "node --env-file-if-exists=.env.local scripts/db-status.mjs",
     "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs",
     "freeze": "node scripts/freeze.mjs"
   },

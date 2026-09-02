@@ -13,6 +13,7 @@ import {
 } from "@/lib/athletics/queries";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
+import { describeDbError } from "@/lib/db/describe";
 
 /**
  * Athletics write actions.
@@ -25,14 +26,7 @@ import { db, isDatabaseConfigured } from "@/lib/db/client";
 /** Hevy exports are a few hundred KB; a 5 MB ceiling is generous and bounds memory. */
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("DATABASE_URL")) return message;
-  if (message.includes("relation") && message.includes("does not exist")) {
-    return "The athletics tables are missing. Run `npm run db:migrate` against the database.";
-  }
-  return message;
-}
+const describe = (error: unknown) => describeDbError(error, { subject: "The athletics tables" });
 
 function requireDatabase(): ActionState | null {
   return isDatabaseConfigured()

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
+import { describeDbError } from "@/lib/db/describe";
 import { categoryByKey } from "@/lib/log/categories";
 import { readField } from "@/lib/log/form";
 import { createEntry, deleteEntry, restoreEntry } from "@/lib/log/queries";
@@ -16,14 +17,7 @@ import type { ActionState } from "@/lib/sprint-goals";
  * Writes go to Postgres, so a save is immediate and does not commit or deploy (D-036).
  */
 
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("DATABASE_URL")) return message;
-  if (message.includes("relation") && message.includes("does not exist")) {
-    return "The log_entries table is missing. Run `npm run db:migrate`.";
-  }
-  return message;
-}
+const describe = (error: unknown) => describeDbError(error, { subject: "The log_entries table" });
 
 export async function createLogEntry(
   _prev: ActionState | null,

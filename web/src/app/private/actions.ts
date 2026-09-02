@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
+import { describeDbError } from "@/lib/db/describe";
 import type { ActionState } from "@/lib/sprint-goals";
 import {
   createTask,
@@ -25,14 +26,7 @@ import {
  * read by AI agents.
  */
 
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("DATABASE_URL")) return message;
-  if (message.includes("relation") && message.includes("does not exist")) {
-    return "The tasks table is missing. Run `npm run db:migrate`.";
-  }
-  return message;
-}
+const describe = (error: unknown) => describeDbError(error, { subject: "The tasks table" });
 
 function requireDatabase(): ActionState | null {
   return isDatabaseConfigured()
