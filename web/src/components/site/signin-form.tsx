@@ -4,6 +4,9 @@ import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { LocalCredential } from "@/lib/auth/cose";
+import { openAuthDb, rememberCredential } from "@/lib/auth/local-credential";
+
 type State = { status: "idle" | "working" | "error"; message?: string };
 
 export function SignInForm({ next }: { next: string }) {
@@ -31,6 +34,20 @@ export function SignInForm({ next }: { next: string }) {
       if (!verifyRes.ok) {
         const { error } = (await verifyRes.json()) as { error?: string };
         throw new Error(error ?? "sign-in failed");
+      }
+
+      // Arm offline unlock (§1.5, D-154). This is the only moment the public half of the
+      // passkey is available to the device, and it is deliberately not fatal: a failure here
+      // costs the lock screen, not the sign-in, and the next sign-in tries again.
+      const { local } = (await verifyRes.json()) as { local?: LocalCredential | null };
+      if (local) {
+        try {
+          const db = await openAuthDb();
+          await rememberCredential(db, local);
+          db.close();
+        } catch {
+          // A browser refusing IndexedDB cannot hold a key. Sign-in still succeeded.
+        }
       }
 
       router.replace(next);

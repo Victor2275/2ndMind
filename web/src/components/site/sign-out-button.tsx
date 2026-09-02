@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { forgetLocalUnlock } from "@/lib/auth/local-credential";
+
 export function SignOutButton() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -14,6 +16,10 @@ export function SignOutButton() {
       onClick={async () => {
         setBusy(true);
         await fetch("/api/auth/login", { method: "DELETE" });
+        // The cached passkey and the current unlock both go with the session (D-154).
+        // Leaving either behind puts a lock screen in front of a device with nothing to
+        // unlock into.
+        await forgetLocalUnlock();
         router.replace("/");
         router.refresh();
       }}

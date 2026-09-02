@@ -12,6 +12,7 @@ import {
   sessionSecret,
   storedCredentials,
 } from "@/lib/auth/config";
+import { coseToJwk, type LocalCredential } from "@/lib/auth/cose";
 import {
   CHALLENGE_COOKIE,
   newSessionPayload,
@@ -130,7 +131,22 @@ export async function POST(request: Request) {
     maxAge: RETURNING_MAX_AGE,
   });
 
-  return NextResponse.json({ verified: true });
+  // Hand back the public half of the passkey that just answered, so the device can verify a
+  // biometric offline without asking anything (V3 §1.5, D-154). Nothing here is secret: a
+  // credential id and a public key, both already public, and only after a successful sign-in.
+  //
+  // A key this build cannot verify in a browser costs the offline lock, not the sign-in —
+  // hence the try. Failing the login over it would be a regression for a feature that is
+  // supposed to be additive.
+  let local: LocalCredential | null = null;
+  try {
+    const { jwk, alg } = coseToJwk(credential.publicKey);
+    local = { id: credential.id, jwk, alg, rpId: rpID };
+  } catch (error) {
+    console.warn(`local unlock unavailable for "${credential.label}":`, error);
+  }
+
+  return NextResponse.json({ verified: true, local });
 }
 
 /** Sign out. */
