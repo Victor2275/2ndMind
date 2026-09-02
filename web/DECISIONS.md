@@ -27,6 +27,41 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-153 · The flush absorbs every stamp it pulls, and refuses the ones past the drift bound
+
+**Decision.** `flush()` feeds every incoming `updatedHlc` through this device's `HlcClock`
+before merging, and persists the result — `absorbStamps` in `lib/sync/engine.ts`. A stamp more
+than ten minutes ahead is skipped rather than absorbed; the row still merges.
+
+**Why.** `HlcClock.receive` had been written, documented and tested since §1.2, and **nothing
+outside its own unit tests ever called it.** The clock was monotonic but not causal, and the
+consequence is silent data loss: a phone five minutes fast writes a row, the laptop pulls it,
+the laptop's next edit to that row is stamped five minutes *behind* what is stored, comes back
+`stale`, and is discarded — then the next pull overwrites it on screen too. No error is raised
+anywhere, on either device. Five minutes is an ordinary phone that has not reached NTP lately,
+not a pathological case.
+
+This is the second time in this phase that a gap sat in the *wiring* rather than in either
+piece being wired. The unit tests were right, the module was right, and the two were never
+connected. Both were found by writing an integration test that could actually fail — §1.4's
+`roundtrip.test.ts`, which drives the real IndexedDB outbox against real Postgres — and neither
+was findable by reading either file on its own.
+
+**The bound is a trade, and the losing side is real.** A peer more than ten minutes ahead is
+refused, because absorbing it would drag this device's stamps forward permanently and poison
+every later comparison with every device. The cost is that while that peer stays broken, edits
+made *here* to rows it wrote will keep coming back `stale` and being dropped. That is the
+better of the two failures — one device losing edits to one peer beats every device's clock
+being wrong forever — but it is invisible, so §1.7 should surface "another device's clock is
+far ahead" rather than leaving it to be discovered.
+
+**How to reverse.** Delete the `absorbStamps` call in `flush` and the function below it. The
+clock-skew test in `roundtrip.test.ts` fails immediately, which is the point. To widen or
+narrow the refusal instead, change `MAX_DRIFT_MS` in `lib/sync/hlc.ts` — it is the only
+knob, and both tests in that describe block are written against it.
+
+---
+
 ### D-152 · The stored HLC is the idempotency key, so there is no table of applied op ids
 
 **Decision.** `POST /api/sync` pushes and pulls in one round trip. An op's outcome is decided by

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-30
+updated: 2026-09-01
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -306,8 +306,20 @@ until it reproduces in `npm run build`.**
         **Still open, on purpose:** the round trip against the real database has not been run,
         because it would write test entries into the actual log and there is nothing left that
         hard-deletes to clean them up. That one is Victor's, on the phone.
-  - [ ] **1.4 · Sync tests at the database layer's bar** (8h) — next. Six named cases; several
-        already exist from 1.2 and 1.3 and need auditing against the list rather than rewriting.
+  - [x] **1.4 · Sync tests at the database layer's bar** (8h) — done 2026-09-01.
+        **710 tests**, up from 700. Six named cases, each checked by taking its fix out and
+        watching that test go red rather than by reading the code and agreeing with it.
+        Four of the six were already covered and only needed naming. The fifth found a real
+        bug, and a quiet one: the piece that keeps the two devices' clocks in step had been
+        written and tested weeks ago and **was never actually plugged in**. The effect was
+        that a phone running five minutes fast — an ordinary phone that has not checked the
+        time in a while — would make later edits from the laptop disappear, with no error on
+        either device. Now fixed.
+        Both bugs found this phase have been in the wiring rather than in the parts, which is
+        an argument for the kind of test this section added: one that runs the real phone-side
+        code against the real database with nothing faked in between except the network
+        dropping.
+  - [ ] **1.5 · Local biometric unlock** (9h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

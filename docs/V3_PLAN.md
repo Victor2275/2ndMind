@@ -476,7 +476,33 @@ The standard set by `@electric-sql/pglite`: real storage, real code, no mocks. R
 reconnect mid-flush, partial failure, duplicate flush, clock skew, schema version skew, and a
 create retried three times producing one row.
 
-**Done when:** each of those six is a named test that fails without its fix.
+**Done when:** ~~each of those six is a named test that fails without its fix.~~
+**Done 2026-09-01.** All six are in `web/src/lib/sync/__tests__/roundtrip.test.ts`, and each
+was checked by *removing* its fix and watching the right test go red — not by reading the code
+and agreeing with it.
+
+**The audit was the deliverable, and it found a real bug.** Four of the six were already
+covered by §1.2 and §1.3 and only needed naming. The fifth — clock skew — failed, and the
+reason is worth writing down: `HlcClock.receive` had been written, documented and unit-tested
+since §1.2, and **nothing on the live path ever called it.** The clock was monotonic but not
+causal. A phone five minutes fast writes a row; the laptop pulls it; the laptop's next edit is
+stamped five minutes *behind* what is stored, comes back `stale`, and is dropped — then the
+next pull removes it from the screen too. No error on either device. Fixed by `absorbStamps`
+in `engine.ts`. **D-153.**
+
+Both bugs this phase have been in the *wiring*, not in either piece being wired — §1.3's
+`hasMore` and now this one. The lesson is the same both times: `apply.test.ts` and
+`engine.test.ts` each hold one half of sync still while testing the other, so neither can fail
+the way sync actually fails. `roundtrip.test.ts` runs the real outbox against real Postgres
+with nothing scripted in between except when the connection drops, and it is the only file
+here that could have caught either.
+
+**One known limit, deliberately left.** A peer more than ten minutes ahead is refused rather
+than absorbed, so that one broken clock cannot poison this device permanently. While that peer
+stays broken, edits made here to rows it wrote will keep coming back `stale`. That is the right
+trade and it is still invisible — §1.7 should surface it.
+
+**710 tests**, up from 700.
 
 #### 1.5 · Local biometric unlock — **9h**
 
