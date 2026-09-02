@@ -289,7 +289,25 @@ until it reproduces in `npm run build`.**
         `WHERE` silently makes it an INNER JOIN; and re-recording a deleted bodyweight day
         needed the tombstone cleared or the save looks like it failed.
         **Nothing is sent yet** — that is 1.3. The outbox fills and waits.
-  - [ ] **1.3 · The sync engine** (12h) — next. Batch endpoint, flush triggers, the pull side.
+  - [x] **1.3 · The sync engine** (12h) — done 2026-08-31. **700 tests**, up from 660.
+        The phone now actually sends. One endpoint pushes the outbox and pulls what changed in
+        a single round trip, and the app flushes on three triggers: opening it, reconnecting,
+        and bringing it back to the foreground. Reconnect alone is not enough — hotel wifi with
+        a sign-in page reports "online" — and an installed app sits in the background for hours
+        with nothing to wake it.
+        The design got simpler in one place: there is **no table of applied operations**. The
+        clock already answers the question. An entry whose stamp matches the one stored is one
+        that already arrived, so a retry after a lost reply is recognised for free rather than
+        logged twice.
+        **A bug the tests caught that would have been near-invisible:** the "more waiting" flag
+        could say *no* while entries were still queued, and the app only asks again when told
+        there is more. The symptom would have been "sync is slow sometimes", which is not
+        something you can report or chase.
+        **Still open, on purpose:** the round trip against the real database has not been run,
+        because it would write test entries into the actual log and there is nothing left that
+        hard-deletes to clean them up. That one is Victor's, on the phone.
+  - [ ] **1.4 · Sync tests at the database layer's bar** (8h) — next. Six named cases; several
+        already exist from 1.2 and 1.3 and need auditing against the list rather than rewriting.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

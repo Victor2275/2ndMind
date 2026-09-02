@@ -27,6 +27,59 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-152 · The stored HLC is the idempotency key, so there is no table of applied op ids
+
+**Decision.** `POST /api/sync` pushes and pulls in one round trip. An op's outcome is decided by
+comparing its HLC against the one stored on the row: **equal is `duplicate`, lower is `stale`,
+higher is `applied`**. There is no `applied_ops` table.
+
+**Why this replaces what the spec asked for.** `SYNC_DESIGN.md` §5 wanted `opId` to let the
+server say "already applied" distinctly from "applied" — the difference between a working retry
+and a silent no-op nobody can debug. That is the right requirement, and the obvious
+implementation is a table of seen operation ids, with the garbage collection and the extra
+write that implies. The stored HLC gives the same answer for free: stamps are unique per device
+and strictly increasing, so **equality is identity**. `opId` still travels, because it is what
+the client's outbox and the retry screen address, but the server does not need to remember it.
+
+**Four outcomes mean "stop sending this", one means "failed".** `applied`, `duplicate`, `stale`
+and `superseded` are all success from the outbox's point of view; only `rejected` is a failure.
+They are kept apart for the retry screen and for debugging a sync that looks stuck, not for
+control flow.
+
+**Batches have to be collapsed before they are written.** Two ops in one batch can address the
+same row — a create and then an edit. Postgres refuses an `ON CONFLICT DO UPDATE` that would
+touch a row twice in one statement (*"cannot affect row a second time"*), so only the
+highest-HLC op per row is written and the rest come back `superseded`.
+
+**Push before pull, in that order.** Otherwise a change made on this device does not come back
+in the same response, and for one round trip the phone's own write looks like it vanished.
+
+**The route answers 401, not a redirect.** `requireSession()` redirects to `/signin`, and
+handing an HTML sign-in page to a background fetch is a terrible failure mode — the client
+would parse it as a sync response. `getSession()` plus an explicit 401 is what the failure
+taxonomy expects: pause the flush, prompt for sign-in, and do not burn 100 ops against a dead
+session. A missing `DATABASE_URL` answers **503, not 500**, so the outbox holds and retries
+instead of marking everything permanently failed.
+
+**A bug the tests found, and it would have been near-invisible.** `hasMore` was computed by
+comparing the collected rows against the returned ones. Each table is queried with its own
+limit, so when a *single* table was the one being truncated, collected and returned were equal
+and `hasMore` came back `false` with rows still waiting. The client only flushes again when
+told there is more, so those rows would have sat there until some unrelated trigger fired.
+Fixed by asking each table for `limit + 1`. **The symptom would have been "sync is slow
+sometimes", which is not a bug report anyone can act on.**
+
+**What is verified and what is not.** The server logic is tested against real Postgres (PGlite)
+on the committed migration; the client flush is tested against `fake-indexeddb` with `post`
+injected, so every branch of the failure taxonomy — offline, dropped socket, 5xx, 429, 401,
+4xx, per-op rejection — is a test. The HTTP boundary was checked against a production build:
+401 before any parsing, 405 on GET, no information leak. **The full round trip against Neon was
+not run**, because it would write test rows into Victor's real log and there are no hard
+deletes left to clean them up with. That half of §1.3's done-when is his to close on the phone.
+
+**How to reverse.** Delete `src/app/api/sync/`, `lib/sync/apply.ts`, `lib/sync/engine.ts` and
+the `SyncRunner` mount. The store and the outbox keep working — they just stop being drained.
+
 ### D-151 · The mark is the 🧠 emoji, not an anatomical brain — **reverses part of D-145 and D-148**
 
 **Decision.** Fourth drawing. `brain.svg` is now shaped like the brain emoji: a rounded lobed

@@ -450,8 +450,25 @@ already right. Corrected. **D-150.**
 A batch sync endpoint behind the existing session auth, and flush triggers: reconnect,
 app foreground, and manual pull-to-refresh. Bidirectional — push the outbox, pull what changed.
 
-**Done when:** airplane mode → log three entries → reconnect → all three appear in Neon exactly
-once, verified by row count, not by looking.
+**Done when:** ~~airplane mode → log three entries → reconnect → all three appear in Neon
+exactly once, verified by row count, not by looking.~~ **Half closed 2026-08-31.** The three
+entries case is a named test against real Postgres, checked by row count, including the retry
+that follows a lost response. **700 tests**, up from 660. The HTTP boundary was checked against
+a production build: 401 before any parsing, 405 on GET.
+
+**The other half is still open, and deliberately.** The round trip against *Neon* was not run,
+because it would write test rows into Victor's real log and — since §1.2 — there are no hard
+deletes left to clean them up with. That is his to close on the phone, and it is in Section 8.
+
+**A bug the tests found that would have been near-invisible.** `hasMore` compared the collected
+rows against the returned ones, so when a *single* table was the one being truncated the two
+were equal and it came back `false` with rows still waiting. The client only flushes again when
+told there is more. The symptom would have been *"sync is slow sometimes"*, which is not a bug
+report anyone can act on. Fixed by asking each table for `limit + 1`. **D-152.**
+
+**One design change against `SYNC_DESIGN.md` §5.** There is no table of applied operation ids.
+The stored HLC does the same job for free — stamps are unique per device and strictly
+increasing, so equality *is* identity, and an op whose stamp matches the row's is a duplicate.
 
 #### 1.4 · Sync tests at the database layer's bar — **8h**
 
@@ -666,6 +683,7 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 | 2 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | 4.4 |
 | 3 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
 | 4 | **Confirm you have used the goals editor once**, so `/sprint-review` can be retired. | Housekeeping |
+| 1 | **Confirm the round trip on the phone.** Airplane mode → log three entries → reconnect → check they are in Neon once each. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into your real log, and since §1.2 there are no hard deletes left to clean them up with. | closes §1.3 |
 | ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Closed 2026-08-30: log entries only.** Answered "workouts too", reversed the same day. §1.2 is back to 14h and Phase 1 fits its window again. `SYNC_DESIGN.md` §11.1. | ~~§1.2 size~~ |
 
 **Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
