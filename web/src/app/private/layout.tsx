@@ -1,6 +1,7 @@
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PublicSiteLink } from "@/components/site/public-site-link";
+import { SyncRunner } from "@/components/site/sync-runner";
 import { SignOutButton } from "@/components/site/sign-out-button";
 import { requireSession } from "@/lib/auth/dal";
 
@@ -36,6 +37,11 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
       </div>
 
       {children}
+
+      {/* Flushes the outbox on mount, on reconnect and on foreground. Mounted here rather than
+          at the root because sync only runs for a signed-in session — the endpoint answers 401
+          to anyone else, and starting a flush loop on the public site would just burn 401s. */}
+      <SyncRunner />
 
       <PrivateTabBar />
     </div>
