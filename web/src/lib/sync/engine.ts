@@ -1,11 +1,15 @@
-import { isEntity, MAX_OPS, type SyncResponse } from "@/lib/sync/protocol";
+import { HlcClock, HlcDriftError } from "@/lib/sync/hlc";
+import { isEntity, MAX_OPS, type ChangeRow, type SyncResponse } from "@/lib/sync/protocol";
 import {
   applyRemote,
+  deviceId,
   forgetOp,
   getCursor,
+  loadClock,
   markFailed,
   pendingBatch,
   retryLater,
+  saveClock,
   setCursor,
   type OutboxOp,
   type SyncDb,
@@ -111,6 +115,11 @@ export async function flush(
     await forgetOp(db, result.opId);
   }
 
+  // Before merging: drag this device's clock past every stamp it just saw. `flush` is the
+  // only place a remote stamp ever arrives, so it is the only place this can happen — and
+  // without it the clock is monotonic but not *causal*, which loses edits. See `absorbStamps`.
+  await absorbStamps(db, body.changes ?? []);
+
   let merged = 0;
   for (const change of body.changes ?? []) {
     if (!isEntity(change.entity)) continue; // A table this build does not know about yet.
@@ -135,6 +144,44 @@ export async function flush(
     merged,
     hasMore: body.hasMore === true,
   };
+}
+
+/**
+ * Feed every stamp this device just pulled into its own clock, and persist the result.
+ *
+ * Skipping this is a *silent* data-loss bug, and it is worth spelling out because the code
+ * reads fine without it. Say the phone's clock is three days fast — the Taiwan case the HLC
+ * exists for. It writes a row; the laptop pulls it. The laptop's clock is correct, so its next
+ * edit to that row is stamped three days *behind* the phone's, comes back `stale`, and is
+ * discarded — then the next pull overwrites it on screen too. The edit disappears with no
+ * error anywhere. `HlcClock.receive` is what prevents that, and until this call existed
+ * nothing outside its own unit tests ever invoked it.
+ *
+ * A stamp beyond `MAX_DRIFT_MS` is skipped rather than absorbed, which is the whole point of
+ * the bound: one badly-skewed peer must not drag this device forward permanently. The row
+ * still merges — last-write-wins compares the strings and does not care about our clock.
+ * Failing the flush instead would let one bad stamp wedge syncing entirely.
+ *
+ * Saved before the cursor advances, for the same reason the merge is: the cursor is the only
+ * record of what has been seen, so it must never move past a stamp the clock has not absorbed.
+ */
+async function absorbStamps(db: SyncDb, changes: ChangeRow[]): Promise<void> {
+  if (changes.length === 0) return;
+
+  const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+
+  for (const change of changes) {
+    try {
+      clock.receive(change.updatedHlc);
+    } catch (error) {
+      // A malformed stamp is as untrustworthy as a skewed one, and neither is worth losing
+      // the rest of the batch over.
+      if (!(error instanceof HlcDriftError) && !String(error).includes("Malformed HLC"))
+        throw error;
+    }
+  }
+
+  await saveClock(db, clock.state);
 }
 
 /** Hold a whole batch for a later attempt, counting the failure against each op. */
