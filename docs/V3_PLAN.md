@@ -537,8 +537,18 @@ seven-day session may not reach for a week. An unarmed lock opens, so the sympto
 absence with nothing to investigate. It now asks the server for the public halves the first time
 it has signal, so **no fresh sign-in is needed** to arm it. **D-157.**
 
-**Still Victor's to close, on the phone:** airplane mode → open the app → unlock with a
-fingerprint; then again, cancelling the prompt, and confirm it stays shut.
+**Removed from the app on 2026-09-04, and kept in the repo. D-158.** Victor: *"I do not like
+the auth every single time I log in."* The lock re-locks on every cold start — most launches on
+a phone — in exchange for a **display gate** the phone's own lock screen already provides. Several
+fingerprints a day, forever, against someone picking up an already-unlocked phone is a bad trade,
+and D-154 named this reversal itself.
+
+`<LocalLock>` is gone from the private layout. The component, the ceremony, the local verifier,
+the credentials route and all 46 tests remain and stay green. **Re-enabling is one import and one
+wrapper** in `app/private/layout.tsx`. The middle option, if "never" turns out to be too far, is
+to lock only after some hours away rather than on every launch — a small change to `decideLock`.
+
+**The device check this section was blocked on is therefore withdrawn**, not deferred.
 
 #### 1.6 · Fast log paths — **8h**
 
@@ -750,6 +760,39 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 
 ---
 
+## 7b. Milestone A promises something Phase 2 builds — **found 2026-09-04**
+
+**The finding.** Milestone A reads *"2ndMind is on the home screen. It logs with no signal and
+syncs on reconnect."* You cannot log with no signal if you cannot **open** the app with no
+signal, and opening it offline needs a precached shell — which is **§2.1 and §2.2, in Phase 2,
+scheduled to start two days after Milestone A's date.**
+
+This was half-known. §1.1's own correction already said that *"survives a cold start with the
+network off"* did not belong in §1.1 and *"moves to Milestone A"*. What nobody then did was
+check that anything scheduled before Milestone A actually delivered it. Nothing does.
+
+**What it looks like today,** confirmed on the phone on 2026-09-04: with no signal, *every*
+navigation lands on the offline page — the dashboard, the portfolio and sign-in alike. Phase 1
+built the machinery to log offline (§1.2's store, §1.3's outbox and flush) and no way to reach a
+screen that uses it. **That is not a bug; it is unbuilt**, and the offline page now says so
+rather than implying a fault.
+
+**This is an ordering question, not a scope one.** Nothing needs cutting and no estimate moves.
+Three ways to take it:
+
+1. **Pull §2.2 (public precache, 6h) and the shell half of §2.1 forward into Phase 1.** Milestone
+   A then means what it says. Phase 1 goes 65h → ~75h and its window is already tight.
+2. **Move Milestone A's date** to when Phase 2 lands the shell, and keep Phase 1 as it is.
+3. **Restate Milestone A** as what Phase 1 actually delivers: installed, logging *online*, with
+   the offline machinery built and tested underneath. Honest, and it defers the phone being
+   useful on a plane to Milestone B.
+
+Victor's stated preference in this situation is to keep the scope and move the date (D-140), so
+(2) or (3) is the likely answer — but the date in question is the one hard date in the plan, so
+it is his call and not a default to assume.
+
+---
+
 ## 8. Blocked on Victor
 
 Everything here needs a person, a device or a file. Nothing in it is waiting on code.
@@ -759,8 +802,8 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 | # | What to do | Closes |
 |---|---|---|
 | 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
-| 2 | **Biometric unlock, twice.** Airplane mode → open the app → unlock with a fingerprint. Then again, **cancelling** the prompt, and confirm it stays shut. Since D-157 the lock arms itself the first time the phone has signal, so no fresh sign-in is needed. | §1.5 |
-| 3 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Applications, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. | §1.6 |
+| 2 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Applications, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. | §1.6 |
+| ~~3~~ | ~~**Biometric unlock, twice.**~~ **Withdrawn 2026-09-04** — the lock was removed from the app (D-158). There is nothing left to check. | ~~§1.5~~ |
 
 ### Then these, in no particular order
 

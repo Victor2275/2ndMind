@@ -27,6 +27,40 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-158 · The biometric lock is built and not mounted — one line turns it back on
+
+**Decision.** `<LocalLock>` is removed from `app/private/layout.tsx`. Everything behind it stays:
+`components/site/local-lock.tsx`, the ceremony, the local verifier, the credentials route, and
+all 46 tests, still green. Re-enabling it is restoring one import and wrapping the return.
+
+**Why.** Victor's words on 2026-09-04: *"I do not like the auth every single time I log in."* The
+lock re-locks on every cold start (`sessionStorage` dies with the app, D-154), and a cold start
+is most launches on a phone — so the cost was a fingerprint several times a day, permanently.
+
+The benefit it bought was always narrow, and D-154 said so: a **display gate, not a data gate**.
+The page's payload has already been sent, §1.2's mirror is unencrypted, and anything past a
+casual look defeats it. What it actually defended against was someone picking up an already
+unlocked phone — which the phone's own lock screen also defends against, and which is a
+low-likelihood event for a device that lives in a pocket. Several fingerprints a day, forever,
+against that, is a bad trade. **Removing it is a considered reversal of D-154, not an
+abandonment of it**, and it is the reversal D-154 named.
+
+**Why kept rather than deleted.** The work is done and correct — a real signature check against
+a cached key, verified against genuine ES256 signatures — and the reason to want it back is
+foreseeable: a laptop left in a lab, or a decision to encrypt the mirror (the `prf` version
+D-154 sized and declined), which needs exactly this ceremony. Deleting it would mean rebuilding
+it. Dead code rots, so the tests stay green and the cost is watching for that, which the suite
+does for free.
+
+**How to re-add.** In `app/private/layout.tsx`: restore
+`import { LocalLock } from "@/components/site/local-lock";` and wrap the returned fragment in
+`<LocalLock>…</LocalLock>` instead of `<>…</>`. Nothing else. To make it less intrusive rather
+than absent, raise `AUTO_LOCK_MS` in `lib/auth/lock-state.ts` — the intrusiveness is entirely
+that a cold start always locks, so a version that only locks after N hours away is a small
+change to `decideLock` and is the middle option if "never" turns out to be too far.
+
+---
+
 ### D-157 · The lock arms itself, and the offline page stops claiming there is no signal
 
 Two things reported from the installed app on 2026-09-03. Different code, same shape: **a
@@ -69,6 +103,14 @@ means "something else went wrong", which is a different sentence and a different
 carries Retry and a way back to the dashboard. The `?from=` path is validated as same-origin
 before Retry uses it: it arrives in a URL on a page anyone can reach, and an absolute URL there
 would make the button an open redirect.
+
+**Corrected the next day, twice.** The retry was made conditional on
+`self.navigator.onLine !== false`: with the radio off it buys nothing and doubles how long the
+screen sits blank before the offline page appears, which is what "auth stalls and never shows
+anything" was. And the escape links moved *out* of the client component and into the page's
+server output — putting the only way out behind a JavaScript chunk, on the page shown when
+something failed to load, made the fix for one bug into a worse one. `<noscript>` does not cover
+that: a chunk that fails to *fetch* is not a browser with scripting disabled. **D-158.**
 
 **Tested by executing the worker**, not by reading it. `sw-template.test.ts` asserts on source
 text, which is the right tool for "never caches a private route" — a property about what the

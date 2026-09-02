@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-03
+updated: 2026-09-04
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -375,6 +375,23 @@ until it reproduces in `npm run build`.**
         was a dead end: no retry, no way back. It now retries once on its own, says which page
         failed, checks whether you are actually online before claiming anything, and gives you
         a button.
+  - [x] **2026-09-04 — the fingerprint lock is off, and two offline fixes.** **842 tests.**
+        **Removed the lock**, as you asked. It is switched off, not deleted: the code and all
+        its tests are still there and turning it back on is one line, which is written down in
+        the decision log. If you ever want the middle version — locks after a few hours away
+        rather than every time you open it — that is a small change rather than a rebuild.
+        **Two offline things were mine.** The app retried failed pages even with the radio
+        off, which bought nothing and doubled how long you stared at a blank screen; that was
+        the "stalls and never shows anything". And the offline page's buttons needed
+        JavaScript to appear — on the one page whose whole job is to work when things are not
+        loading. Its links are now part of the page itself.
+        **The rest of "nothing works offline" is not a bug — it is unbuilt.** Reading and
+        showing pages with no signal is Phase 2 (§2.1, §2.2). Phase 1 built the machinery to
+        log offline but no screen you can reach without signal.
+        **That is worth a decision from you**, because Milestone A on 09-18 promises "logs
+        with no signal" and the work that makes that possible is scheduled to start on 09-20.
+        Options are in the plan, §7b — pull ~10h forward, move the date, or restate what
+        Milestone A means.
   - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.

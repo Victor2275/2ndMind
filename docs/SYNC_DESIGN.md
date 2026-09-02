@@ -346,7 +346,14 @@ pressure, and it matches D-131's "everything, forever".
 
 ---
 
-## 8. Offline unlock (D-128)
+## 8. Offline unlock (D-128) — **built, then unmounted 2026-09-04 (D-158)**
+
+> Everything below is implemented and tested, and **is not switched on.** The lock re-locked on
+> every cold start, which is most launches on a phone, in exchange for a display gate the device
+> lock screen already provides. `<LocalLock>` was removed from the private layout; the module,
+> the ceremony, the verifier and their tests all remain. One import and one wrapper turn it back
+> on. Read this section as a description of what exists, not of what runs.
+
 
 | | |
 |---|---|

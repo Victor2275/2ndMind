@@ -77,12 +77,16 @@ secret; the private key never leaves the authenticator. The cost is that enrolli
 means pasting a new value into Vercel, which for a personal tool happens roughly never, and it
 takes a database out of the auth path entirely.
 
-**Local unlock (V3 §1.5, D-154).** Since 2026-09-02, `/private` also sits behind a lock screen
-that verifies a WebAuthn assertion in the browser against a public key cached in IndexedDB at
-the last online sign-in — no server, so it works with no signal. It is a **display gate, not a
-data gate**: the page's payload has already been sent and the offline mirror is unencrypted, so
-it defends against a phone handed over already unlocked, not against someone with developer
-tools. Read D-154 before assuming it does more than that.
+**Local unlock is built and NOT mounted (V3 §1.5, D-154 → D-158).** A lock screen that
+verifies a WebAuthn assertion in the browser against a cached public key, with no server, lives
+in `components/site/local-lock.tsx` and is fully tested — but `app/private/layout.tsx` does not
+render it, as of 2026-09-04. It asked for a fingerprint on every cold start, which is most
+launches, and what it bought was a **display gate, not a data gate**: the page's payload is
+already sent and the offline mirror is unencrypted. The phone's own lock screen covers the same
+threat.
+
+Re-enabling it is one import and one wrapper in `app/private/layout.tsx` — D-158 has the exact
+change. Do not delete the module or its tests on the assumption it is unused.
 
 ## Fonts are self-hosted on purpose
 
