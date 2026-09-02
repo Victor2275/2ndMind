@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-01
+updated: 2026-09-02
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -319,7 +319,22 @@ until it reproduces in `npm run build`.**
         an argument for the kind of test this section added: one that runs the real phone-side
         code against the real database with nothing faked in between except the network
         dropping.
-  - [ ] **1.5 · Local biometric unlock** (9h) — next.
+  - [x] **1.5 · Local biometric unlock** (9h) — built 2026-09-02. **761 tests**, up from 710.
+        The private app now opens to a lock screen and needs a fingerprint, with the check
+        done on the phone itself — no signal required.
+        The plan said to do this inside the service worker. That turned out to be impossible
+        rather than merely awkward: the browser does not expose the passkey prompt to a
+        service worker at all. The part that mattered — verifying without a server — is done,
+        in the page.
+        **Worth being clear about what it protects.** It stops someone picking up an unlocked
+        phone from reading the log. It does not encrypt anything, so it is not protection
+        against someone technical with the device in hand; the phone's own lock screen is
+        still the real defence. The stronger version, where the offline copy is actually
+        encrypted and the fingerprint is the only way to read it, is a much bigger piece of
+        work and carries a real risk: lose the passkey, lose the data.
+        **Yours to check, on the phone:** airplane mode, open the app, unlock with a
+        fingerprint. Then do it again and cancel the prompt — it should stay shut.
+  - [ ] **1.6 · Fast log paths** (8h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

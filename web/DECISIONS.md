@@ -27,6 +27,63 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-154 · Local unlock is a real signature check, in the page — not in the service worker
+
+**Decision.** `/private` sits behind a lock screen that verifies a WebAuthn assertion against a
+public key cached on the device, with no network. The ceremony runs in the page, not in the
+service worker the plan named. Enrolment is unchanged: the key is handed to the device by
+`POST /api/auth/login` after a successful online sign-in, converted from COSE to JWK on the
+server so no CBOR parser reaches the client bundle.
+
+**Why not the service worker.** Not a preference — it cannot work there. `navigator.credentials`
+is `[Exposed=Window]`: a service worker has no `CredentialsContainer` at all, and the prompt
+needs a document and a user gesture besides. What §1.5 was really asking for is that the
+*verification* need no server, and that is what this does.
+
+**What it is worth, stated plainly, because it is easy to overrate.** The verifier and the
+decision it feeds both run in JavaScript this origin serves, so anyone who can run code in the
+origin can skip it. It is a **display gate, not a data gate**: the page's payload has already
+been sent, and §1.2's offline mirror sits unencrypted in IndexedDB. What it defends against is
+a phone handed over already unlocked — which is the threat this app actually has, the device
+lock screen being the primary control. Encrypting the mirror under a key derived from the
+authenticator (the WebAuthn `prf` extension) is the version that would be a data gate; it is
+much larger than 9h, it changes every read and write in §1.2, and losing the authenticator
+would lose the data. Not now, and not without deciding that trade on purpose.
+
+**What the signature check buys over a boolean**, which is the reason it was worth writing:
+the lock cannot be opened by anything short of the real authenticator answering a challenge
+generated seconds ago. A copied profile directory, a replayed assertion, a stubbed
+`navigator.credentials`, and a genuine assertion for another site all fail — each is a named
+test in `assertion.test.ts`, signed for real by a real key pair.
+
+**Three smaller calls inside it.**
+
+- **`userVerification: "required"`, not `"preferred"`.** The verifier refuses an assertion
+  whose user-verified bit is clear, so asking for less would only produce a prompt that cannot
+  succeed. A lock that accepts a bare tap is a button.
+- **The unlock lives in `sessionStorage`, and expires after five minutes in the background.**
+  `sessionStorage` dies with the app, so a cold start is always locked — which is the case that
+  matters most and the one a `localStorage` implementation would quietly get wrong.
+- **An unarmed device opens.** With no cached key there is nothing to check a fingerprint
+  against, and refusing would strand him outside his own app with no network to fix it from.
+  It fails open, says so, and arms on the next online sign-in. Anyone able to clear IndexedDB
+  to reach that state could read the mirror directly, so this is not the weak point it looks
+  like — but it is a fail-open, and fail-opens get written down.
+
+**One trap worth naming.** Authenticators emit ECDSA signatures DER-encoded; `crypto.subtle`
+accepts only raw `r || s`, and handing it the wrong one returns `false` rather than throwing.
+Getting that backwards produces a lock that never opens and never says why — indistinguishable
+from a wrong fingerprint, on every attempt. The test authenticator in `src/test/webauthn.ts`
+signs the way a real one does rather than the way Node does, which is the only reason that trap
+is visible in tests at all.
+
+**How to reverse.** Remove `<LocalLock>` from `app/private/layout.tsx` and the app is exactly
+as it was; everything else is additive and inert without it. To keep the gate but stop it
+nagging, raise `AUTO_LOCK_MS` in `lib/auth/lock-state.ts`. To disarm one device, sign out on
+it — that clears the cached key and the unlock together.
+
+---
+
 ### D-153 · The flush absorbs every stamp it pulls, and refuses the ones past the drift bound
 
 **Decision.** `flush()` feeds every incoming `updatedHlc` through this device's `HlcClock`

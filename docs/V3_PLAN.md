@@ -509,8 +509,30 @@ trade and it is still invisible — §1.7 should surface it.
 A WebAuthn assertion verified in the service worker against the cached credential public key.
 No network. Enrolment still happens online against the server, unchanged.
 
-**Done when:** the app opens offline after a biometric, and refuses to open after a cancelled
-one — both checked on the real device, since neither can be tested in Playwright.
+**Done when:** ~~the app opens offline after a biometric, and refuses to open after a cancelled
+one — both checked on the real device, since neither can be tested in Playwright.~~
+**Built 2026-09-02; the device half is Victor's**, like §1.3's round trip. Both behaviours are
+named tests — the gate withholds the page rather than covering it, and a cancelled prompt
+leaves it withheld — and the gate itself was checked by removing it and watching five tests go
+red. **761 tests**, up from 710.
+
+**The service worker was the wrong place, and not by preference.** `navigator.credentials` is
+`[Exposed=Window]`: a service worker has no `CredentialsContainer`, so the prompt cannot be
+raised from one. What this section was really asking for is that the *verification* need no
+server, and that is what was built — in the page, against a public key cached at the last
+online sign-in. **D-154.**
+
+**What it is and is not.** It is a display gate: the page's payload has already been sent and
+§1.2's mirror is unencrypted in IndexedDB, so this defends against a phone handed over already
+unlocked, not against someone with developer tools. The signature check still earns its place
+over a boolean — a replayed assertion, another site's assertion, a stubbed
+`navigator.credentials` and a bare tap without user verification all fail, each as its own
+test signed by a real key pair. The data-gate version (encrypt the mirror under a `prf`-derived
+key) is a much larger piece of work with a real hazard attached — lose the authenticator, lose
+the data — and D-154 records why it was not taken now.
+
+**Still Victor's to close, on the phone:** airplane mode → open the app → unlock with a
+fingerprint; then again, cancelling the prompt, and confirm it stays shut.
 
 #### 1.6 · Fast log paths — **8h**
 
