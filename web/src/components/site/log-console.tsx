@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from "react";
 import { removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { LogForm } from "@/components/site/log-form";
 import { CATEGORIES, summarise } from "@/lib/log/categories";
+import type { ChipSets } from "@/lib/log/chips";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -68,9 +69,12 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
 export function LogConsole({
   entries,
   loggedToday,
+  chips = {},
 }: {
   entries: EntryView[];
   loggedToday: string[];
+  /** Recent values per category, for the one-tap chips (§1.6, D-155). */
+  chips?: Record<string, ChipSets>;
 }) {
   const [active, setActive] = useState(CATEGORIES[0].key);
   const [undoId, setUndoId] = useState<number | null>(null);
@@ -110,7 +114,7 @@ export function LogConsole({
       </div>
 
       <div className="rounded-xl border border-border bg-card/60 p-5">
-        <LogForm category={category} />
+        <LogForm category={category} chips={chips[category.key]} />
       </div>
 
       {/* The daily prompt: quiet, and only names what is actually missing. */}

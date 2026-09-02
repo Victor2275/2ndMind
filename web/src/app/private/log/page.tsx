@@ -7,7 +7,13 @@ import { SkeletonPanel } from "@/components/site/skeleton";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import type { LogEntry } from "@/lib/db/schema";
 import { CATEGORIES, summarise } from "@/lib/log/categories";
-import { categoriesLoggedBetween, entriesBetween, searchEntries } from "@/lib/log/queries";
+import { allChipSets } from "@/lib/log/chips";
+import {
+  categoriesLoggedBetween,
+  entriesBetween,
+  recentForChips,
+  searchEntries,
+} from "@/lib/log/queries";
 import { dayBounds, zoneOffsetMinutes } from "@/lib/tasks/queries";
 
 export const dynamic = "force-dynamic";
@@ -49,11 +55,15 @@ async function Console() {
   // try/catch around it would catch nothing — the lint rule is right about this.
   let today: LogEntry[];
   let logged: string[];
+  let recent: { category: string; data: Record<string, unknown> }[];
   try {
     const handle = db();
-    [today, logged] = await Promise.all([
+    [today, logged, recent] = await Promise.all([
       entriesBetween(handle, start, end),
       categoriesLoggedBetween(handle, start, end),
+      // Recent values for the one-tap chips (§1.6, D-155). In parallel with the other two,
+      // so the form's shortcuts cost no wall-clock time on a page that is already dynamic.
+      recentForChips(handle),
     ]);
   } catch (error) {
     return (
@@ -66,7 +76,9 @@ async function Console() {
     );
   }
 
-  return <LogConsole entries={today.map(toView)} loggedToday={logged} />;
+  return (
+    <LogConsole entries={today.map(toView)} loggedToday={logged} chips={allChipSets(recent)} />
+  );
 }
 
 async function Results({ query }: { query: string }) {
