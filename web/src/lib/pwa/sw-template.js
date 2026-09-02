@@ -83,9 +83,40 @@ self.addEventListener("fetch", (event) => {
         try {
           return await fetch(request);
         } catch {
-          const cache = await caches.open(CACHE);
-          const offline = await cache.match(OFFLINE_URL);
-          return offline ?? new Response("Offline", { status: 503, statusText: "Offline" });
+          // One retry before giving up. A navigation that fails on a phone is very often a
+          // single dropped request — a radio handing between cells, wifi that has associated
+          // but not finished authenticating — and the first version of this had no retry, so
+          // one blip put the user on a dead-end page that told them they had no signal. The
+          // cost of being wrong here is one extra request; the cost of not retrying is landing
+          // on the offline page while online, which was reported from the phone on 2026-09-03.
+          try {
+            return await fetch(request);
+          } catch {
+            // Still nothing. Hand over the offline page, and tell it what was being loaded so
+            // its Retry button goes back to the right place rather than to the dashboard.
+            const cache = await caches.open(CACHE);
+            const offline = await cache.match(OFFLINE_URL);
+            if (!offline) {
+              return new Response("Offline", { status: 503, statusText: "Offline" });
+            }
+
+            // Rebuilt rather than returned as-is: a cached Response's `url` is the cache key,
+            // and the page needs the failed path. A redirect would lose the SPA history and a
+            // header would not survive into the document, so it goes in the body's own URL via
+            // a fresh Response — the page reads it from `location.search`.
+            const path = new URL(request.url).pathname + new URL(request.url).search;
+            const html = await offline.text();
+            return new Response(
+              html.replace(
+                "</head>",
+                `<script>history.replaceState(null,"","/offline?from=${encodeURIComponent(path)}")</script></head>`,
+              ),
+              {
+                status: 200,
+                headers: { "content-type": "text/html; charset=utf-8" },
+              },
+            );
+          }
         }
       })(),
     );
