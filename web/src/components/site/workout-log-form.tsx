@@ -6,6 +6,20 @@ import { useFormStatus } from "react-dom";
 import { logWorkoutAction } from "@/app/private/athletics/actions";
 import type { ActionState } from "@/lib/athletics/forms";
 
+/**
+ * The manual session form — **built and no longer mounted** (D-159).
+ *
+ * The quick log grew the same repeated set rows, reads better under a thumb, and is reachable
+ * from the laptop too, so training is logged in one place now. Two forms writing the same
+ * thing meant two places to keep in step, and this is the one that was rarely opened.
+ *
+ * Kept rather than deleted, the same call as D-158. It is the only way to create a `workouts`
+ * row by hand — a whole session with a title, a date and notes in one submit — and if entering
+ * a backdated session one exercise at a time turns out to be worse, remounting it is restoring
+ * one import and one `<WorkoutLogForm />` in `app/private/athletics/page.tsx`. Keeping it also
+ * keeps `logWorkoutAction` referenced rather than an unreachable write endpoint.
+ */
+
 /** Local date as YYYY-MM-DD. `toISOString()` would shift to UTC and, in the evening in
  *  California, default the form to tomorrow. */
 function todayLocal(): string {

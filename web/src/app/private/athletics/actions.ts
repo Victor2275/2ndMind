@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
-import { readSetsFromForm, type ActionState } from "@/lib/athletics/forms";
+import {
+  MAX_WEIGHT_LBS,
+  MIN_WEIGHT_LBS,
+  readSetsFromForm,
+  type ActionState,
+} from "@/lib/athletics/forms";
 import { parseHevyCsv } from "@/lib/athletics/hevy";
 import {
   deleteWorkout,
@@ -170,8 +175,6 @@ export async function deleteWorkoutAction(
  * The bounds are a typo guard, not a judgement: 700 catches a mis-keyed "2150", 50 catches a
  * kilogram entered into a pounds field.
  */
-const MIN_WEIGHT_LBS = 50;
-const MAX_WEIGHT_LBS = 700;
 
 export async function recordBodyweightAction(
   _prev: ActionState | null,

@@ -1,4 +1,5 @@
 import { describeDbError } from "@/lib/db/describe";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { BodyweightForm } from "@/components/site/bodyweight-form";
@@ -8,7 +9,6 @@ import { Empty, PageHeader, Panel } from "@/components/site/page-shell";
 import { RehabChecklist } from "@/components/site/rehab-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { GoalCard, SpmPanel, WeekReview } from "@/components/site/training-panels";
-import { WorkoutLogForm } from "@/components/site/workout-log-form";
 import {
   adjustSeconds,
   goalProgress,
@@ -512,9 +512,23 @@ async function Training() {
           <h2 className="text-base font-semibold">Import from Hevy</h2>
           <HevyImportForm />
         </div>
+        {/*
+         * Training is logged in one place now (D-159). This tab used to carry its own
+         * multi-row workout form; the quick log grew the same rows and reads better on a
+         * phone, and two forms writing the same thing meant two places to keep in step. The
+         * link rather than nothing, because the laptop is still where a session gets entered
+         * after the fact — and `/private/log` is a normal page that works on both.
+         */}
         <div className="rounded-xl border border-border bg-card/60 p-6 lg:col-span-2">
-          <h2 className="text-base font-semibold">Log by hand</h2>
-          <WorkoutLogForm />
+          <h2 className="text-base font-semibold">Log a session</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Training is logged from the{" "}
+            <Link href="/private/log" className="text-primary underline-offset-4 hover:underline">
+              log
+            </Link>
+            , on a phone or here — one exercise per entry, a row per set. Those sets count toward
+            the records and charts on this page.
+          </p>
         </div>
       </section>
     </>

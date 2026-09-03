@@ -10,6 +10,17 @@ import { z } from "zod";
 
 export type ActionState = { ok: boolean; message: string; detail?: string[] };
 
+/**
+ * Bounds on a bodyweight entry, in pounds.
+ *
+ * A typo guard, not a judgement: 700 catches a mis-keyed "2150", 50 catches a kilogram typed
+ * into a pounds field. Shared, because a weigh-in can now arrive from the Training tab or
+ * from the quick log (D-159), and two copies of a validation bound is how one of them ends up
+ * accepting what the other rejects.
+ */
+export const MIN_WEIGHT_LBS = 50;
+export const MAX_WEIGHT_LBS = 700;
+
 /** A set as typed into the manual log. Everything optional except the exercise name. */
 export const setInputSchema = z.object({
   exercise: z.string().trim().min(1, "Name the exercise."),

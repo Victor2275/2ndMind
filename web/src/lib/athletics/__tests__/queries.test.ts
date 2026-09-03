@@ -5,6 +5,7 @@ import { rehabCompletions, workouts, workoutSets } from "@/lib/db/schema";
 import { resetTestDb } from "@/test/pg";
 import { parseHevyCsv } from "../hevy";
 import { ergRecords, strengthRecords } from "../prs";
+import { createEntry, deleteEntry as deleteLogEntry, type Db as LogDb } from "@/lib/log/queries";
 import {
   allEfforts,
   countWorkouts,
@@ -318,6 +319,110 @@ describe("bodyweight", () => {
     await deleteBodyweight(db, "2026-08-20");
 
     expect((await listBodyweight(db)).map((r) => r.measuredOn)).toEqual(["2026-08-19"]);
+  });
+});
+
+describe("quick-logged training counts (D-159)", () => {
+  /**
+   * The seam the whole decision rests on.
+   *
+   * The phone cannot create a `workout` row — `SYNC_DESIGN.md` §11.1 — so sets logged from a
+   * phone live in `log_entries`. `allEfforts` merges both sources, which is what lets every PR
+   * function, chart and the adjusted-split table stay unaware of where a set came from. If
+   * this stops merging, nothing throws: the numbers simply stop moving, which is the failure
+   * nobody notices.
+   */
+  const logged = (data: Record<string, unknown>, occurredAt = new Date("2026-09-01T19:00:00Z")) =>
+    createEntry(db as unknown as LogDb, { category: "athletics", data, occurredAt });
+
+  it("turns each set row into an effort", async () => {
+    await logged({
+      kind: "lift",
+      exercise: "Bench Press",
+      sets: [
+        { weightLbs: 185, reps: 5 },
+        { weightLbs: 185, reps: 5 },
+      ],
+    });
+
+    const efforts = await allEfforts(db);
+    expect(efforts).toHaveLength(2);
+    expect(efforts[0]).toMatchObject({ exercise: "Bench Press", weightLbs: 185, reps: 5 });
+  });
+
+  it("puts a quick-logged lift on the PR board", async () => {
+    await logged({ exercise: "Bench Press", sets: [{ weightLbs: 205, reps: 3 }] });
+
+    const [record] = strengthRecords(await allEfforts(db));
+    expect(record.exercise).toBe("Bench Press");
+    expect(record.heaviest?.weightLbs).toBe(205);
+  });
+
+  it("keeps a logged warmup off the PR board, same as an imported one", async () => {
+    await logged({
+      exercise: "Squat",
+      sets: [
+        { weightLbs: 315, reps: 1, setType: "warmup" },
+        { weightLbs: 225, reps: 5 },
+      ],
+    });
+
+    const [record] = strengthRecords(await allEfforts(db));
+    expect(record.workingSets).toBe(1);
+    expect(record.heaviest?.weightLbs).toBe(225);
+  });
+
+  it("puts a quick-logged erg piece on the erg board", async () => {
+    await logged({
+      kind: "erg",
+      exercise: "2k",
+      sets: [{ distance: 2000, duration: 432, spm: 28 }],
+    });
+
+    const [record] = ergRecords(await allEfforts(db));
+    expect(record).toMatchObject({ distanceM: 2000, durationS: 432 });
+  });
+
+  it("merges with imported sessions rather than replacing them", async () => {
+    await importWorkouts(db, parseHevyCsv(exportCsv(PUSH_DAY)).workouts);
+    await logged({ exercise: "Bench Press", sets: [{ weightLbs: 205, reps: 3 }] });
+
+    expect(await allEfforts(db)).toHaveLength(4);
+  });
+
+  it("drops a deleted entry, so removing a mistake removes its sets", async () => {
+    const entry = await logged({ exercise: "Squat", sets: [{ weightLbs: 405, reps: 1 }] });
+    await deleteLogEntry(db as unknown as LogDb, entry.id);
+
+    expect(await allEfforts(db)).toHaveLength(0);
+  });
+
+  it("ignores an entry with no exercise name, which would group under the empty string", async () => {
+    await logged({ kind: "lift", sets: [{ weightLbs: 185, reps: 5 }] });
+    expect(await allEfforts(db)).toHaveLength(0);
+  });
+
+  it("ignores entries from other categories and malformed rows", async () => {
+    await createEntry(db as unknown as LogDb, {
+      category: "reading",
+      data: { title: "Not a lift" },
+    });
+    await logged({ exercise: "Squat", sets: "nope" });
+    await logged({ exercise: "Squat" });
+
+    expect(await allEfforts(db)).toHaveLength(0);
+  });
+
+  it("dates an effort by when it happened, not when it was typed", async () => {
+    // Backdating exists because logging is not always immediate, and a PR filed on the wrong
+    // day misplaces every trend line it appears in.
+    await logged(
+      { exercise: "Deadlift", sets: [{ weightLbs: 405, reps: 1 }] },
+      new Date("2026-07-04T19:00:00Z"),
+    );
+
+    const [effort] = await allEfforts(db);
+    expect(effort.performedAt.toISOString()).toBe("2026-07-04T19:00:00.000Z");
   });
 });
 
