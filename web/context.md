@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-30
+updated: 2026-09-03
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -186,7 +186,8 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `log_entries` — structured daily logging, per-category fields in JSONB. The form's
   shortcuts are declared per field in `lib/log/categories.ts` and nowhere else: `sticky`,
   `chips`, `carries`, `keypad`, `clipboard` (D-155). One rule is load-bearing —
-  **`sticky` is for context, never for a measurement.**
+  **`sticky` is for context, never for a measurement.** A category may also declare `rows`,
+  a repeated group; Training uses it for sets (D-159).
 - `bodyweight_entries` / `rehab_completions` — feature 5 (D-058, D-059).
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
@@ -194,6 +195,16 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 
 Rules that hold the athletics side together, each with a decision entry:
 
+- **Training is logged in one place, and read from two** (D-159). Sets are entered in the
+  quick log — one exercise per entry, a row per set — because the phone cannot create a
+  `workouts` row (`docs/SYNC_DESIGN.md` §11.1). `allEfforts()` unions `workout_sets` with the
+  sets inside `log_entries`, so every PR function, chart and the adjusted-split table reads
+  one `Effort[]` and none of them knows where a set came from. **Do not add a second reader
+  of one source** — that is the whole design. Quick-logged exercises are deliberately absent
+  from "Recent sessions", which lists `workouts` rows.
+- **Bodyweight has one home** (D-159). The Training category offers the field, but it is
+  lifted out by `takeBodyweight` and written to `bodyweight_entries` — never stored on the
+  entry. It is the second input to every adjusted split, and two copies would drift.
 - **Records are derived on read, never stored** (D-025). A stored PR has no invalidation
   story and reads high forever after a correction.
 - **Imports are idempotent** (D-026). Hevy exports are cumulative, so re-importing is the

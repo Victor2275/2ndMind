@@ -35,7 +35,7 @@ None of these were visible from the plan. All three are cheap now and expensive 
 | | Direction | Mechanism |
 |---|---|---|
 | Postgres rows — logs, tasks, bodyweight, rehab | **Both ways** | Outbox + pull cursor (this document) |
-| Workouts and sets | Server → phone only | Pull only — the phone logs training as a `log_entry`; workouts come from Hevy imports on the laptop (§11.1) |
+| Workouts and sets | Server → phone only | Pull only — the phone logs training as a `log_entry`, and `allEfforts()` merges both sources on read so those sets still reach the records (D-159); workouts themselves come from Hevy imports on the laptop (§11.1) |
 | AI summaries | Server → phone only | Pull only; the phone never creates one |
 | Rendered vault pages — Today, Athletics, School | Server → phone only | Service-worker cache, no writes |
 | The public site | Server → phone only | Service-worker precache (D-130) |
@@ -184,6 +184,14 @@ operation).
 > the phone never creates a workout and this problem does not arise. The section stays because
 > the design is correct and cost real thought: if phone-side workout logging is ever wanted,
 > this is the answer, and reverting §11.1 is the only other change needed.
+>
+> **Re-examined 2026-09-03 and still not built (D-159).** The quick log grew repeated set rows
+> and Victor asked that those sets count toward the PR board. Doing it properly meant this
+> section — roughly 10h, a migration and new conflict rules. Instead `allEfforts()` merges
+> `workout_sets` with the sets stored inside `log_entries`, on read. Cheaper, and it left the
+> sync surface untouched, so a set logged offline reaches the records by the path §1.3 already
+> tested. What is still missing without this section: a quick-logged exercise is not a
+> *session*, so it never appears under "Recent sessions".
 
 *Everything below applies only if the phone creates workouts.*
 

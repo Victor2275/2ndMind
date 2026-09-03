@@ -579,8 +579,34 @@ about a number on the button rather than something that appeared while he was no
 `<form action={fn}>` as soon as the action returns, success or not, so a save rejected for a
 reason outside the form took the typing with it. It now puts back what was there.
 
-**Still Victor's to close:** log one Training, one Applications and one Reading-or-People entry
+**Still Victor's to close:** log one Training, one Study and one Reading-or-People entry
 one-handed on the phone, with a stopwatch, and write the three numbers into this section.
+
+**Reworked 2026-09-03 after he used it. D-159.** Four changes, from four pieces of feedback,
+and none of them a bug — the form did what it was built to do and what it was built to do was
+partly wrong.
+
+- **Training logs sets, not a set.** It collected one weight and one reps, so three sets of
+  bench press were three entries or one entry recording a third of the work. A category can
+  now declare a repeated `rows` group; the exercise is typed once and each set is a row under
+  it. One entry is **one exercise**, not one session — the log is written at the rack between
+  sets, and a form that wanted a whole session is a form nobody finishes. "Add set" copies the
+  row above it.
+- **Those sets reach the PR board.** They had to, or the log is a diary the records ignore.
+  The phone cannot create a `workouts` row (`SYNC_DESIGN.md` §11.1 — reversing that is the
+  aggregate op in §4a, ~10h and a migration), so `allEfforts()` merges the two sources on read
+  instead. Every consumer still takes one `Effort[]`. Nothing about sync changed, which means
+  a set logged in airplane mode reaches the records by the path §1.3 already tested.
+- **Bodyweight is loggable from Training**, and stored only in `bodyweight_entries` — never on
+  the entry. It is the second input to every adjusted erg split, and two copies drift.
+- **Applications is retired** (it lives in a Google Sheet) and **Study lost its kind, status
+  and grade** — course, hours and the note every entry already has.
+
+The Training tab's own workout form is **unmounted, not deleted**: `/private/log` is a normal
+page and works on a laptop, so the tab links to it. **875 tests**, up from 842.
+
+*The timing bar this section is measured against is now Training, Study, and Reading or
+People* — Applications is gone.
 
 #### 1.7 · Failed sync — hold, surface, retry — **6h**
 
@@ -614,7 +640,8 @@ Milestone B: nothing needs signal.
 - **2.4 · Error aggregation — 4h.** Sentry free tier with scrubbing rules for vault content.
   Reverses this plan's own deferral; see D-137.
 - **2.5 · Device checklist — 2h.** USB remote debugging documented, plus a per-release manual
-  list: install, airplane-mode log, reconnect, biometric, icon, thumb reach.
+  list: install, airplane-mode log, reconnect, icon, thumb reach. *(Biometric dropped from the
+  list — D-158 switched the lock off.)*
 
 > ### ⚑ Milestone B — ~2026-10-18
 > **Everything works with no signal, including showing the portfolio to a stranger.**
@@ -802,7 +829,7 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 | # | What to do | Closes |
 |---|---|---|
 | 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
-| 2 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Applications, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. | §1.6 |
+| 2 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Study, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. Training is now sets-in-rows (D-159), so time it logging a real exercise with three sets. | §1.6 |
 | ~~3~~ | ~~**Biometric unlock, twice.**~~ **Withdrawn 2026-09-04** — the lock was removed from the app (D-158). There is nothing left to check. | ~~§1.5~~ |
 
 ### Then these, in no particular order

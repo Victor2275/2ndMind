@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-30
+updated: 2026-09-03
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -26,6 +26,78 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
+
+### D-159 · One log for training: sets in rows, applications out, and both sources feed the PRs
+
+**Four changes to the quick log**, all from Victor on 2026-09-03 after using it. Taken together
+because they are one question — what the log is actually for — and separating them would have
+meant four passes over the same file.
+
+**1. Training logs sets, not a set.** His words: *"logging training is weird because it has it
+log by individual rep, not by a full set, like it does in the training tab."* The form
+collected one weight and one reps, so three sets of bench press were three entries or one
+entry recording a third of the work. `Category` gained an optional `rows` group — repeated
+fields, addressed as `sets.0.weightLbs` — and Training declares one. The exercise is typed
+once; each set is a row under it.
+
+*One entry is one exercise, not one session.* Deliberate: the log is written at the rack
+between sets, and a form that wanted a whole session is a form nobody finishes. "Add set"
+copies the row above, because the second set is nearly always the first one again.
+
+*Rows are keyed by a generated id, never by index.* Removing the middle of three renumbers the
+third, React reuses the removed row's DOM node for it, and the values on screen shuffle up by
+one — a silent corruption of a record whose entire value is that its numbers can be trusted.
+There is a test that fails if this is changed back.
+
+**2. Those sets count toward the records.** They had to, or the log would be a diary that the
+PR board, the e1RM charts, the weekly volume and the bodyweight-adjusted erg table all ignore.
+The phone **cannot** create a `workouts` row — `SYNC_DESIGN.md` §11.1 explains why, and
+reversing that needs the aggregate op in §4a, roughly ten hours and a migration. So the merge
+happens on read instead: `allEfforts()` now unions `workout_sets` with the sets inside
+`log_entries`, and every consumer keeps reading `Effort[]` unaware of where a set came from.
+
+Cheaper, and better in one respect: nothing about sync changed, so a set logged in airplane
+mode reaches the PR board by exactly the path §1.3 already tested. The cost is that a
+quick-logged exercise is not a session — it does not appear under "Recent sessions", which
+lists `workouts` rows and therefore Hevy imports.
+
+**3. Bodyweight can be logged from Training, and is stored once.** The field sits on the
+Training category but never lands in the entry's `data`: `takeBodyweight` lifts it out and it
+goes to `bodyweight_entries`, which is what the weight chart and every adjusted split read. A
+second copy in a log entry's JSON is a number that can disagree with the chart and that nothing
+would ever reconcile. A rejected weight does not reject the entry — he is standing at a rack,
+and losing three sets to a misplaced decimal point is the wrong trade.
+
+**4. Applications is retired; Study is three fields lighter.** Applications are tracked in a
+Google Sheet, and logging them in two places meant neither was complete. Study asked for a
+kind, a status and a grade — three decisions to record having sat down with a problem set, and
+a grade arrives weeks later on a different screen anyway. Course and hours are what get
+plotted; the note field every entry already has takes the rest.
+
+**Retired, not deleted.** `work` keeps its definition in `RETIRED_CATEGORIES` because
+`summarise` and `searchTextFor` are handed a category key and a blob of JSON — with no
+definition to match, every application ever logged would silently lose its company, role and
+status from the timeline and from search. `categoryByKey` finds it for reading;
+`writableCategoryByKey` does not, which is what stops it coming back through the Server Action.
+
+**The Training tab's own form is unmounted.** Victor: *"quick log should replace it, but logging
+should still be possible from the laptop"* — `/private/log` is a normal page and works on both,
+so the tab now links to it. `components/site/workout-log-form.tsx` stays in the repo, the same
+call as D-158: it is the only way to create a `workouts` row by hand, and keeping it keeps
+`logWorkoutAction` referenced rather than an unreachable write endpoint.
+
+**How to reverse.** Each part independently. Sets: delete `rows` from the Training category and
+the rows are gone from the form, though entries already written keep theirs and `summarise`
+still reads them. The PR merge: delete `loggedEfforts` from `athletics/queries.ts` — nothing
+else changes, the sets simply stop counting. Bodyweight: remove the field from the category.
+Applications: move the entry from `RETIRED_CATEGORIES` back into `CATEGORIES`. The old workout
+form: restore one import and one `<WorkoutLogForm />` in `app/private/athletics/page.tsx`.
+
+**Not done, and worth knowing.** Quick-logged training does not appear under "Recent sessions",
+and there is no way to edit a set after saving — the log offers delete and undo, and correcting
+a weight means deleting the entry and logging it again.
+
+---
 
 ### D-158 · The biometric lock is built and not mounted — one line turns it back on
 

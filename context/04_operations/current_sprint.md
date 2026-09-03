@@ -392,6 +392,27 @@ until it reproduces in `npm run build`.**
         with no signal" and the work that makes that possible is scheduled to start on 09-20.
         Options are in the plan, §7b — pull ~10h forward, move the date, or restate what
         Milestone A means.
+  - [x] **2026-09-03 — the log, reworked around how you actually use it.** **875 tests**, up
+        from 842. Four things you said, four changes.
+        **Training logs sets now.** It used to ask for one weight and one reps, so three sets
+        of bench press were three separate entries or a third of the truth. You type the
+        exercise once and add a row per set, the way the Training tab always did. Adding a
+        set copies the one above it, because the second set is nearly always the first one
+        again.
+        **Those sets count.** They go to the PR board, the strength charts, the weekly volume
+        and the bodyweight-adjusted erg table, exactly like a Hevy import does. That was the
+        expensive half — the phone is not allowed to create a workout, for reasons written
+        down back in the sync design — so instead the records read from both places and do
+        not care which one a set came from.
+        **You can weigh in from Training.** The number goes to the weight chart, not into the
+        entry, so there is only ever one copy of it.
+        **Applications is gone** — that is the Google Sheet's job — and **Study is just the
+        course and the hours** now. No grade, no status. Anything else goes in the note.
+        Old application entries still read correctly in the timeline and in search; the
+        category is retired, not deleted.
+        **The Training tab no longer has its own logging form.** It links to the log instead,
+        which works fine on a laptop. The old form is still in the repo if entering a whole
+        backdated session one exercise at a time turns out to be worse.
   - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
