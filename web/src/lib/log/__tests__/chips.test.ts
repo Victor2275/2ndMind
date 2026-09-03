@@ -15,13 +15,20 @@ import { categoryByKey, type Category, type Field } from "@/lib/log/categories";
  */
 
 const athletics = categoryByKey("athletics") as Category;
-const work = categoryByKey("work") as Category;
 const reading = categoryByKey("reading") as Category;
 
 const exercise = athletics.fields.find((f) => f.name === "exercise") as Field;
-const company = work.fields.find((f) => f.name === "company") as Field;
+const title = reading.fields.find((f) => f.name === "title") as Field;
 
+/**
+ * A training entry, in the shape D-159 stores it: the numbers live in the set rows, not on
+ * the entry. `sets` is passed through untouched so a test can hand in a malformed one.
+ */
 const lift = (data: Record<string, unknown>): ChipSource => ({ category: "athletics", data });
+
+/** One exercise with one set — what a chip is built from and what a repeat starts with. */
+const oneSet = (exercise: string, set: Record<string, unknown>): ChipSource =>
+  lift({ exercise, sets: [set] });
 
 describe("building chips", () => {
   it("offers recent values newest first", () => {
@@ -36,47 +43,60 @@ describe("building chips", () => {
   it("carries last time's numbers, and prints them on the chip", () => {
     // The one that saves the time: tap it and the weight and reps come too, visibly.
     const [chip] = chipsFor(athletics, exercise, [
-      lift({ exercise: "Bench Press", weightLbs: 185, reps: 5 }),
+      oneSet("Bench Press", { weightLbs: 185, reps: 5 }),
     ]);
 
     expect(chip.label).toBe("Bench Press · 185 × 5");
-    expect(chip.fills).toEqual({ exercise: "Bench Press", weightLbs: "185", reps: "5" });
+    // Into the first set's inputs, which are the ones the form actually renders.
+    expect(chip.fills).toEqual({
+      exercise: "Bench Press",
+      "sets.0.weightLbs": "185",
+      "sets.0.reps": "5",
+    });
   });
 
   it("fills a duration back in as m:ss, not as seconds", () => {
     // `432` in that field would be re-parsed as 7:12 → 432 on the way in, so it survives one
     // round trip and then silently means something else the moment anyone edits it.
-    const [chip] = chipsFor(athletics, exercise, [
-      lift({ exercise: "2k", distance: 2000, duration: 432 }),
-    ]);
+    const [chip] = chipsFor(athletics, exercise, [oneSet("2k", { distance: 2000, duration: 432 })]);
 
-    expect(chip.fills.duration).toBe("7:12");
-    expect(chip.fills.distance).toBe("2000");
+    expect(chip.fills["sets.0.duration"]).toBe("7:12");
+    expect(chip.fills["sets.0.distance"]).toBe("2000");
     expect(chip.label).toBe("2k · 2000m · 7:12");
   });
 
   it("pads the seconds, so 7:05 does not come back as 7:5", () => {
-    const [chip] = chipsFor(athletics, exercise, [lift({ exercise: "1k", duration: 425 })]);
-    expect(chip.fills.duration).toBe("7:05");
+    const [chip] = chipsFor(athletics, exercise, [oneSet("1k", { duration: 425 })]);
+    expect(chip.fills["sets.0.duration"]).toBe("7:05");
   });
 
   it("keeps only the most recent spelling of a repeated value", () => {
     const chips = chipsFor(athletics, exercise, [
-      lift({ exercise: "Bench Press", weightLbs: 190 }),
-      lift({ exercise: "bench press", weightLbs: 185 }),
+      oneSet("Bench Press", { weightLbs: 190 }),
+      oneSet("bench press", { weightLbs: 185 }),
     ]);
 
     expect(chips).toHaveLength(1);
     expect(chips[0].value).toBe("Bench Press");
     // And the numbers come from the entry the chip came from, not from an older one.
-    expect(chips[0].fills.weightLbs).toBe("190");
+    expect(chips[0].fills["sets.0.weightLbs"]).toBe("190");
   });
 
   it("leaves out a carried field the entry did not have", () => {
-    const [chip] = chipsFor(athletics, exercise, [lift({ exercise: "Row", reps: 8 })]);
+    const [chip] = chipsFor(athletics, exercise, [oneSet("Row", { reps: 8 })]);
 
-    expect(chip.fills).toEqual({ exercise: "Row", reps: "8" });
+    expect(chip.fills).toEqual({ exercise: "Row", "sets.0.reps": "8" });
     expect(chip.label).toBe("Row · 8");
+  });
+
+  it("carries nothing from an entry with no sets, rather than throwing", () => {
+    // `data` is JSON out of a column. A chip that crashed the log page on one malformed row
+    // would take the whole form with it.
+    for (const broken of [{}, { sets: "nope" }, { sets: [] }, { sets: [null] }]) {
+      const [chip] = chipsFor(athletics, exercise, [lift({ exercise: "Row", ...broken })]);
+      expect(chip.fills).toEqual({ exercise: "Row" });
+      expect(chip.label).toBe("Row");
+    }
   });
 
   it("stops at the row that fits on a phone", () => {
@@ -117,16 +137,15 @@ describe("building chips", () => {
 
 describe("per category", () => {
   it("builds a set for every field that asked for chips", () => {
-    const sets = chipSetsFor(work, [
-      { category: "work", data: { company: "Anthropic", role: "Robotics Intern" } },
+    const sets = chipSetsFor(reading, [
+      { category: "reading", data: { title: "Thinking in Systems", kind: "book" } },
     ]);
 
-    expect(Object.keys(sets)).toEqual(["company"]);
-    expect(sets.company[0].fills).toEqual({ company: "Anthropic", role: "Robotics Intern" });
+    expect(Object.keys(sets)).toEqual(["title"]);
+    expect(sets.title[0].fills).toEqual({ title: "Thinking in Systems", kind: "book" });
   });
 
   it("carries a select's value, so a book logged twice keeps its kind", () => {
-    const title = reading.fields.find((f) => f.name === "title") as Field;
     const [chip] = chipsFor(reading, title, [
       { category: "reading", data: { title: "Thinking in Systems", kind: "book" } },
     ]);
@@ -135,17 +154,17 @@ describe("per category", () => {
   });
 
   it("omits a field with nothing to offer, rather than rendering an empty row", () => {
-    expect(chipSetsFor(work, [{ category: "work", data: { role: "Intern" } }])).toEqual({});
+    expect(chipSetsFor(reading, [{ category: "reading", data: { kind: "book" } }])).toEqual({});
   });
 
   it("splits a mixed history by category in one pass", () => {
     const sets = allChipSets([
       lift({ exercise: "Squat" }),
-      { category: "work", data: { company: "Anthropic" } },
+      { category: "reading", data: { title: "Thinking in Systems" } },
       { category: "day", data: { mood: 4 } },
     ]);
 
-    expect(Object.keys(sets).sort()).toEqual(["athletics", "work"]);
+    expect(Object.keys(sets).sort()).toEqual(["athletics", "reading"]);
     expect(sets.athletics.exercise[0].value).toBe("Squat");
   });
 
@@ -158,10 +177,15 @@ describe("the label", () => {
   it("uses × only for the weight-and-reps pair", () => {
     // "185 × 5" reads as a set. Anything else joined with × would read as a multiplication
     // that means nothing.
-    const [company_] = chipsFor(work, company, [
-      { category: "work", data: { company: "Anthropic", role: "Robotics Intern" } },
+    const [book] = chipsFor(reading, title, [
+      { category: "reading", data: { title: "Thinking in Systems", kind: "book" } },
     ]);
-    expect(company_.label).toBe("Anthropic · Robotics Intern");
+    expect(book.label).toBe("Thinking in Systems · book");
+
+    // The bug this replaced a passing test to catch: keying the × off the *declared* carries
+    // rendered an erg piece as "2000m × 7:12", which is not a multiplication of anything.
+    const [erg] = chipsFor(athletics, exercise, [oneSet("2k", { distance: 2000, duration: 432 })]);
+    expect(erg.label).toBe("2k · 2000m · 7:12");
   });
 
   it("is just the value when there is nothing to carry", () => {

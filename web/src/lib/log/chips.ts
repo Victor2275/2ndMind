@@ -1,4 +1,4 @@
-import { categoryByKey, chipFields, type Category, type Field } from "@/lib/log/categories";
+import { categoryByKey, chipFields, rowsIn, type Category, type Field } from "@/lib/log/categories";
 
 /**
  * Recent values, offered as one-tap chips (V3 §1.6, D-155).
@@ -68,9 +68,25 @@ export function chipsFor(
   entries: readonly ChipSource[],
   limit = MAX_CHIPS,
 ): Chip[] {
+  /**
+   * What a chip brings with it, and where each piece goes.
+   *
+   * A carried name can now name a field inside a repeated row (D-159) — "Bench Press · 185 × 5"
+   * has to fill the *first set's* weight and reps, not a top-level `weightLbs` that no longer
+   * exists. So each carry resolves to the field that defines its type and the form name the
+   * input actually has, which for a row field is `sets.0.weightLbs`.
+   */
   const carried = (field.carries ?? [])
-    .map((name) => category.fields.find((f) => f.name === name))
-    .filter((f): f is Field => f !== undefined);
+    .map((name) => {
+      const flat = category.fields.find((f) => f.name === name);
+      if (flat) return { field: flat, fillName: name, inRow: false };
+      const row = category.rows?.fields.find((f) => f.name === name);
+      if (row && category.rows) {
+        return { field: row, fillName: `${category.rows.name}.0.${name}`, inRow: true };
+      }
+      return undefined;
+    })
+    .filter((c): c is { field: Field; fillName: string; inRow: boolean } => c !== undefined);
 
   const chips: Chip[] = [];
   const seen = new Set<string>();
@@ -93,14 +109,18 @@ export function chipsFor(
     const shown: string[] = [];
     const shownNames: string[] = [];
 
+    // The first set of the entry the chip came from — the numbers a repeat would start with.
+    const firstRow = rowsIn(category.rows, entry.data)[0] ?? {};
+
     for (const other of carried) {
-      const filled = fillValue(other, entry.data[other.name]);
+      const raw = other.inRow ? firstRow[other.field.name] : entry.data[other.field.name];
+      const filled = fillValue(other.field, raw);
       if (filled === null) continue;
-      fills[other.name] = filled;
-      const display = displayValue(other, entry.data[other.name]);
+      fills[other.fillName] = filled;
+      const display = displayValue(other.field, raw);
       if (display !== null) {
         shown.push(display);
-        shownNames.push(other.name);
+        shownNames.push(other.field.name);
       }
     }
 

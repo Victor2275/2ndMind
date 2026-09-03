@@ -2,8 +2,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { resetTestDb } from "@/test/pg";
-import { CATEGORIES, categoryByKey, searchTextFor, summarise } from "../categories";
-import { readField } from "../form";
+import {
+  CATEGORIES,
+  categoryByKey,
+  searchTextFor,
+  summarise,
+  writableCategoryByKey,
+} from "../categories";
+import { readField, readRows, takeBodyweight } from "../form";
 import {
   categoriesLoggedBetween,
   countEntries,
@@ -27,15 +33,34 @@ beforeEach(async () => {
 const at = (iso: string) => new Date(iso);
 
 describe("category definitions", () => {
-  it("covers the six things Victor said he logs", () => {
+  it("covers the five things Victor still logs here", () => {
+    // Was six. `work` was retired on 2026-09-03 (D-159) because applications are tracked in a
+    // Google Sheet, and logging them in two places meant neither was complete.
     expect(CATEGORIES.map((c) => c.key)).toEqual([
       "athletics",
       "academics",
-      "work",
       "reading",
       "people",
       "day",
     ]);
+  });
+
+  it("keeps a retired category readable without offering it", () => {
+    // The failure this guards against is quiet: with no definition, `summarise` falls back to
+    // the bare note and every application ever logged loses its company and status from the
+    // timeline and from search.
+    expect(CATEGORIES.some((c) => c.key === "work")).toBe(false);
+    expect(categoryByKey("work")?.label).toBe("Applications");
+    expect(summarise("work", { company: "Anthropic", action: "submitted" }, "")).toBe(
+      "Anthropic · submitted",
+    );
+  });
+
+  it("refuses to write to a retired category", () => {
+    // A Server Action is a POST endpoint with a guessable id, so this is the door the category
+    // would come back through.
+    expect(writableCategoryByKey("work")).toBeUndefined();
+    expect(writableCategoryByKey("athletics")?.label).toBe("Training");
   });
 
   it("gives every field a unique name within its category", () => {
@@ -80,12 +105,41 @@ describe("category definitions", () => {
 
 describe("summarise", () => {
   it("reads in the order the form was filled in", () => {
+    const line = summarise("academics", { course: "M51A", hours: 2 }, "");
+    expect(line).toBe("M51A · 2");
+  });
+
+  it("reads a training entry as its sets, not as loose numbers", () => {
+    // The shape D-159 introduced. Before it, one entry held one weight and one reps, so three
+    // sets of bench press were three entries or a third of the truth.
     const line = summarise(
       "athletics",
-      { kind: "lift", exercise: "Bench Press", weightLbs: 145, reps: 5 },
+      {
+        kind: "lift",
+        exercise: "Bench Press",
+        sets: [
+          { weightLbs: 185, reps: 5 },
+          { weightLbs: 185, reps: 5 },
+          { weightLbs: 175, reps: 5, setType: "drop" },
+        ],
+      },
       "",
     );
-    expect(line).toBe("lift · Bench Press · 145 · 5");
+    expect(line).toBe("lift · Bench Press · 185 × 5, 185 × 5, 175 × 5 drop");
+  });
+
+  it("does not multiply an erg piece, because 2000m × 7:12 is not a thing", () => {
+    const line = summarise(
+      "athletics",
+      { kind: "erg", exercise: "2k", sets: [{ distance: 2000, duration: 432, spm: 28 }] },
+      "",
+    );
+    expect(line).toBe("erg · 2k · 2000m 432 28");
+  });
+
+  it("survives rows that are not rows, because data is JSON from a column", () => {
+    expect(summarise("athletics", { exercise: "Row", sets: "nope" }, "")).toBe("Row");
+    expect(summarise("athletics", { exercise: "Row", sets: [null, 3] }, "")).toBe("Row");
   });
 
   it("appends the note after an em dash", () => {
@@ -374,6 +428,123 @@ describe("1-5 scales (D-134)", () => {
   });
 });
 
+describe("sets, read out of the form (D-159)", () => {
+  const training = categoryByKey("athletics")!;
+  const group = training.rows!;
+
+  const posted = (values: Record<string, string>) => {
+    const data = new FormData();
+    for (const [name, value] of Object.entries(values)) data.append(name, value);
+    return data;
+  };
+
+  it("reads a row per set, in order", () => {
+    const rows = readRows(
+      posted({
+        "sets.0.weightLbs": "185",
+        "sets.0.reps": "5",
+        "sets.1.weightLbs": "175",
+        "sets.1.reps": "8",
+      }),
+      group,
+    );
+
+    expect(rows).toEqual([
+      { weightLbs: 185, reps: 5 },
+      { weightLbs: 175, reps: 8 },
+    ]);
+  });
+
+  it("keeps the rows in numeric order, not the order the keys arrived in", () => {
+    const rows = readRows(
+      posted({ "sets.10.reps": "10", "sets.2.reps": "2", "sets.0.reps": "0.5" }),
+      group,
+    );
+    expect(rows.map((r) => r.reps)).toEqual([0.5, 2, 10]);
+  });
+
+  it("does not stop at a gap, which is what removing a middle row leaves", () => {
+    // Rows are keyed by a generated id, so deleting the second of three posts 0 and 2. A
+    // reader that counted upward from zero would silently drop the last set of every session
+    // a row was ever removed from.
+    const rows = readRows(posted({ "sets.0.reps": "5", "sets.2.reps": "3" }), group);
+    expect(rows.map((r) => r.reps)).toEqual([5, 3]);
+  });
+
+  it("drops a blank row, so a spare row costs nothing", () => {
+    const rows = readRows(
+      posted({ "sets.0.reps": "5", "sets.1.reps": "", "sets.2.reps": "3" }),
+      group,
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it("drops a row holding only its set-type default", () => {
+    const rows = readRows(posted({ "sets.0.reps": "5", "sets.1.setType": "normal" }), group);
+    expect(rows).toEqual([{ reps: 5 }]);
+  });
+
+  it("reads each row's own distance unit", () => {
+    // The bug this exists for: a unit select found under the un-prefixed name would give every
+    // row the first one's unit, and 500 metres would silently become 500 miles.
+    const rows = readRows(
+      posted({
+        "sets.0.distance": "500",
+        "sets.0.distanceUnit": "m",
+        "sets.1.distance": "2",
+        "sets.1.distanceUnit": "km",
+      }),
+      group,
+    );
+
+    expect(rows.map((r) => r.distance)).toEqual([500, 2000]);
+  });
+
+  it("parses a time the way an erg monitor prints it", () => {
+    const rows = readRows(posted({ "sets.0.duration": "7:12" }), group);
+    expect(rows[0].duration).toBe(432);
+  });
+
+  it("refuses more rows than the category allows", () => {
+    const many: Record<string, string> = {};
+    for (let i = 0; i < 50; i += 1) many[`sets.${i}.reps`] = "5";
+
+    // A Server Action is a POST endpoint with a guessable id, so the cap is enforced here
+    // rather than left to the form declining to render a button.
+    expect(readRows(posted(many), group)).toHaveLength(group.max);
+  });
+
+  it("reads nothing from a form with no rows in it", () => {
+    expect(readRows(posted({ exercise: "Squat" }), group)).toEqual([]);
+  });
+});
+
+describe("the weigh-in on a training entry (D-159)", () => {
+  it("takes the weight off the entry, so there is one copy of it", () => {
+    // Bodyweight is the second input to every adjusted erg split. A copy in a log entry's
+    // JSON is a number that can disagree with the chart, and nothing would reconcile them.
+    const data: Record<string, unknown> = { exercise: "Squat", bodyweightLbs: 178.3 };
+    expect(takeBodyweight(data)).toEqual({ weight: 178.3, problem: null });
+    expect(data).toEqual({ exercise: "Squat" });
+  });
+
+  it("rounds to two places rather than storing a floating-point artefact", () => {
+    expect(takeBodyweight({ bodyweightLbs: 178.30000000000001 }).weight).toBe(178.3);
+  });
+
+  it("reports an impossible weight instead of recording it", () => {
+    for (const bad of [4, 2150, -170]) {
+      const { weight, problem } = takeBodyweight({ bodyweightLbs: bad });
+      expect(weight, String(bad)).toBeNull();
+      expect(problem, String(bad)).toContain("between");
+    }
+  });
+
+  it("says nothing when there was no weigh-in", () => {
+    expect(takeBodyweight({ exercise: "Squat" })).toEqual({ weight: null, problem: null });
+  });
+});
+
 describe("recent values for the chips (§1.6)", () => {
   it("hands back newest first, so the chip row is in the order he last used them", async () => {
     await createEntry(db, {
@@ -404,23 +575,30 @@ describe("recent values for the chips (§1.6)", () => {
   it("brings the numbers with it, which is the point of the chip", async () => {
     await createEntry(db, {
       category: "athletics",
-      data: { kind: "lift", exercise: "Bench Press", weightLbs: 185, reps: 5 },
+      data: {
+        kind: "lift",
+        exercise: "Bench Press",
+        sets: [{ weightLbs: 185, reps: 5 }],
+      },
     });
 
+    // Since D-159 the numbers live in the first set row, and the chip has to fill the input
+    // that actually exists — `sets.0.weightLbs`, not a top-level `weightLbs` that would be
+    // read as nothing and posted as nothing.
     const sets = allChipSets(await recentForChips(db));
     expect(sets.athletics.exercise[0]).toMatchObject({
       label: "Bench Press · 185 × 5",
-      fills: { exercise: "Bench Press", weightLbs: "185", reps: "5" },
+      fills: { exercise: "Bench Press", "sets.0.weightLbs": "185", "sets.0.reps": "5" },
     });
   });
 
   it("covers every category in one query rather than one query each", async () => {
     await createEntry(db, { category: "athletics", data: { exercise: "Squat" } });
-    await createEntry(db, { category: "work", data: { company: "Anthropic" } });
+    await createEntry(db, { category: "reading", data: { title: "Wagenmakers" } });
     await createEntry(db, { category: "people", data: { who: "Coach" } });
 
     const sets = allChipSets(await recentForChips(db));
-    expect(Object.keys(sets).sort()).toEqual(["athletics", "people", "work"]);
+    expect(Object.keys(sets).sort()).toEqual(["athletics", "people", "reading"]);
   });
 
   it("respects its limit, so a long history cannot make the log page slow", async () => {

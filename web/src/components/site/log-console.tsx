@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 
 import { removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { LogForm } from "@/components/site/log-form";
-import { CATEGORIES, summarise } from "@/lib/log/categories";
+import { CATEGORIES, categoryByKey, summarise } from "@/lib/log/categories";
 import type { ChipSets } from "@/lib/log/chips";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -37,7 +37,9 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
     if (state?.ok && state.undoId) onUndo(state.undoId);
   }, [state, onUndo]);
 
-  const category = CATEGORIES.find((c) => c.key === entry.category);
+  // By key, not by tab: a retired category still has a definition so its entries keep their
+  // label and their summary line in the timeline (D-159).
+  const category = categoryByKey(entry.category);
   const line = summarise(entry.category, entry.data, entry.note);
 
   return (

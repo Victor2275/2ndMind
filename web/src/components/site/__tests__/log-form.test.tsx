@@ -35,14 +35,14 @@ const { LogForm } = await import("../log-form");
 const { resetStickyCache } = await import("@/lib/log/sticky");
 
 const athletics = categoryByKey("athletics") as Category;
-const work = categoryByKey("work") as Category;
+const reading = categoryByKey("reading") as Category;
 
 const CHIPS: ChipSets = {
   exercise: [
     {
       value: "Bench Press",
       label: "Bench Press · 185 × 5",
-      fills: { exercise: "Bench Press", weightLbs: "185", reps: "5" },
+      fills: { exercise: "Bench Press", "sets.0.weightLbs": "185", "sets.0.reps": "5" },
     },
   ],
 };
@@ -66,8 +66,8 @@ describe("chips", () => {
     await userEvent.click(screen.getByRole("button", { name: "Bench Press · 185 × 5" }));
 
     expect(field("exercise").value).toBe("Bench Press");
-    expect(field("weightLbs").value).toBe("185");
-    expect(field("reps").value).toBe("5");
+    expect(field("sets.0.weightLbs").value).toBe("185");
+    expect(field("sets.0.reps").value).toBe("5");
   });
 
   it("puts what it filled into the submission", async () => {
@@ -78,7 +78,7 @@ describe("chips", () => {
 
     await waitFor(() => expect(createLogEntry).toHaveBeenCalled());
     expect(lastSubmitted?.get("exercise")).toBe("Bench Press");
-    expect(lastSubmitted?.get("weightLbs")).toBe("185");
+    expect(lastSubmitted?.get("sets.0.weightLbs")).toBe("185");
   });
 
   it("renders no chip row for a field with nothing recent", () => {
@@ -91,24 +91,22 @@ describe("keypads", () => {
   it("asks for digits where only digits are valid, and a decimal point where it is not", () => {
     render(<LogForm category={athletics} />);
 
-    expect(field("reps").inputMode).toBe("numeric");
-    expect(field("spm").inputMode).toBe("numeric");
-    expect(field("weightLbs").inputMode).toBe("decimal");
+    expect(field("sets.0.reps").inputMode).toBe("numeric");
+    expect(field("sets.0.spm").inputMode).toBe("numeric");
+    expect(field("sets.0.weightLbs").inputMode).toBe("decimal");
+    expect(field("bodyweightLbs").inputMode).toBe("decimal");
   });
 
   it("leaves the duration field on the full keyboard, because m:ss needs a colon", () => {
     // `numeric` here would be the plausible-looking change that makes `2:17` untypeable on a
     // phone — and it is untypeable in a way nobody notices until they are standing at an erg.
     render(<LogForm category={athletics} />);
-    expect(field("duration").inputMode).toBe("text");
+    expect(field("sets.0.duration").inputMode).toBe("text");
   });
 
-  it("stops the phone capitalising a URL", () => {
-    render(<LogForm category={work} />);
-
-    expect(field("link").inputMode).toBe("url");
-    expect(field("link").getAttribute("autocapitalize")).toBe("none");
-    expect(field("company").getAttribute("autocapitalize")).toBe("words");
+  it("lets the phone capitalise a name, which is what it is for", () => {
+    render(<LogForm category={reading} />);
+    expect(field("title").getAttribute("autocapitalize")).toBe("words");
   });
 });
 
@@ -122,14 +120,14 @@ describe("sticky values", () => {
     render(<LogForm category={athletics} chips={CHIPS} />);
 
     await userEvent.selectOptions(document.getElementById("f-kind") as HTMLSelectElement, "erg");
-    await userEvent.type(field("weightLbs"), "185");
+    await userEvent.type(field("sets.0.weightLbs"), "185");
     await userEvent.click(screen.getByRole("button", { name: /log training/i }));
 
     await waitFor(() =>
       expect((document.getElementById("f-kind") as HTMLSelectElement).value).toBe("erg"),
     );
     // The safety property, end to end: the kind came back, the weight did not.
-    expect(field("weightLbs").value).toBe("");
+    expect(field("sets.0.weightLbs").value).toBe("");
   });
 
   it("keeps nothing from a category that has no sticky fields", async () => {
@@ -140,6 +138,70 @@ describe("sticky values", () => {
     await waitFor(() => expect(createLogEntry).toHaveBeenCalled());
 
     expect(window.localStorage.getItem("2m_sticky_day")).toBeNull();
+  });
+});
+
+describe("sets", () => {
+  it("adds a row that carries the row above it down", async () => {
+    // The second set of an exercise is nearly always the first one again, and retyping 185
+    // and 5 for every set is most of what made the old form not worth opening at a rack.
+    render(<LogForm category={athletics} />);
+
+    await userEvent.type(field("sets.0.weightLbs"), "185");
+    await userEvent.type(field("sets.0.reps"), "5");
+    await userEvent.click(screen.getByRole("button", { name: /add set/i }));
+
+    await waitFor(() => expect(field("sets.1.weightLbs").value).toBe("185"));
+    expect(field("sets.1.reps").value).toBe("5");
+  });
+
+  it("submits every set, which is the whole point of the change", async () => {
+    render(<LogForm category={athletics} />);
+
+    await userEvent.type(field("sets.0.weightLbs"), "185");
+    await userEvent.click(screen.getByRole("button", { name: /add set/i }));
+    await waitFor(() => expect(field("sets.1.weightLbs").value).toBe("185"));
+    await userEvent.clear(field("sets.1.weightLbs"));
+    await userEvent.type(field("sets.1.weightLbs"), "175");
+
+    await userEvent.click(screen.getByRole("button", { name: /log training/i }));
+    await waitFor(() => expect(createLogEntry).toHaveBeenCalled());
+
+    expect(lastSubmitted?.get("sets.0.weightLbs")).toBe("185");
+    expect(lastSubmitted?.get("sets.1.weightLbs")).toBe("175");
+  });
+
+  it("removes the row that was tapped, not the one that shares its position", async () => {
+    // Keying rows by index means removing the middle one renumbers the last, React reuses the
+    // removed row's DOM node, and the values on screen shuffle up by one — a silent
+    // corruption of a record whose whole value is that its numbers can be trusted.
+    render(<LogForm category={athletics} />);
+
+    await userEvent.type(field("sets.0.weightLbs"), "135");
+    await userEvent.click(screen.getByRole("button", { name: /add set/i }));
+    await waitFor(() => expect(field("sets.1.weightLbs")).not.toBeNull());
+    await userEvent.clear(field("sets.1.weightLbs"));
+    await userEvent.type(field("sets.1.weightLbs"), "185");
+    await userEvent.click(screen.getByRole("button", { name: /add set/i }));
+    await waitFor(() => expect(field("sets.2.weightLbs")).not.toBeNull());
+    await userEvent.clear(field("sets.2.weightLbs"));
+    await userEvent.type(field("sets.2.weightLbs"), "225");
+
+    await userEvent.click(screen.getByRole("button", { name: /remove set 2/i }));
+
+    await waitFor(() => expect(field("sets.1.weightLbs")).toBeNull());
+    expect(field("sets.0.weightLbs").value).toBe("135");
+    expect(field("sets.2.weightLbs").value).toBe("225");
+  });
+
+  it("offers no remove button for the only row, so the form cannot be emptied", () => {
+    render(<LogForm category={athletics} />);
+    expect(screen.queryByRole("button", { name: /remove set/i })).toBeNull();
+  });
+
+  it("renders no rows for a category that has none", () => {
+    render(<LogForm category={reading} />);
+    expect(screen.queryByRole("button", { name: /add set/i })).toBeNull();
   });
 });
 

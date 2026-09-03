@@ -15,7 +15,8 @@ import { readSticky, resetStickyCache, stickyStore, writeSticky } from "@/lib/lo
  */
 
 const athletics = categoryByKey("athletics") as Category;
-const work = categoryByKey("work") as Category;
+const academics = categoryByKey("academics") as Category;
+const reading = categoryByKey("reading") as Category;
 
 function fakeStorage(options: { throws?: boolean; initial?: Record<string, string> } = {}) {
   const map = new Map(Object.entries(options.initial ?? {}));
@@ -67,7 +68,8 @@ describe("what is allowed to stick", () => {
 
   it("sticks the context fields that actually repeat", () => {
     expect(stickyFields(athletics).map((f) => f.name)).toEqual(["kind"]);
-    expect(stickyFields(work).map((f) => f.name)).toEqual(["action", "effort"]);
+    expect(stickyFields(academics).map((f) => f.name)).toEqual(["course"]);
+    expect(stickyFields(reading).map((f) => f.name)).toEqual(["kind"]);
   });
 });
 
@@ -100,10 +102,12 @@ describe("reading and writing", () => {
   it("keeps categories apart", () => {
     const { storage } = fakeStorage();
     writeSticky(storage, athletics, { kind: "lift" });
-    writeSticky(storage, work, { action: "submitted", effort: "quick apply" });
+    writeSticky(storage, reading, { kind: "book" });
 
+    // Two categories that both have a field called `kind` — the case where one bucket would
+    // otherwise overwrite the other.
     expect(readSticky(storage, athletics)).toEqual({ kind: "lift" });
-    expect(readSticky(storage, work)).toEqual({ action: "submitted", effort: "quick apply" });
+    expect(readSticky(storage, reading)).toEqual({ kind: "book" });
   });
 
   it("ignores a stored value for a field that is no longer sticky", () => {

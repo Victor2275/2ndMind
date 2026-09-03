@@ -13,7 +13,14 @@ import { useFormStatus } from "react-dom";
 
 import { createLogEntry } from "@/app/private/log/actions";
 import { DictateButton } from "@/components/site/dictate-button";
-import { keypadFor, SCALE_MAX, SCALE_MIN, type Category, type Field } from "@/lib/log/categories";
+import {
+  keypadFor,
+  SCALE_MAX,
+  SCALE_MIN,
+  type Category,
+  type Field,
+  type RowGroup,
+} from "@/lib/log/categories";
 import type { Chip, ChipSets } from "@/lib/log/chips";
 import { stickyStore, submittedValues, writeSticky } from "@/lib/log/sticky";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -174,11 +181,17 @@ function FieldInput({
   defaultValue,
   chips,
   onPick,
+  prefix = "",
+  compact = false,
 }: {
   field: Field;
   defaultValue?: string;
   chips?: Chip[];
   onPick: (fills: Record<string, string>) => void;
+  /** Set for a field inside a repeated row: `sets.1.` */
+  prefix?: string;
+  /** Inside a row, where the label is a caption above a tight grid. */
+  compact?: boolean;
 }) {
   if (field.type === "scale") return <ScaleField field={field} />;
 
@@ -187,7 +200,7 @@ function FieldInput({
       <label className="flex items-center gap-2 pt-5">
         <input
           type="checkbox"
-          name={field.name}
+          name={`${prefix}${field.name}`}
           defaultChecked={defaultValue === "on"}
           className="size-4 rounded border-border accent-[var(--primary)]"
         />
@@ -196,10 +209,11 @@ function FieldInput({
     );
   }
 
-  const id = `f-${field.name}`;
+  const id = `f-${prefix}${field.name}`;
+  const name = `${prefix}${field.name}`;
 
   return (
-    <div className={field.wide ? "col-span-2 sm:col-span-3" : ""}>
+    <div className={!compact && field.wide ? "col-span-2 sm:col-span-3" : ""}>
       <div className="flex items-baseline justify-between gap-2">
         <label className={LABEL} htmlFor={id}>
           {field.label}
@@ -208,12 +222,7 @@ function FieldInput({
       </div>
 
       {field.type === "select" ? (
-        <select
-          id={id}
-          name={field.name}
-          defaultValue={defaultValue ?? ""}
-          className={`${INPUT} mt-1`}
-        >
+        <select id={id} name={name} defaultValue={defaultValue ?? ""} className={`${INPUT} mt-1`}>
           <option value="">—</option>
           {field.options?.map((option) => (
             <option key={option} value={option}>
@@ -225,13 +234,13 @@ function FieldInput({
         <div className="mt-1 flex gap-1">
           <input
             id={id}
-            name={field.name}
+            name={name}
             defaultValue={defaultValue}
             inputMode={keypadFor(field)}
             placeholder={field.placeholder}
             className={INPUT}
           />
-          <select name={`${field.name}Unit`} defaultValue="m" className={`${INPUT} w-16 shrink-0`}>
+          <select name={`${name}Unit`} defaultValue="m" className={`${INPUT} w-16 shrink-0`}>
             <option value="m">m</option>
             <option value="km">km</option>
             <option value="mi">mi</option>
@@ -240,7 +249,7 @@ function FieldInput({
       ) : (
         <input
           id={id}
-          name={field.name}
+          name={name}
           defaultValue={defaultValue}
           // Declared per field, not derived from the type: reps wants digits, weight wants a
           // decimal point, and a duration typed as `2:17` needs the full keyboard because no
@@ -255,6 +264,111 @@ function FieldInput({
       )}
 
       {chips && chips.length > 0 && <ChipRow chips={chips} onPick={onPick} />}
+    </div>
+  );
+}
+
+/**
+ * The repeated rows — sets (D-159).
+ *
+ * Rows are addressed by a generated id rather than by their position. Keying them by index
+ * means removing the second of three rows renumbers the third, React reuses the removed row's
+ * DOM node for it, and the values on screen shuffle up by one — a silent corruption of a
+ * record whose entire purpose is that its numbers can be trusted.
+ *
+ * "Add set" copies the row above it, because the second set of an exercise is nearly always
+ * the same weight and reps as the first. Copied rather than blank saves the two fields that
+ * are otherwise retyped every single time, and a copied number is visible on screen before it
+ * is saved — the same standard the chips are held to.
+ */
+function RowFields({
+  group,
+  onPick,
+}: {
+  group: RowGroup;
+  onPick: (fills: Record<string, string>) => void;
+}) {
+  const nextId = useRef(group.initial);
+  const [ids, setIds] = useState(() => Array.from({ length: group.initial }, (_, i) => i));
+  const container = useRef<HTMLDivElement>(null);
+
+  const add = () => {
+    if (ids.length >= group.max) return;
+    const id = nextId.current++;
+    const from = ids[ids.length - 1];
+    setIds((current) => [...current, id]);
+
+    // After the row exists. Reading the previous row's values now and passing them as
+    // defaults would work too, but this keeps the inputs uncontrolled, which is what lets a
+    // failed save put back exactly what was typed.
+    queueMicrotask(() => {
+      const element = container.current;
+      if (!element || from === undefined) return;
+      for (const field of group.fields) {
+        const source = element.querySelector<HTMLInputElement | HTMLSelectElement>(
+          `[name="${group.name}.${from}.${field.name}"]`,
+        );
+        const target = element.querySelector<HTMLInputElement | HTMLSelectElement>(
+          `[name="${group.name}.${id}.${field.name}"]`,
+        );
+        if (source && target) target.value = source.value;
+      }
+    });
+  };
+
+  return (
+    <div ref={container}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className={LABEL}>{group.label}s</span>
+        {ids.length >= group.max && (
+          <span className="font-mono text-[0.55rem] text-muted-foreground">
+            {group.max} is the most
+          </span>
+        )}
+      </div>
+
+      <div className="mt-1 space-y-2">
+        {ids.map((id, index) => (
+          <div key={id} className="flex items-end gap-2">
+            <span className="w-4 shrink-0 pb-2 font-mono text-[0.6rem] text-muted-foreground tabular-nums">
+              {index + 1}
+            </span>
+
+            <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
+              {group.fields.map((field) => (
+                <FieldInput
+                  key={field.name}
+                  field={field}
+                  prefix={`${group.name}.${id}.`}
+                  compact
+                  onPick={onPick}
+                />
+              ))}
+            </div>
+
+            {ids.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setIds((current) => current.filter((each) => each !== id))}
+                aria-label={`Remove ${group.label.toLowerCase()} ${index + 1}`}
+                className="min-h-10 shrink-0 px-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {ids.length < group.max && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-2 min-h-10 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        >
+          + {group.addLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -365,6 +479,8 @@ export function LogForm({ category, chips = {} }: { category: Category; chips?: 
           ))}
         </div>
       )}
+
+      {category.rows && <RowFields group={category.rows} onPick={fill} />}
 
       <div>
         <div className="flex items-center justify-between gap-2">

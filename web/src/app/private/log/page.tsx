@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/site/page-shell";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import type { LogEntry } from "@/lib/db/schema";
-import { CATEGORIES, summarise } from "@/lib/log/categories";
+import { categoryByKey, summarise } from "@/lib/log/categories";
 import { allChipSets } from "@/lib/log/chips";
 import {
   categoriesLoggedBetween,
@@ -107,7 +107,7 @@ async function Results({ query }: { query: string }) {
                 {DAY.format(entry.occurredAt)}
               </span>
               <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
-                {CATEGORIES.find((c) => c.key === entry.category)?.label ?? entry.category}
+                {categoryByKey(entry.category)?.label ?? entry.category}
               </span>
               <span className="min-w-0 flex-1 text-sm text-foreground">
                 {summarise(entry.category, entry.data, entry.note)}
