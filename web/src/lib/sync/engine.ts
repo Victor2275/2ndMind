@@ -11,6 +11,7 @@ import {
   retryLater,
   saveClock,
   setCursor,
+  setLastSyncAt,
   type OutboxOp,
   type SyncDb,
 } from "@/lib/sync/store";
@@ -137,6 +138,10 @@ export async function flush(
   if (typeof body.cursor === "number" && body.cursor > since) {
     await setCursor(db, body.cursor);
   }
+
+  // Recorded only on a flush that got a real answer, which is what makes it meaningful as an
+  // "as of" on a cached screen (§2.1). A failed attempt is not freshness.
+  await setLastSyncAt(db, Date.now());
 
   return {
     status: "synced",

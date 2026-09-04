@@ -67,6 +67,8 @@ export type SyncMeta = {
   deviceId: string;
   clock: { wallMs: number; counter: number };
   cursor: number;
+  /** Epoch ms of the last flush that reached the server. Shown, never compared. */
+  lastSyncAt: number;
 };
 
 interface SyncSchema extends DBSchema {
@@ -179,6 +181,33 @@ export async function pendingCount(db: SyncDb): Promise<number> {
 
 export async function failedOps(db: SyncDb): Promise<OutboxOp[]> {
   return db.getAllFromIndex("outbox", "by-state", "failed");
+}
+
+/**
+ * Everything in the outbox, whatever its state — what §1.7's screen and badge both read.
+ *
+ * Unbounded on purpose, unlike `pendingBatch`. That batch is capped because it becomes one
+ * HTTP request; this is a list of things that have not arrived, and truncating it would mean
+ * an entry that exists, is not synced, and is not shown — which is the one outcome §1.7 is
+ * there to prevent.
+ */
+export async function allOps(db: SyncDb): Promise<OutboxOp[]> {
+  return (await db.getAll("outbox")) as OutboxOp[];
+}
+
+/**
+ * When the last flush actually reached the server, as epoch milliseconds.
+ *
+ * Physical time, and the one place in sync where that is right: it is shown to a person, not
+ * compared with anything. `updatedHlc` orders events; this answers "how old is what I am
+ * looking at", which is the question every cached screen in §2.1 has to answer.
+ */
+export async function getLastSyncAt(db: SyncDb): Promise<number | null> {
+  return ((await db.get("meta", "lastSyncAt")) as number | undefined) ?? null;
+}
+
+export async function setLastSyncAt(db: SyncDb, at: number): Promise<void> {
+  await db.put("meta", at, "lastSyncAt");
 }
 
 /* -------------------------------------------------------------- local writes */

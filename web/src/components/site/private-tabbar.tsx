@@ -45,6 +45,8 @@ const MORE = [
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },
   { href: "/private/hobbies", label: "Hobbies" },
+  // Last, because it is only interesting when the badge has already said so (§1.7).
+  { href: "/private/sync", label: "Not sent" },
 ] as const;
 
 /** Exact match for the index, prefix for the rest — otherwise "/private" lights up everywhere. */

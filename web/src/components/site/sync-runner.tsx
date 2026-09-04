@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
-import { openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/lib/sync/store";
+import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
+import { allOps, openSyncDb, pendingBatch, type SyncDb } from "@/lib/sync/store";
 
 /**
  * Decides *when* to sync (V3 §1.3, `docs/SYNC_DESIGN.md` §6). What happens on each outcome is
@@ -38,7 +40,7 @@ export function requestSync() {
 const MAX_PAGES = 20;
 
 export function SyncRunner() {
-  const [pending, setPending] = useState(0);
+  const [outbox, setOutbox] = useState<OutboxSummary | null>(null);
 
   // Refs, not state: none of this should cause a render, and a re-render mid-flush would
   // restart the effect and run a second one.
@@ -86,7 +88,7 @@ export function SyncRunner() {
           if (outcome.status !== "synced" || !outcome.hasMore) break;
         }
 
-        if (!cancelled) setPending(await pendingCount(db));
+        if (!cancelled) setOutbox(summariseOutbox(await allOps(db)));
       } catch {
         // IndexedDB can be unavailable outright — private browsing, a blocked upgrade. Sync
         // failing must never take the page down with it.
@@ -115,21 +117,44 @@ export function SyncRunner() {
     };
   }, []);
 
-  // Nothing to say when the outbox is empty — which is almost always. The full badge, the
-  // retry screen and the 24-hour warning are §1.7; this is the minimum that makes an unsent
-  // entry visible rather than invisible.
-  if (pending === 0) return null;
+  // Nothing to say when the outbox is empty, which is almost always.
+  if (!outbox || outbox.urgency === "none") return null;
+
+  /**
+   * The badge (§1.7). It escalates, and it never fades.
+   *
+   * A quiet count is a link to the screen rather than a retry button: tapping something that
+   * silently either works or does not is worse than going somewhere that explains itself. The
+   * two louder states are links for the same reason — the useful action for a rejected op is
+   * reading why, and "try again" is on that page too.
+   *
+   * Colour carries the difference as well as the words, because this is read at a glance in a
+   * gym. Failed is the only state that uses the destructive colour, and it is the only state
+   * that will still be here tomorrow without a person.
+   */
+  const tone =
+    outbox.urgency === "failed"
+      ? "border-destructive/60 text-destructive"
+      : outbox.urgency === "stale"
+        ? "border-highlight/60 text-highlight"
+        : "border-border text-muted-foreground hover:text-foreground";
+
+  const dot =
+    outbox.urgency === "failed"
+      ? "bg-destructive"
+      : outbox.urgency === "stale"
+        ? "bg-highlight"
+        : "bg-primary";
 
   return (
-    <button
-      type="button"
-      onClick={requestSync}
+    <Link
+      href="/private/sync"
       // Above the phone tab bar, below the update prompt, and never over the centre of the
       // screen: a log entry in progress must survive anything the app says about itself.
-      className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 items-center gap-2 rounded-full border border-border bg-card/95 px-3 font-mono text-xs text-muted-foreground shadow-lg backdrop-blur-md transition-colors hover:text-foreground sm:bottom-6 print:hidden"
+      className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 items-center gap-2 rounded-full border bg-card/95 px-3 font-mono text-xs shadow-lg backdrop-blur-md transition-colors sm:bottom-6 print:hidden ${tone}`}
     >
-      <span aria-hidden className="size-1.5 rounded-full bg-primary" />
-      {pending} waiting
-    </button>
+      <span aria-hidden className={`size-1.5 rounded-full ${dot}`} />
+      {outbox.label}
+    </Link>
   );
 }
