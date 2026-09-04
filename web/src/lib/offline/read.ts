@@ -12,6 +12,7 @@ import {
   type CachedTask,
   type Freshness,
 } from "@/lib/offline/panels";
+import { allChipSets, type ChipSets } from "@/lib/log/chips";
 import { getLastSyncAt, listLocal, openSyncDb } from "@/lib/sync/store";
 
 /**
@@ -36,6 +37,14 @@ export type CachedView = {
   recentSets: CachedSet[];
   weight: { measuredOn: string; weightLbs: number } | null;
   rehabToday: string[];
+  /**
+   * Recent values as one-tap chips, per category (§1.6), built from the local mirror.
+   *
+   * The reason the offline form is not a lesser form: the chips are what make a training entry
+   * finishable one-handed, and they come from entries — which are already on the phone. There
+   * is nothing about them that needed the server.
+   */
+  chips: Record<string, ChipSets>;
   /** True when the mirror has never been filled — a new install that has not synced. */
   empty: boolean;
 };
@@ -60,6 +69,22 @@ export async function readCachedView(now = new Date()): Promise<CachedView> {
       byCourse: byCourse(tasks, now),
       loggedToday: loggedOn(logs, now),
       recentSets: recentSets(logs, sets, workouts),
+      chips: allChipSets(
+        // Newest first, and capped the way the server-side query is: a chip row shows six, and
+        // scanning a year of entries to pick them would cost more than the form saves.
+        logs
+          .map((record) => record.row)
+          .filter((row) => typeof row.occurredAt === "string")
+          .sort((a, b) => String(b.occurredAt).localeCompare(String(a.occurredAt)))
+          .slice(0, 200)
+          .map((row) => ({
+            category: String(row.category ?? ""),
+            data:
+              typeof row.data === "object" && row.data !== null
+                ? (row.data as Record<string, unknown>)
+                : {},
+          })),
+      ),
       weight: latestWeight(bodyweight),
       rehabToday: rehabDoneOn(rehab, now),
       // Counted across every mirrored table, not just tasks: a phone with an empty task list

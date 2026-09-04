@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
+import { LogForm } from "@/components/site/log-form";
+import { OutboxConsole } from "@/components/site/outbox-console";
+import { requestSync } from "@/components/site/sync-runner";
+import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
 import { approximateAge } from "@/lib/sync/outbox-view";
+import { localLogWriter } from "@/lib/offline/write";
 import { readCachedView, type CachedView } from "@/lib/offline/read";
 import type { CachedTask } from "@/lib/offline/panels";
 
@@ -29,12 +34,16 @@ const HEAD = "text-base font-semibold tracking-tight text-foreground";
 const META = "font-mono text-[0.65rem] text-muted-foreground";
 
 /** Which of the cached views to show, from the path the navigation was trying to reach. */
-type ViewKey = "today" | "athletics" | "academics" | "log";
+type ViewKey = "today" | "athletics" | "academics" | "log" | "sync";
 
 function viewFor(path: string): ViewKey {
   if (path.startsWith("/private/athletics")) return "athletics";
   if (path.startsWith("/private/academics")) return "academics";
   if (path.startsWith("/private/log")) return "log";
+  // §1.7's screen reads only IndexedDB, so it works here unchanged — and this is where it is
+  // most likely to be wanted, since the reason to look at it is usually that there is no
+  // signal. Without this line the link to it would land on Today.
+  if (path.startsWith("/private/sync")) return "sync";
   return "today";
 }
 
@@ -43,6 +52,7 @@ const TITLE: Record<ViewKey, string> = {
   athletics: "Training",
   academics: "Academics",
   log: "The log",
+  sync: "Not sent",
 };
 
 /**
@@ -104,7 +114,7 @@ export function CachedApp() {
     <div className="mt-6 space-y-4">
       <AsOf view={view} />
 
-      {view.empty ? (
+      {view.empty && key !== "sync" ? (
         <div className={PANEL}>
           <p className="text-sm text-foreground">Nothing has been synced to this device yet.</p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -118,6 +128,7 @@ export function CachedApp() {
           {key === "athletics" && <AthleticsView view={view} />}
           {key === "academics" && <AcademicsView view={view} />}
           {key === "log" && <LogView view={view} />}
+          {key === "sync" && <OutboxConsole />}
         </>
       )}
 
@@ -271,9 +282,58 @@ function AcademicsView({ view }: { view: CachedView }) {
   );
 }
 
+/**
+ * The log, writable with no signal (V3 §2.2).
+ *
+ * The same `LogForm` the live app uses — same fields, same set shapes, same chips, same
+ * restore-what-you-typed when a save fails — handed a writer that puts the entry into the
+ * outbox instead of posting a Server Action. §1.2 built the store and §1.3 built the flush, so
+ * an entry written here is sent by exactly the path `roundtrip.test.ts` already covers.
+ *
+ * The chips come from the local mirror, which is why this is not a lesser form: they are built
+ * from past entries, and past entries are already on the phone.
+ */
 function LogView({ view }: { view: CachedView }) {
+  const [category, setCategory] = useState(CATEGORIES[0].key);
+  const definition = categoryByKey(category) ?? CATEGORIES[0];
+
+  // `requestSync` on every write: with no network the runner does nothing and the entry simply
+  // waits, and the moment there is one this is what makes it leave without a foreground event.
+  const write = useMemo(() => localLogWriter(requestSync), []);
+
   return (
     <>
+      <section className={PANEL}>
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map((each) => (
+            <button
+              key={each.key}
+              type="button"
+              onClick={() => setCategory(each.key)}
+              className={`min-h-10 rounded-md border px-3 text-sm transition-colors ${
+                each.key === category
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {each.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">{definition.hint}</p>
+
+        <div className="mt-5">
+          <LogForm
+            // Remounts on a category change, so the previous category's values cannot be
+            // submitted by accident — same reason the live form keys itself this way.
+            key={definition.key}
+            category={definition}
+            chips={view.chips[definition.key]}
+            write={write}
+          />
+        </div>
+      </section>
+
       <section className={PANEL}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className={HEAD}>Logged today</h2>
@@ -290,18 +350,20 @@ function LogView({ view }: { view: CachedView }) {
             ))}
           </ul>
         )}
-      </section>
-
-      {/* The honest edge of §2.1: this page reads, it does not write. Writing offline needs the
-          form, which needs the private layout, which needs a server. §2.2's precached shell is
-          what closes that, and until then a log entry needs one moment of signal. */}
-      <div className={PANEL}>
-        <p className="text-sm text-foreground">You cannot write a new entry from here.</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This page reads what is stored on the phone. The log form itself still needs to load once
-          — after that, entries you write are held here and sent when you reconnect.
+        {/* An entry written on this page will not appear above until the next read, because
+            the list is a snapshot taken once — deliberately, so the panels cannot disagree
+            with the "as of" line. Saying so beats a list that looks like it lost something. */}
+        <p className="mt-4 text-xs text-muted-foreground">
+          Saved entries appear here after a reload. Nothing is lost in the meantime — check{" "}
+          <a
+            href={`/cached?from=${encodeURIComponent("/private/sync")}`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Not sent
+          </a>{" "}
+          to see what is waiting.
         </p>
-      </div>
+      </section>
     </>
   );
 }
@@ -342,7 +404,7 @@ function Missing({ what }: { what: string }) {
 }
 
 function Elsewhere({ current }: { current: ViewKey }) {
-  const others = (["today", "athletics", "academics", "log"] as const).filter(
+  const others = (["today", "athletics", "academics", "log", "sync"] as const).filter(
     (key) => key !== current,
   );
 
@@ -371,7 +433,7 @@ function Elsewhere({ current }: { current: ViewKey }) {
 }
 
 function pathFor(key: ViewKey): string {
-  return key === "today" ? "/private" : `/private/${key === "log" ? "log" : key}`;
+  return key === "today" ? "/private" : `/private/${key}`;
 }
 
 /** "185 × 5" for a lift, "2000m 7:12" for a piece — never a multiplication of the two. */

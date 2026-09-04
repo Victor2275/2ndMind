@@ -58,9 +58,10 @@ describe("the service worker's caching policy", () => {
     expect(writes.length).toBeGreaterThan(0);
     for (const write of writes) expect(write).not.toContain("/private");
 
-    // And the only place the string appears at all is the navigation branch.
+    // Three mentions, all reads: two in the navigation branch choosing a fallback page, and
+    // one filtering the sitemap before anything from it is written to disk (§2.2).
     const mentions = [...code.matchAll(/["'`]\/private/g)];
-    expect(mentions.length).toBeLessThanOrEqual(2);
+    expect(mentions.length).toBeLessThanOrEqual(3);
   });
 
   it("only ever caches GET", () => {

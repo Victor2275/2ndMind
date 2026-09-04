@@ -35,6 +35,8 @@ function load(options: {
   offlineHtml?: string | null;
   /** The cached app shell (§2.1). Absent by default — a worker that installed before it. */
   shellHtml?: string | null;
+  /** Public pages precached by §2.2, keyed by path. */
+  pages?: Record<string, string>;
   onLine?: boolean;
 }) {
   const handlers = new Map<string, Handler>();
@@ -61,7 +63,8 @@ function load(options: {
           ? undefined
           : page(options.shellHtml || "<html><head></head><body>shell</body></html>");
       }
-      return undefined;
+      const precached = options.pages?.[url];
+      return precached ? page(precached) : undefined;
     },
     put: async () => {},
     add: async () => {},
@@ -226,17 +229,36 @@ describe("the cached app shell (§2.1)", () => {
     expect(html).toContain("/offline?from=");
   });
 
-  it("keeps a navigation to the shell on the shell, with its own query intact", async () => {
-    // Its view links are plain navigations. Rewriting the query here would turn
-    // `?from=/private/athletics` into `?from=/cached?from=...` and every offline screen would
-    // render Today — the app working right up until you touched it.
+  it("serves a navigation to the shell untouched, so its own query survives", async () => {
+    // Its view links are plain navigations, and the URL they ask for is already the right one.
+    // Rewriting it would turn `?from=/private/athletics` into `?from=/cached?from=...` and
+    // every offline screen would render Today — the app working right up until you touched it.
+    // Since §2.2 this takes the precached-page branch, which returns the document as itself.
     const handlers = load({ fetch: flaky(99), shellHtml: shell, onLine: false });
     const { event, response } = navigateTo("/cached?from=%2Fprivate%2Fathletics");
 
     handlers.get("fetch")!(event);
     const html = await (await response()).text();
 
-    expect(html).toContain('history.replaceState(null,"","/cached?from=%2Fprivate%2Fathletics")');
+    expect(html).toContain("shell");
+    expect(html).not.toContain("replaceState");
+  });
+
+  it("serves a precached public page as itself, not as an apology", async () => {
+    // §2.2. The portfolio, a project, a resume — the real page, only from disk.
+    const handlers = load({
+      fetch: flaky(99),
+      shellHtml: shell,
+      onLine: false,
+      pages: { "/projects/proof": "<html><head></head><body>proof</body></html>" },
+    });
+    const { event, response } = navigateTo("/projects/proof");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain("proof");
+    expect(html).not.toContain("replaceState");
   });
 
   it("falls back to the offline page when the shell was never cached", async () => {

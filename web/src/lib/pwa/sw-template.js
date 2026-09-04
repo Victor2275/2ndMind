@@ -11,12 +11,11 @@
  *
  * What this worker does NOT do, on purpose:
  *
- *   - It does not precache the app's own JavaScript. That needs a build-time manifest of
- *     hashed asset URLs and belongs with the rest of the offline work in Phase 2.
  *   - It never writes a response to a private route into the cache. Everything under
  *     /private is behind the session cookie and is real personal data; putting it in Cache
  *     Storage is a deliberate decision with its own threat model, not a side effect of the
- *     shell landing. Phase 2 §2.1 makes that call explicitly.
+ *     shell landing. §2.1 made that call explicitly and the answer was no: the offline app
+ *     reads IndexedDB instead, which is per-device and cleared with the store.
  *   - It only ever touches GET. Server Actions are POSTs, and a cached or replayed mutation
  *     is far worse than a failed one.
  */
@@ -41,6 +40,20 @@ const OFFLINE_URL = "/offline";
  * a day of tasks and a week of training in it and no screen could reach them.
  */
 const SHELL_URL = "/cached";
+
+/**
+ * The public site, precached so the portfolio opens with no signal (§2.2).
+ *
+ * The list is not written here. It is read from `/sitemap.xml`, which the app already
+ * generates from the vault — home, `/now`, the projects index, every public project and all
+ * three resume variants. A hand-maintained array would be a second list to keep in step, and
+ * the way it fails is silent: a project ships, nobody adds it, and it is missing from the one
+ * device that needed it. Adding a project now precaches it with no code change at all.
+ *
+ * Public pages only, by construction: the sitemap is a crawler's list, so nothing private can
+ * appear on it without being a much larger bug than this.
+ */
+const SITEMAP_URL = "/sitemap.xml";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -73,32 +86,90 @@ self.addEventListener("install", (event) => {
  * — and the shell reads everything from IndexedDB in the browser, so what he gets in airplane
  * mode is a heading and the word "Reading…" forever.
  *
- * The URLs are scraped out of the shell's own HTML rather than read from a build manifest.
- * A manifest is the right answer and is §2.2's job; this is the version that fits in §2.1 and
- * needs no build step. It over-caches slightly — a couple of shared chunks the shell would
- * have pulled anyway — which costs kilobytes and nothing else.
- *
  * Every fetch is individually tolerant. One asset 404ing after a deploy must degrade the
  * shell, not fail the install and leave the phone with no worker at all.
  */
 async function warmShell(cache) {
   const html = await (await cache.match(SHELL_URL))?.text();
-  if (!html) return;
+  if (html) await warmAssets(cache, html);
+}
 
-  // The backslash in the class matters: these URLs also appear inside escaped JSON in the
-  // page's inline scripts, as `\"/_next/static/….js\"`, and without it every one of them is
-  // scraped a second time with a trailing backslash — a guaranteed 404 per asset.
+/**
+ * Cache the scripts, styles and fonts one page's HTML refers to.
+ *
+ * The URLs are scraped from the document rather than read from a build manifest. A manifest is
+ * tidier and needs a build step; this needs none and cannot go stale, because it is reading the
+ * very page it is caching. It over-caches slightly — a few shared chunks — which costs
+ * kilobytes.
+ *
+ * The backslash in the character class matters: these URLs also appear inside escaped JSON in
+ * the page's inline scripts, as `\"/_next/static/….js\"`, and without it every one of them is
+ * scraped a second time with a trailing backslash — a guaranteed 404 per asset.
+ */
+async function warmAssets(cache, html) {
   const urls = new Set(html.match(/\/_next\/static\/[^"'\s>\\]+/g) ?? []);
   await Promise.all(
     [...urls].map(async (url) => {
       try {
+        // Skip anything already held: on a public precache of a dozen pages, the shared chunks
+        // would otherwise be fetched a dozen times each.
+        if (await cache.match(url)) return;
         const response = await fetch(url, { cache: "reload" });
         if (response.ok) await cache.put(url, response);
       } catch {
-        // One missing chunk is not worth failing the install over.
+        // One missing chunk is not worth failing over.
       }
     }),
   );
+}
+
+/**
+ * Precache the public site, and the assets each page needs.
+ *
+ * Runs in `activate` rather than `install`, deliberately: this is a dozen documents and their
+ * scripts, and doing it during install would hold the new worker in `installing` for seconds
+ * on a phone — delaying the update prompt for pages that are a nicety, while the two that
+ * actually matter (the offline page and the app shell) are already in.
+ *
+ * Every fetch is individually tolerant for the same reason as `warmShell`: one 404 after a
+ * deploy must degrade the cache, not fail activation and leave the phone with no worker.
+ */
+async function precachePublic(cache) {
+  let paths = [];
+  try {
+    const response = await fetch(SITEMAP_URL, { cache: "reload" });
+    if (!response.ok) return;
+    const xml = await response.text();
+    paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map((match) => match[1].trim())
+      .map((url) => {
+        try {
+          const parsed = new URL(url, self.location.origin);
+          // The sitemap carries absolute production URLs, which on a preview deployment are a
+          // different origin. Only the path is used, so both work.
+          return parsed.pathname;
+        } catch {
+          return null;
+        }
+      })
+      // Belt and braces on top of "the sitemap is public by construction": a private path
+      // reaching this list would be cached to disk, where it would survive sign-out.
+      .filter((path) => typeof path === "string" && !path.startsWith("/private"));
+  } catch {
+    return;
+  }
+
+  for (const path of paths) {
+    try {
+      const response = await fetch(path, { cache: "reload" });
+      if (!response.ok) continue;
+      const html = await response.clone().text();
+      await cache.put(path, response);
+      await warmAssets(cache, html);
+    } catch {
+      // One page missing is not worth failing activation over.
+    }
+  }
 }
 
 self.addEventListener("activate", (event) => {
@@ -111,6 +182,13 @@ self.addEventListener("activate", (event) => {
           .map((name) => caches.delete(name)),
       );
       await self.clients.claim();
+
+      // Last, and after `claim`, so nothing the user is waiting for is behind it.
+      try {
+        await precachePublic(await caches.open(CACHE));
+      } catch {
+        // The app works without it; only the offline portfolio does not.
+      }
     })(),
   );
 });
@@ -168,6 +246,12 @@ self.addEventListener("fetch", (event) => {
             // A public navigation goes to the offline page. The portfolio is not mirrored
             // anywhere — that is §2.2 — so there would be nothing for the shell to show.
             const cache = await caches.open(CACHE);
+
+            // A public page precached by §2.2 — the portfolio, a project, a resume. Served as
+            // itself, with no rewriting: it is the real page, only from disk.
+            const precached = await cache.match(url.pathname);
+            if (precached) return precached;
+
             // `/cached` itself is included: its own view links are plain navigations, so
             // without this, moving from the offline Today to the offline Training screen would
             // land on the offline page — the app working until you touched it.

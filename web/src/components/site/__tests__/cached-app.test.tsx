@@ -30,6 +30,7 @@ const BLANK: CachedView = {
   recentSets: [],
   weight: null,
   rehabToday: [],
+  chips: {},
   empty: false,
 };
 
@@ -169,10 +170,14 @@ describe("what it admits it cannot show", () => {
     expect(await screen.findByText(/Records, charts/i)).toBeInTheDocument();
   });
 
-  it("says the log is read-only here", async () => {
+  it("does write here, though — the log form is the whole of §2.2", async () => {
+    // Was "says the log is read-only here". That sentence was the honest edge of §2.1 and is
+    // now false: the form writes into the outbox and the ordinary flush sends it.
     at("/private/log");
     render(<CachedApp />);
-    expect(await screen.findByText(/cannot write a new entry/i)).toBeInTheDocument();
+
+    expect(await screen.findByRole("button", { name: /log training/i })).toBeInTheDocument();
+    expect(screen.queryByText(/cannot write a new entry/i)).toBeNull();
   });
 
   it("says when the local database will not open, rather than showing nothing", async () => {
