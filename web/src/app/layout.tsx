@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { PublicChrome } from "@/components/site/public-chrome";
+import { ErrorWatch } from "@/components/site/error-watch";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
@@ -103,6 +104,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             the root rather than under /private because Chrome only offers to install from a
             page inside the worker's scope, and a first visit lands on the portfolio. */}
         <ServiceWorker />
+        {/* In the root layout, not the private one: a broken portfolio page is exactly the
+            failure nobody would otherwise mention, because the person who saw it was a
+            stranger (D-165). */}
+        <ErrorWatch />
         <Analytics />
       </body>
     </html>

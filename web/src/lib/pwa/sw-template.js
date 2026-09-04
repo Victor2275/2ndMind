@@ -55,6 +55,44 @@ const SHELL_URL = "/cached";
  */
 const SITEMAP_URL = "/sitemap.xml";
 
+/**
+ * Tell the app when this worker breaks (§2.4, D-165).
+ *
+ * The reason error aggregation was scheduled at all: **a failing service worker on a phone
+ * produces no log anyone will ever read.** Nothing renders, nobody is watching a console, and
+ * the symptom — the app is stale, or offline stopped working — arrives days later with no way
+ * to trace it back.
+ *
+ * Fire-and-forget, and it swallows everything. This is the error path; a throw here would
+ * replace a degraded worker with a dead one. `reporting` guards against the one genuinely bad
+ * outcome: a failing report triggering a report of its own, forever.
+ */
+let reporting = false;
+
+async function report(error, where) {
+  if (reporting) return;
+  reporting = true;
+  try {
+    await fetch("/api/errors", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        source: "worker",
+        name: error?.name ? String(error.name).slice(0, 120) : "Error",
+        message: `${where}: ${String(error?.message ?? error)}`.slice(0, 500),
+        stack: String(error?.stack ?? "").slice(0, 2000),
+        route: "",
+        buildId: BUILD_ID,
+        agent: self.navigator?.userAgent ?? "",
+      }),
+    });
+  } catch {
+    // No network, or the endpoint is the thing that is broken. Nothing left to try.
+  } finally {
+    reporting = false;
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -69,8 +107,10 @@ self.addEventListener("install", (event) => {
       try {
         await cache.add(new Request(SHELL_URL, { cache: "reload" }));
         await warmShell(cache);
-      } catch {
-        // Falls back to the offline page for private navigations too.
+      } catch (error) {
+        // Falls back to the offline page for private navigations too — which is a silent
+        // downgrade of the whole offline feature, so it is worth a report.
+        await report(error, "install");
       }
     })(),
   );
@@ -186,8 +226,9 @@ self.addEventListener("activate", (event) => {
       // Last, and after `claim`, so nothing the user is waiting for is behind it.
       try {
         await precachePublic(await caches.open(CACHE));
-      } catch {
+      } catch (error) {
         // The app works without it; only the offline portfolio does not.
+        await report(error, "precache");
       }
     })(),
   );

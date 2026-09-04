@@ -7,6 +7,7 @@ import { LogForm } from "@/components/site/log-form";
 import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
 import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
+import { reportError } from "@/lib/errors/client";
 import { approximateAge } from "@/lib/sync/outbox-view";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { localCaptureWriter, localLogWriter } from "@/lib/offline/write";
@@ -90,9 +91,11 @@ export function CachedApp() {
       try {
         const snapshot = await readCachedView();
         if (!cancelled) setView(snapshot);
-      } catch {
+      } catch (error) {
         // Private browsing, or a blocked upgrade. Say so rather than rendering empty panels,
-        // which would read as "you have nothing".
+        // which would read as "you have nothing" — and report it, because a phone that cannot
+        // open its own store offline is the failure nobody would ever mention (D-165).
+        void reportError(error);
         if (!cancelled) setFailed(true);
       }
     })();

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { reportError } from "@/lib/errors/client";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
 import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
 import { allOps, openSyncDb, pendingBatch, type SyncDb } from "@/lib/sync/store";
@@ -89,9 +90,14 @@ export function SyncRunner() {
         }
 
         if (!cancelled) setOutbox(summariseOutbox(await allOps(db)));
-      } catch {
+      } catch (error) {
         // IndexedDB can be unavailable outright — private browsing, a blocked upgrade. Sync
         // failing must never take the page down with it.
+        //
+        // It must also not fail *silently*, which is what it did until D-165. This catch is the
+        // exact shape of failure §2.4 exists for: the phone stops syncing, nothing on screen
+        // changes, and the outbox quietly grows for a week.
+        void reportError(error);
       } finally {
         runningRef.current = false;
       }

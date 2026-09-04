@@ -1,10 +1,13 @@
 import { describeDbError } from "@/lib/db/describe";
+import { openErrors } from "@/lib/errors/queries";
+import type { ErrorReport } from "@/lib/db/schema";
 import { Suspense } from "react";
 
 import { Agenda } from "@/components/site/agenda";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
 import { InboxPanel } from "@/components/site/inbox-panel";
+import { ErrorPanel } from "@/components/site/error-panel";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
 import { ProposalReview } from "@/components/site/proposal-review";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
@@ -120,6 +123,44 @@ async function load(): Promise<Loaded> {
  * take seconds. Without this the whole page — header, nav, chrome — waits on that. With it,
  * the shell paints immediately and only this region shows a placeholder.
  */
+/**
+ * What is currently broken (§2.4, D-165).
+ *
+ * Its own Suspense boundary and its own query, so a diagnostics panel can never be the reason
+ * the dashboard is slow — and, more to the point, can never be the reason it fails to render.
+ * An error panel that takes the page down with it is a joke at its own expense.
+ */
+async function Broken() {
+  if (!isDatabaseConfigured()) return null;
+
+  // Only the await is guarded, not the JSX — React renders the element later, so a try/catch
+  // around it would catch nothing. The same rule the tasks loader already follows.
+  let errors: ErrorReport[];
+  try {
+    errors = await openErrors(db(), 5);
+  } catch {
+    // Swallowed deliberately, and it is the one place in the app where that is unambiguously
+    // right: this is the error reporter, and there is nowhere to report a failure to report.
+    return null;
+  }
+
+  return (
+    <ErrorPanel
+      errors={errors.map((error) => ({
+        id: error.id,
+        source: error.source,
+        name: error.name,
+        message: error.message,
+        route: error.route,
+        agent: error.agent,
+        seenCount: error.seenCount,
+        lastSeenAt: error.lastSeenAt.toISOString(),
+        buildId: error.buildId,
+      }))}
+    />
+  );
+}
+
 async function Tasks() {
   const { due, goals, someday, doneToday, inbox, overdue, failure } = await load();
 
@@ -488,6 +529,13 @@ export default function TodayPage() {
         title="Today"
         actions={<Freshness />}
       />
+
+      {/* First, and only when there is something. A panel that is always on screen saying
+          "0 errors" stops being read within a week, and then the one time it says something
+          the eye goes past it (D-165). */}
+      <Suspense fallback={null}>
+        <Broken />
+      </Suspense>
 
       <Suspense fallback={null}>
         <div className="mt-6">

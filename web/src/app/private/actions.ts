@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { describeDbError } from "@/lib/db/describe";
+import { resolveError } from "@/lib/errors/queries";
 import type { ActionState } from "@/lib/sprint-goals";
 import {
   createTask,
@@ -87,6 +88,34 @@ export async function addInboxNote(
     await createTask(db(), { title, source: "inbox", domain: null, courseCode: null, dueAt: null });
     refresh();
     return { ok: true, message: "Captured." };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/**
+ * Mark a crash report dealt with (V3 §2.4, D-165).
+ *
+ * "Dealt with", not "fixed": it hides the row and nothing more. A repeat clears the flag on the
+ * server side (`recordError`), so something marked resolved that happens again comes straight
+ * back — which is the only behaviour that makes hiding it safe.
+ */
+export async function resolveErrorReport(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+  const missing = requireDatabase();
+  if (missing) return missing;
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown report." };
+
+  try {
+    const row = await resolveError(db(), id);
+    if (!row) return { ok: false, message: "That report no longer exists." };
+    revalidatePath("/private");
+    return { ok: true, message: "Hidden." };
   } catch (error) {
     return { ok: false, message: describe(error) };
   }
