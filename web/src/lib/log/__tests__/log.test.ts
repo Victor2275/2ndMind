@@ -5,6 +5,8 @@ import { resetTestDb } from "@/test/pg";
 import {
   CATEGORIES,
   categoryByKey,
+  TAB_CATEGORIES,
+  UNSORTED_CATEGORY,
   searchTextFor,
   summarise,
   rowFieldsFor,
@@ -14,13 +16,16 @@ import { readField, readRows, takeBodyweight } from "../form";
 import {
   categoriesLoggedBetween,
   countEntries,
+  countUnsorted,
   createEntry,
   deleteEntry,
+  fileEntry,
   entriesBetween,
   listEntries,
   recentForChips,
   restoreEntry,
   searchEntries,
+  unsortedEntries,
   type Db,
 } from "../queries";
 import { allChipSets } from "../chips";
@@ -34,16 +39,38 @@ beforeEach(async () => {
 const at = (iso: string) => new Date(iso);
 
 describe("category definitions", () => {
-  it("covers the five things Victor still logs here", () => {
+  it("covers the five things Victor still logs here, plus the capture pile", () => {
     // Was six. `work` was retired on 2026-09-03 (D-159) because applications are tracked in a
-    // Google Sheet, and logging them in two places meant neither was complete.
+    // Google Sheet. `note` arrived on 2026-09-05 (D-164) and is not one of the five: it is
+    // where a thought lands before anyone has decided what it is.
     expect(CATEGORIES.map((c) => c.key)).toEqual([
+      "athletics",
+      "academics",
+      "reading",
+      "people",
+      "note",
+      "day",
+    ]);
+  });
+
+  it("keeps the capture category out of the tab row", () => {
+    // The whole point of a quick note is not choosing a category. A sixth tab for it would put
+    // the choice back, on the one screen where it is meant to be absent.
+    expect(TAB_CATEGORIES.map((c) => c.key)).toEqual([
       "athletics",
       "academics",
       "reading",
       "people",
       "day",
     ]);
+    expect(TAB_CATEGORIES.some((c) => c.key === UNSORTED_CATEGORY)).toBe(false);
+  });
+
+  it("still lets the capture category be written and read", () => {
+    // Excluded from the tabs, not from the app: it summarises, it searches, it syncs.
+    expect(writableCategoryByKey("note")?.label).toBe("Note");
+    expect(summarise("note", {}, "that stroke cue worked")).toBe("that stroke cue worked");
+    expect(searchTextFor("note", {}, "that stroke cue worked")).toContain("Note");
   });
 
   it("keeps a retired category readable without offering it", () => {
@@ -426,6 +453,86 @@ describe("1-5 scales (D-134)", () => {
   it("makes scale values searchable", () => {
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("5");
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("good day");
+  });
+});
+
+describe("the unsorted pile (D-164)", () => {
+  const note = (text: string, at?: string) =>
+    createEntry(db, {
+      category: "note",
+      note: text,
+      occurredAt: at ? new Date(at) : undefined,
+    });
+
+  it("holds what has been captured, newest first", async () => {
+    // Worked from the top: the thing written five minutes ago is the one still fresh enough
+    // to file correctly.
+    await note("older", "2026-09-01T18:00:00Z");
+    await note("newer", "2026-09-05T18:00:00Z");
+
+    expect((await unsortedEntries(db)).map((e) => e.note)).toEqual(["newer", "older"]);
+  });
+
+  it("counts only what is actually unsorted", async () => {
+    await note("one");
+    await note("two");
+    await createEntry(db, { category: "academics", data: { course: "M51A" } });
+
+    expect(await countUnsorted(db)).toBe(2);
+  });
+
+  it("leaves out a deleted note", async () => {
+    const gone = await note("mistake");
+    await deleteEntry(db, gone.id);
+
+    expect(await countUnsorted(db)).toBe(0);
+  });
+
+  it("files a note into a real category, keeping its text", async () => {
+    const captured = await note("that stroke cue worked");
+    const filed = await fileEntry(db, captured.id, "athletics");
+
+    expect(filed?.category).toBe("athletics");
+    expect(filed?.note).toBe("that stroke cue worked");
+    expect(await countUnsorted(db)).toBe(0);
+  });
+
+  it("recomputes the search text, so it is findable under where it now lives", async () => {
+    // The search text carries the category label. Leaving it would make a filed entry findable
+    // under "Note" and not under "Training", which is the opposite of what filing is for.
+    const captured = await note("that stroke cue worked");
+    const filed = await fileEntry(db, captured.id, "athletics");
+
+    expect(filed?.searchText).toContain("Training");
+    expect(filed?.searchText).not.toContain("Note");
+  });
+
+  it("appears in search under its new category once filed", async () => {
+    const captured = await note("that stroke cue worked");
+    await fileEntry(db, captured.id, "athletics");
+
+    const hits = await searchEntries(db, "Training");
+    expect(hits.map((e) => e.id)).toContain(captured.id);
+  });
+
+  it("refuses to recategorise an entry that was never unsorted", async () => {
+    // The log has no edit path anywhere else. Without this guard a mistyped id would silently
+    // rewrite a real training entry's category, with no undo.
+    const real = await createEntry(db, {
+      category: "academics",
+      data: { course: "M51A" },
+    });
+
+    expect(await fileEntry(db, real.id, "athletics")).toBeNull();
+    expect((await listEntries(db, { category: "academics" })).map((e) => e.id)).toContain(real.id);
+  });
+
+  it("refuses a deleted note and an id that does not exist", async () => {
+    const gone = await note("mistake");
+    await deleteEntry(db, gone.id);
+
+    expect(await fileEntry(db, gone.id, "athletics")).toBeNull();
+    expect(await fileEntry(db, 999_999, "athletics")).toBeNull();
   });
 });
 

@@ -153,6 +153,13 @@ export type Category = {
    * Retiring a category must never turn its history into unlabelled JSON.
    */
   retired?: true;
+  /**
+   * Written through the capture box rather than through a tab (D-164).
+   *
+   * It is a real, writable category — it summarises, it searches, it syncs — it simply has no
+   * place in the tab row, because the whole point of a quick note is not choosing a category.
+   */
+  capture?: true;
 };
 
 export const CATEGORIES: readonly Category[] = [
@@ -337,6 +344,21 @@ export const CATEGORIES: readonly Category[] = [
     ],
   },
   {
+    /**
+     * An unstructured capture (D-164).
+     *
+     * No fields, deliberately. A capture box that asks which category something belongs to is
+     * a filing form, and filing is exactly the work being deferred — the same reasoning that
+     * shaped `addInboxNote` for tasks. The text lands in the entry's own note, and the entry
+     * sits in the unsorted pile until it is filed into a real category.
+     */
+    key: "note",
+    label: "Note",
+    hint: "Anything at all, sorted later.",
+    capture: true,
+    fields: [],
+  },
+  {
     key: "day",
     label: "End of day",
     // V1-V2 carried a note here saying there was deliberately no mood or energy scale, because
@@ -404,6 +426,18 @@ export function writableCategoryByKey(key: string): Category | undefined {
 }
 
 export const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);
+
+/**
+ * The categories that get a tab.
+ *
+ * `note` is excluded because it is written through the capture box above the tabs. Adding it
+ * to the row would put a sixth tab on a phone for the one thing that is meant to need no
+ * choosing at all.
+ */
+export const TAB_CATEGORIES = CATEGORIES.filter((c) => c.capture !== true);
+
+/** Entries here have not been filed into a real category yet. */
+export const UNSORTED_CATEGORY = "note";
 
 /**
  * A one-line summary of an entry, for the timeline. Built from whichever fields are present,

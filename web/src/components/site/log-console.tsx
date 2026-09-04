@@ -2,9 +2,10 @@
 
 import { useActionState, useEffect, useState } from "react";
 
-import { removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
+import { fileLogEntry, removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { LogForm } from "@/components/site/log-form";
-import { CATEGORIES, categoryByKey, summarise } from "@/lib/log/categories";
+import { QuickCapture } from "@/components/site/quick-capture";
+import { categoryByKey, summarise, TAB_CATEGORIES } from "@/lib/log/categories";
 import type { ChipSets } from "@/lib/log/chips";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -68,29 +69,111 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
   );
 }
 
+/**
+ * One captured note, and the categories it can be filed into (D-164).
+ *
+ * A row of one-tap targets rather than a dropdown: filing is meant to cost less than writing
+ * the thing did, and a select on a phone is a modal wheel. Filing keeps the text and moves the
+ * category, so a note becomes an ordinary entry in the timeline.
+ *
+ * **It does not open the form to add fields.** The log has no edit path anywhere — a mistake is
+ * deleted and re-logged — and inventing one here would be a second way to change a stored entry
+ * with different rules from the first. If a note needs numbers on it, delete it and log it
+ * properly; the pile exists so the thought survives until then, not to become an editor.
+ */
+function UnsortedRow({ entry }: { entry: EntryView }) {
+  const [state, file] = useActionState<ActionState | null, FormData>(fileLogEntry, null);
+
+  return (
+    <li className="px-4 py-3">
+      <p className="text-sm text-foreground">
+        {entry.note || summarise(entry.category, entry.data, entry.note)}
+      </p>
+
+      <div className="mt-2 flex flex-wrap items-center gap-1">
+        {TAB_CATEGORIES.map((c) => (
+          <form key={c.key} action={file}>
+            <input type="hidden" name="id" value={entry.id} />
+            <input type="hidden" name="category" value={c.key} />
+            <button
+              type="submit"
+              className="min-h-8 rounded-md border border-border px-2.5 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              {c.label}
+            </button>
+          </form>
+        ))}
+
+        {state && !state.ok && <span className="text-xs text-destructive">{state.message}</span>}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The pile of things captured and not yet filed.
+ *
+ * Shown above the form and only when it is non-empty, with a count. A second inbox is a real
+ * cost — it is another list that can silently fill up — so it earns its place by disappearing
+ * completely the moment it is empty, and by never nagging when it is not.
+ */
+function Unsorted({ entries }: { entries: EntryView[] }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold tracking-tight">Unsorted</h2>
+        <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
+          {entries.length}
+        </span>
+      </div>
+      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
+        {entries.map((entry) => (
+          <UnsortedRow key={entry.id} entry={entry} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function LogConsole({
   entries,
+  unsorted = [],
   loggedToday,
   chips = {},
 }: {
   entries: EntryView[];
+  /** Notes captured but not yet filed (D-164). */
+  unsorted?: EntryView[];
   loggedToday: string[];
   /** Recent values per category, for the one-tap chips (§1.6, D-155). */
   chips?: Record<string, ChipSets>;
 }) {
-  const [active, setActive] = useState(CATEGORIES[0].key);
+  const [active, setActive] = useState(TAB_CATEGORIES[0].key);
   const [undoId, setUndoId] = useState<number | null>(null);
   const [, undo] = useActionState<ActionState | null, FormData>(undoLogEntry, null);
 
-  const category = CATEGORIES.find((c) => c.key === active) ?? CATEGORIES[0];
-  const missing = CATEGORIES.filter((c) => !loggedToday.includes(c.key));
+  const category = TAB_CATEGORIES.find((c) => c.key === active) ?? TAB_CATEGORIES[0];
+  const missing = TAB_CATEGORIES.filter((c) => !loggedToday.includes(c.key));
 
   return (
     <div className="space-y-6">
+      {/* Above the tabs and outside them, so the fastest path through this page is type-and-send
+          with nothing to choose first. */}
+      <QuickCapture />
+
+      {unsorted.length > 0 && <Unsorted entries={unsorted} />}
+
       <div>
-        {/* Scrolls rather than wraps, so the row stays one line on a phone. */}
-        <div className="-mx-1 flex [scrollbar-width:none] gap-1 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-          {CATEGORIES.map((c) => {
+        {/*
+          Wraps rather than scrolls (D-164).
+
+          It used to be one horizontally-scrolling line, which kept the row to a single row of
+          pixels and hid whatever did not fit — on a 360px phone that was the last two
+          categories, with nothing on screen to say they were there. A tab you cannot see is a
+          tab that does not get used. Two short rows cost about 30px and hide nothing.
+        */}
+        <div className="-mx-1 flex flex-wrap gap-1">
+          {TAB_CATEGORIES.map((c) => {
             const done = loggedToday.includes(c.key);
             return (
               <button
@@ -120,7 +203,7 @@ export function LogConsole({
       </div>
 
       {/* The daily prompt: quiet, and only names what is actually missing. */}
-      {missing.length > 0 && missing.length < CATEGORIES.length && (
+      {missing.length > 0 && missing.length < TAB_CATEGORIES.length && (
         <p className="text-xs text-muted-foreground">
           Nothing logged today for{" "}
           {missing.map((c, i) => (

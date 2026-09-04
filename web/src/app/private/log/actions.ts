@@ -6,9 +6,10 @@ import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { describeDbError } from "@/lib/db/describe";
 import { recordBodyweight } from "@/lib/athletics/queries";
-import { writableCategoryByKey } from "@/lib/log/categories";
+import { UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
 import { readField, readRows, takeBodyweight } from "@/lib/log/form";
-import { createEntry, deleteEntry, restoreEntry } from "@/lib/log/queries";
+import { createEntry, deleteEntry, fileEntry, restoreEntry } from "@/lib/log/queries";
+import { createTask } from "@/lib/tasks/queries";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -89,6 +90,82 @@ export async function createLogEntry(
 /** Today in Los Angeles, which is the day he was looking at — not the UTC day. */
 function losAngelesDay(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(now);
+}
+
+/**
+ * The capture box: one line of text, no category (D-164).
+ *
+ * Deliberately one field and one choice. A capture box that asks which category something
+ * belongs to is a filing form, and filing is exactly the work being deferred — the same
+ * reasoning `addInboxNote` already records for tasks.
+ *
+ * The choice it does ask is note-or-task, because they go to different places and only the
+ * writer knows which one a sentence is. "That stroke cue worked" is a note; "email the coach"
+ * is a task with a checkbox and a due date it may one day need.
+ */
+export async function captureQuick(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+
+  if (!isDatabaseConfigured()) {
+    return { ok: false, message: "DATABASE_URL is not set, so there is nowhere to save this." };
+  }
+
+  const text = String(formData.get("text") ?? "").trim();
+  if (text === "") return { ok: false, message: "Write it down first." };
+
+  const asTask = String(formData.get("as") ?? "note") === "task";
+
+  try {
+    if (asTask) {
+      // `source: "inbox"` puts it in the dashboard's triage list, which already exists and
+      // already knows what to do with an unfiled task.
+      await createTask(db(), {
+        title: text,
+        source: "inbox",
+        domain: null,
+        courseCode: null,
+        dueAt: null,
+      });
+      revalidatePath("/private");
+      revalidatePath("/private/log");
+      return { ok: true, message: "Captured as a task." };
+    }
+
+    await createEntry(db(), { category: UNSORTED_CATEGORY, note: text, data: {} });
+    revalidatePath("/private/log");
+    revalidatePath("/private");
+    return { ok: true, message: "Noted." };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/** Move an unsorted note into a real category. */
+export async function fileLogEntry(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+  if (!isDatabaseConfigured()) return { ok: false, message: "DATABASE_URL is not set." };
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown entry." };
+
+  const category = writableCategoryByKey(String(formData.get("category") ?? ""));
+  if (!category || category.capture) return { ok: false, message: "Unknown category." };
+
+  try {
+    const row = await fileEntry(db(), id, category.key);
+    if (!row) return { ok: false, message: "That note is not waiting to be sorted." };
+    revalidatePath("/private/log");
+    revalidatePath("/private");
+    return { ok: true, message: `Filed under ${category.label}.` };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
 }
 
 export async function removeLogEntry(

@@ -7,13 +7,14 @@ import { PageHeader } from "@/components/site/page-shell";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import type { LogEntry } from "@/lib/db/schema";
-import { categoryByKey, summarise } from "@/lib/log/categories";
+import { categoryByKey, summarise, UNSORTED_CATEGORY } from "@/lib/log/categories";
 import { allChipSets } from "@/lib/log/chips";
 import {
   categoriesLoggedBetween,
   entriesBetween,
   recentForChips,
   searchEntries,
+  unsortedEntries,
 } from "@/lib/log/queries";
 import { dayBounds, zoneOffsetMinutes } from "@/lib/tasks/queries";
 
@@ -57,14 +58,18 @@ async function Console() {
   let today: LogEntry[];
   let logged: string[];
   let recent: { category: string; data: Record<string, unknown> }[];
+  let unsorted: LogEntry[];
   try {
     const handle = db();
-    [today, logged, recent] = await Promise.all([
+    [today, logged, recent, unsorted] = await Promise.all([
       entriesBetween(handle, start, end),
       categoriesLoggedBetween(handle, start, end),
       // Recent values for the one-tap chips (§1.6, D-155). In parallel with the other two,
       // so the form's shortcuts cost no wall-clock time on a page that is already dynamic.
       recentForChips(handle),
+      // Captured and not yet filed (D-164). Not limited to today: an unfiled note from last
+      // week is exactly the one worth surfacing.
+      unsortedEntries(handle),
     ]);
   } catch (error) {
     return (
@@ -78,7 +83,15 @@ async function Console() {
   }
 
   return (
-    <LogConsole entries={today.map(toView)} loggedToday={logged} chips={allChipSets(recent)} />
+    <LogConsole
+      // Unsorted notes are shown in their own pile directly above, so they are kept out of
+      // this list rather than rendered twice — on a 360px screen a duplicated row costs the
+      // vertical space this whole panel exists to save (D-164). They join it once filed.
+      entries={today.filter((e) => e.category !== UNSORTED_CATEGORY).map(toView)}
+      unsorted={unsorted.map(toView)}
+      loggedToday={logged}
+      chips={allChipSets(recent)}
+    />
   );
 }
 

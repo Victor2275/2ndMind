@@ -3,7 +3,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import { logEntries, type LogEntry } from "@/lib/db/schema";
 import type * as schema from "@/lib/db/schema";
-import { searchTextFor } from "./categories";
+import { searchTextFor, UNSORTED_CATEGORY } from "./categories";
 
 /**
  * Log entry reads and writes. Handle passed in, so the tests run against real Postgres.
@@ -37,6 +37,57 @@ export async function createEntry(db: Db, input: NewEntry): Promise<LogEntry> {
     .returning();
 
   return row;
+}
+
+/**
+ * Notes captured but not yet filed into a real category (D-164).
+ *
+ * Newest first, because the pile is worked from the top and the thing written five minutes ago
+ * is the one still fresh enough to file correctly.
+ */
+export async function unsortedEntries(db: Db, limit = 50): Promise<LogEntry[]> {
+  return db
+    .select()
+    .from(logEntries)
+    .where(and(eq(logEntries.category, UNSORTED_CATEGORY), alive))
+    .orderBy(desc(logEntries.occurredAt), desc(logEntries.id))
+    .limit(limit);
+}
+
+export async function countUnsorted(db: Db): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(logEntries)
+    .where(and(eq(logEntries.category, UNSORTED_CATEGORY), alive));
+  return row?.n ?? 0;
+}
+
+/**
+ * File an unsorted note into a real category.
+ *
+ * The note text moves across unchanged and `search_text` is recomputed, because it carries the
+ * category label — leaving it would make a filed entry findable under "Note" and not under
+ * "Training", which is the opposite of what filing is for.
+ *
+ * Only ever moves an entry *out* of the unsorted pile: the `where` requires it to be there.
+ * Without that, a mistyped id could recategorise a real training entry into something else,
+ * silently, with no undo — the log has no edit path anywhere else, and this is not the place
+ * to introduce one by accident.
+ */
+export async function fileEntry(db: Db, id: number, category: string): Promise<LogEntry | null> {
+  const [existing] = await db
+    .select()
+    .from(logEntries)
+    .where(and(eq(logEntries.id, id), eq(logEntries.category, UNSORTED_CATEGORY), alive));
+  if (!existing) return null;
+
+  const [row] = await db
+    .update(logEntries)
+    .set({ category, searchText: searchTextFor(category, existing.data, existing.note) })
+    .where(eq(logEntries.id, id))
+    .returning();
+
+  return row ?? null;
 }
 
 export async function listEntries(
