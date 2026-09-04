@@ -1,4 +1,4 @@
-import { searchTextFor, writableCategoryByKey } from "@/lib/log/categories";
+import { searchTextFor, UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
 import { readField, readRows, takeBodyweight } from "@/lib/log/form";
 import { HlcClock } from "@/lib/sync/hlc";
 import { deviceId, enqueue, loadClock, openSyncDb, saveClock } from "@/lib/sync/store";
@@ -117,6 +117,75 @@ export function localLogWriter(onWritten?: () => void): LocalWrite {
       return {
         ok: false,
         message: "This device will not open its local store, so the entry was not saved.",
+      };
+    }
+  };
+}
+
+/**
+ * The capture box with no signal (D-164).
+ *
+ * Same two destinations as the Server Action — an unsorted note, or a task in the inbox — and
+ * both are writable entities, so both go into the outbox and are sent by the ordinary flush.
+ * Filing them happens later, online, on a screen that needs a server anyway.
+ */
+export function localCaptureWriter(onWritten?: () => void): LocalWrite {
+  return async (_prev, formData) => {
+    const text = String(formData.get("text") ?? "").trim();
+    if (text === "") return { ok: false, message: "Write it down first." };
+
+    const asTask = String(formData.get("as") ?? "note") === "task";
+
+    try {
+      const db = await openSyncDb();
+      try {
+        const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+
+        if (asTask) {
+          await enqueue(db, {
+            entity: "task",
+            op: "create",
+            row: {
+              clientId: crypto.randomUUID(),
+              title: text,
+              source: "inbox",
+              domain: null,
+              courseCode: null,
+              dueAt: null,
+              doneAt: null,
+              notes: "",
+            },
+            hlc: clock.tick(),
+          });
+        } else {
+          await enqueue(db, {
+            entity: "log_entry",
+            op: "create",
+            row: {
+              clientId: crypto.randomUUID(),
+              category: UNSORTED_CATEGORY,
+              occurredAt: new Date().toISOString(),
+              note: text,
+              data: {},
+              searchText: searchTextFor(UNSORTED_CATEGORY, {}, text),
+            },
+            hlc: clock.tick(),
+          });
+        }
+
+        await saveClock(db, clock.state);
+        onWritten?.();
+        return {
+          ok: true,
+          message: asTask ? "Held as a task. It will send." : "Noted. It will send.",
+        };
+      } finally {
+        db.close();
+      }
+    } catch {
+      return {
+        ok: false,
+        message: "This device will not open its local store, so it was not saved.",
       };
     }
   };

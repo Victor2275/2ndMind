@@ -8,7 +8,8 @@ import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
 import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
 import { approximateAge } from "@/lib/sync/outbox-view";
-import { localLogWriter } from "@/lib/offline/write";
+import { QuickCapture } from "@/components/site/quick-capture";
+import { localCaptureWriter, localLogWriter } from "@/lib/offline/write";
 import { readCachedView, type CachedView } from "@/lib/offline/read";
 import type { CachedTask } from "@/lib/offline/panels";
 
@@ -77,6 +78,7 @@ export function CachedApp() {
   const [view, setView] = useState<CachedView | null>(null);
   const [failed, setFailed] = useState(false);
   const key = useSyncExternalStore(NO_UPDATES, readKey, serverKey);
+  const capture = useMemo(() => localCaptureWriter(requestSync), []);
 
   useEffect(() => {
     // Defined inside the effect and cancelled on unmount: this is a subscription to an
@@ -113,6 +115,11 @@ export function CachedApp() {
   return (
     <div className="mt-6 space-y-4">
       <AsOf view={view} />
+
+      {/* The same capture box as the live page, writing into the outbox. It is above
+          everything and on every view, because the thing most likely to be needed with no
+          signal is somewhere to put a thought before it is lost (D-164). */}
+      <QuickCapture write={capture} />
 
       {view.empty && key !== "sync" ? (
         <div className={PANEL}>

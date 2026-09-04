@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { localLogWriter } from "@/lib/offline/write";
+import { localCaptureWriter, localLogWriter } from "@/lib/offline/write";
 import { flush, type Poster } from "@/lib/sync/engine";
 import type { SyncResponse } from "@/lib/sync/protocol";
 import { allOps, openSyncDb, DB_NAME, type SyncDb } from "@/lib/sync/store";
@@ -43,11 +43,12 @@ const training = (over: Record<string, string> = {}) =>
 
 beforeEach(async () => {
   db = await openSyncDb(DB_NAME);
-  const tx = db.transaction(["outbox", "log_entries", "bodyweight_entries"], "readwrite");
+  const tx = db.transaction(["outbox", "log_entries", "bodyweight_entries", "tasks"], "readwrite");
   await Promise.all([
     tx.objectStore("outbox").clear(),
     tx.objectStore("log_entries").clear(),
     tx.objectStore("bodyweight_entries").clear(),
+    tx.objectStore("tasks").clear(),
   ]);
   await tx.done;
 });
@@ -153,6 +154,48 @@ describe("an entry written with no signal", () => {
 
     const [op] = await allOps(db);
     expect(String(op.payload.occurredAt)).toBe("2026-07-04T19:00:00.000Z");
+  });
+});
+
+describe("a quick note with no signal (D-164)", () => {
+  const capture = (text: string, as?: string) =>
+    localCaptureWriter()(null, form(as ? { text, as } : { text }));
+
+  it("goes into the outbox as an unsorted entry", async () => {
+    const result = await capture("that stroke cue worked");
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("log_entry");
+    expect(op.payload.category).toBe("note");
+    expect(op.payload.note).toBe("that stroke cue worked");
+    // Searchable before it has ever synced, and the column is notNull either way.
+    expect(op.payload.searchText).toContain("that stroke cue worked");
+  });
+
+  it("goes into the task inbox when asked", async () => {
+    await capture("email the coach", "task");
+
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("task");
+    expect(op.payload).toMatchObject({ title: "email the coach", source: "inbox", dueAt: null });
+  });
+
+  it("defaults to a note, which is the cheaper mistake", async () => {
+    // A note can be filed later. A task nobody meant sits in a list demanding to be ticked.
+    await capture("something");
+    expect((await allOps(db))[0].entity).toBe("log_entry");
+  });
+
+  it("refuses an empty capture rather than queueing a blank", async () => {
+    const result = await capture("   ");
+
+    expect(result.ok).toBe(false);
+    expect(await allOps(db)).toHaveLength(0);
+  });
+
+  it("says it is held, not that it is filed", async () => {
+    expect((await capture("a thought")).message).toMatch(/send/i);
   });
 });
 
