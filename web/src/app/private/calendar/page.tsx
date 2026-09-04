@@ -63,7 +63,8 @@ async function Schedule() {
       )}
 
       <Panel title="Today" meta={today.length > 0 ? `${today.length} scheduled` : undefined}>
-        <Agenda events={today} />
+        {/* The fold check measures to today's agenda and to nothing else on this page (§3.2). */}
+        <Agenda events={today} firstAction />
       </Panel>
 
       <Panel title="Next seven days" collapsible defaultOpen={days.length > 0}>

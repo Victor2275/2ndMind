@@ -69,6 +69,10 @@ export function QuickCapture({
 
   return (
     <form
+      // The fold check measures to this box on /private/log (§3.2). Getting a thought out of
+      // your head is the action that page exists for; the tabs and the structured form below
+      // are what you use once you have decided to be precise about it.
+      data-first-action
       action={(formData) => {
         typed.current = String(formData.get("text") ?? "");
         return action(formData);

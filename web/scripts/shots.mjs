@@ -64,15 +64,41 @@ const widths = only ? WIDTHS.filter((w) => w === only) : WIDTHS;
 
    Run with `SHOTS_PRIVATE=0` to skip it deliberately. */
 
-/** How far down /private the first actionable item may sit on a phone. See the check below. */
+/** How far down a private page the first actionable item may sit on a phone. See the check below. */
 const FOLD_LIMIT = 500;
 
+/* Every private screen is swept (V3 §3.2). `gated` says whether the fold check applies.
+ *
+ * D-083 gated one page and D-132 improved it, and that number is the only measured thing in
+ * the whole private app. §3.1 is a ten-hour reordering pass over these screens, and doing it
+ * against four pages' worth of opinion and one page's worth of measurement is exactly the
+ * mistake §7's "measure, do not assume" was written after.
+ *
+ * A gated page carries `[data-first-action]` on the one thing you can *do* there. Which
+ * element that is was Victor's call, not an inference:
+ *
+ *   today      the Due task list          the answer to "what do I do now"
+ *   log        the quick capture box      getting a thought out of your head (D-164)
+ *   athletics  today's rehab checklist    the only thing on the page you can tick
+ *   academics  the Outstanding list       already a TaskList, so it came for free
+ *   calendar   today's agenda             "what do I have next"
+ *
+ * The rest are ungated because they carry no action at all: now, work, tailor and hobbies are
+ * vault documents you sit down and read, and sync is a report on a queue. Screenshot them,
+ * do not hold them to a fold. Gating a page with nothing to reach would either invent an
+ * action to satisfy the gate or teach us to ignore the gate, and both are worse than not
+ * measuring. */
 const PRIVATE_PAGES = [
-  { name: "private-today", url: "/private" },
-  { name: "private-log", url: "/private/log" },
-  { name: "private-now", url: "/private/now" },
-  { name: "private-work", url: "/private/work" },
-  { name: "private-tailor", url: "/private/work/tailor" },
+  { name: "private-today", url: "/private", gated: true },
+  { name: "private-log", url: "/private/log", gated: true },
+  { name: "private-athletics", url: "/private/athletics", gated: true },
+  { name: "private-academics", url: "/private/academics", gated: true },
+  { name: "private-calendar", url: "/private/calendar", gated: true },
+  { name: "private-now", url: "/private/now", gated: false },
+  { name: "private-work", url: "/private/work", gated: false },
+  { name: "private-tailor", url: "/private/work/tailor", gated: false },
+  { name: "private-hobbies", url: "/private/hobbies", gated: false },
+  { name: "private-sync", url: "/private/sync", gated: false },
 ];
 
 function b64url(bytes) {
@@ -104,6 +130,36 @@ async function mintSession(secret) {
  * catch, hidden by the tool meant to catch it. `next dev` is the only server these run
  * against, so this is not optional dressing.
  */
+/**
+ * Where the first actionable element sits, once the page has stopped moving.
+ *
+ * Read the number twice, half a second apart, until two readings agree. Without this the
+ * check is a race it loses roughly half the time: every private page streams, the boundaries
+ * around the schedule and the summaries have `fallback={null}`, and `networkidle` fires while
+ * the HTML response is still open. Measured on `/private` in one sweep: **208px at 360 wide
+ * and 936px at 390**, same build, same server, one difference — whether the schedule panel
+ * had arrived yet. The low number is not a better layout, it is a page that has not finished.
+ *
+ * A racy gate is worse than no gate. It passes often enough to look healthy and fails often
+ * enough to be dismissed as flaky, and either way nobody trusts the number it prints.
+ */
+async function settledFold(page) {
+  let previous = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const fold = await page.evaluate(() => {
+      const el = document.querySelector("[data-first-action]");
+      if (!el) return null;
+      return Math.round(el.getBoundingClientRect().top + window.scrollY);
+    });
+    if (fold !== null && fold === previous) return fold;
+    previous = fold;
+    await page.waitForTimeout(500);
+  }
+  // Four seconds of a page still reshuffling is its own finding. Report the last reading
+  // rather than pretending it settled.
+  return previous;
+}
+
 async function hideDevOverlay(page) {
   await page
     .addStyleTag({
@@ -396,36 +452,41 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
         timeout: 90_000,
       });
       await hideDevOverlay(page);
-      await page.screenshot({
-        path: path.join(OUT, `${target.name}-${width}.png`),
-        fullPage: true,
-      });
 
       // A redirect to /signin means the cookie was rejected — report it rather than
       // silently screenshotting a sign-in page and calling the layout fine.
       const landed = new URL(page.url()).pathname;
       const rejected = landed.startsWith("/signin");
 
-      // How much of the answer to "what do I do now" is above the fold. The first task list
-      // is the answer; everything above it is what you have to scroll past to reach it.
-      const fold = await page.evaluate(() => {
-        const list = document.querySelector("[data-task-list]");
-        if (!list) return null;
-        return Math.round(list.getBoundingClientRect().top + window.scrollY);
+      // How much of the answer is above the fold: everything above the marker is what you
+      // have to scroll past to reach the one thing this page is for. Settled first, and the
+      // screenshot is taken afterwards for the same reason — a PNG of a page mid-stream shows
+      // a layout that nobody ever sees.
+      const fold = await settledFold(page);
+
+      await page.screenshot({
+        path: path.join(OUT, `${target.name}-${width}.png`),
+        fullPage: true,
       });
 
-      // The whole point of /private is answering "what do I do now" without scrolling. A
-      // 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
-      // margin and still fails loudly if a panel creeps back above the task list. It was
-      // 791px before feature 3 was closed out.
+      // A 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
+      // margin and still fails loudly if a panel creeps back above the action. /private was
+      // 791px before feature 3 was closed out and 265px after D-132.
       const buried = width < 768 && fold !== null && fold > FOLD_LIMIT;
-      if (buried || rejected) privateFaults += 1;
+
+      // A gated page with no marker is a fault in its own right, and a quiet one: the check
+      // would otherwise report nothing and the page would pass by having lost the very thing
+      // being measured. That is how a page stops being checked without anyone noticing —
+      // see the migration test that spent a release testing nothing (D-165's commit).
+      const unmarked = target.gated && !rejected && fold === null;
+      if (buried || rejected || unmarked) privateFaults += 1;
 
       console.log(
-        `${String(width).padStart(4)}px ${target.name.padEnd(15)}` +
+        `${String(width).padStart(4)}px ${target.name.padEnd(18)}` +
           ` status=${response?.status() ?? "?"}` +
-          (fold === null ? "" : ` first-task-at=${String(fold).padStart(4)}px`) +
+          (fold === null ? "" : ` first-action-at=${String(fold).padStart(4)}px`) +
           (rejected ? `  <-- redirected to ${landed}` : "") +
+          (unmarked ? `  <-- gated, but no [data-first-action] on the page` : "") +
           (buried ? `  <-- below the fold (limit ${FOLD_LIMIT}px)` : ""),
       );
 

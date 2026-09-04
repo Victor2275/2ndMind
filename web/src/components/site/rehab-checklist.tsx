@@ -61,9 +61,13 @@ function Item({ item, day, done }: { item: RehabItem; day: string; done: boolean
 }
 
 export function RehabChecklist({ items, done, day, history }: RehabState) {
+  // `data-first-action` is on both branches deliberately (V3 §3.2). The ticks are the only
+  // thing on the athletics page you can *do* — everything else is a chart. If the marker were
+  // only on the populated branch, a vault rename that empties this list would make the fold
+  // check report "no marker" and the page would go on passing while its one action was gone.
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p data-first-action className="text-sm text-muted-foreground">
         No rehab protocol found in the vault. It is read from the{" "}
         <span className="text-foreground">Lower Back Rehab Protocol</span> block of{" "}
         <code className="font-mono text-xs">benchmarks_and_logs.md</code> — if that heading was
@@ -75,7 +79,7 @@ export function RehabChecklist({ items, done, day, history }: RehabState) {
   const complete = items.every((item) => done.has(item.slug));
 
   return (
-    <div>
+    <div data-first-action>
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
         {items.map((item) => (
           <Item key={item.slug} item={item} day={day} done={done.has(item.slug)} />

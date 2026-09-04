@@ -151,9 +151,11 @@ export function TaskList({
   const [undoId, setUndoId] = useState<number | null>(null);
 
   return (
-    // `data-task-list` is read by scripts/shots.mjs to measure how far down the page the
-    // first actionable item sits. It is the one thing /private has to answer quickly.
-    <div data-task-list>
+    // `data-first-action` is read by scripts/shots.mjs to measure how far down the page the
+    // first actionable item sits. It is the one thing /private has to answer quickly. The
+    // attribute is on the list rather than on the panel around it so the number stays
+    // comparable with D-083's 791px and D-132's 265px, which were measured here.
+    <div data-first-action>
       {tasks.length > 0 ? (
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
           {tasks.map((task) => (

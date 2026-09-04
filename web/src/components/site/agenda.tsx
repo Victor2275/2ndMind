@@ -60,18 +60,38 @@ export function AgendaDayBlock({ day }: { day: AgendaDay }) {
   );
 }
 
-/** A flat list, for a single day. */
-export function Agenda({ events }: { events: CalendarEvent[] }) {
+/**
+ * A flat list, for a single day.
+ *
+ * `firstAction` stamps the marker `scripts/shots.mjs` measures to (V3 §3.2). It is a prop
+ * rather than something this component decides, because the same component renders today,
+ * each day of the coming week, and the Canvas feed — and only *today* is the answer to "what
+ * do I have next". A marker inside the component would attach to whichever call happened to
+ * come first in the DOM, which is a fact about layout order rather than about meaning.
+ */
+export function Agenda({
+  events,
+  firstAction = false,
+}: {
+  events: CalendarEvent[];
+  firstAction?: boolean;
+}) {
   if (events.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+      <p
+        data-first-action={firstAction || undefined}
+        className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground"
+      >
         Nothing scheduled.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
+    <ul
+      data-first-action={firstAction || undefined}
+      className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60"
+    >
       {events.map((event) => (
         <EventRow key={`${event.uid}-${event.start.toISOString()}`} event={event} />
       ))}
