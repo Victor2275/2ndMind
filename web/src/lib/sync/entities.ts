@@ -60,11 +60,22 @@ export type RowStore = (typeof STORE_FOR)[Entity];
  *
  * Two shapes, and which one a table uses is the same decision as whether it needed a
  * `client_id` at all. Tables with no natural key are addressed by their client-generated UUID;
- * the other three are addressed by the key they already had, which is what makes an offline
- * create on them idempotent for free.
+ * the rest are addressed by the key they already had, which is what makes an offline create on
+ * them idempotent for free.
  *
  * Returning one string for both keeps every caller — the store, the outbox, the merge — from
  * having to branch on which kind of table it is holding.
+ *
+ * `workout` and `workout_set` are addressed by the **server's** `id`, and that is safe for
+ * exactly one reason: they are pull-only (`WRITABLE` above), so the phone never mints one and
+ * there is no window in which two devices could disagree about what a row is called. If they
+ * ever become writable, this case has to move to a client-generated key first — the §4a
+ * aggregate op that `SYNC_DESIGN.md` §11.1 defers is the same piece of work.
+ *
+ * They fell into the `clientId` branch until 2026-09-04, so `identityOf` threw on every
+ * workout row the server sent and **the whole workout mirror had never populated once**. The
+ * sync runner caught it and said nothing; the athletics page offline was quietly reading an
+ * empty store. Found by the error panel D-165 put on the dashboard, on its first day.
  */
 export function identityOf(entity: Entity, row: Record<string, unknown>): string {
   switch (entity) {
@@ -74,6 +85,14 @@ export function identityOf(entity: Entity, row: Record<string, unknown>): string
       return `${String(row.completedOn)}|${String(row.slug)}`;
     case "ai_summary":
       return `${String(row.kind)}|${String(row.periodStart)}`;
+    case "workout":
+    case "workout_set": {
+      const id = row.id;
+      if (typeof id !== "number" && typeof id !== "string") {
+        throw new Error(`${entity} row has no id`);
+      }
+      return String(id);
+    }
     default: {
       const clientId = row.clientId;
       if (typeof clientId !== "string" || clientId.length === 0) {
