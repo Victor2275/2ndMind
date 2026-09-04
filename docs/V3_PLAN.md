@@ -613,8 +613,30 @@ People* — Applications is gone.
 A stuck entry stays in the outbox with a persistent badge, one screen to inspect and fix it, and
 an escalating warning past 24 hours. Nothing is ever discarded.
 
-**Done when:** a deliberately malformed entry survives ten launches, stays visible, and syncs
-after being corrected.
+**Done when:** ~~a deliberately malformed entry survives ten launches, stays visible, and syncs
+after being corrected.~~ **Built 2026-09-05, and the criterion is a test** — `stuck.test.ts`
+enqueues a malformed entry, has the server reject it, relaunches ten times (closing and
+reopening IndexedDB, which is what a cold start does), and asserts after each that the op is
+still there, still failed, still carrying its payload and its reason. Then it requeues and
+watches it arrive. **D-160.**
+
+**What was built.** `/private/sync` lists everything the server has not accepted, says why in a
+sentence, and offers one action: send it again. The badge escalates and never fades — a quiet
+count, then the age once something has waited a day, then a destructive-coloured *"not sent"*
+for a rejection. Badge and screen read from the same pure module, so they cannot disagree.
+
+**The decision inside it: there is no delete button.** An entry in that list is the only copy of
+something he wrote, and the app offering to bin it at the moment it is being unhelpful is how a
+log stops being trusted. A test fails if a button matching /delete|discard|remove/ ever appears
+there, because that is the obvious thing for a later change to add.
+
+**The messages are rewritten, not printed.** The raw text is Zod's or Postgres's or a status
+code, none of it addressed to the person holding the phone. A validation rejection now says the
+server would not accept the contents *and that the copy on the phone is safe*, which is the fact
+that matters at that moment.
+
+**Failure outranks age.** A rejected op will still be there next week, so calling it "waiting"
+is a claim that gets more wrong the longer it stands.
 
 > ### ⚑ Milestone A — 2026-09-18
 > **2ndMind is on the home screen. It logs with no signal and syncs on reconnect.**
@@ -623,6 +645,13 @@ after being corrected.
 > Now also carries the criterion moved out of §1.1: a **cold start with the network off opens
 > on the dashboard**, not on the offline page. That needs the precached shell, the local store
 > and offline auth all present, so it could never have been true at §1.1.
+>
+> **Answered 2026-09-05.** §7b's ordering problem is closed by building §2.1 early rather than
+> by moving the date: a cold start with the radio off now opens on the cached dashboard —
+> today's tasks, what has been logged, recent training — instead of the offline page. It is
+> read-only, so *"logs with no signal"* is still not literally true until the form itself is
+> precached (§2.2). **Milestone A is worth restating as what it now delivers**, and that is
+> still Victor's call.
 
 ---
 
@@ -630,8 +659,32 @@ after being corrected.
 
 Milestone B: nothing needs signal.
 
-- **2.1 · Cached reads — 10h.** Today, Athletics, Academics + Calendar rendered from the local
-  store. Every panel shows the sync time — a cached screen must read as cached.
+- **2.1 · Cached reads — 10h.** ~~Today, Athletics, Academics + Calendar rendered from the local
+  store. Every panel shows the sync time — a cached screen must read as cached.~~
+  **Built 2026-09-05, ahead of Phase 2, because §7b said it had to be. D-161.**
+
+  **The app now opens with no signal.** A static page at `/cached` renders Today, Training,
+  Academics and the log out of IndexedDB; the service worker precaches it and serves it in
+  place of any `/private` navigation that fails. It could not live under `/private` — every
+  route there is `force-dynamic` and calls `requireSession()`, so rendering one needs a server,
+  which is exactly what is missing. Serving it unauthenticated is safe because the HTML holds
+  no data: every value is read from the local store in the browser, which exists only on a
+  device that has signed in and synced.
+
+  **Its scripts are precached too**, scraped from its own HTML at install. Without that the
+  page appears and never hydrates, and airplane mode gets a heading and the word "Reading…".
+
+  **A cached screen reads as cached.** The age is at the top of every view, shown whether it is
+  two minutes or two weeks; only the tone changes.
+
+  **Calendar is not in it, and says so.** Google events are not mirrored anywhere, nor are the
+  degree audit and course notes (vault markdown — that is §2.2), nor **records and charts**:
+  those are derived from the whole history (D-025) and only part of it is mirrored, so a PR
+  board built here would be wrong in the direction that matters and look authoritative. Each is
+  named on screen rather than rendered empty, because an empty panel reads as "nothing today".
+
+  **Still open:** the shell reads and does not write. Logging with no signal still needs the
+  form to have loaded once — §2.2's precached app shell is what closes that.
 - **2.2 · Public precache — 6h.** Every public route, all three resume variants including print
   layout, and `/now` with a visible "as of" date. This is `npm run freeze` (D-106) turned into a
   service-worker precache. *Done when: the portfolio and the resume render in airplane mode.*
@@ -787,7 +840,13 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 
 ---
 
-## 7b. Milestone A promises something Phase 2 builds — **found 2026-09-04**
+## 7b. Milestone A promises something Phase 2 builds — found 2026-09-04, **mostly closed 2026-09-05**
+
+> **Option (1) was taken, in part.** §2.1 was built early rather than the date moving: the app
+> now opens offline on a cached dashboard (D-161). What is still not true is the *writing* half
+> — the log form is not precached, so an entry with no signal needs the form to have loaded
+> once. That is §2.2, and it is 6h. The remaining decision is whether to pull that forward too
+> or restate Milestone A as read-offline, write-online.
 
 **The finding.** Milestone A reads *"2ndMind is on the home screen. It logs with no signal and
 syncs on reconnect."* You cannot log with no signal if you cannot **open** the app with no

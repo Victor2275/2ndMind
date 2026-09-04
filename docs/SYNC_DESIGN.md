@@ -37,7 +37,7 @@ None of these were visible from the plan. All three are cheap now and expensive 
 | Postgres rows — logs, tasks, bodyweight, rehab | **Both ways** | Outbox + pull cursor (this document) |
 | Workouts and sets | Server → phone only | Pull only — the phone logs training as a `log_entry`, and `allEfforts()` merges both sources on read so those sets still reach the records (D-159); workouts themselves come from Hevy imports on the laptop (§11.1) |
 | AI summaries | Server → phone only | Pull only; the phone never creates one |
-| Rendered vault pages — Today, Athletics, School | Server → phone only | Service-worker cache, no writes |
+| Rendered vault pages — Today, Athletics, School | Server → phone only | **Not cached.** `/cached` renders these from the local mirror instead (§2.1, D-161); the worker caches no private response, because one would survive sign-out |
 | The public site | Server → phone only | Service-worker precache (D-130) |
 | Vault markdown | **Neither** | Read-only on the phone; editing it offline was declined |
 

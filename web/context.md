@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-03
+updated: 2026-09-05
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -192,6 +192,22 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
   nothing happened.
+
+**Offline (V3 §1.7, §2.1 — D-160, D-161).** Two routes exist because a page about the network
+must not need the network:
+
+- **`/private/sync`** lists everything the outbox has not got rid of, and why. **It has no
+  delete button, deliberately** — an entry there is the only copy of something he wrote. A test
+  fails if one appears.
+- **`/cached`** is a **static** page, outside `/private` on purpose: everything under `/private`
+  is `force-dynamic` and needs a session checked on a server, which is what is missing offline.
+  The service worker precaches it and serves it for any failed `/private` navigation. It holds
+  **no data** — every value is read from IndexedDB in the browser — which is why serving it
+  without a session check is not a leak. Do not add server data to it, and do not make it
+  dynamic: either one silently kills offline, because the worker would cache a redirect to the
+  sign-in page and serve that in airplane mode.
+
+Both read the local mirror only. Every cached view shows its age, always, however small.
 
 Rules that hold the athletics side together, each with a decision entry:
 

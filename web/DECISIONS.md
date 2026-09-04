@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-03
+updated: 2026-09-05
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -26,6 +26,96 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
+
+### D-161 · The app opens with no signal, at a static route outside /private
+
+**Decision.** A new **static** page at `/cached` renders Today, Training, Academics and the log
+out of IndexedDB. The service worker precaches it at install, warms its scripts, and serves it
+in place of any `/private` navigation that fails. V3 §2.1.
+
+**Why it could not live under `/private`.** Every route there is `force-dynamic` and calls
+`requireSession()`, so rendering one needs a server — which is exactly what is missing when it
+is wanted. That is the whole reason §2.1 was not simply "add caching to the dashboard".
+
+**Why serving it without a session check is not a leak.** The HTML holds no data. It is
+headings, labels and an empty shell; every value on screen is read from IndexedDB *in the
+browser*, and that store exists only on a device that has already signed in and synced. Someone
+opening the URL on their own phone gets an empty page. Same reasoning as `SYNC_DESIGN.md` §8
+and D-128, and the same reason a Client Component may render private data it must not contain.
+
+**The worker now names `/private`, and that is new.** It reads the path to choose between the
+shell and the offline apology. It still never writes a private *response* to the cache — that
+would survive sign-out and is real personal data — and `sw-template.test.ts` now pins the
+narrower property directly: no `cache.put` may mention a private path.
+
+**Two things that look like details and are not.**
+
+*The shell's scripts are precached too*, scraped out of its own HTML at install. Without that
+the feature half-works in the worst way: the HTML is cached and serves, so the page appears,
+but React never hydrates — and since everything is read client-side, airplane mode gets a
+heading and the word "Reading…" forever. A build manifest is the right answer and is §2.2's
+job; the scrape needs no build step and over-caches by a few kilobytes.
+
+*A navigation to `/cached` itself is served the shell*, with its own query untouched. Its view
+links are plain navigations, so without this, moving from the offline Today to the offline
+Training screen lands on the offline page — the app working right up until you touched it.
+
+**A cached screen must read as cached.** The age of the data is at the top of every view, and
+is shown whether that age is two minutes or two weeks; only the tone changes. A dashboard that
+looks live and is three days old is worse than none, because it gets acted on.
+
+**What it deliberately does not show**, named on screen rather than left blank: the calendar and
+the day's summary (not mirrored — Google and the model both need the network), the degree audit
+and course notes (vault markdown, which is §2.2), and **records, charts and the adjusted-split
+table**. That last one is the interesting refusal: records are derived from the whole history
+(D-025) and only part of that history is mirrored, so a PR board computed here would be wrong
+in the one direction that matters — too low — and look authoritative. An empty panel reads as
+"nothing on today", which is a different and false claim, so each of these says why it is
+missing.
+
+**How to reverse.** Delete `app/cached/`, `components/site/cached-app.tsx`, `lib/offline/`, and
+the `SHELL_URL` half of the worker's navigation branch. Nothing else depends on them; the
+offline page goes back to catching every failed navigation.
+
+**Not done.** The shell reads and does not write — logging offline still needs the form to have
+loaded once. Closing that is §2.2's precached app shell, not this.
+
+---
+
+### D-160 · A stuck entry is held forever, explained in words, and never discarded
+
+**Decision.** V3 §1.7. `/private/sync` lists everything the server has not accepted, says why in
+a sentence, and offers one action: send it again. The badge escalates — quiet count, then age
+past 24 hours, then a destructive-coloured "not sent" for a rejection — and never fades.
+
+**There is no delete button, and that is the decision.** An entry in that list is the only copy
+of something he wrote. The app offering to throw it away, at the exact moment it is being
+unhelpful, is how a log stops being trusted — and the log's entire value is that it can be. A
+rejected op is held indefinitely and retried only when asked. There is a test that fails if a
+button matching /delete|discard|remove/ ever appears on that screen, because a delete button is
+the obvious thing for a later change to add to a list of things that will not go away.
+
+**Why the messages are rewritten.** The raw text is Zod's, or Postgres's, or an HTTP status.
+None of it is addressed to the person holding the phone, and a screen that prints it is a screen
+that gets ignored — which here means an entry that silently never arrives. A validation
+rejection now says the server would not accept the contents *and that the copy on the phone is
+safe*, which is the fact that actually matters at that moment.
+
+**Failure outranks age in the badge.** A rejected op will still be there next week, so calling
+it "waiting" is a claim that gets more wrong the longer it stands.
+
+**The screen reads only IndexedDB**, like the shell above: a page that explains why something
+has not been sent must not itself need a connection.
+
+**Verified against the section's own criterion.** `stuck.test.ts` enqueues a malformed entry,
+has the server reject it, then relaunches ten times — closing and reopening the database, which
+is what a cold start does — and asserts after each that the op is still there, still failed,
+still carrying its payload and its reason. Then it requeues and watches it arrive.
+
+**How to reverse.** Remove `/private/sync` and the `MORE` entry pointing at it, and revert the
+badge to the plain pending count. `lib/sync/outbox-view.ts` is pure and can stay.
+
+---
 
 ### D-159 · One log for training: sets in rows, applications out, and both sources feed the PRs
 

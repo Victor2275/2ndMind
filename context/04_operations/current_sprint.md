@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-04
+updated: 2026-09-05
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -413,7 +413,33 @@ until it reproduces in `npm run build`.**
         **The Training tab no longer has its own logging form.** It links to the log instead,
         which works fine on a laptop. The old form is still in the repo if entering a whole
         backdated session one exercise at a time turns out to be worse.
-  - [ ] **1.7 · Failed sync — hold, surface, retry** (6h) — next.
+  - [x] **2026-09-05 — nothing gets lost, and the app opens without signal.** **949 tests**,
+        up from 875. Two sections in one go.
+        **1.7 — entries that have not sent.** There is a screen now, at Not sent, listing
+        anything the server has not taken and saying why in plain words rather than printing
+        the error. The badge grows louder instead of quieter: a quiet count while things are
+        just waiting, the age once something has sat for a day, and red once the server has
+        actually refused it. **There is no delete button, on purpose.** An entry in that list
+        is the only copy of something you wrote, and the app offering to bin it at the moment
+        it is being annoying is how a log stops being trusted. One button: send it again.
+        I checked this the hard way rather than by reading the code — a test writes a bad
+        entry, has the server reject it, then restarts the app ten times and confirms it is
+        still there, still explained, every single time. Then it fixes it and watches it go.
+        **2.1 — the app now opens with the radio off.** This is the one you reported on the
+        4th: with no signal every page landed on "that page did not arrive", while the phone
+        was quietly holding a day of tasks and a week of training that nothing could show you.
+        Airplane mode now opens on a cached copy — what is due today, what you have logged
+        today, your last weigh-in and recent sets, and coursework by class. Every screen says
+        how old it is, always, even when that is two minutes.
+        **What it will not show you, and says so.** Your calendar, the daily summary, course
+        notes, and the PR board. The first two need the network; the records need your whole
+        training history and only part of it is on the phone, so a PR board built there would
+        be too low and look confident about it. Each of those says why it is missing rather
+        than sitting empty and reading as "nothing today".
+        **Still not true:** you can read offline but not write. Logging with no signal needs
+        the form itself cached, which is the next piece (§2.2, 6h). Worth deciding what
+        Milestone A on the 18th should claim — see §7b in the plan.
+  - [ ] **2.2 · Public precache** (6h) — also closes offline writing. Next.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright
