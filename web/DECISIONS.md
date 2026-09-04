@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-05
+updated: 2026-09-04
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -26,6 +26,166 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
+
+### D-169 · A workout is addressed by the server's id, and the mirror had never worked
+
+**Decision.** `identityOf` names `workout` and `workout_set` rows by the server's `id`. It had
+no case for them at all, so they fell through to the client-UUID branch and it threw — on every
+workout row the server sent, on every pull, since §1.2 shipped. **The workout mirror had never
+populated once.**
+
+The sync runner caught the throw and carried on, which is what a runner should do and is also
+why nobody knew. Found on 2026-09-04 by the error panel D-165 put on the dashboard, on the first
+day it had anything to show: *`workout_set row has no clientId` — 11 times, from five routes.*
+
+**Why the server's id is safe here and nowhere else.** `workouts` and `workout_sets` are
+pull-only (`SYNC_DESIGN.md` §11.1), so the phone never mints one and there is no window in which
+two devices can disagree about what a row is called. Every writable table needs a
+client-generated key precisely because a create must survive being retried; these cannot be
+created, so they do not. **If they ever become writable this case has to move to a client key
+first** — the §4a aggregate op §11.1 defers is the same piece of work.
+
+**What it cost while it was broken.** `panels.ts` re-does the athletics merge client-side, so the
+cached athletics screen has been reading an empty workout store: offline, the training page has
+been showing quick-logged sets and nothing imported from Hevy. The bug is contemporaneous with
+§1.2, so no data was lost — nothing had ever been written to lose.
+
+**The test checks every entity, not this one.** `identityOf` is three lines of `switch`, and
+what went wrong was not a wrong branch but a *missing* one. A test naming `workout_set` would
+have been written by someone who already knew; a loop over `ENTITIES` catches the next table
+added without a case, which is the same mistake one table later.
+
+**How to reverse.** Restore the `default:` fall-through and workouts stop mirroring again. There
+is no reason to, but the entry says what the symptom would be: no error on screen, an empty
+training page offline, and everything online unaffected.
+
+---
+
+### D-168 · The error panel is one line until you open it
+
+**Decision.** `ErrorPanel` is a `<details>`: a summary line naming the top problem and its
+count, with the full list and the "dealt with" buttons behind the disclosure. It shipped three
+days ago (D-165) as an open list of cards.
+
+**Why.** On its first real day it had five things to say, and five cards pushed the first task
+on `/private` to **936px** — further down than the 791px D-083 was written to fix. A panel
+reporting that something is broken had made the working part of the page unreachable. Its
+height was unbounded by construction: it grows with however many distinct things are wrong,
+which is exactly when the rest of the page matters most.
+
+**What collapsing costs.** A closed thing is read less than an open one, and that is a real
+cost, not a rounding error — D-165's whole argument was that a panel nobody reads is worthless.
+So the summary line carries the finding rather than a count: `TypeError — workout_set row has
+no clientId · 11×`. "5 errors" would have been the version that trades away the point to save
+the pixels. It is still first on the page and still in a red border; what moved behind a tap is
+the *other four* and the buttons, which are follow-up rather than news.
+
+**Native `<details>`**, not state: no hydration boundary, keyboard-accessible for free, and it
+opens before the component's JavaScript has loaded — which matters for a panel whose subject is
+things going wrong.
+
+**How to reverse.** Swap `<details>`/`<summary>` back for `<section>` and a heading. D-165's
+rule that the panel is absent when nothing is open is untouched by this and must survive any
+reversal — that is the half of it that is load-bearing.
+
+---
+
+### D-167 · Actionable content first, on every private screen
+
+**Decision.** V3 §3.1. D-083's rule — the thing you can do above the things that describe it —
+applied to the three private screens that had never had it. Measured at 390px, production build:
+
+| | before | after |
+|---|---|---|
+| `/private` | 936px | **296px** |
+| `/private/athletics` | 855px | **342px** |
+| `/private/academics` | 541px | **266px** |
+| `/private/calendar` | 297px | 297px, unchanged |
+| `/private/log` | 205px | 205px, unchanged |
+
+Desktop improved with them: `/private` 891 → 373, athletics 617 → 374.
+
+**`/private`: the schedule moved below the tasks.** D-132 measured the first task at 265px and
+the gate has passed ever since — on days with an empty calendar. On a term day the schedule is
+six or seven rows and the number was 936px. The gate never caught it because the page was only
+ever measured empty, which is the same class of failure as a test that has stopped testing
+anything. The schedule is also the wrong kind of content for the top: it is the one thing on
+that page that happens whether or not you read about it.
+
+**`/private/academics`: the list before the numbers, and three across.** Straight D-132: "Open"
+is the length of the list below it and "Overdue" is a subset of that list, so leading with them
+meant scrolling past a summary of the answer to reach the answer. `sm:grid-cols-3` also stacked
+them below 640px, spending ~290px of a phone screen on three single digits.
+
+**`/private/athletics`: rehab above the goal card.** The rehab ticks are the only thing on that
+page you can *do*; the goal card, nine chart panels and the PR tables are all things to look at.
+For a protocol that has to be done daily, 855px is the difference between a habit and a page you
+mean to open. The goal card stays above the charts, because it is the piece of reference that
+says what the charts are for.
+
+**Two screens were deliberately left alone.** Calendar and the log already passed, and changing
+a passing layout to match a pattern is how a measured improvement becomes a preference.
+
+**How to reverse.** Each is one JSX block moved within one file, and each carries a comment
+naming the number it was moved for. Reversing any of them should re-run `npm run shots` — if
+the number does not go back up, the reason given here was wrong and the entry should say so.
+
+---
+
+### D-166 · The fold check covers every private screen, and a missing marker is a fault
+
+**Decision.** V3 §3.2, **pulled ahead of §3.1** at Victor's call on 2026-09-04. `npm run shots`
+sweeps all ten private screens, five of them gated on how far down the first actionable element
+sits. The marker is renamed `data-task-list` → `data-first-action`, on the same DOM node so the
+numbers stay comparable with D-083's 791px and D-132's 265px.
+
+**Why the order was swapped.** §3.1 is a ten-hour reordering pass and §3.2 is the three hours
+that measures it. Doing the pass first meant reordering four screens by opinion against one
+screen's worth of measurement — the exact thing V3 §7's "measure, do not assume" was written
+after. The swap cost nothing: same total, same design, and §3.1 then had a before-number per
+page and a gate that fires if a panel creeps back.
+
+It paid immediately. The first sweep found `/private` at 936px, a regression on the one page
+that had been measured, invisible for as long as it took the calendar to have something in it.
+
+**Which element is "the answer" was Victor's call, not an inference:**
+
+| | the marker sits on | |
+|---|---|---|
+| today | the Due task list | "what do I do now" |
+| log | the quick capture box | getting a thought out of your head (D-164) |
+| athletics | today's rehab checklist | the only thing on the page you can tick |
+| academics | the Outstanding list | already a `TaskList`, so it came for free |
+| calendar | today's agenda | "what do I have next" |
+
+**Five screens are ungated because they carry no action at all** — now, work, tailor and hobbies
+are vault documents you sit down and read, and sync is a report on a queue. They are still
+screenshotted. Gating a page with nothing to reach would either invent an action to satisfy the
+gate or teach us to ignore the gate, and both are worse than not measuring.
+
+**A gated page with no marker is its own fault.** Otherwise the check reports nothing and the
+page passes by having lost the very thing being measured, which is how a page stops being
+checked without anyone noticing. Verified by gating `/private/hobbies`, which has no marker:
+exit 1, with the reason named.
+
+**The measurement is settled, not instantaneous.** It reads the number twice half a second
+apart until two readings agree. Without that it is a race it loses about half the time: every
+private page streams, the boundaries around the schedule and the summaries use
+`fallback={null}`, and `networkidle` fires while the response is still open. Measured in one
+sweep, same build and same server: **208px at 360 wide and 936px at 390** — the difference being
+whether the schedule had arrived. The low number is not a better layout, it is an unfinished
+page. A racy gate is worse than no gate: it passes often enough to look healthy and fails often
+enough to be dismissed as flaky. The screenshot is taken after settling for the same reason.
+
+**The gate was verified in both directions.** Lowered to 250px it fails with exit 1 on four
+pages; restored to 500px it passes with exit 0. A gate that has never fired is not known to be a
+gate — D-083's rule, applied to D-083's own gate.
+
+**How to reverse.** Set `gated: false` on every row of `PRIVATE_PAGES` and the sweep becomes
+screenshots again. Drop `settledFold` and the numbers become noise; do not drop it without
+replacing it with something that waits.
+
+---
 
 ### D-165 · Errors go to this app's own endpoint, not to a vendor
 
@@ -2739,7 +2899,8 @@ passes with exit 0. A gate that has never fired is not known to be a gate.
 The script also reports a redirect to `/signin`, so a rejected cookie cannot silently become a
 screenshot of the sign-in page recorded as a healthy layout.
 
-**How to reverse.** Delete the private block and `data-task-list` from `task-list.tsx`, and
+**How to reverse.** Delete the private block and `data-first-action` from `task-list.tsx`
+(renamed from `data-task-list` by D-166), and
 drop `--env-file-if-exists` from the `shots` script.
 
 ---

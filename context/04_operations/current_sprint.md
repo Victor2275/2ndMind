@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-05
+updated: 2026-09-04
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -509,8 +509,37 @@ until it reproduces in `npm run build`.**
         changing and the queue quietly growing for a week. Now it says so.
         I applied the database change (`0006_error_reports`) with your go-ahead — one new
         table, nothing touched that already existed.
-  - [ ] **2.5 · Device checklist** (2h) — next.
-  - [ ] **2.3 · Offline full-text search** (6h) — deferred 2026-09-04, after §2.5.
+  - [x] **2026-09-04 — a checklist for the phone, and the app measures its own screens.**
+        **1077 tests**, up from 1069, and `npm run shots` now passes on every private screen.
+        **§2.5 is done: `docs/DEVICE_CHECKLIST.md`.** How to plug the Samsung into the laptop
+        and see what it is really doing, and a ten-minute list to run after a deploy — install,
+        icon, the airplane-mode round trip, showing the portfolio with no signal, whether you
+        can reach things one-handed. Two corrections in it are worth knowing now: test offline
+        with **airplane mode**, not Chrome's Offline checkbox, which lies about installed apps;
+        and a **stale home-screen icon is not a bug** — Android keeps the old one for days, and
+        the fix is to uninstall, clear the site data and reinstall.
+        **§3.2 was moved ahead of §3.1, and that is the whole story of today.** §3.1 is ten
+        hours of moving things around on screen; §3.2 is the three hours that measures whether
+        moving them helped. Doing them in the planned order meant rearranging four screens on
+        opinion. Same work, same total, better order.
+        **It found a regression on the first run.** Your dashboard was measured at 265px back in
+        August and has passed ever since — but only ever on days when your calendar was empty.
+        On a real term day the schedule panel pushed the first task to **936px**, further down
+        than the problem the check was written to catch. The schedule now sits below your tasks.
+        **Three screens got the same treatment**, measured on a phone before and after: Today
+        936px → **296px**, Training 855px → **342px**, Coursework 541px → **266px**. Calendar
+        and the log already passed and I left them alone. On Training that means today's rehab
+        ticks are now the first thing on the page instead of the ninth — for something that has
+        to be done daily, that is the difference between a habit and a page you mean to open.
+        **The error panel was part of the problem.** Five things had gone wrong, and five open
+        cards were what buried the dashboard. It is now one line that names the top problem,
+        with the rest one tap away.
+        **And it caught a real bug that had been silent since the start.** The panel's first
+        real content was the phone failing to store workouts — every single time, for as long as
+        syncing has existed. Nothing on screen ever said so. It means that offline, your training
+        page has been showing what you logged by hand and nothing imported from Hevy. Fixed, with
+        a test that now checks every table rather than the one that broke.
+  - [ ] **2.3 · Offline full-text search** (6h) — deferred 2026-09-04. Next code item.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

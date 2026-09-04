@@ -770,9 +770,18 @@ Milestone B: nothing needs signal.
   on a Samsung produces no log anyone will ever read.
 
   **1069 tests**, up from 1015. Migration `0006_error_reports` applied to Neon the same day.
-- **2.5 · Device checklist — 2h.** USB remote debugging documented, plus a per-release manual
-  list: install, airplane-mode log, reconnect, icon, thumb reach. *(Biometric dropped from the
-  list — D-158 switched the lock off.)*
+- **2.5 · Device checklist — 2h.** **Built 2026-09-04 → `docs/DEVICE_CHECKLIST.md`.** How to
+  attach Chrome DevTools to the Samsung over USB, a ten-minute per-release list (install, icon,
+  the offline round trip, the portfolio with no signal, thumb reach, the dashboard), and a
+  symptom table for when one fails. *(Biometric dropped — D-158 switched the lock off.)*
+
+  Two things in it are corrections rather than notes. **Test offline with airplane mode, not
+  DevTools' Offline checkbox**, which lies about installed PWAs. And **a stale launcher icon is
+  not a code problem** — Android caches it for days, and the fix is uninstall, clear site data,
+  reinstall.
+
+  It deliberately excludes anything a test could check. If a step could be automated it belongs
+  in the suite; this list is only the things that cannot be, which is why it is short.
 
 > ### ⚑ Milestone B — ~2026-10-18
 > **Everything works with no signal, including showing the portfolio to a stranger.**
@@ -783,17 +792,57 @@ Milestone B: nothing needs signal.
 
 Milestone C: it stops feeling like a website.
 
-- **3.1 · Mobile layout and ordering pass — 10h.** D-083's fix applied to every private screen:
-  actionable content first, reference and charts below.
-- **3.2 · `shots.mjs` extension — 3h.** Report scroll depth to first actionable element on every
-  private screen. Measurement over opinion — the rule that caught 791px and 1.33 pages.
+- **3.2 · `shots.mjs` extension — 3h.** **Built 2026-09-04, and pulled ahead of §3.1. D-166.**
+  All ten private screens swept, five gated on how far down the first actionable element sits.
+
+  **The order was swapped on purpose.** §3.1 is ten hours of reordering and §3.2 is the three
+  hours that measures it; doing the pass first meant reordering four screens by opinion against
+  one screen's worth of measurement, which is what §7's "measure, do not assume" was written
+  after. Same total, same design, and §3.1 got a before-number per page.
+
+  It paid on the first run: `/private` measured **936px**, a regression on the one page that had
+  ever been measured. D-132 got it to 265px and the gate passed ever since — on days with an
+  empty calendar. Nobody had measured it on a term day.
+
+  **A gated page with no marker is a fault**, or the check reports nothing and the page passes by
+  having lost the thing being measured. **The measurement is settled, not instantaneous** — every
+  private page streams, and the same sweep read 208px and 936px on the same page depending on
+  whether the schedule had arrived. Gate verified both ways: 250px fails on four pages, 500px
+  passes clean.
+- **3.1 · Mobile layout and ordering pass — 10h.** **Built 2026-09-04. D-167, D-168.** D-083's
+  fix applied to the three private screens that never had it, measured at 390px:
+
+  | | before | after |
+  |---|---|---|
+  | `/private` | 936px | **296px** |
+  | `/private/athletics` | 855px | **342px** |
+  | `/private/academics` | 541px | **266px** |
+
+  The schedule moved below the tasks on the dashboard; the stats moved below the list on
+  academics and went three-across on a phone; the rehab checklist moved above the goal card on
+  athletics. Calendar (297px) and the log (205px) already passed and were left alone —
+  changing a passing layout to match a pattern turns a measured improvement into a preference.
+
+  **The error panel became a one-line disclosure (D-168).** Five open cards were what put
+  `/private` at 936px: a panel reporting that something is broken had made the working part of
+  the page unreachable. Its summary line names the top problem rather than counting them, which
+  is the part worth keeping.
+
+  **And it found a real bug (D-169).** The panel's first real content was `workout_set row has
+  no clientId`, 11 times, from five routes: `identityOf` had no case for `workout`/`workout_set`,
+  threw on every pull, and the sync runner swallowed it — **the workout mirror had never
+  populated once**. Offline, the training page had been showing quick-logged sets and nothing
+  imported from Hevy. Fixed by addressing them with the server's `id`, which is safe only
+  because they are pull-only.
 - **3.3 · Gestures — 6h.** Swipe to complete/delete with an undo toast (`sonner` and soft-delete
   already exist), pull to refresh wired to the outbox flush, `navigator.vibrate` on save and a
   distinct pattern on sync failure.
 - **3.4 · Motion — 3h.** Static gradient below the mobile breakpoint; sheet and save transitions
   added. Narrows D-007, does not reverse it.
-- **3.5 · Icon long-press shortcuts — 2h.** "Log training", "Log application", "End of day",
-  each straight into its form.
+- **3.5 · Icon long-press shortcuts — 2h.** "Log training", "Quick note", "End of day", each
+  straight into its form. *("Log application" was dropped 2026-09-04: D-159 removed applications
+  from the log, and the Google Sheet owns them. Victor picked the capture box (D-164) to replace
+  it — the unstructured note is the thing most worth reaching in one press.)*
 - **3.6 · AI offline — 2h.** Stored summaries (D-124) render with their date when offline.
 - **3.7 · Playwright offline suite — 5h.** Drives the real service worker offline and back.
   Covers what 1.4 cannot: the browser's actual caching behaviour.

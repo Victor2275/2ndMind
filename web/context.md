@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-05
+updated: 2026-09-04
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -192,10 +192,27 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
   nothing happened.
+- `workouts` / `workout_sets` — pull-only, and mirrored by the server's `id` rather than a
+  client key (D-169), which is safe *only* while the phone cannot create one. Making them
+  writable means giving them a client key first.
 - `error_reports` — crash reports from this app's own code (D-165). **Not syncable** and not in
   `ENTITIES`: diagnostics are one-directional and disposable. Rows are **counted, not
   accumulated** — one per fingerprint, upserted — because a render loop otherwise makes this the
   largest table in the database.
+
+**Layout (V3 §3.1–3.2 — D-166, D-167).** `npm run shots` gates five private screens on how
+far down the page the first actionable element sits, marked `data-first-action`. Three rules
+that are easy to break by accident:
+
+1. **A gated page must carry the marker.** Removing it does not make the page pass, it fails
+   the sweep by name — otherwise a page stops being checked with nobody noticing.
+2. **Actionable first.** The thing you can do goes above the numbers, charts and prose that
+   describe it. Every reordering carries a comment naming the pixel number it was made for.
+3. **Measure on a page with content in it.** `/private` passed for weeks at 265px and was
+   936px on a term day, because it had only ever been measured with an empty calendar.
+
+The sweep settles before reading — private pages stream, and an unsettled read is a smaller,
+wrong number. `docs/DEVICE_CHECKLIST.md` is the fourth gate, for what a pixel cannot say.
 
 **Errors (V3 §2.4, D-165).** Reports go to `/api/errors` and Neon — **never to a vendor**.
 Three rules that are easy to break by accident:
