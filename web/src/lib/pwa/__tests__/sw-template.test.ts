@@ -30,14 +30,37 @@ describe("the service worker's caching policy", () => {
     expect(template).toContain("__BUILD_ID__");
   });
 
-  it("precaches nothing except the public offline page", () => {
+  it("precaches only the two public static pages", () => {
+    // The offline apology and the app shell (§2.1). Both are static and hold no data — every
+    // value the shell shows is read from IndexedDB in the browser. A third `cache.add` here
+    // is the thing to look at hard.
     const added = [...code.matchAll(/cache\.add\w*\(/g)];
-    expect(added).toHaveLength(1);
+    expect(added).toHaveLength(2);
     expect(code).toContain('const OFFLINE_URL = "/offline"');
+    expect(code).toContain('const SHELL_URL = "/cached"');
   });
 
-  it("never names a private route", () => {
-    expect(code).not.toMatch(/["'`]\/private/);
+  it("warms only content-hashed build assets, never a page", () => {
+    // The shell's own scripts, scraped from its HTML, so it can hydrate with no network.
+    // Anything matched here is written to the cache, so the pattern must not be able to catch
+    // a document URL.
+    const pattern = code.match(/html\.match\(([^)]+)\)/)?.[1] ?? "";
+    // Written with escaped slashes, being a regex literal in the source.
+    expect(pattern).toContain(String.raw`\/_next\/static\/`);
+    expect(pattern).not.toContain("/private");
+  });
+
+  it("names a private route only to route it, never to cache it", () => {
+    // The worker has to recognise a failed /private navigation to hand over the shell (§2.1).
+    // What it must never do is write a private *response* to disk — that survives sign-out and
+    // is real personal data. So: the path may be read, and must not reach a cache write.
+    const writes = [...code.matchAll(/cache\.put\(([^;]*)\)/g)].map((m) => m[1]);
+    expect(writes.length).toBeGreaterThan(0);
+    for (const write of writes) expect(write).not.toContain("/private");
+
+    // And the only place the string appears at all is the navigation branch.
+    const mentions = [...code.matchAll(/["'`]\/private/g)];
+    expect(mentions.length).toBeLessThanOrEqual(2);
   });
 
   it("only ever caches GET", () => {
@@ -59,7 +82,10 @@ describe("the service worker's caching policy", () => {
     const paths = [...code.matchAll(/url\.pathname\.startsWith\("([^"]+)"\)/g)].map(
       (match) => match[1],
     );
-    expect(new Set(paths)).toEqual(new Set(["/_next/static/", "/icons/"]));
+    // `/private/` appears among these because the navigation branch reads it to choose a
+    // fallback page; it is a routing decision and never a `cache.put`, which the test above
+    // pins separately.
+    expect(new Set(paths)).toEqual(new Set(["/_next/static/", "/icons/", "/private/"]));
   });
 
   it("ignores other origins", () => {

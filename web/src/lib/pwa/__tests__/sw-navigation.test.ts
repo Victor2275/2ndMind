@@ -33,6 +33,8 @@ type FetchEventLike = {
 function load(options: {
   fetch: typeof globalThis.fetch;
   offlineHtml?: string | null;
+  /** The cached app shell (§2.1). Absent by default — a worker that installed before it. */
+  shellHtml?: string | null;
   onLine?: boolean;
 }) {
   const handlers = new Map<string, Handler>();
@@ -45,13 +47,22 @@ function load(options: {
     skipWaiting: () => {},
   };
 
+  const page = (html: string) => new Response(html, { headers: { "content-type": "text/html" } });
+
   const cache = {
-    match: async (url: string) =>
-      url === "/offline" && options.offlineHtml !== null
-        ? new Response(options.offlineHtml ?? "<html><head></head><body>offline</body></html>", {
-            headers: { "content-type": "text/html" },
-          })
-        : undefined,
+    match: async (url: string) => {
+      if (url === "/offline") {
+        return options.offlineHtml === null
+          ? undefined
+          : page(options.offlineHtml ?? "<html><head></head><body>offline</body></html>");
+      }
+      if (url === "/cached") {
+        return options.shellHtml == null
+          ? undefined
+          : page(options.shellHtml || "<html><head></head><body>shell</body></html>");
+      }
+      return undefined;
+    },
     put: async () => {},
     add: async () => {},
   };
@@ -181,6 +192,73 @@ describe("a navigation that keeps failing", () => {
     const result = await response();
 
     expect(result.status).toBe(503);
+  });
+});
+
+describe("the cached app shell (§2.1)", () => {
+  const shell = "<html><head></head><body>shell</body></html>";
+
+  it("serves the shell for a private navigation, not the apology", async () => {
+    // The whole point of §2.1. Before this, every /private navigation with no signal landed on
+    // the offline page — while the local store held a day of tasks and a week of training that
+    // no screen could reach.
+    const handlers = load({ fetch: flaky(99), shellHtml: shell, onLine: false });
+    const { event, response } = navigateTo("/private/athletics");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain("shell");
+    expect(html).toContain("/cached?from=");
+    expect(html).toContain(encodeURIComponent("/private/athletics"));
+  });
+
+  it("keeps the public site on the offline page, which has something to say", async () => {
+    // The portfolio is not mirrored anywhere — that is §2.2 — so the shell would have nothing
+    // to render for it.
+    const handlers = load({ fetch: flaky(99), shellHtml: shell, onLine: false });
+    const { event, response } = navigateTo("/projects/proof");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain("offline");
+    expect(html).toContain("/offline?from=");
+  });
+
+  it("keeps a navigation to the shell on the shell, with its own query intact", async () => {
+    // Its view links are plain navigations. Rewriting the query here would turn
+    // `?from=/private/athletics` into `?from=/cached?from=...` and every offline screen would
+    // render Today — the app working right up until you touched it.
+    const handlers = load({ fetch: flaky(99), shellHtml: shell, onLine: false });
+    const { event, response } = navigateTo("/cached?from=%2Fprivate%2Fathletics");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain('history.replaceState(null,"","/cached?from=%2Fprivate%2Fathletics")');
+  });
+
+  it("falls back to the offline page when the shell was never cached", async () => {
+    // A worker that installed before the shell existed, or an install where its fetch failed.
+    // Degrading to the old behaviour beats a blank tab.
+    const handlers = load({ fetch: flaky(99), shellHtml: null, onLine: false });
+    const { event, response } = navigateTo("/private");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain("/offline?from=");
+  });
+
+  it("still prefers the network — the shell is a fallback, not a cache-first app", async () => {
+    // Serving the shell when the server is reachable would show yesterday's data to someone
+    // holding a working connection.
+    const handlers = load({ fetch: flaky(0), shellHtml: shell });
+    const { event, response } = navigateTo("/private");
+
+    handlers.get("fetch")!(event);
+    expect(await (await response()).text()).toBe("the page");
   });
 });
 

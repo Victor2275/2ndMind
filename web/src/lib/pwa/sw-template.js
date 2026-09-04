@@ -27,23 +27,79 @@ const BUILD_ID = "__BUILD_ID__";
 const CACHE = `2ndmind-shell-${BUILD_ID}`;
 
 /**
- * The only thing precached at install: the page shown when a navigation fails with no
- * network. It is public and static, so caching it carries nothing sensitive.
+ * The page shown when a *public* navigation fails with no network. Static, so caching it
+ * carries nothing sensitive.
  */
 const OFFLINE_URL = "/offline";
+
+/**
+ * The app as it exists on the phone (§2.1). Also static and also empty — every value it shows
+ * is read from IndexedDB in the browser, so what is cached here is chrome, not data.
+ *
+ * This is what makes the app openable with no signal at all. Without it, every navigation
+ * under /private failed straight to the offline page, which is a dead end: the local store had
+ * a day of tasks and a week of training in it and no screen could reach them.
+ */
+const SHELL_URL = "/cached";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
       // `reload` bypasses the HTTP cache, so a fresh install cannot pick up a stale copy of
-      // the offline page from the browser's own cache.
+      // either page from the browser's own cache.
+      //
+      // Added one at a time rather than with `addAll`, which is atomic: if the shell 404s on
+      // an older deploy, `addAll` would fail the whole install and leave the worker without
+      // even the offline page. A degraded install beats no install.
       await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+      try {
+        await cache.add(new Request(SHELL_URL, { cache: "reload" }));
+        await warmShell(cache);
+      } catch {
+        // Falls back to the offline page for private navigations too.
+      }
     })(),
   );
   // Deliberately no skipWaiting() here. A new worker waits until the user accepts the reload
   // prompt, so the app cannot swap its code out from under a half-written log entry.
 });
+
+/**
+ * Cache the scripts and styles the shell needs to run.
+ *
+ * Without this the feature half-works in the worst possible way: the HTML is cached and
+ * serves, so the page appears, but React never hydrates because its chunks were never fetched
+ * — and the shell reads everything from IndexedDB in the browser, so what he gets in airplane
+ * mode is a heading and the word "Reading…" forever.
+ *
+ * The URLs are scraped out of the shell's own HTML rather than read from a build manifest.
+ * A manifest is the right answer and is §2.2's job; this is the version that fits in §2.1 and
+ * needs no build step. It over-caches slightly — a couple of shared chunks the shell would
+ * have pulled anyway — which costs kilobytes and nothing else.
+ *
+ * Every fetch is individually tolerant. One asset 404ing after a deploy must degrade the
+ * shell, not fail the install and leave the phone with no worker at all.
+ */
+async function warmShell(cache) {
+  const html = await (await cache.match(SHELL_URL))?.text();
+  if (!html) return;
+
+  // The backslash in the class matters: these URLs also appear inside escaped JSON in the
+  // page's inline scripts, as `\"/_next/static/….js\"`, and without it every one of them is
+  // scraped a second time with a trailing backslash — a guaranteed 404 per asset.
+  const urls = new Set(html.match(/\/_next\/static\/[^"'\s>\\]+/g) ?? []);
+  await Promise.all(
+    [...urls].map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: "reload" });
+        if (response.ok) await cache.put(url, response);
+      } catch {
+        // One missing chunk is not worth failing the install over.
+      }
+    }),
+  );
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -103,24 +159,42 @@ self.addEventListener("fetch", (event) => {
           }
 
           {
-            // Still nothing. Hand over the offline page, and tell it what was being loaded so
-            // its Retry button goes back to the right place rather than to the dashboard.
+            // Still nothing. Two destinations, and which one matters more than it looks.
+            //
+            // A private navigation goes to the cached shell, which renders today's tasks, the
+            // log and recent training out of IndexedDB (§2.1). The offline page can only
+            // apologise; the shell is the app, minus the network.
+            //
+            // A public navigation goes to the offline page. The portfolio is not mirrored
+            // anywhere — that is §2.2 — so there would be nothing for the shell to show.
             const cache = await caches.open(CACHE);
-            const offline = await cache.match(OFFLINE_URL);
+            // `/cached` itself is included: its own view links are plain navigations, so
+            // without this, moving from the offline Today to the offline Training screen would
+            // land on the offline page — the app working until you touched it.
+            const isShell = url.pathname === SHELL_URL;
+            const wantsApp =
+              isShell || url.pathname === "/private" || url.pathname.startsWith("/private/");
+            const shell = wantsApp ? await cache.match(SHELL_URL) : null;
+            const offline = shell ?? (await cache.match(OFFLINE_URL));
             if (!offline) {
               return new Response("Offline", { status: 503, statusText: "Offline" });
             }
+            const destination = shell ? SHELL_URL : OFFLINE_URL;
 
             // Rebuilt rather than returned as-is: a cached Response's `url` is the cache key,
             // and the page needs the failed path. A redirect would lose the SPA history and a
             // header would not survive into the document, so it goes in the body's own URL via
             // a fresh Response — the page reads it from `location.search`.
             const path = new URL(request.url).pathname + new URL(request.url).search;
+            // A request already aimed at the shell keeps its own query — rewriting it would
+            // turn `?from=/private/athletics` into `?from=/cached?from=...` and every offline
+            // screen would render Today.
+            const target = isShell ? path : `${destination}?from=${encodeURIComponent(path)}`;
             const html = await offline.text();
             return new Response(
               html.replace(
                 "</head>",
-                `<script>history.replaceState(null,"","/offline?from=${encodeURIComponent(path)}")</script></head>`,
+                `<script>history.replaceState(null,"","${target}")</script></head>`,
               ),
               {
                 status: 200,
