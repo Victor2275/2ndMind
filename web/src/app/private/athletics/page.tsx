@@ -320,8 +320,32 @@ async function Training() {
         </div>
       )}
 
+      {/* Rehab first (V3 §3.1).
+          The ticks are the only thing on this page you can *do*; everything else — the goal
+          card, nine chart panels, the PR tables — is something to look at. The goal card sat
+          above them and the checklist was measured at 855px on a phone, which for a protocol
+          that has to be done daily is the difference between a habit and a page you mean to
+          open. "This week" stays alongside it because it is the other thing that changes
+          what you do today. */}
+      <section className="mt-8 grid gap-4 lg:grid-cols-2">
+        <Panel title="Today's rehab" meta={rehabItems.length > 0 ? "from the vault" : undefined}>
+          <RehabChecklist
+            items={rehabItems}
+            done={rehabDone.get(today) ?? new Set<string>()}
+            day={today}
+            history={rehabHistory}
+          />
+        </Panel>
+
+        <Panel title="This week" meta={plan.length > 0 ? "plan vs logged" : undefined}>
+          <WeekReview days={reviewDays} planFound={plan.length > 0} />
+        </Panel>
+      </section>
+
+      {/* The goal, and then everything that is evidence about it. Still above the charts,
+          because it is the one piece of reference that says what the charts are for. */}
       {goal && (
-        <section className="mt-8">
+        <section className="mt-10">
           <h2 className="text-lg font-bold tracking-tight">
             {goal.weightAdjusted ? "Weight-adjusted" : "Split"} goal
           </h2>
@@ -338,21 +362,6 @@ async function Training() {
           </div>
         </section>
       )}
-
-      <section className="mt-10 grid gap-4 lg:grid-cols-2">
-        <Panel title="Today's rehab" meta={rehabItems.length > 0 ? "from the vault" : undefined}>
-          <RehabChecklist
-            items={rehabItems}
-            done={rehabDone.get(today) ?? new Set<string>()}
-            day={today}
-            history={rehabHistory}
-          />
-        </Panel>
-
-        <Panel title="This week" meta={plan.length > 0 ? "plan vs logged" : undefined}>
-          <WeekReview days={reviewDays} planFound={plan.length > 0} />
-        </Panel>
-      </section>
 
       <section className="mt-10">
         <h2 className="text-lg font-bold tracking-tight">Trends</h2>

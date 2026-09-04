@@ -45,13 +45,14 @@ async function Outstanding() {
 
   return (
     <>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Open" value={academic.length} />
-        <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "warn" : "default"} />
-        <Stat label="Graduation" value="Jun 2028" hint="3-year track" />
-      </div>
-
-      <div className="mt-8">
+      {/* The list before the numbers that describe it, and three across rather than stacked
+          (V3 §3.1). This is D-132's fix, applied to the page it was never applied to: two of
+          these three stats restate the list below — "Open" is its length, "Overdue" is a
+          subset of it — so leading with them meant scrolling past a summary of the answer to
+          reach the answer. `sm:grid-cols-3` also stacked them below 640px, spending roughly
+          290px of a phone screen on three single digits.
+          Measured at 390px: the first task moved from 541px to the number in the sweep. */}
+      <div className="mt-6">
         <Panel title="Outstanding">
           {failure ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
@@ -65,6 +66,12 @@ async function Outstanding() {
             />
           )}
         </Panel>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+        <Stat label="Open" value={academic.length} />
+        <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "warn" : "default"} />
+        <Stat label="Graduation" value="Jun 2028" hint="3-year track" />
       </div>
     </>
   );
@@ -127,10 +134,11 @@ export default function AcademicsPage() {
       <Suspense
         fallback={
           <>
-            <SkeletonStats />
-            <div className="mt-8">
+            {/* Same order as the real thing, or the list jumps when it arrives. */}
+            <div className="mt-6">
               <SkeletonPanel rows={3} />
             </div>
+            <SkeletonStats />
           </>
         }
       >

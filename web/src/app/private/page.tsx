@@ -537,12 +537,6 @@ export default function TodayPage() {
         <Broken />
       </Suspense>
 
-      <Suspense fallback={null}>
-        <div className="mt-6">
-          <Today />
-        </div>
-      </Suspense>
-
       <Suspense
         fallback={
           <>
@@ -554,6 +548,22 @@ export default function TodayPage() {
         }
       >
         <Tasks />
+      </Suspense>
+
+      {/* Below the tasks, not above them (V3 §3.1).
+          D-132 measured the first task at 265px and the gate has passed ever since — on days
+          with nothing in the calendar. On a term day the schedule panel is six or seven rows,
+          and the first task was measured at **936px**: further down than the 791px D-083 was
+          written to fix. The gate never caught it because the page was only ever measured
+          empty, which is the same class of mistake as a test that has stopped testing
+          anything.
+          The schedule is also the wrong kind of content for the top: you cannot act on it.
+          It says where you have to be, and being somewhere at a fixed time is the one thing
+          on this page that happens whether or not you read about it. */}
+      <Suspense fallback={null}>
+        <div className="mt-8">
+          <Today />
+        </div>
       </Suspense>
 
       {/* Last, and after the tasks it describes.

@@ -83,27 +83,63 @@ function Row({ error }: { error: ErrorView }) {
   );
 }
 
+/**
+ * One line by default, the list one tap away (V3 §3.1).
+ *
+ * It shipped as an open list of full-height cards, and on its first real day it had five
+ * things to say — which pushed the first task on the dashboard to **936px**, past the 791px
+ * D-083 was written to fix. That is the panel undoing the page it sits on: a report about
+ * something being broken had made the working part unreachable.
+ *
+ * Collapsing costs something real — a closed thing is read less than an open one — so the
+ * summary line does the work instead. It names the top problem and its count, in a red border,
+ * above everything else on the page. What is behind the disclosure is the *other four* and the
+ * "dealt with" buttons, which are follow-up rather than news.
+ *
+ * `<details>` rather than state: no hydration boundary, keyboard-accessible for free, and it
+ * opens before this component's JavaScript has loaded.
+ */
 export function ErrorPanel({ errors }: { errors: ErrorView[] }) {
   if (errors.length === 0) return null;
 
+  const [worst] = errors;
+  const others = errors.length - 1;
+
   return (
-    <section className="mt-8">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-semibold tracking-tight">Something is broken</h2>
-        <span className="font-mono text-[0.65rem] text-muted-foreground tabular-nums">
-          {errors.length}
-        </span>
-      </div>
-      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-destructive/40 bg-destructive/5">
+    <details className="group mt-6 overflow-hidden rounded-lg border border-destructive/40 bg-destructive/5">
+      <summary className="cursor-pointer list-none px-4 py-3 transition-colors hover:bg-destructive/10 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-baseline gap-2">
+          <span className="shrink-0 font-mono text-[0.7rem] text-muted-foreground transition-transform group-open:rotate-90">
+            &rsaquo;
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold tracking-tight text-foreground">
+              Something is broken
+            </p>
+            {/* The top problem by name, not just a count. "5 errors" tells you nothing you can
+                act on; "workout_set row has no clientId, 11 times" is the whole finding. */}
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {worst.name}
+              {worst.message && ` — ${worst.message}`}
+            </p>
+          </div>
+          <span className="tabular shrink-0 font-mono text-[0.6rem] text-muted-foreground">
+            {worst.seenCount}×{others > 0 && ` +${others}`}
+          </span>
+        </div>
+      </summary>
+
+      <ul className="divide-y divide-border border-t border-destructive/40">
         {errors.map((error) => (
           <Row key={error.id} error={error} />
         ))}
       </ul>
+
       {/* Said plainly, because "dealt with" is not "fixed" and the difference matters when the
           same thing reappears next week. */}
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="px-4 py-3 text-xs text-muted-foreground">
         Marking one dealt with hides it. It comes back on its own if it happens again.
       </p>
-    </section>
+    </details>
   );
 }
