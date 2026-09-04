@@ -27,6 +27,72 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-164 · A capture box above the tabs, an unsorted pile below it, and tabs that wrap
+
+**Two reports from Victor on 2026-09-05**, both about what is on screen rather than what is
+stored.
+
+**The tab row wraps instead of scrolling.** It was one horizontally-scrolling line, which kept it
+to a single row of pixels and hid whatever did not fit — on a 360px phone that was the last two
+categories, with nothing on screen to say they existed. A tab you cannot see is a tab that does not
+get used. Two short rows cost about 30px and hide nothing. The original choice was deliberate and
+was simply wrong about which cost mattered.
+
+**A capture box, above the tabs, on every category.** One field, one send button. The whole point is
+that it asks nothing: a capture box that wants a category is a filing form, and filing is exactly
+the work being deferred — the same reasoning `addInboxNote` already records for tasks.
+
+*Note or task, and it defaults to note.* They go to different places and only the writer knows
+which a sentence is — "that stroke cue worked" is a note, "email the coach" is a task with a
+checkbox and a due date it may one day need. Note is the default because it is the cheaper mistake:
+a note can be filed later, whereas a task nobody meant sits in a list demanding to be ticked. A
+task goes to `source: "inbox"`, which is the dashboard's existing triage list, so nothing new was
+invented for it.
+
+*It restores what was typed if the save fails.* React blanks a function-action form as soon as the
+action returns, success or not. That matters more here than anywhere else in the app: the entire
+premise is that a thought is captured before it is lost.
+
+**`note` is a real category that gets no tab.** `Category.capture` marks it. It summarises,
+searches and syncs like any other — it simply has no place in the row, because a sixth tab for the
+one thing meant to need no choosing would put the choice back. `TAB_CATEGORIES` is what the row
+renders; `CATEGORIES` is everything writable.
+
+**The unsorted pile.** Notes wait in their own panel above the form, with a count, and each carries
+a one-tap target per category. A select on a phone is a modal wheel, and filing has to cost less
+than writing the thing did. Filing keeps the text, moves the category, and **recomputes
+`search_text`** — that string carries the category label, so leaving it would make a filed entry
+findable under "Note" and not under "Training", which is the opposite of what filing is for.
+
+*The panel disappears completely when empty.* A second inbox is a real cost — another list that can
+silently fill up — so it earns its place by being invisible when there is nothing in it and by
+never nagging when there is.
+
+*Filing only ever moves an entry out of the pile.* `fileEntry` requires the row to be unsorted.
+Without that guard a mistyped id would silently recategorise a real training entry, with no undo —
+the log has no edit path anywhere else, and this is not the place to introduce one by accident.
+
+*Unsorted notes are kept out of the Today list*, because the pile sits directly above it and a
+duplicated row costs the vertical space this whole change is about. They join it once filed.
+
+**What this deliberately is not.** Filing does not open the form to add fields to a note. The log
+has no edit path anywhere — a mistake is deleted and re-logged — and inventing one here would be a
+second way to change a stored entry, with different rules from the first. If a note needs numbers,
+delete it and log it properly. The pile exists so the thought survives until then, not to become an
+editor. **Say so rather than implying otherwise**, and revisit if the pile turns out to fill with
+things that wanted structure.
+
+**It works offline**, on `/cached`, through `localCaptureWriter` — both destinations are writable
+entities, so both go to the outbox and are sent by the ordinary flush (D-163). Filing happens later,
+online, on a screen that needs a server anyway.
+
+**How to reverse.** Delete `components/site/quick-capture.tsx` and its two call sites; drop the
+`note` category from `CATEGORIES` (leaving it in `RETIRED_CATEGORIES` so existing notes stay
+readable); remove the `Unsorted` panel and `unsortedEntries`/`fileEntry`. The tab row: put
+`overflow-x-auto` back in place of `flex-wrap`.
+
+---
+
 ### D-163 · The log writes with no signal, and the portfolio opens without one
 
 **Decision.** V3 §2.2, two halves.

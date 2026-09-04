@@ -219,6 +219,12 @@ that can do that.
 bench press is not asked for a stroke rate. Fields outside the current shape are **unmounted, not
 hidden** — a hidden input still posts, and a value nobody meant is worse than a missing one.
 
+**`note` is a category with no tab** (D-164). `Category.capture` marks it; `TAB_CATEGORIES` is what
+the tab row renders and `CATEGORIES` is everything writable. Notes are captured through the box
+above the tabs and wait in the unsorted pile until filed. `fileEntry` only ever moves a row *out*
+of that pile — the log has no edit path anywhere else, and that guard is what stops a mistyped id
+silently recategorising a real entry.
+
 Rules that hold the athletics side together, each with a decision entry:
 
 - **Training is logged in one place, and read from two** (D-159). Sets are entered in the

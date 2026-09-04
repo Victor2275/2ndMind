@@ -608,6 +608,23 @@ page and works on a laptop, so the tab links to it. **875 tests**, up from 842.
 *The timing bar this section is measured against is now Training, Study, and Reading or
 People* — Applications is gone.
 
+**Two more fixes on 2026-09-05, from using it. D-162 and D-164.**
+
+- **A set shows only the numbers that kind of session has.** A bench press was offering a
+  distance, a time and a stroke rate — four things to read past between sets, which is most of
+  the fifteen seconds. `kind` now picks the shape, with an *every field* escape hatch, and
+  dropped fields are unmounted rather than CSS-hidden so a stale value cannot post.
+- **The tabs wrap instead of scrolling sideways**, which was hiding the last two categories on
+  a 360px screen with nothing to say they were there.
+- **A capture box above the tabs.** One line, no category — because choosing one is the work
+  being deferred. Note or task, defaulting to note. Notes wait in an *Unsorted* pile with
+  one-tap filing into a real category; the pile disappears entirely when empty. It works
+  offline too. **1015 tests**, up from 984.
+
+Filing deliberately does *not* open the form to add fields: the log has no edit path anywhere,
+and inventing one here would be a second way to change a saved entry with different rules from
+the first. Worth revisiting if the pile fills with things that wanted structure.
+
 #### 1.7 · Failed sync — hold, surface, retry — **6h**
 
 A stuck entry stays in the outbox with a persistent badge, one screen to inspect and fix it, and

@@ -463,6 +463,27 @@ until it reproduces in `npm run build`.**
         **So Milestone A is built** — on the 18th the app is installed, opens with the radio
         off, reads what is on the phone and logs into it. Every word of that is checked by
         tests and none of it by a phone, which is the one thing left and is yours.
+  - [x] **2026-09-05 (fixes) — the log page, from your two notes.** **1015 tests**, up from 984.
+        **The category tabs no longer hide.** They were one line that scrolled sideways, so on
+        your phone the last two sat off-screen with nothing to say they were there. They wrap
+        onto two short rows now. Costs about 30 pixels and hides nothing.
+        **There is a capture box at the top of the log.** One line, always there, whatever tab
+        you are on. Type it, hit save, done — no category to pick first, which is the whole
+        point: choosing where something goes is the work you are trying to put off.
+        It can be a **note** or a **task**, and it defaults to note. A note you can file later;
+        a task you did not mean sits in a list demanding to be ticked, so note is the cheaper
+        mistake. A task goes to the dashboard inbox you already have.
+        **Notes wait in an "Unsorted" pile** just above the form, with a count. Each one has a
+        row of buttons — Training, Study, Reading, People, End of day — and one tap files it.
+        The pile vanishes entirely when it is empty, because a second inbox that nags is worse
+        than no second inbox.
+        **One thing it does not do:** filing moves a note into a category, it does not open the
+        form so you can add numbers to it. Nothing in the log can be edited after saving —
+        mistakes get deleted and re-logged — and adding an editor here would be a second way to
+        change a saved entry with different rules from the first. If a note needs numbers,
+        delete it and log it properly. Tell me if the pile fills up with things that wanted
+        structure and I will reconsider.
+        **All of it works with no signal**, on the offline screen too.
   - [ ] **2.3 · Offline full-text search** (6h) — next, once you have confirmed the above.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
