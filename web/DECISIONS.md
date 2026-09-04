@@ -17,6 +17,55 @@ useful part.
 
 ---
 
+## 2026-09-04 · Private navigation read as frozen
+
+Victor reported page switches feel very slow. Measured the deployed site rather than the code:
+Vercel puts the function in `iad1` while requests enter at the `hkg1` edge, so even `/signin` —
+no database, no API call — costs 400–600ms TTFB before anything else runs. That trip is not
+ours to remove before 2026-09-20 (UCLA, `iad1` is ~60ms from there), so both fixes below target
+what *is* in reach: making the app look responsive across that latency instead of frozen by it.
+
+### D-171 · The above-the-fold entrance fade is gone; the reveal further down stays
+
+**Decision.** `.rise` is removed from the home hero, the facts grid, and the sign-in card. It
+stays on the "Most recent" / "Previous Experience" sections, the two pointer cards, the hobbies
+grid, and every `ProjectGrid` card.
+
+**Why.** `.rise` animates `opacity: 0 → 1` over 600ms. A fully transparent frame does not count
+as painted, so every element carrying it was invisible until its own animation finished. On the
+home page that meant FCP landed at ~1384ms in a session where every asset had already arrived
+by ~500ms — roughly 900ms of the page being blank on purpose. On `/signin`, the one page every
+expired private session is funnelled through and already the slowest TTFB on the site, the fade
+sat on top of that and read as the app hanging rather than the network being slow.
+
+Below the fold, the same animation costs nothing: it plays while the reader is still at the top
+of the page, and on `ProjectGrid` specifically it is load-bearing — re-keying the grid on filter
+change replays the stagger as feedback for the click, which is a different job than hiding
+first paint and is not this decision's target.
+
+**How to reverse.** Add `rise` back to the hero `<section>` ([page.tsx](src/app/page.tsx)), the
+facts `<dl>`, and the sign-in card ([signin/page.tsx](src/app/signin/page.tsx)). The keyframes
+and utility are untouched in `globals.css`.
+
+---
+
+### D-170 · Dynamic-route prefetches stay warm for 30s
+
+**Decision.** `next.config.ts` sets `experimental.staleTimes.dynamic = 30`.
+
+**Why.** Every `/private/*` route is `force-dynamic` (D-045), and Next's default for a dynamic
+route's client-side prefetch cache is 0 seconds — so the `loading.tsx` shell D-045 added, which
+qualifies these routes for prefetching at all, was discarded almost immediately. Read a page for
+more than an instant and the next tap has nothing to reuse: the skeleton itself has to wait on a
+server round trip before it can appear, which is what read as the app freezing rather than
+navigating. 30s only extends how long that already-fetched shell — layout plus the loading
+placeholder — stays reusable; every Suspense boundary past it still streams fresh data on each
+navigation, so nothing here can show stale private content.
+
+**How to reverse.** Delete the `experimental.staleTimes` block from `next.config.ts`.
+
+---
+
 ## 2026-08-30 · V3 scoping — the phone
 
 These are **planning** decisions, not decisions about code that exists. V3 turns 2ndMind into

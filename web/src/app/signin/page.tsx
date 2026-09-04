@@ -27,7 +27,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-24">
-      <div className="w-full max-w-sm rise rounded-lg border border-border bg-card/70 p-7">
+      {/* No `rise` — this is the whole page, on the path every /private visit funnels through
+          when the session has expired, and it already carries the highest TTFB on the site.
+          A 600ms fade on top of that read as the app hanging, not loading (2026-09-04). */}
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card/70 p-7">
         <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
           Private
         </p>

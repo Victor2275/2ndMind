@@ -54,8 +54,11 @@ export default function AboutPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
-      {/* Hero */}
-      <section className="flex rise flex-col gap-8 sm:flex-row sm:items-start">
+      {/* Hero. No `rise` — this is the first thing on screen, and the fade delayed FCP by
+          ~900ms on a warm load (measured 2026-09-04): opacity:0 frames don't count as painted,
+          so the hero was invisible until its own animation finished. `.rise` still does real
+          work further down, where it plays while the reader is elsewhere on the page. */}
+      <section className="flex flex-col gap-8 sm:flex-row sm:items-start">
         <div className="group relative shrink-0">
           {/* Soft teal bloom behind the portrait, brightening on hover. */}
           <div
@@ -116,11 +119,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Facts */}
-      <dl
-        className="mt-12 grid rise grid-cols-2 gap-3 sm:grid-cols-4"
-        style={{ animationDelay: "120ms" }}
-      >
+      {/* Facts. Still above the fold at most widths — same reasoning as the hero above. */}
+      <dl className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {facts.map((f) => (
           <div
             key={f.label}

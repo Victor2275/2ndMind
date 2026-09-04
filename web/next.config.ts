@@ -32,6 +32,25 @@ const nextConfig: NextConfig = {
   },
 
   /**
+   * Every `/private/*` page is `force-dynamic` (per-request auth + data), which by default
+   * means the client-side prefetch Next already performs — `loading.tsx` makes every private
+   * route eligible, per the framework's own rule that a `loading.js` boundary is what
+   * qualifies a dynamic route for prefetching at all — is discarded after 0 seconds
+   * (`staleTimes.dynamic` default). Read a page for more than an instant, tap a nav link, and
+   * there is nothing to reuse: the skeleton itself waits on a server round trip before it can
+   * appear, which is what reads as the app freezing rather than navigating (D-045 got the
+   * skeleton built; this is what keeps it usable).
+   *
+   * 30s only changes how long the already-fetched shell — the layout and the `loading.tsx`
+   * placeholder, not any page content — stays reusable. Content past each Suspense boundary
+   * still streams fresh from the server on every navigation; nothing here risks serving stale
+   * private data.
+   */
+  experimental: {
+    staleTimes: { dynamic: 30 },
+  },
+
+  /**
    * The service worker must never be served from a cache (V3 §1.1, D-146).
    *
    * `public/` is served with a long-lived `Cache-Control` by default, which is right for
