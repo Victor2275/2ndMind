@@ -646,6 +646,10 @@ is a claim that gets more wrong the longer it stands.
 > on the dashboard**, not on the offline page. That needs the precached shell, the local store
 > and offline auth all present, so it could never have been true at §1.1.
 >
+> **Built as of 2026-09-05** — §2.1 and §2.2 were pulled forward rather than the date moving, so
+> every part of this sentence now has code behind it. **Unconfirmed on a phone**, which is the
+> only thing left.
+>
 > **Answered 2026-09-05.** §7b's ordering problem is closed by building §2.1 early rather than
 > by moving the date: a cold start with the radio off now opens on the cached dashboard —
 > today's tasks, what has been logged, recent training — instead of the offline page. It is
@@ -685,9 +689,27 @@ Milestone B: nothing needs signal.
 
   **Still open:** the shell reads and does not write. Logging with no signal still needs the
   form to have loaded once — §2.2's precached app shell is what closes that.
-- **2.2 · Public precache — 6h.** Every public route, all three resume variants including print
-  layout, and `/now` with a visible "as of" date. This is `npm run freeze` (D-106) turned into a
-  service-worker precache. *Done when: the portfolio and the resume render in airplane mode.*
+- **2.2 · Public precache — 6h.** ~~Every public route, all three resume variants including print
+  layout, and `/now` with a visible "as of" date.~~ **Built 2026-09-05. D-163.** Two halves, and
+  the second was not in the original scope.
+
+  **The portfolio is precached**, from `/sitemap.xml` rather than from a list written in the
+  worker — home, `/now`, the projects index, every public project, all three resume variants, plus
+  the scripts each needs. Adding a project precaches it with no code change. Runs in `activate`
+  rather than `install` so it never delays the update prompt, and filters `/private` explicitly
+  before writing anything to disk. `/now` already prints *"Last update <date>"* (D-099), which is
+  the content's own date and better than a build stamp, so nothing was added there.
+
+  **The log now writes with no signal** — this is the half Milestone A needed. The cached shell
+  carries the *same* `LogForm`, handed a writer that puts the entry in the outbox instead of
+  posting a Server Action. Same fields, same set shapes, same chips (built from the local mirror),
+  same recovery when a save fails. An entry written on a plane is then sent by exactly the flush
+  `roundtrip.test.ts` already runs against real Postgres.
+
+  §1.7's screen is reachable there too, since it only ever read IndexedDB.
+
+  *Done when:* ~~the portfolio and the resume render in airplane mode~~ — **still Victor's**, on
+  the phone, along with the offline round trip already on his list.
 - **2.3 · Offline full-text search — 6h.** Over logs and cached content, running locally. No
   embeddings, no model cost, no monthly bill. Semantic search stays cut for the fourth time.
 - **2.4 · Error aggregation — 4h.** Sentry free tier with scrubbing rules for vault content.
@@ -842,11 +864,15 @@ renegotiate — not Phases 2–3, which is where the offline promise is actually
 
 ## 7b. Milestone A promises something Phase 2 builds — found 2026-09-04, **mostly closed 2026-09-05**
 
-> **Option (1) was taken, in part.** §2.1 was built early rather than the date moving: the app
-> now opens offline on a cached dashboard (D-161). What is still not true is the *writing* half
-> — the log form is not precached, so an entry with no signal needs the form to have loaded
-> once. That is §2.2, and it is 6h. The remaining decision is whether to pull that forward too
-> or restate Milestone A as read-offline, write-online.
+> **Closed 2026-09-05.** Option (1), in full: §2.1 and §2.2 were both built early rather than
+> the date moving (D-161, D-163). The app opens with the radio off, reads today's tasks, the log
+> and recent training from the local store, **and writes new entries into the outbox**, which the
+> ordinary flush sends on reconnect. Milestone A's words — *"it logs with no signal and syncs on
+> reconnect"* — are now literally true, and no estimate moved and nothing was cut.
+>
+> ~16h came out of Phase 2 into Phase 1, which leaves Phase 2 at §2.3 (offline search, 6h),
+> §2.4 (error aggregation, 4h) and §2.5 (device checklist, 2h). **The remaining risk is not the
+> code, it is confirmation:** every claim above is verified by tests and none of it by a phone.
 
 **The finding.** Milestone A reads *"2ndMind is on the home screen. It logs with no signal and
 syncs on reconnect."* You cannot log with no signal if you cannot **open** the app with no

@@ -205,9 +205,19 @@ must not need the network:
   **no data** — every value is read from IndexedDB in the browser — which is why serving it
   without a session check is not a leak. Do not add server data to it, and do not make it
   dynamic: either one silently kills offline, because the worker would cache a redirect to the
-  sign-in page and serve that in airplane mode.
+  sign-in page and serve that in airplane mode. It **writes** too (D-163): the same `LogForm`,
+  handed a writer that enqueues into the outbox rather than posting a Server Action.
 
 Both read the local mirror only. Every cached view shows its age, always, however small.
+
+The public site is precached from **`/sitemap.xml`** (D-163) — not from a list in the worker, so
+a new project is cached with no code change. The worker filters `/private` before writing anything
+to disk: a cached private response would survive sign-out, and this is the one file in the app
+that can do that.
+
+**A log category may declare row `shapes`** keyed off another field (D-162). Training uses it so a
+bench press is not asked for a stroke rate. Fields outside the current shape are **unmounted, not
+hidden** — a hidden input still posts, and a value nobody meant is worse than a missing one.
 
 Rules that hold the athletics side together, each with a decision entry:
 

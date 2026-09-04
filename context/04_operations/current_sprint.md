@@ -439,7 +439,31 @@ until it reproduces in `npm run build`.**
         **Still not true:** you can read offline but not write. Logging with no signal needs
         the form itself cached, which is the next piece (§2.2, 6h). Worth deciding what
         Milestone A on the 18th should claim — see §7b in the plan.
-  - [ ] **2.2 · Public precache** (6h) — also closes offline writing. Next.
+  - [x] **2026-09-05 (later) — you can now log with no signal, and the Training fix.**
+        **984 tests**, up from 949.
+        **Training no longer asks for things that do not apply.** You said a bench press was
+        offering a time and a stroke rate. Now the Kind you pick decides the fields: a lift is
+        weight and reps, an erg piece or a water session is distance, time and stroke rate,
+        conditioning is time, distance and reps. It opens on weight and reps before you pick
+        anything, since that is the common case. If a session does not fit, there is an
+        **every field** link that brings the rest back for that entry — a shape is a good
+        guess, not a rule.
+        One detail worth knowing: switching Kind clears anything typed into a field the new
+        shape does not have. That is deliberate. The alternative is that a time you typed for
+        an erg piece quietly rides along on a lift, and the whole point of the log is that its
+        numbers can be trusted.
+        **You can write a log entry with no signal.** This was the last thing standing between
+        the app and what Milestone A actually promises. The offline screen now carries the real
+        log form — same fields, same shapes, same one-tap chips, which come from entries
+        already on the phone. What you write is held and sent the moment there is a
+        connection, down the same path everything else uses.
+        **The portfolio works offline too.** Home, /now, the projects index, every project page
+        and all three resumes. The list comes from the site's own sitemap, so a new project is
+        cached automatically without anyone remembering to add it.
+        **So Milestone A is built** — on the 18th the app is installed, opens with the radio
+        off, reads what is on the phone and logs into it. Every word of that is checked by
+        tests and none of it by a phone, which is the one thing left and is yours.
+  - [ ] **2.3 · Offline full-text search** (6h) — next, once you have confirmed the above.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

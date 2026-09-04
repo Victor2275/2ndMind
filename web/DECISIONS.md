@@ -27,6 +27,97 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-163 · The log writes with no signal, and the portfolio opens without one
+
+**Decision.** V3 §2.2, two halves.
+
+**Writing offline.** The cached shell now carries the log form itself — the *same* `LogForm`,
+handed a writer that puts the entry into the outbox instead of posting a Server Action. `LogForm`
+gained one optional `write` prop; nothing else about it changed, so the set shapes, the chips, the
+sticky values and the restore-what-you-typed-on-failure all work identically offline.
+
+*Why injection rather than a branch on `navigator.onLine`.* The component stays ignorant of the
+network, which means the offline path is exercised by a test that passes it a function rather than
+one that fakes a radio — and it means there is no state in which the form has to decide, mid-submit,
+which of two write paths it is on.
+
+*Why the outbox rather than a second send path.* §1.2 built the store and §1.3 built the flush. An
+entry enqueued here is sent by exactly the code `roundtrip.test.ts` already runs against real
+Postgres. Nothing new had to be trusted, and the join is what `lib/offline/__tests__/write.test.ts`
+guards: that the offline writer builds the same row the Server Action would. That failure does not
+throw — a field parsed differently, or a missing `searchText` on a `notNull` column, looks saved on
+the phone and is rejected days later.
+
+*It reuses the reading half.* `readField`, `readRows` and `takeBodyweight` are the same functions
+the action calls. Two parsers for one form is how a field means one thing offline and another
+online, with nothing to say so.
+
+**The public precache.** The worker caches every page `/sitemap.xml` names — home, `/now`, the
+projects index, every public project, all three resume variants — plus the scripts each needs.
+
+*The list is read, not written.* A hand-maintained array is a second list to keep in step, and it
+fails silently: a project ships, nobody adds it, and it is missing from the one device that needed
+it. Adding a project now precaches it with no code change. The risk this moves is that the worker
+writes to disk whatever a fetched document names, so it filters `/private` explicitly before
+writing — belt and braces on top of "the sitemap is public by construction", which is the right
+amount of care for the one file in the app that can put private data on disk and leave it there
+after sign-out.
+
+*It runs in `activate`, not `install.`* A dozen documents and their assets would hold a new worker
+in `installing` for seconds on a phone, delaying the update prompt for pages that are a nicety —
+while the two that matter, the offline page and the app shell, are already in from install.
+
+*Assets are cached once, not once per page.* Twelve pages share most of their chunks.
+
+**`/now` already carries its "as of".** The section asked for a visible date on the cached copy;
+the page has printed *"Last update <date>"* since D-099, which is the content's own date and
+therefore better than a build date. Nothing was added.
+
+**How to reverse.** Offline writing: drop the `write` prop from `LogForm` and delete
+`lib/offline/write.ts` — the shell's log view goes back to read-only. Public precache: delete
+`precachePublic` and the `SITEMAP_URL` constant; public navigations fall back to the offline page
+again.
+
+**Still not done.** The shell's "logged today" list is a snapshot taken once, so an entry written
+there does not appear in it until a reload. Deliberate — the panels must not disagree with the
+"as of" line above them — and the page says so rather than looking like it lost something.
+
+---
+
+### D-162 · A set shows only the numbers that kind of session has
+
+**Decision.** Row fields are chosen by `kind`: a lift gets weight and reps, an erg piece and a
+water session get distance, time and stroke rate, conditioning gets time, distance and reps. Set
+type is in every shape. `lift` is the default, so the form opens ready for the common case before
+`kind` has been touched.
+
+**Why.** Victor, 2026-09-05: a bench press was offering a distance, a time and a stroke rate. Not
+merely untidy — four things to read past on a phone between sets, which is most of the fifteen
+seconds §1.6 is built around. The category's own promise is that it can be finished one-handed.
+
+**Keyed off `kind` rather than off the exercise name.** Remembering that "Bench Press" is a lift
+was the cleverer option and was declined: it guesses wrong on a new exercise and offers no obvious
+way to correct it, whereas `kind` is already the first control in the form and already sticky, so
+it costs a decision he was making anyway.
+
+**There is an escape hatch,** because a shape is a good guess and never a rule: *every field*
+reveals all of them for this entry. A form that cannot record what actually happened is worse than
+one carrying a spare field.
+
+**Hidden fields are unmounted, not hidden with CSS.** A hidden input still posts, so a split typed
+into an erg piece and then switched to a lift would arrive on the entry as a number nobody meant —
+and this form's whole claim is that its numbers can be trusted. The cost is that switching kind
+clears what was typed into a dropped field, which is the right way round.
+
+**An unknown `kind` falls back to the default shape, not to nothing,** so a category that grows a
+new kind degrades to a usable form rather than an empty one.
+
+**How to reverse.** Delete `shapes`, `shapeBy`, `defaultShape` and `always` from the Training row
+group in `lib/log/categories.ts`. `rowFieldsFor` returns every field when a group declares no
+shapes, so the form goes back to showing all of them and nothing else needs touching.
+
+---
+
 ### D-161 · The app opens with no signal, at a static route outside /private
 
 **Decision.** A new **static** page at `/cached` renders Today, Training, Academics and the log
