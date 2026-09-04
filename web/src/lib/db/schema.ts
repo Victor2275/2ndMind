@@ -347,3 +347,61 @@ export const aiSummaries = pgTable(
 
 export type AiSummary = typeof aiSummaries.$inferSelect;
 export type NewAiSummary = typeof aiSummaries.$inferInsert;
+
+/**
+ * Crash reports from this app's own code (V3 §2.4, D-137, D-165).
+ *
+ * The one unscheduled item whose absence hides every other item's failure. D-085 —
+ * `gemini-2.5-flash` retired and every AI call 404ing silently for an unknown length of time —
+ * was found by reading a dev server log by chance. V3 makes that worse before it makes it
+ * better: a failing service worker on a Samsung produces **no log anyone will ever read**, at
+ * the same moment the code holding unsynced user data moves onto that phone.
+ *
+ * **Deliberately not syncable.** It carries none of `syncColumns()` and is not in `ENTITIES`.
+ * Diagnostics are one-directional and disposable — mirroring them onto the device that
+ * produced them would spend the phone's storage on its own crash log, and a report is
+ * interesting to exactly one reader on exactly one screen.
+ *
+ * **Grouped by `fingerprint`, counted rather than accumulated.** Ten thousand copies of one
+ * broken selector is one problem, and storing ten thousand rows to say so is how a diagnostics
+ * table becomes the largest thing in the database. `seenCount` and `lastSeenAt` move; the row
+ * does not multiply.
+ */
+export const errorReports = pgTable(
+  "error_reports",
+  {
+    id: serial("id").primaryKey(),
+    /**
+     * A stable identity for "the same problem": source, error name, and the message with its
+     * variable parts removed. Computed on the client-facing boundary, in `lib/errors/report.ts`,
+     * so the server never has to parse a stack trace.
+     */
+    fingerprint: text("fingerprint").notNull(),
+    /** "browser" | "worker" | "server" — where it happened, which changes what to do about it. */
+    source: text("source").notNull(),
+    /** The error's constructor name, e.g. `TypeError`. */
+    name: text("name").notNull().default(""),
+    message: text("message").notNull().default(""),
+    /** Truncated hard. A stack is for orientation, not for archaeology. */
+    stack: text("stack").notNull().default(""),
+    /** The path it happened on, query string stripped — a query can carry anything. */
+    route: text("route").notNull().default(""),
+    /** Which deploy, from the service worker's build stamp (D-146). */
+    buildId: text("build_id").notNull().default(""),
+    /** Coarse only: the platform, not a fingerprintable string. */
+    agent: text("agent").notNull().default(""),
+    seenCount: integer("seen_count").notNull().default(1),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Set when Victor has looked at it and decided it is dealt with. */
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // What makes counting rather than accumulating possible: the upsert target.
+    uniqueIndex("error_reports_fingerprint_idx").on(t.fingerprint),
+    index("error_reports_last_seen_idx").on(t.lastSeenAt),
+  ],
+);
+
+export type ErrorReport = typeof errorReports.$inferSelect;
+export type NewErrorReport = typeof errorReports.$inferInsert;

@@ -43,6 +43,13 @@
       "when": 1788188505769,
       "tag": "0005_sync_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788507349542,
+      "tag": "0006_error_reports",
+      "breakpoints": true
     }
   ]
 }
