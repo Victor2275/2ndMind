@@ -35,6 +35,17 @@ const FILES = fs
   .filter((f) => f.endsWith(".sql"))
   .sort();
 
+/**
+ * How many migrations to apply to reproduce the outage.
+ *
+ * Found by name rather than as `FILES.length - 1`, which is what it was until a sixth
+ * migration landed and silently turned "behind" into "has the sync columns after all" — the
+ * query stopped failing and the test stopped testing anything. It said so, loudly, because the
+ * assertion below checks that the query fails *before* checking what the message says. That
+ * ordering is the only reason this was caught rather than passing vacuously forever.
+ */
+const BEFORE_SYNC_COLUMNS = FILES.findIndex((file) => file.includes("sync_columns"));
+
 /** A database frozen at some point in the migration history. */
 async function databaseAt(count: number) {
   const client = new PGlite();
@@ -59,9 +70,16 @@ let behind: Frozen;
 let current: Frozen;
 
 beforeAll(async () => {
+  // `behind` is the state Neon was actually in: everything up to, and not including, the
+  // migration that added the sync columns.
+  expect(
+    BEFORE_SYNC_COLUMNS,
+    "0005_sync_columns is gone — this test needs rewriting",
+  ).toBeGreaterThan(0);
+
   [empty, behind, current] = await Promise.all([
     databaseAt(0),
-    databaseAt(FILES.length - 1),
+    databaseAt(BEFORE_SYNC_COLUMNS),
     databaseAt(FILES.length),
   ]);
 }, 120_000);
