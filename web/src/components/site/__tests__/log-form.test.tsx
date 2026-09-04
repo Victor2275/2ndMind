@@ -92,16 +92,18 @@ describe("keypads", () => {
     render(<LogForm category={athletics} />);
 
     expect(field("sets.0.reps").inputMode).toBe("numeric");
-    expect(field("sets.0.spm").inputMode).toBe("numeric");
     expect(field("sets.0.weightLbs").inputMode).toBe("decimal");
     expect(field("bodyweightLbs").inputMode).toBe("decimal");
   });
 
-  it("leaves the duration field on the full keyboard, because m:ss needs a colon", () => {
+  it("leaves the duration field on the full keyboard, because m:ss needs a colon", async () => {
     // `numeric` here would be the plausible-looking change that makes `2:17` untypeable on a
     // phone — and it is untypeable in a way nobody notices until they are standing at an erg.
     render(<LogForm category={athletics} />);
+    await userEvent.selectOptions(document.getElementById("f-kind") as HTMLSelectElement, "erg");
+
     expect(field("sets.0.duration").inputMode).toBe("text");
+    expect(field("sets.0.spm").inputMode).toBe("numeric");
   });
 
   it("lets the phone capitalise a name, which is what it is for", () => {
@@ -120,14 +122,14 @@ describe("sticky values", () => {
     render(<LogForm category={athletics} chips={CHIPS} />);
 
     await userEvent.selectOptions(document.getElementById("f-kind") as HTMLSelectElement, "erg");
-    await userEvent.type(field("sets.0.weightLbs"), "185");
+    await userEvent.type(field("sets.0.distance"), "2000");
     await userEvent.click(screen.getByRole("button", { name: /log training/i }));
 
     await waitFor(() =>
       expect((document.getElementById("f-kind") as HTMLSelectElement).value).toBe("erg"),
     );
-    // The safety property, end to end: the kind came back, the weight did not.
-    expect(field("sets.0.weightLbs").value).toBe("");
+    // The safety property, end to end: the kind came back, the distance did not.
+    expect(field("sets.0.distance").value).toBe("");
   });
 
   it("keeps nothing from a category that has no sticky fields", async () => {
@@ -202,6 +204,91 @@ describe("sets", () => {
   it("renders no rows for a category that has none", () => {
     render(<LogForm category={reading} />);
     expect(screen.queryByRole("button", { name: /add set/i })).toBeNull();
+  });
+});
+
+describe("which fields a set has (D-162)", () => {
+  /**
+   * Reported on 2026-09-05: a bench press was offering a distance, a time and a stroke rate.
+   * Not merely untidy — four things to read past on a phone between sets, which is most of the
+   * fifteen seconds the whole category is built around.
+   */
+  const has = (name: string) => document.getElementById(`f-sets.0.${name}`) !== null;
+
+  it("opens on weight and reps, because lifting is the common case", () => {
+    render(<LogForm category={athletics} />);
+
+    expect(has("weightLbs")).toBe(true);
+    expect(has("reps")).toBe(true);
+    expect(has("distance")).toBe(false);
+    expect(has("duration")).toBe(false);
+    expect(has("spm")).toBe(false);
+  });
+
+  it("swaps to distance, time and stroke rate for an erg piece", async () => {
+    render(<LogForm category={athletics} />);
+    await userEvent.selectOptions(document.getElementById("f-kind") as HTMLSelectElement, "erg");
+
+    expect(has("distance")).toBe(true);
+    expect(has("duration")).toBe(true);
+    expect(has("spm")).toBe(true);
+    expect(has("weightLbs")).toBe(false);
+  });
+
+  it("gives conditioning time, distance and reps, and no stroke rate", async () => {
+    render(<LogForm category={athletics} />);
+    await userEvent.selectOptions(
+      document.getElementById("f-kind") as HTMLSelectElement,
+      "conditioning",
+    );
+
+    expect(has("duration")).toBe(true);
+    expect(has("distance")).toBe(true);
+    expect(has("reps")).toBe(true);
+    expect(has("spm")).toBe(false);
+  });
+
+  it("keeps the set type in every shape", async () => {
+    render(<LogForm category={athletics} />);
+    expect(has("setType")).toBe(true);
+
+    await userEvent.selectOptions(document.getElementById("f-kind") as HTMLSelectElement, "water");
+    expect(has("setType")).toBe(true);
+  });
+
+  it("offers every field on request, because a shape is a guess and not a rule", async () => {
+    render(<LogForm category={athletics} />);
+    expect(has("spm")).toBe(false);
+
+    await userEvent.click(screen.getByRole("button", { name: /every field/i }));
+    expect(has("spm")).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: /fewer fields/i }));
+    expect(has("spm")).toBe(false);
+  });
+
+  it("does not post a value from a field the shape dropped", async () => {
+    // The bug a CSS-hidden field would have: a split typed into an erg piece and then switched
+    // to a lift would arrive on the entry as a number nobody meant. This form's whole claim is
+    // that its numbers can be trusted.
+    render(<LogForm category={athletics} />);
+    const kind = document.getElementById("f-kind") as HTMLSelectElement;
+
+    await userEvent.selectOptions(kind, "erg");
+    await userEvent.type(field("sets.0.duration"), "7:12");
+    await userEvent.selectOptions(kind, "lift");
+    await userEvent.type(field("sets.0.weightLbs"), "185");
+
+    await userEvent.click(screen.getByRole("button", { name: /log training/i }));
+    await waitFor(() => expect(createLogEntry).toHaveBeenCalled());
+
+    expect(lastSubmitted?.get("sets.0.duration")).toBeNull();
+    expect(lastSubmitted?.get("sets.0.weightLbs")).toBe("185");
+  });
+
+  it("offers no shape control for a category with no shapes", () => {
+    render(<LogForm category={reading} />);
+    expect(screen.queryByRole("button", { name: /every field/i })).toBeNull();
   });
 });
 

@@ -100,7 +100,45 @@ export type RowGroup = {
   /** Refuses to grow past this, so a stuck finger cannot post a thousand rows. */
   max: number;
   fields: readonly Field[];
+  /**
+   * The name of a flat field whose value decides which row fields apply (D-162).
+   *
+   * A bench press has no split and no stroke rate, and offering them is not merely untidy: it
+   * is four extra things to read past on a phone, between sets, which is most of the fifteen
+   * seconds the whole category is built around. Reported by Victor on 2026-09-05.
+   */
+  shapeBy?: string;
+  /** Row field names to show, per value of the `shapeBy` field. */
+  shapes?: Readonly<Record<string, readonly string[]>>;
+  /** Which shape applies before that field has a value. */
+  defaultShape?: string;
+  /** Shown whatever the shape is. */
+  always?: readonly string[];
 };
+
+/**
+ * The row fields that apply right now.
+ *
+ * `showAll` is the escape hatch: a shape is a good guess and never a rule, and a form that
+ * cannot record what actually happened is worse than one with a spare field on it. An
+ * unrecognised value falls back to the default shape rather than to nothing, so a category
+ * that grows a new `kind` degrades to a usable form instead of an empty one.
+ */
+export function rowFieldsFor(
+  group: RowGroup,
+  shape: string | undefined,
+  showAll = false,
+): readonly Field[] {
+  if (showAll || !group.shapes) return group.fields;
+
+  const names = group.shapes[shape ?? ""] ?? group.shapes[group.defaultShape ?? ""];
+  if (!names) return group.fields;
+
+  const wanted = new Set([...names, ...(group.always ?? [])]);
+  // Filtered from `fields` rather than mapped from `names`, so the order on screen is the
+  // declaration order and cannot drift between shapes.
+  return group.fields.filter((field) => wanted.has(field.name));
+}
 
 export type Category = {
   key: string;
@@ -164,6 +202,24 @@ export const CATEGORIES: readonly Category[] = [
       addLabel: "add set",
       initial: 1,
       max: 12,
+      /**
+       * Which numbers a set has depends on what kind of session it is (D-162). `kind` already
+       * sits at the top of the form and is already sticky, so it is the thing to key off —
+       * one decision he was making anyway, rather than a second control.
+       *
+       * `lift` is the default because it is the common case and because opening on weight ×
+       * reps means the usual entry needs no setup at all.
+       */
+      shapeBy: "kind",
+      defaultShape: "lift",
+      always: ["setType"],
+      shapes: {
+        lift: ["weightLbs", "reps"],
+        erg: ["distance", "duration", "spm"],
+        water: ["distance", "duration", "spm"],
+        // Runs, rucks, bikes, and circuits — 20 burpees, 400m, repeat.
+        conditioning: ["duration", "distance", "reps"],
+      },
       fields: [
         {
           name: "weightLbs",

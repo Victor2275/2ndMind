@@ -7,6 +7,7 @@ import {
   categoryByKey,
   searchTextFor,
   summarise,
+  rowFieldsFor,
   writableCategoryByKey,
 } from "../categories";
 import { readField, readRows, takeBodyweight } from "../form";
@@ -425,6 +426,63 @@ describe("1-5 scales (D-134)", () => {
   it("makes scale values searchable", () => {
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("5");
     expect(searchTextFor("day", { mood: 5, energy: 4 }, "good day")).toContain("good day");
+  });
+});
+
+describe("which fields a set has (D-162)", () => {
+  const training = categoryByKey("athletics")!;
+  const group = training.rows!;
+  const names = (shape: string | undefined, showAll = false) =>
+    rowFieldsFor(group, shape, showAll).map((f) => f.name);
+
+  it("gives a lift weight and reps, and nothing about splits", () => {
+    expect(names("lift")).toEqual(["weightLbs", "reps", "setType"]);
+  });
+
+  it("gives an erg piece distance, time and stroke rate", () => {
+    expect(names("erg")).toEqual(["distance", "duration", "spm", "setType"]);
+  });
+
+  it("defaults to the lift shape before a kind is chosen", () => {
+    // Lifting is the common case, so the usual entry needs no setup at all.
+    expect(names(undefined)).toEqual(names("lift"));
+    expect(names("")).toEqual(names("lift"));
+  });
+
+  it("falls back to the default rather than to nothing for a kind it does not know", () => {
+    // A category that grows a new `kind` must degrade to a usable form, not an empty one.
+    expect(names("parkour")).toEqual(names("lift"));
+  });
+
+  it("keeps the set type in every shape, because it is a property of the set", () => {
+    for (const kind of ["lift", "erg", "water", "conditioning"]) {
+      expect(names(kind), kind).toContain("setType");
+    }
+  });
+
+  it("hands back everything when asked", () => {
+    expect(names("lift", true)).toEqual(group.fields.map((f) => f.name));
+  });
+
+  it("keeps declaration order, so a field does not move between shapes", () => {
+    const declared = group.fields.map((f) => f.name);
+    for (const kind of ["lift", "erg", "water", "conditioning"]) {
+      const shown = names(kind);
+      expect([...shown].sort((a, b) => declared.indexOf(a) - declared.indexOf(b))).toEqual(shown);
+    }
+  });
+
+  it("leaves a group with no shapes alone", () => {
+    expect(rowFieldsFor({ ...group, shapes: undefined }, "lift")).toEqual(group.fields);
+  });
+
+  it("names only fields the group actually declares", () => {
+    // A typo in a shape would silently drop a field from the form rather than fail.
+    const declared = new Set(group.fields.map((f) => f.name));
+    for (const [kind, fields] of Object.entries(group.shapes ?? {})) {
+      for (const name of fields) expect(declared.has(name), `${kind}.${name}`).toBe(true);
+    }
+    for (const name of group.always ?? []) expect(declared.has(name)).toBe(true);
   });
 });
 

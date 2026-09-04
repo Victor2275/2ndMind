@@ -15,6 +15,7 @@ import { createLogEntry } from "@/app/private/log/actions";
 import { DictateButton } from "@/components/site/dictate-button";
 import {
   keypadFor,
+  rowFieldsFor,
   SCALE_MAX,
   SCALE_MIN,
   type Category,
@@ -183,6 +184,7 @@ function FieldInput({
   onPick,
   prefix = "",
   compact = false,
+  onValueChange,
 }: {
   field: Field;
   defaultValue?: string;
@@ -192,6 +194,8 @@ function FieldInput({
   prefix?: string;
   /** Inside a row, where the label is a caption above a tight grid. */
   compact?: boolean;
+  /** Only for the field a row group's shape keys off (D-162). */
+  onValueChange?: (value: string) => void;
 }) {
   if (field.type === "scale") return <ScaleField field={field} />;
 
@@ -222,7 +226,13 @@ function FieldInput({
       </div>
 
       {field.type === "select" ? (
-        <select id={id} name={name} defaultValue={defaultValue ?? ""} className={`${INPUT} mt-1`}>
+        <select
+          id={id}
+          name={name}
+          defaultValue={defaultValue ?? ""}
+          onChange={onValueChange ? (event) => onValueChange(event.target.value) : undefined}
+          className={`${INPUT} mt-1`}
+        >
           <option value="">—</option>
           {field.options?.map((option) => (
             <option key={option} value={option}>
@@ -283,14 +293,30 @@ function FieldInput({
  */
 function RowFields({
   group,
+  shape,
   onPick,
 }: {
   group: RowGroup;
+  /** The current value of the field this group's shape keys off. */
+  shape: string | undefined;
   onPick: (fills: Record<string, string>) => void;
 }) {
   const nextId = useRef(group.initial);
   const [ids, setIds] = useState(() => Array.from({ length: group.initial }, (_, i) => i));
+  const [showAll, setShowAll] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+
+  /**
+   * Only the fields this kind of session actually has (D-162).
+   *
+   * Rendered conditionally rather than hidden with CSS. A hidden input still posts, so a
+   * split typed into an erg piece and then switched to a lift would arrive on the entry as a
+   * number nobody meant — and this form's whole claim is that its numbers can be trusted.
+   * The cost is that switching kind clears what was typed into a field the new shape drops,
+   * which is the right way round.
+   */
+  const fields = rowFieldsFor(group, shape, showAll);
+  const hidden = group.fields.length - fields.length;
 
   const add = () => {
     if (ids.length >= group.max) return;
@@ -304,7 +330,7 @@ function RowFields({
     queueMicrotask(() => {
       const element = container.current;
       if (!element || from === undefined) return;
-      for (const field of group.fields) {
+      for (const field of fields) {
         const source = element.querySelector<HTMLInputElement | HTMLSelectElement>(
           `[name="${group.name}.${from}.${field.name}"]`,
         );
@@ -320,10 +346,22 @@ function RowFields({
     <div ref={container}>
       <div className="flex items-baseline justify-between gap-2">
         <span className={LABEL}>{group.label}s</span>
-        {ids.length >= group.max && (
+        {ids.length >= group.max ? (
           <span className="font-mono text-[0.55rem] text-muted-foreground">
             {group.max} is the most
           </span>
+        ) : (
+          // The escape hatch. A shape is a good guess, never a rule, and a form that cannot
+          // record what actually happened is worse than one carrying a spare field.
+          (hidden > 0 || showAll) && (
+            <button
+              type="button"
+              onClick={() => setShowAll((current) => !current)}
+              className="font-mono text-[0.55rem] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {showAll ? "fewer fields" : "every field"}
+            </button>
+          )
         )}
       </div>
 
@@ -335,7 +373,7 @@ function RowFields({
             </span>
 
             <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
-              {group.fields.map((field) => (
+              {fields.map((field) => (
                 <FieldInput
                   key={field.name}
                   field={field}
@@ -386,8 +424,26 @@ function SaveButton({ label }: { label: string }) {
   );
 }
 
-export function LogForm({ category, chips = {} }: { category: Category; chips?: ChipSets }) {
-  const [state, action] = useActionState<ActionState | null, FormData>(createLogEntry, null);
+export function LogForm({
+  category,
+  chips = {},
+  write = createLogEntry,
+}: {
+  category: Category;
+  chips?: ChipSets;
+  /**
+   * Where a submitted entry goes (V3 §2.2).
+   *
+   * Defaults to the Server Action. The cached shell passes a writer that puts the entry
+   * straight into the outbox instead, so the same form — same fields, same shapes, same chips,
+   * same recovery when a save fails — works with no network. Injecting it rather than branching
+   * inside on `navigator.onLine` keeps this component ignorant of the network, and means the
+   * offline path is exercised by a test that hands it a function rather than one that fakes a
+   * radio.
+   */
+  write?: (prev: ActionState | null, formData: FormData) => Promise<ActionState>;
+}) {
+  const [state, action] = useActionState<ActionState | null, FormData>(write, null);
   const [showDate, setShowDate] = useState(false);
   const noteId = `note-${category.key}`;
 
@@ -404,6 +460,17 @@ export function LogForm({ category, chips = {} }: { category: Category; chips?: 
    */
   const store = useMemo(() => stickyStore(category), [category]);
   const sticky = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+
+  /**
+   * The value the row shape keys off — `kind`, for Training (D-162).
+   *
+   * Seeded from the sticky value so a form that opens on "erg" opens with erg's fields. Keyed
+   * by the same generation as the form itself, so it resets alongside the inputs after a save.
+   */
+  const shapeName = category.rows?.shapeBy;
+  const [shape, setShape] = useState<string | undefined>(
+    shapeName ? sticky.values[shapeName] : undefined,
+  );
 
   /** A chip tap, or anything else that fills several fields at once. */
   const fill = useCallback((values: Record<string, string>) => {
@@ -475,12 +542,13 @@ export function LogForm({ category, chips = {} }: { category: Category; chips?: 
               defaultValue={sticky.values[field.name]}
               chips={chips[field.name]}
               onPick={fill}
+              onValueChange={field.name === shapeName ? setShape : undefined}
             />
           ))}
         </div>
       )}
 
-      {category.rows && <RowFields group={category.rows} onPick={fill} />}
+      {category.rows && <RowFields group={category.rows} shape={shape} onPick={fill} />}
 
       <div>
         <div className="flex items-center justify-between gap-2">
