@@ -192,6 +192,25 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
   nothing happened.
+- `error_reports` — crash reports from this app's own code (D-165). **Not syncable** and not in
+  `ENTITIES`: diagnostics are one-directional and disposable. Rows are **counted, not
+  accumulated** — one per fingerprint, upserted — because a render loop otherwise makes this the
+  largest table in the database.
+
+**Errors (V3 §2.4, D-165).** Reports go to `/api/errors` and Neon — **never to a vendor**.
+Three rules that are easy to break by accident:
+
+1. **Truncate before scrubbing.** The email pattern is quadratic in the length of a
+   word-character run; the other order costs a second of CPU on a 50KB stack, on an endpoint
+   open to the network. A test with a wall-clock bound pins it.
+2. **The schema is an allowlist**, and the server re-cleans whatever arrives. The endpoint takes
+   unauthenticated POSTs on purpose — a worker throwing during `install` has no session — so the
+   client's scrub is a convenience, not a boundary.
+3. **The endpoint always answers 204.** A reporter that can tell a real failure from a rejection
+   will retry, and a retry loop inside error reporting is an outage.
+
+`lib/errors/client.ts` must never throw and never loop; every call site is somewhere already
+going wrong.
 
 **Offline (V3 §1.7, §2.1 — D-160, D-161).** Two routes exist because a page about the network
 must not need the network:

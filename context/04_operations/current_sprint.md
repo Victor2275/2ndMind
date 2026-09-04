@@ -484,7 +484,33 @@ until it reproduces in `npm run build`.**
         delete it and log it properly. Tell me if the pile fills up with things that wanted
         structure and I will reconsider.
         **All of it works with no signal**, on the offline screen too.
-  - [ ] **2.3 · Offline full-text search** (6h) — next, once you have confirmed the above.
+  - [x] **2026-09-04 — the app tells you when it breaks.** **1069 tests**, up from 1015.
+        **Offline search is deferred, not cut** — your call, and it stays 6h with the same
+        design. It just goes after this rather than before it.
+        **What was built instead: the app now reports its own crashes.** When something goes
+        wrong — on the phone, on the laptop, on the public site, or inside the service worker
+        — it gets recorded, and a panel appears on your dashboard saying what broke and how
+        often. The panel is not there when nothing is wrong, on purpose: something that
+        permanently says "0 errors" stops being read within a week.
+        **Nothing goes to an outside company.** The plan said Sentry; you chose your own
+        endpoint instead, and I think that was right. Your GPA, grades and phone number would
+        have been one bad filtering rule away from a third party, and that kind of rule fails
+        quietly and in the wrong direction. Everything stays in your own database.
+        Reports are still filtered — twice — for emails, phone numbers and anything that looks
+        like a password, and the page address has its query string stripped before anything is
+        stored. That is belt and braces now rather than the only thing standing between the
+        vault and a stranger, which is exactly why it is worth having.
+        **It found a real problem in itself.** The filtering was slow in a way that only shows
+        up on a very long crash report — about a second of work per report, on an endpoint
+        anyone on the internet can reach. A test caught it by timing out. Fixed, and there is
+        now a test that fails if it ever gets slow again.
+        **Three places that used to fail silently now speak up**, including the one that
+        matters most: the phone's syncing. It could stop working with nothing on screen
+        changing and the queue quietly growing for a week. Now it says so.
+        I applied the database change (`0006_error_reports`) with your go-ahead — one new
+        table, nothing touched that already existed.
+  - [ ] **2.5 · Device checklist** (2h) — next.
+  - [ ] **2.3 · Offline full-text search** (6h) — deferred 2026-09-04, after §2.5.
 - [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
       offline full-text search, error aggregation, device checklist. ~10-18.
 - [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright

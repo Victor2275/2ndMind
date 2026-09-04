@@ -727,10 +727,49 @@ Milestone B: nothing needs signal.
 
   *Done when:* ~~the portfolio and the resume render in airplane mode~~ — **still Victor's**, on
   the phone, along with the offline round trip already on his list.
-- **2.3 · Offline full-text search — 6h.** Over logs and cached content, running locally. No
-  embeddings, no model cost, no monthly bill. Semantic search stays cut for the fourth time.
-- **2.4 · Error aggregation — 4h.** Sentry free tier with scrubbing rules for vault content.
-  Reverses this plan's own deferral; see D-137.
+- **2.3 · Offline full-text search — 6h.** ~~Over logs and cached content, running locally.~~
+  **Deferred 2026-09-04, at Victor's call** — *"skip over the offline stuff and go onto the next
+  thing."* Not cut and not descoped: still 6h, still the same design, still ahead of semantic
+  search (which stays cut for the fourth time). It simply goes after §2.4 and §2.5 rather than
+  before them.
+
+  The reasoning is worth recording, because "we skipped it" is the kind of note that reads as an
+  accident a year later. Four days of offline work — §1.7, §2.1, §2.2 — is verified entirely by
+  tests and not at all by a phone. Adding a sixth offline feature on top of five unconfirmed ones
+  compounds the risk; §2.4 does the opposite, since error aggregation is the thing that makes the
+  unconfirmed work report on itself.
+- **2.4 · Error aggregation — 4h.** ~~Sentry free tier with scrubbing rules for vault content.~~
+  **Built 2026-09-04, and the vendor was dropped. D-165.** Reports POST to `/api/errors`, land in
+  an `error_reports` table in Neon, and surface on the dashboard. No SDK, no third party.
+
+  **Why not Sentry.** Its tooling is genuinely better. What it costs is that a GPA, per-course
+  grades, bodyweight and a phone number sit one bad scrubbing rule away from an external service
+  — and a scrubbing rule that fails does so silently, in the wrong direction. Keeping it in-house
+  removes that failure mode rather than mitigating it. D-137 had already named this as a drop-in
+  alternative.
+
+  **A crash report is the one payload nobody wrote on purpose**, so it is allowlisted rather than
+  blocklisted: fixed schema, every field capped, free text scrubbed for emails, phone numbers,
+  named secrets and long tokens — twice, on the device and again on the server.
+
+  **A real bug came out of it.** The email pattern is quadratic in the length of a word-character
+  run, so scrubbing before truncating cost ~1s of CPU on a 50KB stack — on an unauthenticated
+  endpoint, a way to burn a core per request. Found by a test timing out under load. Truncate
+  first; pinned by a wall-clock assertion.
+
+  **Rows are counted, not accumulated** — one per fingerprint, upserted — because a render loop
+  otherwise makes the diagnostics table the largest thing in the database and takes the app down
+  with it. The fingerprint ignores numbers, quoted values and the stack, so a deploy does not read
+  as a fresh crop of new errors.
+
+  **The panel is absent most of the time**, which is the point: a panel permanently showing
+  "0 errors" stops being read within a week.
+
+  **Three swallowed `catch` blocks now report** — the sync runner's, the cached shell's, and the
+  service worker's install and precache. That last one is D-137's whole argument: a failing worker
+  on a Samsung produces no log anyone will ever read.
+
+  **1069 tests**, up from 1015. Migration `0006_error_reports` applied to Neon the same day.
 - **2.5 · Device checklist — 2h.** USB remote debugging documented, plus a per-release manual
   list: install, airplane-mode log, reconnect, icon, thumb reach. *(Biometric dropped from the
   list — D-158 switched the lock off.)*

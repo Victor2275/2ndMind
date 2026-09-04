@@ -27,6 +27,170 @@ the expensive mistakes here are architectural, and they are cheapest to argue on
 The plan they produce is `docs/V3_PLAN.md`. Where an entry below contradicts something already
 built or already written down, it says so and names it.
 
+### D-165 · Errors go to this app's own endpoint, not to a vendor
+
+**Decision.** V3 §2.4, implementing D-137 — and reversing the *how*. Crash reports POST to
+`/api/errors`, land in an `error_reports` table in Neon, and surface on the dashboard. **No
+Sentry, no SDK, no third party.** D-137 named this as a drop-in alternative; Victor chose it on
+2026-09-04.
+
+**Why the vendor lost.** Sentry's tooling is genuinely better — stack traces, release tracking,
+alerting. What it costs here is that a GPA, per-course grades, bodyweight and a phone number are
+one bad scrubbing rule away from an external service, and a scrubbing rule that fails does so
+silently and in the wrong direction. Nothing leaving the infrastructure removes that failure mode
+entirely rather than mitigating it. The tooling gap is real and is worth less than the exposure.
+
+**A crash report is the one payload in this app nobody wrote on purpose.** Every other write is a
+person deciding to record something; this one is assembled by machinery out of whatever happened
+to be in scope when something broke. So it is **allowlisted, not blocklisted**: a fixed schema, a
+cap on every field, and the two free-text ones scrubbed for emails, phone numbers, named secrets
+and long opaque tokens. A blocklist is the natural design and fails open, silently.
+
+The scrub runs **twice** — on the device and again on the server. Not redundancy for its own sake:
+the client pass means a report held in `localStorage` on a phone that never reconnects is not
+sitting there as an unscrubbed copy of something. The server pass exists because the endpoint is
+open to anything that can POST, so the client's work is a convenience and not a boundary.
+
+**A real bug, found by a test rather than by reading it.** The email pattern `[\w.+-]+@…` is
+quadratic in the length of a run of word characters. Scrubbing *before* truncating meant a 50KB
+stack — which a deep recursion really produces — cost about a second of CPU: on an open,
+unauthenticated endpoint, a way to burn a core per request, and on the phone, a freeze inside the
+error handler at the moment something was already going wrong. Truncate first, then scrub. Pinned
+by a test with a wall-clock bound.
+
+**The endpoint accepts unauthenticated requests, deliberately.** The failures worth knowing about
+happen where there is no session to check: a worker throwing during `install` runs before anyone
+signs in, an error on the public portfolio has no session by definition, and a 401 loop is itself
+a thing that needs reporting. Gating it would silence exactly the class of failure D-137
+scheduled it for. That cost is paid explicitly — a byte cap before parsing, an allowlist schema, a
+crude per-instance rate limit, and rows that are **counted rather than accumulated**.
+
+**Counting is what stops the reporter causing an outage.** A broken selector in a render loop
+produces thousands of identical reports in seconds; a row each is how a diagnostics table becomes
+the largest thing in the database. One row per fingerprint, upserted — which also makes it correct
+under concurrency, where a read-then-insert would lose one of two simultaneous reports.
+
+**The fingerprint ignores numbers, quoted values and the stack.** Numbers and quotes because
+`failed at row 41` and `row 42` are one problem. The stack because chunk names are content-hashed,
+so including it would make every deploy look like a fresh crop of new errors.
+
+**It always answers 204**, whatever happened. A reporter that can tell a real failure from a
+rejected one is a reporter that will retry, and a retry loop inside error reporting turns one
+broken thing into an outage.
+
+**Three rules govern the client half**, each a way this could make things worse: never throw
+(every call site is already going wrong), never loop (`reporting` guards it), and never lose the
+phone's errors — a crash with no signal is the case this was scheduled for and is exactly the case
+a naive `fetch` drops. Failures are held in `localStorage`, bounded at twenty, oldest dropped, and
+flushed on the next load rather than on the `online` event, which lies.
+
+**The panel is not there most of the time**, and that is the point. Aggregation only helps if a
+report is read, and a panel permanently showing "0 errors" stops being read within a week. Same
+rule as the unsorted pile (D-164). "Dealt with" hides a row and nothing more — a repeat clears the
+flag server-side, which is the only behaviour that makes hiding it safe.
+
+**Three swallowed `catch` blocks now report:** the sync runner's (the phone stops syncing, nothing
+on screen changes, the outbox grows for a week), the cached shell's store failure, and the service
+worker's install and precache. That last one is the whole argument of D-137 — a failing worker on
+a Samsung produces no log anyone will ever read.
+
+**`error_reports` is deliberately not syncable.** No `syncColumns()`, not in `ENTITIES`.
+Diagnostics are one-directional and disposable; mirroring them onto the device that produced them
+would spend the phone's storage on its own crash log.
+
+**How to reverse.** Remove `<ErrorWatch />` from the root layout and the panel from the dashboard,
+and the feature is off while the table stays. To go to Sentry instead, `lib/errors/client.ts` is
+the only file that has to change — the schema and the scrubbing are already the right shape for
+it, which is the point of keeping them separate.
+
+**Not done.** No alerting: the panel is seen when the dashboard is opened, and nothing pushes.
+Deliberate for now — a phone that buzzes about its own crashes is a phone that gets its
+notifications turned off — and revisit if something important sits unread for days.
+
+---
+
+### D-165 · Errors go to this app's own endpoint, not to a vendor
+
+**Decision.** V3 §2.4, implementing D-137 — and reversing the *how*. Crash reports POST to
+`/api/errors`, land in an `error_reports` table in Neon, and surface on the dashboard. **No
+Sentry, no SDK, no third party.** D-137 named this as a drop-in alternative; Victor chose it on
+2026-09-04.
+
+**Why the vendor lost.** Sentry's tooling is genuinely better — stack traces, release tracking,
+alerting. What it costs here is that a GPA, per-course grades, bodyweight and a phone number are
+one bad scrubbing rule away from an external service, and a scrubbing rule that fails does so
+silently and in the wrong direction. Nothing leaving the infrastructure removes that failure mode
+entirely rather than mitigating it. The tooling gap is real and is worth less than the exposure.
+
+**A crash report is the one payload in this app nobody wrote on purpose.** Every other write is a
+person deciding to record something; this one is assembled by machinery out of whatever happened
+to be in scope when something broke. So it is **allowlisted, not blocklisted**: a fixed schema, a
+cap on every field, and the two free-text ones scrubbed for emails, phone numbers, named secrets
+and long opaque tokens. A blocklist is the natural design and fails open, silently.
+
+The scrub runs **twice** — on the device and again on the server. Not redundancy for its own sake:
+the client pass means a report held in `localStorage` on a phone that never reconnects is not
+sitting there as an unscrubbed copy of something. The server pass exists because the endpoint is
+open to anything that can POST, so the client's work is a convenience and not a boundary.
+
+**A real bug, found by a test rather than by reading it.** The email pattern `[\w.+-]+@…` is
+quadratic in the length of a run of word characters. Scrubbing *before* truncating meant a 50KB
+stack — which a deep recursion really produces — cost about a second of CPU: on an open,
+unauthenticated endpoint, a way to burn a core per request, and on the phone, a freeze inside the
+error handler at the moment something was already going wrong. Truncate first, then scrub. Pinned
+by a test with a wall-clock bound.
+
+**The endpoint accepts unauthenticated requests, deliberately.** The failures worth knowing about
+happen where there is no session to check: a worker throwing during `install` runs before anyone
+signs in, an error on the public portfolio has no session by definition, and a 401 loop is itself
+a thing that needs reporting. Gating it would silence exactly the class of failure D-137
+scheduled it for. That cost is paid explicitly — a byte cap before parsing, an allowlist schema, a
+crude per-instance rate limit, and rows that are **counted rather than accumulated**.
+
+**Counting is what stops the reporter causing an outage.** A broken selector in a render loop
+produces thousands of identical reports in seconds; a row each is how a diagnostics table becomes
+the largest thing in the database. One row per fingerprint, upserted — which also makes it correct
+under concurrency, where a read-then-insert would lose one of two simultaneous reports.
+
+**The fingerprint ignores numbers, quoted values and the stack.** Numbers and quotes because
+`failed at row 41` and `row 42` are one problem. The stack because chunk names are content-hashed,
+so including it would make every deploy look like a fresh crop of new errors.
+
+**It always answers 204**, whatever happened. A reporter that can tell a real failure from a
+rejected one is a reporter that will retry, and a retry loop inside error reporting turns one
+broken thing into an outage.
+
+**Three rules govern the client half**, each a way this could make things worse: never throw
+(every call site is already going wrong), never loop (`reporting` guards it), and never lose the
+phone's errors — a crash with no signal is the case this was scheduled for and is exactly the case
+a naive `fetch` drops. Failures are held in `localStorage`, bounded at twenty, oldest dropped, and
+flushed on the next load rather than on the `online` event, which lies.
+
+**The panel is not there most of the time**, and that is the point. Aggregation only helps if a
+report is read, and a panel permanently showing "0 errors" stops being read within a week. Same
+rule as the unsorted pile (D-164). "Dealt with" hides a row and nothing more — a repeat clears the
+flag server-side, which is the only behaviour that makes hiding it safe.
+
+**Three swallowed `catch` blocks now report:** the sync runner's (the phone stops syncing, nothing
+on screen changes, the outbox grows for a week), the cached shell's store failure, and the service
+worker's install and precache. That last one is the whole argument of D-137 — a failing worker on
+a Samsung produces no log anyone will ever read.
+
+**`error_reports` is deliberately not syncable.** No `syncColumns()`, not in `ENTITIES`.
+Diagnostics are one-directional and disposable; mirroring them onto the device that produced them
+would spend the phone's storage on its own crash log.
+
+**How to reverse.** Remove `<ErrorWatch />` from the root layout and the panel from the dashboard,
+and the feature is off while the table stays. To go to Sentry instead, `lib/errors/client.ts` is
+the only file that has to change — the schema and the scrubbing are already the right shape for
+it, which is the point of keeping them separate.
+
+**Not done.** No alerting: the panel is seen when the dashboard is opened, and nothing pushes.
+Deliberate for now — a phone that buzzes about its own crashes is a phone that gets its
+notifications turned off — and revisit if something important sits unread for days.
+
+---
+
 ### D-164 · A capture box above the tabs, an unsorted pile below it, and tabs that wrap
 
 **Two reports from Victor on 2026-09-05**, both about what is on screen rather than what is
