@@ -284,3 +284,30 @@ function numberOrNull(value: unknown): number | null {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+/**
+ * The newest stored AI summary the phone has, whatever its age (V3 §3.6).
+ *
+ * Age is not a filter here, it is a label. The summary is rendered with the day it describes,
+ * which is the same rule the rest of this screen follows for its data — a cached screen says
+ * how old it is rather than hiding what it has. D-124 persisted these precisely so they could
+ * outlive the call that produced them; refusing to show one because it is from Tuesday would
+ * undo that.
+ *
+ * `daily` only. A weekly summary describing a week is a different claim from a daily one
+ * describing today, and mixing them under one heading would make the date do work it cannot.
+ */
+export function latestSummary(
+  records: { row: Record<string, unknown>; deletedAt: string | null }[],
+): { periodStart: string; summary: string } | null {
+  const daily = records
+    .filter((r) => r.deletedAt === null && r.row.kind === "daily")
+    .map((r) => ({
+      periodStart: String(r.row.periodStart ?? ""),
+      summary: String(r.row.summary ?? ""),
+    }))
+    .filter((r) => r.periodStart !== "" && r.summary !== "")
+    .sort((a, b) => b.periodStart.localeCompare(a.periodStart));
+
+  return daily[0] ?? null;
+}

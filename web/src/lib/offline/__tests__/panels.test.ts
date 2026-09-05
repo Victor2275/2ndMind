@@ -3,15 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   AGING_MS,
+  STALE_MS,
   byCourse,
   dueToday,
   freshnessOf,
+  latestSummary,
   latestWeight,
   localDay,
   loggedOn,
   recentSets,
   rehabDoneOn,
-  STALE_MS,
   undated,
 } from "@/lib/offline/panels";
 import type { LocalRecord } from "@/lib/sync/store";
@@ -294,5 +295,67 @@ describe("the rest of the athletics panel", () => {
     ];
 
     expect(rehabDoneOn(ticks, NOON)).toEqual(["band-pull-apart"]);
+  });
+});
+
+describe("the last stored summary", () => {
+  /**
+   * §3.6. D-124 persisted summaries so they would outlive the model call; this is what makes
+   * one reachable with no network. Age is a label here, not a filter — Victor's call, and the
+   * rule the rest of the cached screen already follows.
+   */
+  const record = (row: Record<string, unknown>, deletedAt: string | null = null) => ({
+    key: String(row.periodStart),
+    row,
+    updatedHlc: "1",
+    deletedAt,
+    serverSeq: 1,
+    dirty: 0 as const,
+  });
+
+  it("takes the newest day, not the newest row", () => {
+    // Rows arrive in cursor order, which is the order the server happened to write them — not
+    // the order of the days they describe.
+    expect(
+      latestSummary([
+        record({ kind: "daily", periodStart: "2026-09-01", summary: "older" }),
+        record({ kind: "daily", periodStart: "2026-09-04", summary: "newest" }),
+        record({ kind: "daily", periodStart: "2026-09-02", summary: "middle" }),
+      ])?.summary,
+    ).toBe("newest");
+  });
+
+  it("shows one however old it is, because the date is on it", () => {
+    const old = latestSummary([
+      record({ kind: "daily", periodStart: "2020-01-01", summary: "ancient" }),
+    ]);
+    expect(old?.summary).toBe("ancient");
+    expect(old?.periodStart).toBe("2020-01-01");
+  });
+
+  it("ignores the weekly ones, which describe a different span", () => {
+    // A weekly summary under a heading dated one day would make the date say something untrue.
+    expect(
+      latestSummary([
+        record({ kind: "weekly", periodStart: "2026-09-04", summary: "the week" }),
+        record({ kind: "daily", periodStart: "2026-09-01", summary: "the day" }),
+      ])?.summary,
+    ).toBe("the day");
+  });
+
+  it("ignores tombstones", () => {
+    expect(
+      latestSummary([
+        record({ kind: "daily", periodStart: "2026-09-04", summary: "deleted" }, "2026-09-04"),
+        record({ kind: "daily", periodStart: "2026-09-01", summary: "alive" }),
+      ])?.summary,
+    ).toBe("alive");
+  });
+
+  it("answers null rather than an empty shape when there is nothing", () => {
+    expect(latestSummary([])).toBeNull();
+    expect(
+      latestSummary([record({ kind: "daily", periodStart: "2026-09-04", summary: "" })]),
+    ).toBeNull();
   });
 });

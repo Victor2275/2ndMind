@@ -45,6 +45,7 @@ const BLANK: CachedView = {
   weight: null,
   rehabToday: [],
   chips: {},
+  summary: null,
   empty: false,
 };
 
@@ -280,6 +281,29 @@ describe("it looks like the app, not like the public site", () => {
     render(<CachedApp />);
     await screen.findByText("Due");
     expect(screen.queryByRole("button", { name: /sign out/i })).toBeNull();
+  });
+});
+
+describe("the last AI summary, offline", () => {
+  /**
+   * §3.6. The daily summary is the one thing on Today that cannot be recomputed without a
+   * network, so before this it was simply absent with no explanation.
+   */
+  it("renders the stored summary with the day it describes", async () => {
+    readCachedView.mockResolvedValue({
+      ...BLANK,
+      summary: { periodStart: "2026-09-03", summary: "Two erg pieces and a problem set." },
+    });
+    render(<CachedApp />);
+    expect(await screen.findByText(/two erg pieces/i)).toBeInTheDocument();
+    // The date is the caveat. Without it the text reads as a description of today.
+    expect(screen.getByText("2026-09-03")).toBeInTheDocument();
+  });
+
+  it("says nothing at all when the phone has never stored one", async () => {
+    render(<CachedApp />);
+    await screen.findByText("Due");
+    expect(screen.queryByText(/the last summary/i)).toBeNull();
   });
 });
 

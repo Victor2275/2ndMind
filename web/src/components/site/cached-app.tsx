@@ -265,6 +265,8 @@ function AsOf({ view }: { view: CachedView }) {
 function TodayView({ view }: { view: CachedView }) {
   return (
     <>
+      <StoredSummary summary={view.summary} />
+
       <section className={PANEL}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className={HEAD}>Due</h2>
@@ -488,6 +490,32 @@ function TaskList({ tasks, empty }: { tasks: CachedTask[]; empty: string }) {
  * An empty panel reads as "nothing on today". Saying the data is not on the phone is both true
  * and the difference between a screen that is trusted and one that is quietly wrong.
  */
+/**
+ * The last summary the model wrote, offline (V3 §3.6).
+ *
+ * D-124 persisted these so a summary would outlive the call that produced it, and this is the
+ * screen that most needed it — the daily summary is the one thing on Today that cannot be
+ * recomputed without a network, so without this it was simply absent with no explanation.
+ *
+ * **Shown whatever its age, and always with the day it describes.** Victor's call, and it is
+ * the rule this whole screen already follows: the age is a label, not a filter. A summary of
+ * Tuesday marked as Tuesday is useful; the same text unlabelled would be a lie, and hiding it
+ * would be pretending the phone knows less than it does.
+ */
+function StoredSummary({ summary }: { summary: CachedView["summary"] }) {
+  if (!summary) return null;
+
+  return (
+    <section className={PANEL}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className={HEAD}>The last summary</h2>
+        <span className={META}>{summary.periodStart}</span>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{summary.summary}</p>
+    </section>
+  );
+}
+
 function Missing({ what }: { what: string }) {
   return (
     <p className="px-1 text-sm text-muted-foreground">

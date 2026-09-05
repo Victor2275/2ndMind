@@ -2,6 +2,7 @@ import {
   freshnessOf,
   byCourse,
   dueToday,
+  latestSummary,
   latestWeight,
   loggedOn,
   recentSets,
@@ -45,6 +46,14 @@ export type CachedView = {
    * is nothing about them that needed the server.
    */
   chips: Record<string, ChipSets>;
+  /**
+   * The newest stored daily summary, with the day it describes (§3.6).
+   *
+   * Rendered whatever its age. D-124 persisted these so they would outlive the model call, and
+   * the offline screen already labels everything it shows with a date — so the date carries the
+   * caveat and nothing has to be withheld.
+   */
+  summary: { periodStart: string; summary: string } | null;
   /** True when the mirror has never been filled — a new install that has not synced. */
   empty: boolean;
 };
@@ -52,15 +61,17 @@ export type CachedView = {
 export async function readCachedView(now = new Date()): Promise<CachedView> {
   const db = await openSyncDb();
   try {
-    const [tasks, logs, sets, workouts, bodyweight, rehab, lastSyncAt] = await Promise.all([
-      listLocal(db, "task"),
-      listLocal(db, "log_entry"),
-      listLocal(db, "workout_set"),
-      listLocal(db, "workout"),
-      listLocal(db, "bodyweight"),
-      listLocal(db, "rehab"),
-      getLastSyncAt(db),
-    ]);
+    const [tasks, logs, sets, workouts, bodyweight, rehab, summaries, lastSyncAt] =
+      await Promise.all([
+        listLocal(db, "task"),
+        listLocal(db, "log_entry"),
+        listLocal(db, "workout_set"),
+        listLocal(db, "workout"),
+        listLocal(db, "bodyweight"),
+        listLocal(db, "rehab"),
+        listLocal(db, "ai_summary"),
+        getLastSyncAt(db),
+      ]);
 
     return {
       freshness: freshnessOf(lastSyncAt, now.getTime()),
@@ -86,6 +97,7 @@ export async function readCachedView(now = new Date()): Promise<CachedView> {
           })),
       ),
       weight: latestWeight(bodyweight),
+      summary: latestSummary(summaries),
       rehabToday: rehabDoneOn(rehab, now),
       // Counted across every mirrored table, not just tasks: a phone with an empty task list
       // and a full log has synced, and telling it it has not would be a lie that sends him
