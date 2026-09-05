@@ -193,6 +193,110 @@ Five phases. Ordered, and only Milestone A is date-locked.
 
 ---
 
+### 3.0 · Revision, 2026-09-05 — the schedule stopped being the constraint
+
+The phases below are unchanged in content. What changed is the order they are taken in and the
+window they are taken in, and both are Victor's call, answered on 2026-09-05.
+
+**The arithmetic that forced the question.** Phase 0, all of Phase 1, and §2.1, §2.2, §2.4,
+§2.5, §3.1 and §3.2 are built. That leaves **69h of V3, of which 55h is unblocked** — §4.4
+waits on the resume PDFs and §5.1 on the filament inventory. Against ~6h left in travel plus
+the 66h pre-term burst, roughly **72h is available before term starts on 09-20.** The whole
+remaining plan fits inside the burst.
+
+So the plan's own dates — B at ~10-18, C at ~11-15, D at ~2027-01-03 — were derived from a
+budget that no longer describes the situation. Two things follow.
+
+**1 · Everything is pulled forward. The target is Milestone D's scope on Milestone A's date.**
+Chosen over holding the phases at their planned pace. The cost is stated in §7 Risk 5 and is
+worth naming again here: those term-time dates were also the insurance against the term being
+busier than ~7h/week. Spending them now means that if the burst under-delivers, the fallback is
+the plan's own — Phases 4 and 5 go back to term time, and Phases 2 and 3, where the offline
+promise actually lives, do not move.
+
+**2 · Verification comes before any new feature.** Five offline features — §1.7, §2.1, §2.2 and
+the two halves of §1.6 — are verified entirely by tests and not at all by a phone. §2.3 was
+deferred on 09-04 for exactly that reason and nothing has closed it since. Adding a sixth on top
+would compound a risk the last deferral already declined to compound. **§3.7 and the device
+round go first**, and everything after them is built on something that has been proven rather
+than argued.
+
+#### The order
+
+| # | Round | Items | h | Window |
+|---|---|---|---:|---|
+| 1 | ~~**Trust the gates**~~ **done 09-05** | Test gate, suite audit, README | ~3 | 09-05 |
+| 2 | **Prove the offline work** | §3.7 + the device round + what it finds | ~11 | 09-07 → 09-09 |
+| 3 | **Finish Feel** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-09 → 09-12 |
+| 4 | **Offline search** | §2.3, now standing on proven ground | 6 | 09-12 → 09-13 |
+| 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
+| 6 | **Phase 5** | §5.2 course planner | 7 | 09-17 → 09-18 |
+| | **Total** | | **~64** | vs ~72 available |
+
+~8h of slack, and it is thinner than it looks: **the device round is the one item here that can
+inject unbounded work, and every previous one has.** 09-03 produced four bugs, 09-04 produced
+three more. The 4h carried in Round 2 for "what it finds" is a guess, not a measurement.
+
+**Blocked, and therefore not in the table:** §4.4 (5h, needs the resume PDFs) and §5.1 (9h,
+needs the filament inventory). Both are in §8. If they arrive during the burst they fit in the
+slack; if they do not, they are the two items that legitimately fall into term time.
+
+#### Round 1 — **done 2026-09-05.** The gate is green, and the suite has no dead weight
+
+> **1.1, 1.3 and 1.4 are built; 1.2 is answered and deletes nothing.** The full suite is
+> **1080 passing, exit 0, in 27.9s — down from 115s with 7 failures.** Typecheck clean, Prettier
+> clean, lint clean bar one pre-existing warning in `prettier.config.mjs`. **D-172 and D-173.**
+>
+> **The fix was not a bigger timeout, and measuring said so.** Booting PGlite costs ~5.9s;
+> replaying all seven migrations into it costs 0.7s. The expense is the WASM boot, not the
+> schema — which rules out the obvious fix of caching a migrated dump, since restoring one still
+> boots. Ten files were each paying that boot at the same time. They now share one process, one
+> boot, and the `node` environment they never needed jsdom instead of.
+>
+> **Two things this turned up that were not the bug.** The tracked config is
+> `vitest.config.mts`, and a `vitest.config.ts` written beside it silently wins and loads as
+> CommonJS — worth knowing, since the warning it prints looks like a Vite deprecation notice
+> rather than a duplicated config. And `npm test 2>&1 | tail` reports exit 0 no matter what
+> vitest returns, which is how a config error that ran **zero tests** printed a tidy summary.
+>
+> **1.2, the suite audit: nothing meets the bar for deletion.** 1080 tests across 70 files, and
+> a scan for tests that assert nothing, assert a literal against itself, or duplicate another
+> file's assertion returns **zero** — the one apparent hit was my own scanner mis-parsing a
+> regex. Test titles that repeat across files are all genuinely different subjects.
+>
+> **One real candidate, and it is Victor's call, not a cleanup's.** 57 tests across four files —
+> `local-lock.test.tsx`, `assertion.test.ts`, `local-unlock.test.ts`, `lock-state.test.ts` —
+> cover the biometric lock that D-158 unmounted on 09-04. That is 5.3% of the suite testing code
+> the app does not run. **The recommendation is to keep them:** D-158's whole argument for
+> keeping the feature was that re-enabling it is one import, and these tests are what makes that
+> one-line reversal safe. Delete them and the reversal becomes an unverified change. Say the word
+> and they go.
+
+#### Round 1 as planned — the gates, because everything else is measured by them
+
+- **1.1 · The test gate is not reliably green** (~1.5h). `npm test` fails 7 of 1077 on this
+  laptop — every one a 30s `beforeEach` timeout in `resetTestDb()`, and every one passing when
+  its file is run alone. The cause is growth, not a slowdown: `vitest.config.ts` already
+  carries a comment raising `hookTimeout` from 10s to 30s when **three** database files ran in
+  parallel at ~16s. There are **nine** now, each booting its own PGlite and replaying every
+  migration. Raising the number a third time treads the same path; the fix is to stop nine WASM
+  Postgres instances from booting at once. **A flaky gate is worse than a slow one** — it
+  teaches you to re-run rather than to read, which is the sentence already written in
+  `src/test/pg.ts` about this exact failure.
+- **1.2 · Suite audit** (~2h). 1077 tests across 69 files, and Victor asked what is not earning
+  its place. **Nothing is deleted before the list is reported.** The bar: a test that asserts
+  nothing that can fail, a test whose exact assertion exists in another file, or a test pinned
+  to an implementation detail that has since been replaced. Not on the bar: slow, verbose, or
+  covering something obvious. One item is a judgement rather than a rule — §1.5's 46 local-lock
+  tests cover a component that D-158 deliberately unmounted, and **that call belongs to Victor,
+  not to a cleanup pass.**
+- **1.3 · `web/README.md`** (~20m). Still `create-next-app` boilerplate stating the project uses
+  Geist, false since D-002. First file a stranger opens in the repo.
+- **1.4 · Retire `/sprint-review`.** Goal editing lives on `/private`; the separate route is
+  gone. §8 item 8 closed.
+
+---
+
 ### Phase 0 · In transit — 2026-08-30 → 09-07 — **18h**
 
 Design and offline-safe work at ~2h/day on partial connection. Nothing here needs a deploy.
@@ -886,15 +990,25 @@ Milestone C: it stops feeling like a website.
 
 ## 4. Ordered summary
 
-| Phase | Block | Hours | Ends |
-|---|---|---:|---|
-| 0 | In transit — Prettier, sync design, nav, icon | 18 | 2026-09-07 |
-| 1 | **The app** — PWA, store, sync, unlock, fast logs | 65 | **2026-09-18 ⚑A** |
-| 2 | Offline everything — cached reads, portfolio, search, errors | 28 | ~2026-10-18 ⚑B |
-| 3 | Feel — layout, gestures, motion, shortcuts, E2E | 31 | ~2026-11-15 ⚑C |
-| 4 | Push, light mode, voice, resumes | 29 | ~2026-12-13 |
-| 5 | Filament, course planner | 16 | ~2027-01-03 ⚑D |
-| | **Total** | **187** | vs ~188 available |
+**Superseded on 2026-09-05 by §3.0** — the phases still describe the work, the *Ends* column no
+longer describes the schedule. Kept as written, because a table quietly rewritten is a table
+nobody can check against what was actually promised.
+
+| Phase | Block | Hours | Ends (as planned 08-30) | State 09-05 |
+|---|---|---:|---|---|
+| 0 | In transit — Prettier, sync design, nav, icon | 18 | 2026-09-07 | **Complete** |
+| 1 | **The app** — PWA, store, sync, unlock, fast logs | 65 | **2026-09-18 ⚑A** | **Complete, unconfirmed on a phone** |
+| 2 | Offline everything — cached reads, portfolio, search, errors | 28 | ~2026-10-18 ⚑B | §2.3 left |
+| 3 | Feel — layout, gestures, motion, shortcuts, E2E | 31 | ~2026-11-15 ⚑C | §3.1, §3.2 built |
+| 4 | Push, light mode, voice, resumes | 29 | ~2026-12-13 | Not started · §4.4 blocked |
+| 5 | Filament, course planner | 16 | ~2027-01-03 ⚑D | Not started · §5.1 blocked |
+| | **Total** | **187** | vs ~188 available | **~69h left, 55h of it unblocked** |
+
+**Not in any phase, and shipped anyway:** D-170 and D-171 on 2026-09-04 — dynamic-route
+prefetches kept warm for 30s, and the above-the-fold entrance fade dropped, after measuring
+400–600ms TTFB from the Hong Kong edge to the `iad1` function. Recorded here because the plan
+has no section that owns perceived speed, and work with no home in the plan is work that
+disappears from the history.
 
 ---
 
@@ -1016,6 +1130,10 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 
 ### Check these three, on the phone — they close three finished sections
 
+**Scheduled 2026-09-05 as Round 2 of §3.0**, rather than left to whenever. Victor has the phone
+this week, and everything after Round 2 in the new order is built on what these two checks
+report. They are no longer background items; they are the gate on the rest of the plan.
+
 | # | What to do | Closes |
 |---|---|---|
 | 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
@@ -1030,7 +1148,7 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 | 5 | **Filament and printer inventory** — `UPLOADS_NEEDED.md` §2.1–2.2. Plus the status vocabulary actually used. | §5.1 |
 | 6 | **The resume PDFs themselves**, and which is the default for a bare "Resume" link. | §4.4 |
 | 7 | **Fall 2026 classes in Google Calendar.** No code waits on this; the schedule appears on its own. | Phase 2 quality |
-| 8 | **Confirm the goals editor has been used once**, so `/sprint-review` can be retired. | Housekeeping |
+| ~~8~~ | ~~**Confirm the goals editor has been used once**, so `/sprint-review` can be retired.~~ **Taken 2026-09-05** — Victor selected the retirement, which is the confirmation. Round 1.4. | ~~Housekeeping~~ |
 
 ### Closed
 
@@ -1040,10 +1158,11 @@ Everything here needs a person, a device or a file. Nothing in it is waiting on 
 | ~~0~~ | ~~**Look at the icon on the phone.**~~ Installed from Chrome on the Samsung; install path and launcher tile both correct. The shape was wrong — top view, redrawn as a side profile (**D-145**), then again as the emoji (**D-151**). Worth keeping: the thing the device check caught was not the thing it was written to catch. Cropping and fold legibility were both fine, and the fault was the drawing itself — exactly the class of error a desktop screenshot lets you talk yourself past. | 2026-08-30 |
 | ~~5~~ | ~~Does the phone create `workouts`, or only `log_entries`?~~ **Log entries only.** Answered "workouts too", reversed the same day. §1.2 is back to 14h and Phase 1 fits its window again. `SYNC_DESIGN.md` §11.1. | 2026-08-30 |
 
-**Found while building, not scheduled:** `web/README.md` is still `create-next-app` boilerplate
-and states the project uses Geist — false since D-002 put three self-hosted faces in
-`src/app/fonts/`. It is the first file a stranger opens in the repo. ~20 minutes, nobody's
-priority, recorded so it stays visible.
+**Found while building, ~~not scheduled~~ — scheduled 2026-09-05 as Round 1.3:**
+`web/README.md` is still `create-next-app` boilerplate and states the project uses Geist —
+false since D-002 put three self-hosted faces in `src/app/fonts/`. It is the first file a
+stranger opens in the repo. ~20 minutes. It stayed visible for six days by being written down,
+which is the whole argument for writing this class of thing down.
 
 **Enable the hook once per clone** — git ignores a hooks directory until told to use it:
 

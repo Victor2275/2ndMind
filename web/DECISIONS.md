@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-04
+updated: 2026-09-05
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,69 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-05 · The gate, before the work it is meant to gate
+
+V3 was replanned this day (`docs/V3_PLAN.md` §3.0): everything remaining is pulled onto
+Milestone A's date, and nothing new is built until the offline work is proven on a device.
+Round 1 is the gates, because Rounds 2–6 are all measured by them — and one of them had stopped
+measuring anything.
+
+### D-172 · Database tests are named `*.db.test.ts` and share one process
+
+**Decision.** `npm test` failed 7 of 1077 on Victor's laptop — every failure a 30s `beforeEach`
+timeout, every one of those files passing when run alone. `vitest.config.mts` now defines two
+projects. `unit` is everything else, unchanged. `db` is `src/**/*.db.test.ts`, running with
+`fileParallelism: false`, `isolate: false` and `environment: "node"`, which makes the ten
+database files share a single process — and therefore a single `src/test/pg.ts` module instance.
+Ten files renamed to carry the suffix.
+
+**Why.** Measured before changing anything: booting PGlite costs **~5.9s**; replaying all seven
+migrations into it costs **0.7s**. The expensive thing is the WASM boot, not the schema, and
+under one-worker-per-file ten of them were paying it simultaneously. That rules out the two
+obvious fixes — caching a migrated dump saves the cheap half, and `loadDataDir` still boots.
+
+`hookTimeout` had already been raised for this once, from 10s to 30s, when there were **three**
+such files; the comment recording that is still in the config. Raising it again treats a number
+that grows every time a table gets a test. **A flaky gate is worse than a slow one** — the
+sentence is already in `src/test/pg.ts`, written in August about this same failure: it teaches
+you to re-run rather than to read.
+
+Measured after: **the full suite goes 115s → 33s**, and the ten database files go from seven
+timeouts to 235 tests in 11s. Most of the rest came from `node` — those files never touched the
+DOM (the four that appeared to had test names containing the word *window*), and jsdom setup was
+the single largest line in the old run.
+
+**The cost is that those ten files can now see each other's module state**, so both halves of
+the trade are asserted rather than assumed. `src/test/__tests__/db-test-conventions.test.ts`
+fails if a test that boots a database is not named `*.db.test.ts` — which would silently put it
+back in the parallel group — and fails if a `*.db.test.ts` file introduces `vi.mock`, fake
+timers, `stubEnv`, `stubGlobal` or a `process.env` write. Both were checked by breaking them and
+watching the right assertion go red. It skips itself, by `import.meta.url` rather than by name,
+because its own patterns are written out in its source — which it caught on its first run.
+
+**How to reverse.** Delete the `projects` block and restore a single flat `test` config; the
+`.db.test.ts` names are then merely descriptive and the conventions test should go with it. If
+one database test genuinely needs mocks or fake timers, the answer is to give *that file* its
+isolation back — move it out of the group and let it pay for its own boot — rather than
+relaxing the guard for all ten.
+
+### D-173 · `/sprint-review` is retired
+
+**Decision.** `.claude/commands/sprint-review.md` is deleted. Goal editing lives on `/private`,
+and the separate `/private/sprint` route it was written against no longer exists. Confirmed by
+Victor 2026-09-05, closing the item that had been open in `V3_PLAN.md` §8 since V2.
+
+**What went with it, stated because it was not replaced.** Five of the command's seven steps
+are now the app's job. Two are not: appending the closing week to
+`context/04_operations/logbook_archive.md`, and running `python scripts/audit_freshness.py`.
+The script still exists and still runs; nothing now *prompts* either one. If the logbook stops
+being written, that is the cause, and the fix is a smaller command covering only those two
+steps rather than restoring this one.
+
+**How to reverse.** `git revert` the deletion. The file is a prompt with no dependencies.
 
 ---
 

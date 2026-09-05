@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-04
+updated: 2026-09-05
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -539,13 +539,52 @@ until it reproduces in `npm run build`.**
         syncing has existed. Nothing on screen ever said so. It means that offline, your training
         page has been showing what you logged by hand and nothing imported from Hevy. Fixed, with
         a test that now checks every table rather than the one that broke.
-  - [ ] **2.3 · Offline full-text search** (6h) — deferred 2026-09-04. Next code item.
-- [ ] **Phase 2 · Offline everything** (28h) — cached reads, public precache incl. resumes,
-      offline full-text search, error aggregation, device checklist. ~10-18.
-- [ ] **Phase 3 · Feel** (31h) — layout pass, gestures, motion, shortcuts, Playwright
-      offline suite. ~11-15.
-- [ ] **Phase 4** (29h) — push, light mode, voice-parsed entry, resume upload. ~12-13.
-- [ ] **Phase 5** (16h) — filament (reorder-first), course planner (desktop-only). ~2027-01-03.
+### Replanned 2026-09-05 — everything is pulled forward, and proof comes first
+
+Two decisions, both Victor's, recorded in full as `docs/V3_PLAN.md` §3.0.
+
+**Everything left in V3 now fits before term.** Phase 0, all of Phase 1, and §2.1, §2.2, §2.4,
+§2.5, §3.1, §3.2 are built. **69h of V3 remains, 55h of it unblocked**, against ~72h left in
+travel plus the pre-term burst. The old dates — B in October, C in November, D in January —
+came from a budget that no longer describes the situation. **The target is now Milestone D's
+scope on Milestone A's date, 2026-09-18.** The cost is honest and is Risk 5: those term-time
+hours were also the insurance against term being busier than 7h/week. If the burst
+under-delivers, Phases 4 and 5 go back to term time and Phases 2 and 3 do not move.
+
+**Nothing new gets built until the offline work is proven.** Five offline features are
+verified entirely by tests and not at all by a phone. §2.3 was deferred on 09-04 for exactly
+that reason. So the automated offline suite and the device round go first, and everything after
+them stands on something checked rather than argued.
+
+- [x] **Round 1 · Trust the gates** — **done 2026-09-05.** The test suite now runs **1080
+      passing in 28 seconds**; before today it was 115 seconds and seven of them failed. Nothing
+      was wrong with the code — ten test files each started their own copy of a database at the
+      same time, and on this laptop seven ran out of patience waiting. They share one now.
+      **The measurement is the reason it is a real fix rather than a bigger stopwatch:** starting
+      that database costs six seconds and setting up its tables costs less than one, so the
+      answer was never to wait longer. It had already been made to wait longer once, when there
+      were three files instead of ten.
+      **The audit found nothing to delete.** No test asserts nothing, none checks a value against
+      itself, none duplicates another. One thing is worth your call: **57 tests still cover the
+      fingerprint lock you switched off on the 4th** — 5% of the suite testing something the app
+      does not run. I would keep them. Turning that feature back on is one line, and those tests
+      are the only reason that line would be safe. Say so and they go.
+      `web/README.md` no longer describes a blank Next.js starter, and `/sprint-review` is
+      retired. **Two of its seven steps had no replacement** — appending the week to the logbook
+      and running the freshness audit — so if the logbook stops getting written, that is why.
+- [ ] **Round 2 · Prove it** (~11h) — §3.7 Playwright offline suite, then the device round on
+      the Samsung: the airplane-mode round trip (closes §1.3) and the stopwatch on the three log
+      paths (closes §1.6). 4h is carried for what it finds, and that is a guess — 09-03 produced
+      four bugs and 09-04 produced three.
+- [ ] **Round 3 · Finish Feel** (13h) — §3.3 gestures, §3.4 motion, §3.5 shortcuts, §3.6 AI
+      offline.
+- [ ] **Round 4 · Offline search** (6h) — §2.3, now standing on proven ground.
+- [ ] **Round 5 · Phase 4, unblocked** (24h) — §4.2 light mode, §4.1 push, §4.3 voice.
+- [ ] **Round 6 · Phase 5** (7h) — §5.2 course planner, desktop-only.
+
+**~64h against ~72h.** Still blocked, and therefore not in the rounds: §4.4 resume upload (5h,
+needs the PDFs) and §5.1 filament (9h, needs the inventory). If they arrive during the burst
+they fit the slack; if not, they are the two items that legitimately fall into term time.
 
 **Done when:** the app is on the home screen and two real weeks pass without reaching for the
 laptop to log. Behaviour, not a date.
