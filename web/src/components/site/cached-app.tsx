@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { LogForm } from "@/components/site/log-form";
@@ -515,12 +514,17 @@ function Elsewhere({ current }: { current: ViewKey | null }) {
             {TITLE[key]}
           </a>
         ))}
-        <Link
+        {/* A plain anchor, like every other link on this page. It was a <Link> until
+            2026-09-05, which meant the one control whose entire purpose is "see if the server
+            is back" tried to reach the server *through the router* — a client transition that
+            fails with no signal and looks like a dead button. A document navigation either
+            loads the live app or is answered by the worker with this same shell (D-175). */}
+        <a
           href="/private"
           className="min-h-10 rounded-md border border-primary/50 px-3 py-2 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10"
         >
           Try the live app
-        </Link>
+        </a>
       </div>
     </div>
   );

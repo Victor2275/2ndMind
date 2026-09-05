@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { reportError } from "@/lib/errors/client";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
 import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
-import { allOps, openSyncDb, pendingBatch, type SyncDb } from "@/lib/sync/store";
+import { allOps, openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/lib/sync/store";
 
 /**
  * Decides *when* to sync (V3 §1.3, `docs/SYNC_DESIGN.md` §6). What happens on each outcome is
@@ -26,6 +26,21 @@ import { allOps, openSyncDb, pendingBatch, type SyncDb } from "@/lib/sync/store"
  * this component. §1.7's retry screen and Phase 3's pull-to-refresh both need that, and
  * neither should have to be wired through the private layout to get it.
  *
+ * **`offline` mounts it on the cached shell** (D-175). Until 2026-09-05 this ran only inside the
+ * private layout, so an entry written with the radio off sat in the outbox until the live app
+ * was opened — even once signal returned, and even though the person was looking at the app.
+ * That is what Victor hit: his airplane-mode entries reached Neon only after he navigated back
+ * to `/private`.
+ *
+ * It cannot simply be mounted there as-is. `flush` posts **even with an empty outbox**,
+ * deliberately, because that empty POST is how changes made on the laptop reach the phone — and
+ * `/cached` is a static route anyone can open. Mounting it unguarded would make every stranger
+ * who loads that URL fire one authenticated call that 401s. So `offline` gates the whole run on
+ * there being something queued: with an empty outbox it makes no request at all, and a device
+ * with a queue is by definition a device that has signed in. Pull is given up in that mode,
+ * which is the trade Victor chose — the shell keeps showing the snapshot it has, and says how
+ * old it is.
+ *
  * Nothing sensitive may appear in this file — it compiles into `/_next/static/chunks/`, which
  * is served without authentication.
  */
@@ -40,7 +55,7 @@ export function requestSync() {
 /** How many times to go round when the server says there is more waiting. */
 const MAX_PAGES = 20;
 
-export function SyncRunner() {
+export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
   const [outbox, setOutbox] = useState<OutboxSummary | null>(null);
 
   // Refs, not state: none of this should cause a render, and a re-render mid-flush would
@@ -64,6 +79,13 @@ export function SyncRunner() {
       try {
         dbRef.current ??= await openSyncDb();
         const db = dbRef.current;
+
+        // On the shell, nothing queued means nothing to do — not even the empty POST that
+        // pulls, because this page is reachable without a session. See the note above.
+        if (offline && (await pendingCount(db)) === 0) {
+          setOutbox(summariseOutbox(await allOps(db)));
+          return;
+        }
 
         for (let page = 0; page < MAX_PAGES; page++) {
           const outcome = await flush(db, httpPoster, { online: navigator.onLine });
@@ -121,7 +143,7 @@ export function SyncRunner() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener(SYNC_EVENT, onManual);
     };
-  }, []);
+  }, [offline]);
 
   // Nothing to say when the outbox is empty, which is almost always.
   if (!outbox || outbox.urgency === "none") return null;
@@ -152,15 +174,26 @@ export function SyncRunner() {
         ? "bg-highlight"
         : "bg-primary";
 
-  return (
-    <Link
-      href="/private/sync"
-      // Above the phone tab bar, below the update prompt, and never over the centre of the
-      // screen: a log entry in progress must survive anything the app says about itself.
-      className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 items-center gap-2 rounded-full border bg-card/95 px-3 font-mono text-xs shadow-lg backdrop-blur-md transition-colors sm:bottom-6 print:hidden ${tone}`}
-    >
+  // Above the phone tab bar, below the update prompt, and never over the centre of the
+  // screen: a log entry in progress must survive anything the app says about itself.
+  const className = `fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 items-center gap-2 rounded-full border bg-card/95 px-3 font-mono text-xs shadow-lg backdrop-blur-md transition-colors sm:bottom-6 print:hidden ${tone}`;
+  const body = (
+    <>
       <span aria-hidden className={`size-1.5 rounded-full ${dot}`} />
       {outbox.label}
+    </>
+  );
+
+  // A document navigation on the shell, for the reason set out in `private-tabbar.tsx`: a
+  // client transition asks a server for the next page, and there is no server here. The worker
+  // answers /private/sync with the shell's own "Not sent" view.
+  return offline ? (
+    <a href="/private/sync" className={className}>
+      {body}
+    </a>
+  ) : (
+    <Link href="/private/sync" className={className}>
+      {body}
     </Link>
   );
 }

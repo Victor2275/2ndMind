@@ -1,4 +1,5 @@
 import { CachedApp } from "@/components/site/cached-app";
+import { SyncRunner } from "@/components/site/sync-runner";
 
 /**
  * The app as it exists on the phone, with no network (V3 §2.1).
@@ -46,6 +47,12 @@ export default function CachedPage() {
       </header>
 
       <CachedApp />
+
+      {/* Sends what was written with the radio off, the moment signal returns, without waiting
+          for the live app to be opened (D-175). `offline` gates it on there being something
+          queued: this route is static and reachable without a session, and an unguarded flush
+          posts even when the outbox is empty. */}
+      <SyncRunner offline />
     </main>
   );
 }

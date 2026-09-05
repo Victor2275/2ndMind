@@ -16,6 +16,20 @@ import type { CachedView } from "@/lib/offline/read";
  * not render empty. An empty "Schedule" reads as "nothing on today".
  */
 
+/**
+ * `next/link` renders a plain anchor with the same href, so nothing about the rendered DOM
+ * distinguishes it — the first two attempts at the test below both passed whichever was used,
+ * and jsdom has no router context for a click handler to cancel. Marking the module is the only
+ * honest way to assert which one the code reached for.
+ */
+vi.mock("next/link", () => ({
+  default: ({ children, ...props }: { children?: unknown; [k: string]: unknown }) => (
+    <a data-next-link="yes" {...(props as Record<string, string>)}>
+      {children as never}
+    </a>
+  ),
+}));
+
 const readCachedView = vi.fn<() => Promise<CachedView>>();
 vi.mock("@/lib/offline/read", () => ({ readCachedView: () => readCachedView() }));
 
@@ -235,11 +249,16 @@ describe("it looks like the app, not like the public site", () => {
     render(<CachedApp />);
     await screen.findByText("Due");
 
+    // Not just the tab bar — the whole screen. Every link here is reached with no server to
+    // answer for the next page, so a client transition is wrong everywhere, not only in the
+    // bar. "Try the live app" was the last <Link> on this page and was exactly the control
+    // whose job is to find out whether the server is back.
+    const links = [...document.querySelectorAll("a")];
+    expect(links.length).toBeGreaterThan(3);
+    expect(links.filter((a) => a.hasAttribute("data-next-link"))).toEqual([]);
+
     const bar = screen.getByRole("navigation", { name: /private sections/i });
     for (const link of bar.querySelectorAll("a")) {
-      // Next's <Link> renders an anchor too, so the tag alone proves nothing — but it also
-      // attaches a router listener and prefetches. What is asserted instead is the thing that
-      // matters and is observable: the href is a real path the worker can answer.
       expect(link.getAttribute("href")).toMatch(/^\/private/);
     }
   });
