@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { reportError } from "@/lib/errors/client";
+import { buzzFailed } from "@/lib/haptics";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
 import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
 import { allOps, openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/lib/sync/store";
@@ -102,6 +103,12 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
             // Backoff is driven by the ops' own attempt counts, so a batch that has been
             // failing for a while waits longer than one that just started.
             const batch = await pendingBatch(db, 1);
+
+            // A pattern deliberately unlike the save tick (§3.3): the point is that a failure
+            // cannot be mistaken for a success through a pocket. Only when something is
+            // actually waiting to be sent — a failed empty pull is the network's business, not
+            // something to buzz a pocket about.
+            if (batch.length > 0) buzzFailed();
             nextAttemptRef.current = Date.now() + backoffMs(batch[0]?.attempts ?? 1);
             break;
           }

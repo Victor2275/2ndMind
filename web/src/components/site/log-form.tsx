@@ -22,6 +22,7 @@ import {
   type Field,
   type RowGroup,
 } from "@/lib/log/categories";
+import { buzzSaved } from "@/lib/haptics";
 import type { Chip, ChipSets } from "@/lib/log/chips";
 import { stickyStore, submittedValues, writeSticky } from "@/lib/log/sticky";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -511,6 +512,9 @@ export function LogForm({
     // neither calls `setState`. The re-render that clears the form comes from the store
     // notifying its subscribers, which is the whole reason the store exists.
     if (state.ok) {
+      // The confirmation you get without looking (§3.3). This is the form used at a rack, one
+      // hand, eyes elsewhere — a toast only answers "did that save?" if you read it.
+      buzzSaved();
       writeSticky(storage(), category, submitted.current);
       return;
     }

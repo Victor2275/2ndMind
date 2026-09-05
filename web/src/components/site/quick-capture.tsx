@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+
+import { buzzSaved } from "@/lib/haptics";
 import { useFormStatus } from "react-dom";
 
 import { captureQuick } from "@/app/private/log/actions";
@@ -71,6 +73,7 @@ export function QuickCapture({
   useEffect(() => {
     if (!state || state === settled.current) return;
     settled.current = state;
+    if (state.ok) buzzSaved();
     if (!state.ok && input.current) input.current.value = typed.current;
   }, [state]);
 
