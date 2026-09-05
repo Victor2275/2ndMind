@@ -226,7 +226,7 @@ than argued.
 | # | Round | Items | h | Window |
 |---|---|---|---:|---|
 | 1 | ~~**Trust the gates**~~ **done 09-05** | Test gate, suite audit, README | ~3 | 09-05 |
-| 2 | **Prove the offline work** | §3.7 + the device round + what it finds | ~11 | 09-07 → 09-09 |
+| 2 | **Prove the offline work** — *device round run 09-05, §3.7 still to build* | §3.7 + the device round + what it finds | ~11 | 09-05 → 09-09 |
 | 3 | **Finish Feel** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-09 → 09-12 |
 | 4 | **Offline search** | §2.3, now standing on proven ground | 6 | 09-12 → 09-13 |
 | 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
@@ -240,6 +240,33 @@ three more. The 4h carried in Round 2 for "what it finds" is a guess, not a meas
 **Blocked, and therefore not in the table:** §4.4 (5h, needs the resume PDFs) and §5.1 (9h,
 needs the filament inventory). Both are in §8. If they arrive during the burst they fit in the
 slack; if they do not, they are the two items that legitimately fall into term time.
+
+#### Round 2 — the device round ran the same day, and paid immediately
+
+> **§1.6 is closed and §1.3 is half closed.** Both by Victor, on the phone, 2026-09-05.
+>
+> **The finding was a working feature reported as a missing one.** *"It takes me to the public
+> page, and doesn't let me go to private, so logging in airplane mode/offline does not work."*
+> The last clause was wrong — logging offline worked throughout. What was broken is that
+> `/cached` rendered with the portfolio's header and without the app's bottom tab bar, because
+> the chrome predicate and the tab bar both key on `/private` and the shell deliberately lives
+> outside it (D-161). So the offline app looked like the public site, and a feature that worked
+> was reported as absent. **D-174.**
+>
+> **No test could have caught it, and that is the argument for this round existing.** Every
+> assertion about `/cached` passed: each was about what the component renders, none about what
+> surrounds it. There are four now that would.
+>
+> Fixed in the same sitting: the tab bar renders on the shell with document navigations rather
+> than client transitions (an RSC fetch cannot work where there is no server); the five screens
+> the phone keeps no copy of are **named** instead of silently redirecting to Today; and the
+> offline update check no longer files a crash report for the absence of a network — two of
+> those arrived from the phone during this very test.
+>
+> **Still open, and it is the interesting half:** nothing written in airplane mode has reached
+> Neon. The newest log entry there is 2026-09-04T06:36Z, which is what a phone that has not
+> been back online yet should look like. The check is to reconnect, open the app, and watch
+> *Not sent* empty.
 
 #### Round 1 — **done 2026-09-05.** The gate is green, and the suite has no dead weight
 
@@ -683,8 +710,11 @@ about a number on the button rather than something that appeared while he was no
 `<form action={fn}>` as soon as the action returns, success or not, so a save rejected for a
 reason outside the form took the typing with it. It now puts back what was there.
 
-**Still Victor's to close:** log one Training, one Study and one Reading-or-People entry
-one-handed on the phone, with a stopwatch, and write the three numbers into this section.
+~~**Still Victor's to close:** log one Training, one Study and one Reading-or-People entry
+one-handed on the phone, with a stopwatch, and write the three numbers into this section.~~
+**Closed 2026-09-05 on the device** — *"the 15 seconds works for all of the logs."* All three
+paths are under the bar, Training included, which is the one that changed shape twice (D-159
+sets-in-rows, D-162 fields by kind). **§1.6 is done.**
 
 **Reworked 2026-09-03 after he used it. D-159.** Four changes, from four pieces of feedback,
 and none of them a bug — the form did what it was built to do and what it was built to do was
@@ -1136,8 +1166,8 @@ report. They are no longer background items; they are the gate on the rest of th
 
 | # | What to do | Closes |
 |---|---|---|
-| 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. §1.3 tests this against real Postgres, but the run against *Neon itself* was deliberately not made: it would write test rows into the real log, and since §1.2 there are no hard deletes left to clean them up with. | §1.3 |
-| 2 | **Time the three fast log paths**, one-handed, with a stopwatch: Training, Study, and Reading or People. Write the three numbers into §1.6. Under 15 seconds each is the bar. Training is now sets-in-rows (D-159), so time it logging a real exercise with three sets. | §1.6 |
+| 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. **Half done 2026-09-05:** the writing half is confirmed on the device — entries save with the radio off. The arriving half is not: Neon's newest log entry is still 2026-09-04T06:36Z, so what was written in airplane mode is **still in the outbox**, which is correct behaviour for a phone that has not been back online yet. Reconnect, open the app, check *Not sent* empties, and the count is then the check. | §1.3 |
+| ~~2~~ | ~~**Time the three fast log paths.**~~ **Closed 2026-09-05.** Victor: *"the 15 seconds works for all of the logs."* Training as sets-in-rows, Study, and Reading/People all under the bar on the real device. §1.6 is done. | ~~§1.6~~ |
 | ~~3~~ | ~~**Biometric unlock, twice.**~~ **Withdrawn 2026-09-04** — the lock was removed from the app (D-158). There is nothing left to check. | ~~§1.5~~ |
 
 ### Then these, in no particular order
