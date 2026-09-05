@@ -42,6 +42,6 @@ Four rules that are easy to violate by accident:
    something hidden, take it out of the projection — see D-114, where pursuit `facts` held
    erg splits he had just made private.
 
-Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`, `npm run shots`
+Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`, `npm run shots`, `npm run e2e`
 (layout and resume page-count gate, dev server must be running), `npm run freeze` (offline
 snapshot of the site).

@@ -19,6 +19,8 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 
+import { mintSession } from "./lib/session.mjs";
+
 const BASE = process.env.SHOTS_BASE ?? "http://localhost:3000";
 const OUT = process.env.SHOTS_OUT ?? ".shots";
 
@@ -100,26 +102,6 @@ const PRIVATE_PAGES = [
   { name: "private-hobbies", url: "/private/hobbies", gated: false },
   { name: "private-sync", url: "/private/sync", gated: false },
 ];
-
-function b64url(bytes) {
-  return Buffer.from(bytes).toString("base64url");
-}
-
-async function mintSession(secret) {
-  const now = Math.floor(Date.now() / 1000);
-  // Fifteen minutes, not the app's seven days: this token exists for the length of one run.
-  const payload = { sub: "victor", iat: now, exp: now + 900 };
-  const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-  return `${body}.${b64url(new Uint8Array(signature))}`;
-}
 
 /**
  * Hides the Next.js dev-tools button before anything is measured or shot.

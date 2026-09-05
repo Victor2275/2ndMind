@@ -33,9 +33,17 @@ Four, and all four are expected to pass before anything is called done:
 npm test             # vitest — two projects, `unit` and `db`
 npm run typecheck    # tsc --noEmit
 npm run shots        # playwright sweep; fails if a page's first action sits too far down
+npm run e2e          # the offline round trip, in a real browser, against a real build
 ```
 
-The fourth is `docs/DEVICE_CHECKLIST.md`, which runs on the phone with a thumb. It covers the
+`npm run e2e` is the slow one and the only one that writes to the database. It builds, starts a
+production server, and drives Chromium through airplane mode: the worker serves the app shell
+and the portfolio with the radio off, a training entry is written offline, and when the network
+returns the entry has to reach Postgres **exactly once** — then the row it created is deleted
+again. Nothing else in the suite has a service worker or a Cache Storage, which is why a bug
+that made the whole offline app render as the public site passed every other check.
+
+The fourth gate is `docs/DEVICE_CHECKLIST.md`, which runs on the phone with a thumb. It covers the
 things no exit code can: whether the app installs, whether it works with the radio off, whether
 the launcher icon is right, and whether you can reach what you need one-handed.
 

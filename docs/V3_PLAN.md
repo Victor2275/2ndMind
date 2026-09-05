@@ -226,7 +226,7 @@ than argued.
 | # | Round | Items | h | Window |
 |---|---|---|---:|---|
 | 1 | ~~**Trust the gates**~~ **done 09-05** | Test gate, suite audit, README | ~3 | 09-05 |
-| 2 | **Prove the offline work** — *device round run 09-05, §3.7 still to build* | §3.7 + the device round + what it finds | ~11 | 09-05 → 09-09 |
+| 2 | ~~**Prove the offline work**~~ **done 09-05** | §3.7 + the device round + what they found | ~11 | 09-05 |
 | 3 | **Finish Feel** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-09 → 09-12 |
 | 4 | **Offline search** | §2.3, now standing on proven ground | 6 | 09-12 → 09-13 |
 | 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
@@ -263,10 +263,10 @@ slack; if they do not, they are the two items that legitimately fall into term t
 > offline update check no longer files a crash report for the absence of a network — two of
 > those arrived from the phone during this very test.
 >
-> **Still open, and it is the interesting half:** nothing written in airplane mode has reached
-> Neon. The newest log entry there is 2026-09-04T06:36Z, which is what a phone that has not
-> been back online yet should look like. The check is to reconnect, open the app, and watch
-> *Not sent* empty.
+> **Closed later the same day.** The outbox drained on reconnect: two entries reached Neon at
+> 2026-09-05T04:12Z, distinct client ids, no duplicates, and two is what was written. **§1.3 and
+> §1.6 are both done, and Round 2's device half with them.** What remains in Round 2 is §3.7,
+> which is the same round trip driven by a machine rather than by hand.
 
 #### Round 1 — **done 2026-09-05.** The gate is green, and the suite has no dead weight
 
@@ -978,8 +978,15 @@ Milestone C: it stops feeling like a website.
   from the log, and the Google Sheet owns them. Victor picked the capture box (D-164) to replace
   it — the unstructured note is the thing most worth reaching in one press.)*
 - **3.6 · AI offline — 2h.** Stored summaries (D-124) render with their date when offline.
-- **3.7 · Playwright offline suite — 5h.** Drives the real service worker offline and back.
-  Covers what 1.4 cannot: the browser's actual caching behaviour.
+- **3.7 · Playwright offline suite — 5h.** ✅ **DONE 2026-09-05.** `npm run e2e`. Eighteen
+  checks against a production build and the real database: the worker precaches, the radio goes
+  off, `/private` is answered with the shell, the portfolio still opens, a Training entry with
+  two sets is written offline, and on reconnect it reaches Postgres **exactly once** with its
+  sets intact — then the row is deleted. Six rows before, six after. **Mutation-tested:**
+  removing the shell's sync runner makes it fail and exit 1. Three of its first four failures
+  were the suite's own fault and are recorded in **D-176**, because each is a way this kind of
+  test lies — a desktop viewport, a network that is never idle, a third-party 503, and a
+  `navigator.onLine` that reports the radio back before the first POST can succeed.
 
 > ### ⚑ Milestone C — ~2026-11-15
 > **It behaves like an Android app, and the layout is gated by measurement.**
@@ -1080,6 +1087,7 @@ Recorded so "we decided not to" stays distinguishable from "we forgot".
 | Encrypted local cache | Declined in favour of the biometric gate. |
 | Semantic search | Fourth cut. Incompatible with offline. |
 | Editing the job sheet | Dropped from V3; revisit after a month of the read-only view. |
+| **A UI overhaul** | **V4, at Victor's call 2026-09-05.** Named the day offline logging was confirmed working on the phone: *"Offline works right now, but I don't love the UI."* Three things, and the offline screen is not among them — **density and spacing, the visual style, and what lives where in the navigation.** Explicitly out of V3, and the reason is ordering rather than taste: a redesign puts every screen back in flux three weeks after §3.1 measured them and §3.2 gated them, and it would land on top of §3.3 to §3.6, which change how those same screens behave. Behaviour first, then the look, so each is judged against something that stopped moving. |
 
 ---
 
@@ -1166,7 +1174,7 @@ report. They are no longer background items; they are the gate on the rest of th
 
 | # | What to do | Closes |
 |---|---|---|
-| 1 | **The offline round trip.** Airplane mode → log three entries → reconnect → check all three are in Neon **once each**. **Half done 2026-09-05:** the writing half is confirmed on the device — entries save with the radio off. The arriving half is not: Neon's newest log entry is still 2026-09-04T06:36Z, so what was written in airplane mode is **still in the outbox**, which is correct behaviour for a phone that has not been back online yet. Reconnect, open the app, check *Not sent* empties, and the count is then the check. | §1.3 |
+| ~~1~~ | ~~**The offline round trip.**~~ **Closed 2026-09-05.** Written in airplane mode, arrived after reconnecting: two entries at 04:12Z, distinct client ids, **no duplicates**, and two is what he wrote. Both halves confirmed on the real device against real Neon. **§1.3 is done.** | ~~§1.3~~ |
 | ~~2~~ | ~~**Time the three fast log paths.**~~ **Closed 2026-09-05.** Victor: *"the 15 seconds works for all of the logs."* Training as sets-in-rows, Study, and Reading/People all under the bar on the real device. §1.6 is done. | ~~§1.6~~ |
 | ~~3~~ | ~~**Biometric unlock, twice.**~~ **Withdrawn 2026-09-04** — the lock was removed from the app (D-158). There is nothing left to check. | ~~§1.5~~ |
 

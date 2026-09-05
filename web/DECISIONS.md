@@ -17,6 +17,108 @@ useful part.
 
 ---
 
+## 2026-09-05 · The offline round trip has a machine that checks it
+
+### D-176 · `npm run e2e` drives a real browser offline, against a real build and a real database
+
+**Decision.** `scripts/e2e-offline.mjs`, run by `npm run e2e`. Eighteen checks, in the sequence
+Victor performed by hand: the worker installs and precaches, the radio goes off, `/private`
+navigations are answered with the shell, the portfolio still opens, a Training entry with two
+sets is written, the network returns, and **the entry has to reach Postgres exactly once** with
+its sets intact. Then the row it created is deleted.
+
+**Why it is not part of `npm test`.** Victor's call, and the arithmetic supports it: the unit
+suite finishes in 28 seconds and this takes a build plus a browser. It is a fourth gate, run
+deliberately, like `npm run shots`.
+
+**Against a production build, not `next dev`.** The worker precaches by scraping
+`/_next/static/…` out of the pages it caches, and dev serves different URLs than a build does.
+Run against dev, this would exercise a caching behaviour no phone ever sees — which is the one
+thing §3.7 exists to check.
+
+**Against the real database, with teardown by SQL.** The plan deferred this check for weeks
+because §1.2 removed hard deletes, so a row written through the app can never be removed
+through the app. The resolution is that teardown deletes directly, scoped to the client ids the
+run generated, and refuses if any of them fails a uuid check. Verified: the table was at six
+rows before and six rows after.
+
+**Four things it found on its first runs, three of which were the suite's own fault.** They are
+worth recording because each is a way this kind of test lies:
+
+1. **The tab bar was "missing".** It is `.nav-mobile`, hidden above the phone breakpoint, and
+   Playwright defaults to a 1280px viewport. The check was true and meaningless. The context is
+   now 390×844, which is what this app is for.
+2. **`networkidle` never arrived.** The dashboard registers a worker, starts a sync and asks
+   Gemini for a summary, so the network is never quiet — the navigation timed out on a page
+   that had rendered fine. It now waits for the worker, which is the real precondition.
+3. **A Gemini 503 timed out the run.** The first navigation is now `/private/sync`, which mounts
+   the same layout and the same runner without asking an external model anything. **A suite that
+   fails when a third party is busy is a suite people learn to re-run.**
+4. **`navigator.onLine` lies on the way back up.** Playwright flips the flag before the network
+   stack is ready, and specifically the *first POST* after a restore fails even once a GET has
+   succeeded. That produced a genuinely failed flush, which put the op into backoff — and since
+   nothing retries on a timer, the rest of the run was measuring the backoff rather than the
+   feature. The readiness gate is now a request of the same shape as the one under test: an
+   empty-ops POST, which sends nothing and asserts the endpoint answers 200.
+
+**It was mutation-tested, which is the only reason it is worth having.** Removing
+`<SyncRunner offline />` and rebuilding makes it fail with `attempts: 0, lastError: null` — the
+runner never tried — and exit 1. Restored, it passes again.
+
+**How to reverse.** Delete the script, `scripts/lib/session.mjs` (folding `mintSession` back
+into `shots.mjs`), and the `e2e` line in `package.json`.
+
+---
+
+## 2026-09-05 · The offline app sends for itself, and its links stop asking a server
+
+Found while building §3.7's test, before the test existed: writing down what the suite would
+have to assert forced the question of who flushes the outbox on the shell, and the answer was
+nobody.
+
+### D-175 · The cached shell runs its own sync, gated on having something to send
+
+**Decision.** `SyncRunner` takes an `offline` prop and is mounted on `/cached`. In that mode it
+returns early unless the outbox has something pending, and its badge is a plain anchor rather
+than a `<Link>`.
+
+**Why it was needed.** `SyncRunner` lived only in the private layout, so an entry written with
+the radio off sat in the outbox until `/private` was opened — *even after signal returned, and
+even though the person was looking at the app.* That is exactly what happened on 2026-09-05:
+Victor's airplane-mode entries reached Neon only once he navigated back into the live app. The
+shell could write and could not send, which is half a feature.
+
+**Why it could not simply be mounted.** `flush` posts **even with an empty outbox**, on purpose
+— that empty POST is how changes made on the laptop reach the phone — and `/cached` is a static
+route anyone can open. Mounted unguarded, every stranger loading that URL fires one
+authenticated call that 401s, which is the precise reason the component's own comment kept it
+off public pages. So `offline` gates the whole run on `pendingCount(db) > 0`: nothing queued,
+no request at all, and a device with a queue is by definition one that has signed in.
+
+**What it gives up.** Pull. On the shell it only ever pushes, so the screen keeps showing the
+snapshot it had rather than refreshing itself when signal returns. Victor's call, and the
+honest one — the snapshot is labelled with its age, and the live app is one tap away.
+
+**And every link on that page is now a document navigation.** `Elsewhere`'s "Try the live app"
+was still a `<Link>`, which made the one control whose entire job is *find out whether the
+server is back* try to reach it through the router — a client transition that cannot succeed
+with no signal and reads as a dead button. `next/link` is now absent from `cached-app.tsx`
+entirely, which makes the property structural rather than remembered.
+
+**The test for this took three attempts, and the first two were worthless.** A `<Link>` renders
+a plain anchor with the same `href`, so asserting on the tag or the href passes whichever is
+used. Asserting that a click is not cancelled also passes both ways, because jsdom has no
+router context for `<Link>` to cancel into. Only mocking `next/link` to mark what it renders
+distinguishes them — and that assertion is paired with a positive one inside `/private`, so it
+cannot pass merely because the mock never applied. Both were confirmed by forcing the anchors
+back to `<Link>` and watching them fail. **Two versions of this test would have shipped green
+while asserting nothing**, which is the argument for mutating a test before trusting it.
+
+**How to reverse.** Drop the `offline` prop and its two effects, and remove `<SyncRunner />`
+from `src/app/cached/page.tsx`. The shell then writes but does not send, as before.
+
+---
+
 ## 2026-09-05 · The offline app did not look like the app
 
 The device round found it, which is what the device round is for. Victor, in airplane mode:

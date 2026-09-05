@@ -572,10 +572,19 @@ them stands on something checked rather than argued.
       `web/README.md` no longer describes a blank Next.js starter, and `/sprint-review` is
       retired. **Two of its seven steps had no replacement** — appending the week to the logbook
       and running the freshness audit — so if the logbook stops getting written, that is why.
-- [ ] **Round 2 · Prove it** (~11h) — §3.7 Playwright offline suite, then the device round on
-      the Samsung: the airplane-mode round trip (closes §1.3) and the stopwatch on the three log
-      paths (closes §1.6). 4h is carried for what it finds, and that is a guess — 09-03 produced
-      four bugs and 09-04 produced three.
+- [ ] **Round 2 · Prove it** (~11h) — **the device half is done, 2026-09-05.** Both checks
+      passed on the real phone: the three log paths are all under 15 seconds, and entries written
+      in airplane mode reached the database once each after reconnecting, with none duplicated
+      and none lost. **§1.3 and §1.6 are closed.** It also paid for itself — the offline app was
+      wearing the portfolio's header and none of its own navigation, so a feature that worked was
+      reported as broken (D-174). **§3.7 is now built too, so Round 2 is done.**
+      `npm run e2e` drives a real browser through the whole thing on its own: it builds the app,
+      turns the network off, checks the app and the portfolio still open, writes a training
+      entry with two sets, turns the network back on, and checks the entry reaches the database
+      **exactly once** — then deletes the row it made. Six rows before, six after.
+      **The suite was itself tested by breaking the app and watching it fail.** Three of its
+      first four failures were the test's own fault rather than the app's, which is recorded in
+      D-176 because each is a way this kind of test quietly lies.
 - [ ] **Round 3 · Finish Feel** (13h) — §3.3 gestures, §3.4 motion, §3.5 shortcuts, §3.6 AI
       offline.
 - [ ] **Round 4 · Offline search** (6h) — §2.3, now standing on proven ground.
@@ -594,7 +603,12 @@ explicit recommendation to cut ~60h — Victor's call, timeline extends rather t
 shrinking. Phase 1 in particular is 65h of work in a 66h window with a hard date. **It will
 slip**; when it does, 1.6 and 1.7 move to Phase 2 and the app still installs and still syncs.
 
-**Deferred to V4:** photo capture (Victor's explicit call), editing the job sheet (D-141),
+**Deferred to V4:** a **UI overhaul** — decided 2026-09-05, the day offline logging was
+confirmed working on the phone. Offline works; the look is the complaint. Three things named:
+density and spacing, the visual style, and what lives where in the navigation. Kept out of V3
+deliberately — a redesign would put every screen back in flux right on top of the four items
+that change how those screens behave. Behaviour first, then the look.
+Also photo capture (Victor's explicit call), editing the job sheet (D-141),
 the Android share target, a portfolio-only "show" mode (D-130 accepts the exposure instead),
 semantic search (cut a fourth time — it cannot work offline).
 
