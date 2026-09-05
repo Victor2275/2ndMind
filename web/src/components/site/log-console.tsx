@@ -140,6 +140,7 @@ export function LogConsole({
   unsorted = [],
   loggedToday,
   chips = {},
+  initialCategory,
 }: {
   entries: EntryView[];
   /** Notes captured but not yet filed (D-164). */
@@ -147,8 +148,14 @@ export function LogConsole({
   loggedToday: string[];
   /** Recent values per category, for the one-tap chips (§1.6, D-155). */
   chips?: Record<string, ChipSets>;
+  /** Which tab to open on, from `?category=` — already validated by the page (§3.5). */
+  initialCategory?: string;
 }) {
-  const [active, setActive] = useState(TAB_CATEGORIES[0].key);
+  // The icon's long-press shortcuts arrive at `/private/log?category=…` and the page resolves
+  // that to a known tab before it gets here, so an unknown key can never reach this state
+  // (§3.5, D-178). Initial state only — switching tabs afterwards is the user's business and
+  // must not be fought by the URL.
+  const [active, setActive] = useState(initialCategory ?? TAB_CATEGORIES[0].key);
   const [undoId, setUndoId] = useState<number | null>(null);
   const [, undo] = useActionState<ActionState | null, FormData>(undoLogEntry, null);
 

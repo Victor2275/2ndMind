@@ -10,6 +10,7 @@ import { InboxPanel } from "@/components/site/inbox-panel";
 import { ErrorPanel } from "@/components/site/error-panel";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
 import { ProposalReview } from "@/components/site/proposal-review";
+import { QuickCapture } from "@/components/site/quick-capture";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { Task } from "@/lib/db/schema";
@@ -161,7 +162,7 @@ async function Broken() {
   );
 }
 
-async function Tasks() {
+async function Tasks({ focusCapture }: { focusCapture: boolean }) {
   const { due, goals, someday, doneToday, inbox, overdue, failure } = await load();
 
   const goalValues = Object.fromEntries(
@@ -184,6 +185,13 @@ async function Tasks() {
           "Finished today" — so leading with them meant scrolling past a summary of the answer
           to reach the answer. */}
       <div className="mt-6 space-y-4">
+        {/* Above the task list, and above everything that describes the day, for the same
+            reason the task list is above the stats (§3.1): this is the one control on Today
+            that writes. It was on `/private/log` only, while the offline shell showed it on
+            every screen — so the app and its own offline copy disagreed about where capture
+            lives, and the long-press shortcut had nowhere on Today to land (§3.5, D-178). */}
+        <QuickCapture autoFocus={focusCapture} />
+
         <Panel title="Due" meta={due.length > 0 ? `${due.length} open` : undefined}>
           <TaskList
             tasks={due.map(toView)}
@@ -516,7 +524,17 @@ async function SummaryArchive() {
   );
 }
 
-export default function TodayPage() {
+export default async function TodayPage({ searchParams }: PageProps<"/private">) {
+  /**
+   * `?capture=1` puts the cursor in the capture box on arrival (§3.5, D-178).
+   *
+   * Read here rather than in the client component so the box is focused on first paint, and so
+   * the long-press shortcut lands ready to type rather than ready to be tapped once more. A
+   * search param rather than a route: it is the same screen either way, and a second route
+   * showing the same page would be a second thing to keep in step.
+   */
+  const focusCapture = (await searchParams).capture === "1";
+
   return (
     <main className="pb-16">
       <PageHeader
@@ -547,7 +565,7 @@ export default function TodayPage() {
           </>
         }
       >
-        <Tasks />
+        <Tasks focusCapture={focusCapture} />
       </Suspense>
 
       {/* Below the tasks, not above them (V3 §3.1).

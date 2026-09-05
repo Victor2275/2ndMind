@@ -224,6 +224,32 @@
     animation: mesh-drift 38s ease-in-out infinite alternate;
   }
 
+  /* Not on a phone (V3 §3.4, D-179).
+
+     `mesh-drift` animates `transform` on a fixed, full-viewport layer holding three large
+     radial fills, forever, on every screen in the app. That is a composited layer the size of
+     the display being repainted for the whole time the app is open — the kind of thing that
+     shows up as warmth and battery rather than as jank, and so never gets attributed to the
+     page that caused it.
+
+     The gradients stay; only the drift stops. The depth was the point and it is still there in
+     a still frame — what is dropped is 38 seconds of motion nobody is watching on a screen
+     small enough that the whole drift is a few pixels. Above the breakpoint it is a laptop on
+     mains power, where it is decoration that costs nothing that matters.
+
+     This narrows D-007 rather than reversing it: the ambient layer is still the ground of the
+     design, and the rest of the motion pass is deliberately left for the V4 overhaul, since a
+     redesign will decide what should move.
+
+     40rem, matching `.nav-mobile` below — the same line the app already uses to decide what a
+     phone is. Two different definitions of "phone" in one stylesheet is a thing nobody notices
+     until a screen falls between them. */
+  @media (width < 40rem) {
+    body::before {
+      animation: none;
+    }
+  }
+
   /* Fine grain over the gradients. Without it wide radial fills band visibly on
      8-bit displays; the noise dithers them. */
   body::after {

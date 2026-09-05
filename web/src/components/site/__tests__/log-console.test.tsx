@@ -140,3 +140,20 @@ describe("the unsorted pile", () => {
     expect(filed?.get("category")).toBe("athletics");
   });
 });
+
+describe("opening on a category, from the icon's shortcut", () => {
+  /**
+   * §3.5. The long-press shortcut arrives at `/private/log?category=athletics`; the page
+   * validates the key and hands it down. Arriving on the wrong tab costs exactly the tap the
+   * shortcut exists to save.
+   */
+  it("starts on the category it was asked for", () => {
+    render(<LogConsole entries={[]} loggedToday={[]} initialCategory="day" />);
+    expect(screen.getByRole("button", { name: /log end of day/i })).toBeInTheDocument();
+  });
+
+  it("starts on the first tab when nothing was asked for", () => {
+    render(<LogConsole entries={[]} loggedToday={[]} />);
+    expect(screen.getByRole("button", { name: /log training/i })).toBeInTheDocument();
+  });
+});

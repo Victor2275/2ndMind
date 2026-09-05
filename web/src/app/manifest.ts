@@ -41,6 +41,42 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: GROUND,
     theme_color: GROUND,
 
+    /**
+     * The launcher's long-press menu (V3 §3.5, D-178).
+     *
+     * Three, and each goes straight into a form rather than to a screen you then navigate from
+     * — the whole value is arriving with the keyboard up. `context.md` asks that every write
+     * path sit under three interactions from the dashboard; from here they are one.
+     *
+     * Chrome shows at most a handful and honours the order given. Training first because it is
+     * the heaviest form and the one timed at under fifteen seconds; the capture box second,
+     * chosen over the retired "Log application" when D-159 moved applications to the Sheet;
+     * end of day last, because it is the one with a natural time attached.
+     *
+     * Every target is inside `scope`, and each is a plain URL rather than a route of its own —
+     * a second route rendering the same page would be a second thing to keep in step.
+     */
+    shortcuts: [
+      {
+        name: "Log training",
+        short_name: "Training",
+        url: "/private/log?category=athletics",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+      },
+      {
+        name: "Quick note",
+        short_name: "Note",
+        url: "/private?capture=1",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+      },
+      {
+        name: "End of day",
+        short_name: "End of day",
+        url: "/private/log?category=day",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+      },
+    ],
+
     icons: [
       // `any` — browser tabs, the app switcher, and launchers that do not mask.
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

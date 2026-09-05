@@ -17,6 +17,60 @@ useful part.
 
 ---
 
+## 2026-09-05 · Round 3 — the things you notice using it
+
+### D-178 · The icon's long-press menu, and the two deep links it needed
+
+**Decision.** Three shortcuts in the manifest: **Log training** →
+`/private/log?category=athletics`, **Quick note** → `/private?capture=1`, **End of day** →
+`/private/log?category=day`. Each lands in a form rather than on a screen you navigate from.
+
+**Two things had to exist first.** The log page accepted only `?q=`, so a category could not be
+addressed at all — `LogConsole` held its tab in `useState` seeded from the first tab, full stop.
+It now takes an `initialCategory`, resolved and **validated on the server** so an unknown key
+can never reach the state and render a console with no matching tab.
+
+**And the capture box was not where it looked like it was.** Victor picked "Today's capture
+box", and the capture box is on `/private/log` in the live app — it is on Today only in the
+*offline shell*, which is where he had been looking at it. So the app and its own offline copy
+disagreed about where capture lives. Rather than point the shortcut at the log page, the box is
+now on Today too, above the task list for the same reason the task list is above the stats
+(§3.1): it is the one control on that page that writes. `?capture=1` focuses it, read on the
+server so the cursor is in it on first paint.
+
+**Guarded, because nobody re-tests a long-press menu.** These are three URLs in a file nothing
+else imports, pointing at parameters two other files parse — rename `athletics` and the
+shortcut still installs, still appears, and quietly opens the wrong form. A test resolves each
+shortcut's `category` against `TAB_CATEGORIES` and fails if it names one that does not exist.
+Verified by renaming the key and watching it go red.
+
+**How to reverse.** Delete the `shortcuts` block. The two deep links are independently useful
+and can stay.
+
+### D-179 · The ambient gradient stops moving on phones
+
+**Decision.** `mesh-drift` is disabled below `40rem`. The gradients stay; only the drift stops.
+
+**Why.** It animates `transform` on a fixed, full-viewport layer holding three large radial
+fills, forever, on every screen in the app — a composited layer the size of the display being
+repainted for as long as the app is open. That is the kind of cost that surfaces as warmth and
+battery rather than as jank, so it never gets attributed to the page that caused it. On a screen
+this small the whole 38-second drift amounts to a few pixels nobody is watching.
+
+Above the breakpoint it is a laptop on mains power, where it is decoration that costs nothing
+that matters. `40rem` is not a new number: it is the line `.nav-mobile` already uses, and two
+different definitions of "phone" in one stylesheet is a thing nobody notices until a screen
+falls between them.
+
+**This is the whole of §3.4 for now.** The sheet and save transitions in that item are
+deliberately left: they are about how the app *looks*, the look is being overhauled in V4, and
+building transitions now means building them twice. What is kept is the half that is about the
+phone being fast rather than about taste. Narrows D-007, does not reverse it.
+
+**How to reverse.** Delete the media query.
+
+---
+
 ### D-177 · The portfolio precache keeps its images, at phone widths
 
 **Decision.** `warmImages` scrapes `/_next/image` URLs out of each precached page's `srcset` and

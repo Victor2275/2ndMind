@@ -43,9 +43,16 @@ function SendButton() {
 
 export function QuickCapture({
   write = captureQuick,
+  autoFocus = false,
 }: {
   /** Overridden on the offline shell, which enqueues instead of posting (§2.2). */
   write?: (prev: ActionState | null, formData: FormData) => Promise<ActionState>;
+  /**
+   * Set by the icon's "Quick note" shortcut, which arrives at `/private?capture=1` (§3.5).
+   * Off everywhere else: a box that grabs the keyboard on every visit to Today would cover
+   * half the screen with a keyboard nobody asked for.
+   */
+  autoFocus?: boolean;
 }) {
   const [state, action] = useActionState<ActionState | null, FormData>(write, null);
   const [as, setAs] = useState<"note" | "task">("note");
@@ -85,6 +92,8 @@ export function QuickCapture({
         <input
           ref={input}
           name="text"
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- only when the shortcut asked for it
+          autoFocus={autoFocus}
           autoComplete="off"
           placeholder={as === "task" ? "Something to do…" : "Something on your mind…"}
           aria-label={as === "task" ? "Capture a task" : "Capture a note"}

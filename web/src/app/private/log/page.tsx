@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/site/page-shell";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import type { LogEntry } from "@/lib/db/schema";
-import { categoryByKey, summarise, UNSORTED_CATEGORY } from "@/lib/log/categories";
+import { categoryByKey, summarise, TAB_CATEGORIES, UNSORTED_CATEGORY } from "@/lib/log/categories";
 import { allChipSets } from "@/lib/log/chips";
 import {
   categoriesLoggedBetween,
@@ -36,7 +36,7 @@ function toView(entry: LogEntry): EntryView {
   };
 }
 
-async function Console() {
+async function Console({ initialCategory }: { initialCategory?: string }) {
   if (!isDatabaseConfigured()) {
     return (
       <div className="mt-6 rounded-lg border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
@@ -91,6 +91,7 @@ async function Console() {
       unsorted={unsorted.map(toView)}
       loggedToday={logged}
       chips={allChipSets(recent)}
+      initialCategory={initialCategory}
     />
   );
 }
@@ -141,6 +142,17 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
 
+  /**
+   * `?category=training` opens the form on that category (§3.5, D-178).
+   *
+   * Validated against the tab list rather than trusted: an unknown key would otherwise leave
+   * the console with no matching tab and render nothing. Resolved on the server so the right
+   * form is in the first paint — the shortcut exists to save taps, and arriving on the wrong
+   * category and switching costs one.
+   */
+  const requested = typeof params.category === "string" ? params.category : "";
+  const initialCategory = TAB_CATEGORIES.some((c) => c.key === requested) ? requested : undefined;
+
   return (
     <main className="pb-16">
       <PageHeader
@@ -187,7 +199,7 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
       ) : (
         <div className="mt-8">
           <Suspense fallback={<SkeletonPanel rows={5} />}>
-            <Console />
+            <Console initialCategory={initialCategory} />
           </Suspense>
         </div>
       )}
