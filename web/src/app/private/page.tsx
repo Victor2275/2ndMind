@@ -185,19 +185,27 @@ async function Tasks({ focusCapture }: { focusCapture: boolean }) {
           "Finished today" — so leading with them meant scrolling past a summary of the answer
           to reach the answer. */}
       <div className="mt-6 space-y-4">
-        {/* Above the task list, and above everything that describes the day, for the same
-            reason the task list is above the stats (§3.1): this is the one control on Today
-            that writes. It was on `/private/log` only, while the offline shell showed it on
-            every screen — so the app and its own offline copy disagreed about where capture
-            lives, and the long-press shortcut had nowhere on Today to land (§3.5, D-178). */}
-        <QuickCapture autoFocus={focusCapture} />
-
         <Panel title="Due" meta={due.length > 0 ? `${due.length} open` : undefined}>
+          {/* The list this page exists for, and one of the two things the fold gate measures
+              on Today — the other is the capture box above it. Backlog and Finished today are
+              deliberately unmarked: they are history, and marking them made the gate measure
+              the bottom of the page (D-182). */}
           <TaskList
+            firstAction
             tasks={due.map(toView)}
             emptyMessage="Nothing due. Add something below, or enjoy it."
           />
         </Panel>
+
+        {/* Below the tasks, not above them (D-182).
+            It was above them for exactly one build. The fold gate — once it was narrowed to
+            measure this page's real answer rather than whichever list came first — reported the
+            first task at 418px on a phone and **495px** on a desktop, five pixels under the
+            limit that D-083 and D-132 were both written to defend. A capture box is worth
+            having on Today; it is not worth 122px above the thing the page is for.
+            The shortcut still lands here with the cursor in it (§3.5) — focusing scrolls it
+            into view, which costs a scroll and no taps. */}
+        <QuickCapture autoFocus={focusCapture} />
       </div>
 
       {/* Three across, not stacked. At 390px `sm:grid-cols-3` stacked these into ~290px of

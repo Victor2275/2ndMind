@@ -61,6 +61,7 @@ async function Outstanding() {
             </div>
           ) : (
             <TaskList
+              firstAction
               tasks={academic.map(toView)}
               emptyMessage="Nothing tracked. Add midterms and projects that outlive one week."
             />

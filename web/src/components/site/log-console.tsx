@@ -187,7 +187,8 @@ export function LogConsole({
     <div className="space-y-6">
       {/* Above the tabs and outside them, so the fastest path through this page is type-and-send
           with nothing to choose first. */}
-      <QuickCapture />
+      {/* The action this page exists for, and what the fold gate measures here (§3.2). */}
+      <QuickCapture firstAction />
 
       {unsorted.length > 0 && <Unsorted entries={unsorted} />}
 

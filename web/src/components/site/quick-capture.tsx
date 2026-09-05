@@ -46,6 +46,7 @@ function SendButton() {
 export function QuickCapture({
   write = captureQuick,
   autoFocus = false,
+  firstAction = false,
 }: {
   /** Overridden on the offline shell, which enqueues instead of posting (§2.2). */
   write?: (prev: ActionState | null, formData: FormData) => Promise<ActionState>;
@@ -55,6 +56,15 @@ export function QuickCapture({
    * half the screen with a keyboard nobody asked for.
    */
   autoFocus?: boolean;
+  /**
+   * Marks this box as what `npm run shots` measures the fold to (§3.2).
+   *
+   * True on `/private/log`, where getting a thought out of your head is the action the page
+   * exists for. False on Today, where the Due list is the answer and this box sits below it —
+   * marking both there made the gate measure whichever was lower and stop watching the list
+   * (D-182).
+   */
+  firstAction?: boolean;
 }) {
   const [state, action] = useActionState<ActionState | null, FormData>(write, null);
   const [as, setAs] = useState<"note" | "task">("note");
@@ -81,8 +91,9 @@ export function QuickCapture({
     <form
       // The fold check measures to this box on /private/log (§3.2). Getting a thought out of
       // your head is the action that page exists for; the tabs and the structured form below
-      // are what you use once you have decided to be precise about it.
-      data-first-action
+      // are what you use once you have decided to be precise about it. Set by the caller, so
+      // that stays true of the log page and does not become true of every page it appears on.
+      data-first-action={firstAction || undefined}
       action={(formData) => {
         typed.current = String(formData.get("text") ?? "");
         return action(formData);

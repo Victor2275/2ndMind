@@ -71,6 +71,45 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
+### D-182 · The fold marker is opt-in, the gate measures the deepest, and the capture box moved
+
+**Decision.** Three changes that only work together:
+
+1. `data-first-action` is a prop on `TaskList` and `QuickCapture`, off by default, set by the
+   caller. Marked: Today's **Due** list, Academics' list, and the capture box **on
+   `/private/log`** only.
+2. `scripts/shots.mjs` measures the **deepest** marked element rather than the first.
+3. The capture box on Today moved **below** the Due list.
+
+**How this was found.** §3.5 put the capture box on Today above the task list. Both carried the
+marker, `querySelector` returns the first, and the gate silently switched to measuring the box:
+**the number improved from 296px to 227px while the coverage shrank to nothing.** A gate that
+can be relieved of its job by putting something above the thing it watches is not a gate — and
+this is the same failure D-132 records from the other direction, where the schedule panel pushed
+the first task to 936px and the gate never noticed because the page was only measured empty.
+
+**"Deepest" alone was wrong, and the gate said so within a minute.** Applied as it was —
+unconditionally, by a shared component rendered four times on Today — it measured the collapsed
+Backlog at **1231px** and failed immediately. The rule was right and the marker was meaningless;
+fixing either alone produces a worse gate than before. Built, measured, reverted, and rebuilt
+with both halves.
+
+**Then the honest number showed the real cost.** With the Due list measured again, the capture
+box above it put the first task at **418px on a phone and 495px on a desktop** — five pixels
+under the limit D-083 and D-132 exist to defend. One extra line anywhere above would have failed
+it. A capture box is worth having on Today; it is not worth 122px above the thing the page is
+for. It now sits below the Due list, and Today is back to **296px / 373px** — exactly where it
+was before any of this.
+
+The shortcut is unaffected in substance: `?capture=1` still lands on Today with the cursor in
+the box, and focusing scrolls it into view. That costs a scroll and no taps.
+
+**How to reverse.** The three parts are separable, but reversing one alone re-creates a gate
+that measures the wrong thing — the state this entry exists to record. Reverse all three or
+none.
+
+---
+
 ### D-180 · Swipe on a row: right completes, left deletes, everywhere
 
 **Decision.** `SwipeRow` wraps task rows and log rows. Right completes a task, left removes it.

@@ -166,10 +166,20 @@ export function TaskList({
   tasks,
   emptyMessage,
   showAdd = true,
+  firstAction = false,
 }: {
   tasks: TaskView[];
   emptyMessage: string;
   showAdd?: boolean;
+  /**
+   * Marks this list as the thing `npm run shots` measures the fold to (§3.2).
+   *
+   * Off by default, and that default is the point. The attribute used to be unconditional, so
+   * every list on a page carried it — four of them on Today — and "the first thing you can do"
+   * quietly came to mean "any list at all". The gate then measured whichever happened to be
+   * first in the document, which changed the moment anything was added above it (D-182).
+   */
+  firstAction?: boolean;
 }) {
   const [addState, add] = useActionState<ActionState | null, FormData>(addTask, null);
   const [, undo] = useActionState<ActionState | null, FormData>(undoTask, null);
@@ -180,7 +190,11 @@ export function TaskList({
     // first actionable item sits. It is the one thing /private has to answer quickly. The
     // attribute is on the list rather than on the panel around it so the number stays
     // comparable with D-083's 791px and D-132's 265px, which were measured here.
-    <div data-first-action>
+    //
+    // Set by the caller, not by this component: only the list a page exists to show is the
+    // answer. Backlog and Finished today are collapsed history and marking them made the gate
+    // measure the bottom of the page (D-182).
+    <div data-first-action={firstAction || undefined}>
       {tasks.length > 0 ? (
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
           {tasks.map((task) => (

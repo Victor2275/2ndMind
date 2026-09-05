@@ -129,9 +129,22 @@ async function settledFold(page) {
   let previous = null;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const fold = await page.evaluate(() => {
-      const el = document.querySelector("[data-first-action]");
-      if (!el) return null;
-      return Math.round(el.getBoundingClientRect().top + window.scrollY);
+      // The **deepest** marked element, not the first (D-182).
+      //
+      // `querySelector` was here until the capture box landed on Today above the task list
+      // (§3.5). Both carry the marker, so the gate silently switched to measuring the higher
+      // one: the number improved and the coverage shrank, which is the worst way for a gate to
+      // change. A gate that can be relieved of its job by putting something above the thing it
+      // watches is not a gate.
+      //
+      // This only means anything because the marker is now opt-in. Applied by every `TaskList`,
+      // as it was, "deepest" measured Today's collapsed Backlog at 1231px — the rule was right
+      // and the marker was meaningless. Both had to change together.
+      const marked = [...document.querySelectorAll("[data-first-action]")];
+      if (marked.length === 0) return null;
+      return Math.max(
+        ...marked.map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY)),
+      );
     });
     if (fold !== null && fold === previous) return fold;
     previous = fold;
