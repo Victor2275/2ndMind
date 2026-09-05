@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 2ndMind — web
 
-## Getting Started
+Two surfaces over one markdown vault, in one Next.js app.
 
-First, run the development server:
+- **Public** — the portfolio at [victorgusev.com](https://victorgusev.com). Statically
+  generated, no database, no auth, built from an explicit whitelist of public fields.
+- **Private** — a second brain and daily log for one person. Passkey-gated, server-rendered,
+  and installable on a phone as an offline-first PWA.
+
+The vault it reads is `../context/`, in this same repository. That is the source of truth for
+projects, experience, coursework and standards; Postgres holds only the time-series that
+markdown handles badly — workouts, sets, erg results, tasks, log entries.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`predev` and `prebuild` sync vault assets into `public/` and generate the service worker with
+the current commit stamped into it, so the dev server and a build always agree about which
+worker they are running.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Without a `.env.local` the public site works and the private one does not. See
+`context.md` for what each variable does.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## The gates
 
-## Learn More
+Four, and all four are expected to pass before anything is called done:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm test             # vitest — two projects, `unit` and `db`
+npm run typecheck    # tsc --noEmit
+npm run shots        # playwright sweep; fails if a page's first action sits too far down
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The fourth is `docs/DEVICE_CHECKLIST.md`, which runs on the phone with a thumb. It covers the
+things no exit code can: whether the app installs, whether it works with the radio off, whether
+the launcher icon is right, and whether you can reach what you need one-handed.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Database tests are named `*.db.test.ts` and run together in one process — booting Postgres in
+WASM costs about six seconds and doing it ten times over in parallel is what made the suite
+flaky. `src/test/__tests__/db-test-conventions.test.ts` enforces that, so it does not have to be
+remembered.
 
-## Deploy on Vercel
+## Where things are
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| | |
+|---|---|
+| Framework | Next.js 16 App Router · React 19 · TypeScript |
+| Styling | Tailwind v4 · shadcn/ui |
+| Fonts | **Self-hosted in `src/app/fonts/`** — not `next/font/google`, which fetches at build time, and a meaningful amount of this project is written on a plane |
+| Database | Neon Postgres · Drizzle |
+| Auth | Self-hosted WebAuthn · credentials in env, not in the database |
+| Vault I/O | GitHub Contents API via Octokit · gray-matter · zod |
+| Offline | Service worker + IndexedDB mirror + an outbox that syncs on reconnect |
+| Host | Vercel Hobby. Total budget: **$0** |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Read before changing anything
+
+- **`AGENTS.md`** — the rules that are easy to break without noticing.
+- **`context.md`** — what this app is for and what it must never do.
+- **`DECISIONS.md`** — every non-obvious choice, with its reason and how to reverse it. Add to
+  it rather than explaining a decision only in a commit message.
+- **`../docs/V3_PLAN.md`** — what is being built now and in what order.
+
+The one rule worth repeating here: **public routes must never import a private loader.** A test
+enforces it, and two real leaks were caught by scanning built output rather than by the type
+system.
