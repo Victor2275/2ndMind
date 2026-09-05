@@ -227,7 +227,7 @@ than argued.
 |---|---|---|---:|---|
 | 1 | ~~**Trust the gates**~~ **done 09-05** | Test gate, suite audit, README | ~3 | 09-05 |
 | 2 | ~~**Prove the offline work**~~ **done 09-05** | §3.7 + the device round + what they found | ~11 | 09-05 |
-| 3 | **Finish Feel** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-09 → 09-12 |
+| 3 | ~~**Finish Feel**~~ **done 09-05** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-05 |
 | 4 | **Offline search** | §2.3, now standing on proven ground | 6 | 09-12 → 09-13 |
 | 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
 | 6 | **Phase 5** | §5.2 course planner | 7 | 09-17 → 09-18 |
@@ -968,16 +968,29 @@ Milestone C: it stops feeling like a website.
   populated once**. Offline, the training page had been showing quick-logged sets and nothing
   imported from Hevy. Fixed by addressing them with the server's `id`, which is safe only
   because they are pull-only.
-- **3.3 · Gestures — 6h.** Swipe to complete/delete with an undo toast (`sonner` and soft-delete
-  already exist), pull to refresh wired to the outbox flush, `navigator.vibrate` on save and a
-  distinct pattern on sync failure.
-- **3.4 · Motion — 3h.** Static gradient below the mobile breakpoint; sheet and save transitions
-  added. Narrows D-007, does not reverse it.
-- **3.5 · Icon long-press shortcuts — 2h.** "Log training", "Quick note", "End of day", each
-  straight into its form. *("Log application" was dropped 2026-09-04: D-159 removed applications
+- **3.3 · Gestures — 6h.** ✅ **DONE 2026-09-05.** Swipe right completes a task, left removes
+  it; a log entry has only left, and right resists and springs back so the rule holds app-wide.
+  Pull down on any private screen to send. A short buzz on every save, a deliberately unlike
+  pattern on a failed sync. **The undo stayed inline and `sonner` stayed unmounted** — Victor's
+  call, and the reason is that the bottom of the screen already carries three fixed layers.
+  **D-180, D-181.**
+- **3.4 · Motion — 3h.** ✅ **DONE 2026-09-05, trimmed to ~1h at Victor's call.** The ambient
+  gradient stops animating below 40rem — a fixed, full-viewport layer of three radial fills was
+  repainting for as long as the app was open, which surfaces as battery rather than as jank.
+  **The sheet and save transitions are deliberately left for V4:** they are about how the app
+  looks, the look is being overhauled, and building them now means building them twice.
+  **D-179.**
+- **3.5 · Icon long-press shortcuts — 2h.** ✅ **DONE 2026-09-05.** Two deep links had to exist
+  first: the log page accepted only `?q=`, and the capture box was not on Today at all — it is
+  on `/private/log` in the live app and on Today only in the *offline shell*, so the app and its
+  own offline copy disagreed about where capture lives. A test resolves each shortcut's category
+  against `TAB_CATEGORIES`, because nobody re-tests a long-press menu. **D-178.** *("Log application" was dropped 2026-09-04: D-159 removed applications
   from the log, and the Google Sheet owns them. Victor picked the capture box (D-164) to replace
   it — the unstructured note is the thing most worth reaching in one press.)*
-- **3.6 · AI offline — 2h.** Stored summaries (D-124) render with their date when offline.
+- **3.6 · AI offline — 2h.** ✅ **DONE 2026-09-05.** The newest daily summary renders on the
+  offline Today with the day it describes, **whatever its age** — the age is a label, not a
+  filter, which is the rule the rest of that screen already follows. Weekly summaries are
+  excluded: one under a heading dated a single day would make the date say something untrue.
 - **3.7 · Playwright offline suite — 5h.** ✅ **DONE 2026-09-05.** `npm run e2e`. Eighteen
   checks against a production build and the real database: the worker precaches, the radio goes
   off, `/private` is answered with the shell, the portfolio still opens, a Training entry with

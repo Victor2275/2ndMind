@@ -585,8 +585,18 @@ them stands on something checked rather than argued.
       **The suite was itself tested by breaking the app and watching it fail.** Three of its
       first four failures were the test's own fault rather than the app's, which is recorded in
       D-176 because each is a way this kind of test quietly lies.
-- [ ] **Round 3 · Finish Feel** (13h) — §3.3 gestures, §3.4 motion, §3.5 shortcuts, §3.6 AI
-      offline.
+- [x] **Round 3 · Finish Feel** — **done 2026-09-05.** Swipe a task right to finish it or left
+      to remove it, swipe a log entry left to delete, and pull down on any screen to force a
+      send. The phone gives a short buzz when something saves and a longer, different one when a
+      send fails — so you know at a rack, without looking. The launcher icon now has three
+      long-press shortcuts straight into a form. The last AI summary reads offline, dated. And
+      the background gradient stops animating on phones, which was a full-screen layer
+      repainting the whole time the app was open.
+      **Two things were caught by the checks rather than by eye.** The pull indicator was
+      announcing "Sending…" while also being hidden from screen readers. And adding the capture
+      box to Today pushed the first task from 296px to 495px on a desktop — five pixels from
+      failing the rule that exists to keep the first task reachable — so it moved below the list
+      and the number went back to where it was.
 - [ ] **Round 4 · Offline search** (6h) — §2.3, now standing on proven ground.
 - [ ] **Round 5 · Phase 4, unblocked** (24h) — §4.2 light mode, §4.1 push, §4.3 voice.
 - [ ] **Round 6 · Phase 5** (7h) — §5.2 course planner, desktop-only.
