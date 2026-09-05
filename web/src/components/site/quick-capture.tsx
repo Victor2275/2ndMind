@@ -95,7 +95,7 @@ export function QuickCapture({
         <input
           ref={input}
           name="text"
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- only when the shortcut asked for it
+          // Only ever true when the launcher shortcut asked for it (§3.5).
           autoFocus={autoFocus}
           autoComplete="off"
           placeholder={as === "task" ? "Something to do…" : "Something on your mind…"}

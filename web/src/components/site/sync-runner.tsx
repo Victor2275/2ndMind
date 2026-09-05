@@ -49,6 +49,16 @@ import { allOps, openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/l
 /** Ask for a flush from anywhere: `window.dispatchEvent(new Event(SYNC_EVENT))`. */
 export const SYNC_EVENT = "2ndmind:sync";
 
+/**
+ * Fired when a run finishes, whatever the outcome.
+ *
+ * Pull-to-refresh needs it (§3.3): a gesture that asks for a sync has to stop spinning when the
+ * sync stops, and the alternative — hiding the indicator after a fixed delay — is an animation
+ * that lies about whether anything happened. Success and failure both fire it; *what* happened
+ * is already told by the badge and, on a real failure, by the phone buzzing.
+ */
+export const SYNC_DONE_EVENT = "2ndmind:sync-done";
+
 export function requestSync() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(SYNC_EVENT));
 }
@@ -129,6 +139,7 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
         void reportError(error);
       } finally {
         runningRef.current = false;
+        window.dispatchEvent(new Event(SYNC_DONE_EVENT));
       }
     }
 

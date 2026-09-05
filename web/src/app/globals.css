@@ -195,6 +195,13 @@
   body {
     @apply text-foreground;
     background: transparent;
+
+    /* The app's own pull-to-refresh replaces the browser's (§3.3, D-181). Without this, a pull
+       at the top of a private screen arms both: Chrome's reloads the page and throws away the
+       gesture, and in a tab the two fight visibly. `contain` stops the overscroll propagating
+       to the browser without disabling scrolling itself. Standalone installs already suppress
+       Chrome's, so this is the tab case — which is where the app is first tried. */
+    overscroll-behavior-y: contain;
   }
 
   /* Atmosphere: three wide, low-opacity pools of light drifting against each

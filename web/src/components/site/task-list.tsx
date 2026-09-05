@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
+import { SwipeRow } from "@/components/site/swipe-row";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -63,63 +64,87 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
   const due = task.dueAt ? dueLabel(task.dueAt) : null;
   const badge = SOURCE_LABEL[task.source];
 
+  /**
+   * The swipe fires the same actions the two buttons do (§3.3, D-180).
+   *
+   * `useActionState`'s dispatch takes a `FormData` directly, so the gesture goes through
+   * exactly the code path the buttons go through — including `onUndo`, which is why a swiped
+   * delete gets the same undo row a tapped one does. Building a second path for the gesture
+   * would have been a second place for a delete to go wrong.
+   */
+  const submit = (action: (data: FormData) => void, fields: Record<string, string>) => () => {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
+    action(data);
+  };
+
   return (
-    <li className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/30">
-      <form action={toggle} className="flex min-w-0 flex-1 items-center gap-3">
-        <input type="hidden" name="id" value={task.id} />
-        <input type="hidden" name="done" value={String(!task.done)} />
-        <button
-          type="submit"
-          aria-label={task.done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-          className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] border transition-colors ${
-            task.done
-              ? "border-primary bg-primary/20 text-primary"
-              : "border-border hover:border-primary/70"
-          }`}
-        >
-          {task.done && (
-            <svg viewBox="0 0 12 12" className="size-3 fill-none stroke-current stroke-[2.2]">
-              <path d="M2 6.3 4.6 9 10 3.2" />
+    <li>
+      <SwipeRow
+        className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/30"
+        onSwipeRight={submit(toggle, { id: String(task.id), done: String(!task.done) })}
+        onSwipeLeft={submit(remove, { id: String(task.id) })}
+        rightLabel={task.done ? "Reopen" : "Complete"}
+        leftLabel="Remove"
+      >
+        <form action={toggle} className="flex min-w-0 flex-1 items-center gap-3">
+          <input type="hidden" name="id" value={task.id} />
+          <input type="hidden" name="done" value={String(!task.done)} />
+          <button
+            type="submit"
+            aria-label={task.done ? `Reopen ${task.title}` : `Complete ${task.title}`}
+            className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] border transition-colors ${
+              task.done
+                ? "border-primary bg-primary/20 text-primary"
+                : "border-border hover:border-primary/70"
+            }`}
+          >
+            {task.done && (
+              <svg viewBox="0 0 12 12" className="size-3 fill-none stroke-current stroke-[2.2]">
+                <path d="M2 6.3 4.6 9 10 3.2" />
+              </svg>
+            )}
+          </button>
+
+          <span
+            className={`min-w-0 flex-1 truncate text-sm ${
+              task.done ? "text-muted-foreground line-through" : "text-foreground"
+            }`}
+          >
+            {task.title}
+          </span>
+        </form>
+
+        {task.courseCode && (
+          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+            {task.courseCode}
+          </span>
+        )}
+        {badge && (
+          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+            {badge}
+          </span>
+        )}
+        {due && (
+          <span className={`tabular shrink-0 font-mono text-[0.65rem] ${due.tone}`}>
+            {due.text}
+          </span>
+        )}
+
+        <form action={remove} className="shrink-0">
+          <input type="hidden" name="id" value={task.id} />
+          <button
+            type="submit"
+            aria-label={`Remove ${task.title}`}
+            // Visible on hover for a mouse, always visible on touch where hover does not exist.
+            className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+          >
+            <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
+              <path d="M3 3l8 8M11 3l-8 8" />
             </svg>
-          )}
-        </button>
-
-        <span
-          className={`min-w-0 flex-1 truncate text-sm ${
-            task.done ? "text-muted-foreground line-through" : "text-foreground"
-          }`}
-        >
-          {task.title}
-        </span>
-      </form>
-
-      {task.courseCode && (
-        <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
-          {task.courseCode}
-        </span>
-      )}
-      {badge && (
-        <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
-          {badge}
-        </span>
-      )}
-      {due && (
-        <span className={`tabular shrink-0 font-mono text-[0.65rem] ${due.tone}`}>{due.text}</span>
-      )}
-
-      <form action={remove} className="shrink-0">
-        <input type="hidden" name="id" value={task.id} />
-        <button
-          type="submit"
-          aria-label={`Remove ${task.title}`}
-          // Visible on hover for a mouse, always visible on touch where hover does not exist.
-          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
-        >
-          <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
-            <path d="M3 3l8 8M11 3l-8 8" />
-          </svg>
-        </button>
-      </form>
+          </button>
+        </form>
+      </SwipeRow>
     </li>
   );
 }

@@ -1,5 +1,6 @@
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
+import { PullToRefresh } from "@/components/site/pull-to-refresh";
 import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SyncRunner } from "@/components/site/sync-runner";
 import { SignOutButton } from "@/components/site/sign-out-button";
@@ -49,6 +50,10 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
           at the root because sync only runs for a signed-in session — the endpoint answers 401
           to anyone else, and starting a flush loop on the public site would just burn 401s. */}
         <SyncRunner />
+
+        {/* On every private screen, from the layout, because a gesture that works on some of
+            them is worse than one that works on none (§3.3). */}
+        <PullToRefresh />
 
         <PrivateTabBar />
       </div>

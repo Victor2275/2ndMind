@@ -71,6 +71,66 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
+### D-180 · Swipe on a row: right completes, left deletes, everywhere
+
+**Decision.** `SwipeRow` wraps task rows and log rows. Right completes a task, left removes it.
+A log entry has no "complete", so right resists and springs back rather than doing nothing —
+left-is-destructive holds across the whole app, because a rule that changes per screen is not a
+rule a thumb can rely on.
+
+**The gesture never replaces the buttons.** They stay, keyboard-reachable, and they are what a
+screen reader gets. A gesture with no visible affordance cannot be the only way to do anything.
+It also goes through the *same* action dispatch the buttons use — `useActionState`'s dispatch
+takes a `FormData` directly — so a swiped delete gets the same undo row a tapped one does. A
+second code path for the gesture would have been a second place for a delete to go wrong.
+
+**The undo stays inline; `sonner` stays unmounted.** Victor's call. The bottom of the screen
+already carries the tab bar, the sync badge and the update prompt, and a toast would be a fourth
+fixed layer over the thumb on the smallest screen. The library has been in `package.json` since
+V1 and has never been mounted; this was not the reason to start.
+
+**What makes it usable is not the swipe, it is not stealing the scroll.** Nothing happens until
+the finger has moved 12px *and* moved further horizontally than vertically — and once vertical
+wins, the row concedes for the rest of the gesture, so a diagonal scroll cannot snag every row
+it passes. `touch-action: pan-y` says the same thing to the browser before the first
+`pointermove` arrives. Both are asserted; removing the latch makes a test fail.
+
+**Two of these tests were worthless until they were mutated.** "Springs back when a direction has
+no handler" passed with the resistance removed, because the row returns to zero on release
+either way — an assertion after release cannot see what happened on the way there. It now
+measures mid-drag.
+
+### D-181 · Pull down to send
+
+**Decision.** `PullToRefresh` in the private layout — every private screen, not a chosen few.
+Pulling past the threshold dispatches the same `SYNC_EVENT` §1.7's retry button uses; nothing in
+the component knows how to sync, and nothing in it should.
+
+**Why every screen.** A gesture that works on four screens out of ten is worse than one that
+works on none: the four teach you to expect it and the six make you doubt yourself.
+
+**Not on the offline shell**, where it would ask for a flush that cannot happen and spin down to
+nothing. The shell sends by itself when signal returns (D-175).
+
+**It stops when the sync stops.** `SyncRunner` now fires `SYNC_DONE_EVENT` when a run finishes,
+whatever the outcome, and the indicator listens for it. The alternative — hiding after a fixed
+delay — is an animation that lies about whether anything happened.
+
+**`overscroll-behavior-y: contain` on `body`**, because otherwise a pull at the top arms both
+this and Chrome's own pull-to-refresh, and Chrome's reloads the page and throws the gesture
+away. Standalone installs already suppress the browser's; this is the tab case, which is where
+the app gets tried first.
+
+**Found while testing it:** the indicator had `aria-hidden` on its wrapper *and* `role="status"`
+inside — so a live "Sending…" was hidden from the accessibility tree. `pointer-events-none` is
+what keeps it from eating a tap; `aria-hidden` was doing nothing but suppressing the one part
+worth announcing.
+
+**How to reverse.** Remove the component from the layout, and drop `overscroll-behavior-y` if
+Chrome's own gesture is wanted back. `SYNC_DONE_EVENT` is harmless on its own.
+
+---
+
 ### D-177 · The portfolio precache keeps its images, at phone widths
 
 **Decision.** `warmImages` scrapes `/_next/image` URLs out of each precached page's `srcset` and

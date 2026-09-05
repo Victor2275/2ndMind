@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 
 import { fileLogEntry, removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
+import { SwipeRow } from "@/components/site/swipe-row";
 import { LogForm } from "@/components/site/log-form";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { categoryByKey, summarise, TAB_CATEGORIES } from "@/lib/log/categories";
@@ -43,28 +44,48 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
   const category = categoryByKey(entry.category);
   const line = summarise(entry.category, entry.data, entry.note);
 
-  return (
-    <li className="group flex items-baseline gap-3 px-4 py-2.5 transition-colors hover:bg-accent/30">
-      <span className="tabular shrink-0 font-mono text-[0.6rem] text-muted-foreground">
-        {TIME.format(new Date(entry.occurredAt))}
-      </span>
-      <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
-        {category?.label ?? entry.category}
-      </span>
-      <span className="min-w-0 flex-1 text-sm text-foreground">{line}</span>
+  /**
+   * Left deletes; right springs back (§3.3, D-180).
+   *
+   * A log entry has no "complete" to swipe toward, and left-is-destructive holds everywhere in
+   * the app rather than only where there happen to be two directions — a rule that changes per
+   * screen is not a rule anyone can rely on with a thumb. Right resists and returns, which says
+   * "nothing here" more clearly than no response at all.
+   */
+  const removeEntry = () => {
+    const data = new FormData();
+    data.set("id", String(entry.id));
+    remove(data);
+  };
 
-      <form action={remove} className="shrink-0">
-        <input type="hidden" name="id" value={entry.id} />
-        <button
-          type="submit"
-          aria-label="Remove entry"
-          className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
-        >
-          <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
-            <path d="M3 3l8 8M11 3l-8 8" />
-          </svg>
-        </button>
-      </form>
+  return (
+    <li>
+      <SwipeRow
+        className="group flex items-baseline gap-3 px-4 py-2.5 transition-colors hover:bg-accent/30"
+        onSwipeLeft={removeEntry}
+        leftLabel="Remove"
+      >
+        <span className="tabular shrink-0 font-mono text-[0.6rem] text-muted-foreground">
+          {TIME.format(new Date(entry.occurredAt))}
+        </span>
+        <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+          {category?.label ?? entry.category}
+        </span>
+        <span className="min-w-0 flex-1 text-sm text-foreground">{line}</span>
+
+        <form action={remove} className="shrink-0">
+          <input type="hidden" name="id" value={entry.id} />
+          <button
+            type="submit"
+            aria-label="Remove entry"
+            className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+          >
+            <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
+              <path d="M3 3l8 8M11 3l-8 8" />
+            </svg>
+          </button>
+        </form>
+      </SwipeRow>
     </li>
   );
 }
