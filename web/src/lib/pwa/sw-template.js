@@ -56,6 +56,20 @@ const SHELL_URL = "/cached";
 const SITEMAP_URL = "/sitemap.xml";
 
 /**
+ * The widest optimised image worth keeping for offline.
+ *
+ * `next/image` emits nine widths in every `srcset`, up to 3840. Measured on this site: all nine
+ * widths of all fifteen public images is 128 requests and 2.8MB; stopping at 1200 is 90
+ * requests and ~1.5MB, and 1200 already covers a 400px phone at 3x density. The sizes above it
+ * exist for a laptop, and a laptop looking at this site is on wifi.
+ *
+ * This is why the portfolio precache was half a feature until 2026-09-05: §2.2 cached the pages
+ * and their scripts, so a project page opened with no signal and rendered as text and empty
+ * boxes (D-177).
+ */
+const MAX_IMAGE_WIDTH = 1200;
+
+/**
  * Tell the app when this worker breaks (§2.4, D-165).
  *
  * The reason error aggregation was scheduled at all: **a failing service worker on a phone
@@ -164,6 +178,46 @@ async function warmAssets(cache, html) {
 }
 
 /**
+ * Cache the optimised images a page refers to, at the widths a phone would actually ask for.
+ *
+ * Scraped from `srcset` rather than from the `<img src>`, because the browser picks by viewport
+ * and pixel density and the one it picks is not knowable here — so every candidate up to the
+ * ceiling is kept and the choice stays the browser's.
+ *
+ * Two details, both learned the hard way:
+ *
+ * - The URLs are HTML-escaped in the attribute, so `&amp;` has to be turned back into `&` or
+ *   every request is for a different image than the page will ask for.
+ * - `/_next/image` answers `Vary: Accept`, and the Cache API honours `Vary` on lookup. A
+ *   response fetched here with a default `Accept` would therefore never match the browser's
+ *   own request, and the cache would be full of entries that never hit. So the fetch sends the
+ *   `Accept` a browser sends, and the lookup passes `ignoreVary`.
+ */
+async function warmImages(cache, html) {
+  const ACCEPT = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
+  const urls = new Set();
+
+  for (const match of html.matchAll(/\/_next\/image\?url=[^"'\s>\,]+/g)) {
+    const url = match[0].replace(/&amp;/g, "&");
+    const width = Number(new URLSearchParams(url.slice(url.indexOf("?") + 1)).get("w"));
+    if (Number.isFinite(width) && width <= MAX_IMAGE_WIDTH) urls.add(url);
+  }
+
+  await Promise.all(
+    [...urls].map(async (url) => {
+      try {
+        if (await cache.match(url, { ignoreVary: true })) return;
+        const request = new Request(url, { headers: { Accept: ACCEPT } });
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response);
+      } catch {
+        // One image is not worth failing the precache over.
+      }
+    }),
+  );
+}
+
+/**
  * Precache the public site, and the assets each page needs.
  *
  * Runs in `activate` rather than `install`, deliberately: this is a dozen documents and their
@@ -206,6 +260,7 @@ async function precachePublic(cache) {
       const html = await response.clone().text();
       await cache.put(path, response);
       await warmAssets(cache, html);
+      await warmImages(cache, html);
     } catch {
       // One page missing is not worth failing activation over.
     }
@@ -335,11 +390,20 @@ self.addEventListener("fetch", (event) => {
 
   // Build assets are content-hashed, so a cached copy can never be the wrong version of
   // itself. Cache-first, and populate on the way past.
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  //
+  // `/_next/image` joins them: its URL carries the source path, the width and the quality, so a
+  // cached copy can only be wrong if the file behind that path is replaced without a deploy —
+  // and a deploy changes the cache name. `ignoreVary` because these responses vary on `Accept`
+  // and the browser's is not the one the precache used.
+  if (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/_next/image"
+  ) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
-        const hit = await cache.match(request);
+        const hit = await cache.match(request, { ignoreVary: true });
         if (hit) return hit;
 
         const response = await fetch(request);

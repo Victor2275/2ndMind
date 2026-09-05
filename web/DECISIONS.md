@@ -17,6 +17,37 @@ useful part.
 
 ---
 
+### D-177 · The portfolio precache keeps its images, at phone widths
+
+**Decision.** `warmImages` scrapes `/_next/image` URLs out of each precached page's `srcset` and
+caches every candidate up to **1200px wide**. `/_next/image` also joins the cache-first branch,
+so anything viewed online is kept too.
+
+**Why.** §2.2's precache took the pages and their scripts and stopped there, so a project page
+opened with no signal as **text and empty boxes** — which is not something you show anyone, and
+the career-fair scenario in Milestone B is exactly showing someone. Found by §3.7 on its first
+run: the offline navigation passed while eleven image requests failed underneath it.
+
+**Why 1200.** Measured rather than picked: all nine `srcset` widths of all fifteen public images
+is 128 requests and **2.8MB**; stopping at 1200 is 90 requests and **~1.5MB**. 1200 already
+covers a 400px phone at 3× density, and the widths above it exist for a laptop — which is on
+wifi. Victor's call between the two.
+
+**Two things that would have made this silently useless.** The URLs are HTML-escaped inside the
+attribute, so `&amp;` has to be turned back into `&` or every precached URL is for a different
+request than the page will make. And `/_next/image` answers `Vary: Accept`, which the Cache API
+honours on lookup — a response fetched with a default `Accept` would never match the browser's
+own image request, so the cache would fill with entries that never hit. The fetch now sends a
+browser's `Accept` and the lookup passes `ignoreVary`.
+
+Confirmed by the suite rather than by eye: **11 of 11 images render on a project page with the
+network off.**
+
+**How to reverse.** Delete `warmImages` and its call, and drop `/_next/image` from the
+cache-first branch. The portfolio still opens offline; it just goes back to being unreadable.
+
+---
+
 ## 2026-09-05 · The offline round trip has a machine that checks it
 
 ### D-176 · `npm run e2e` drives a real browser offline, against a real build and a real database

@@ -313,6 +313,29 @@ async function main() {
       PROJECT,
     );
 
+    // Opening is not the same as being readable. Until 2026-09-05 §2.2 cached the pages and
+    // their scripts but not the optimised images, so a project page offline was text and empty
+    // boxes — which is not something you show anyone (D-177).
+    const images = await waitFor(
+      "the project page's images to settle",
+      async () => {
+        const seen = await page.evaluate(() => {
+          const imgs = [...document.querySelectorAll("img")];
+          return {
+            total: imgs.length,
+            loaded: imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
+          };
+        });
+        return seen.total > 0 && seen.loaded > 0 ? seen : false;
+      },
+      { timeout: 15_000 },
+    ).catch(() => ({ total: 0, loaded: 0 }));
+    check(
+      images.loaded > 0,
+      "its images render offline",
+      `${images.loaded}/${images.total} loaded`,
+    );
+
     /* -- 3. write a training entry with two sets, with no network ------------------- */
     console.log("\nwriting with no network");
     await page.goto(`${BASE}/private/log`);
