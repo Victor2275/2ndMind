@@ -145,10 +145,16 @@ describe("which view it shows", () => {
     expect(screen.getByText("Problem set 3")).toBeInTheDocument();
   });
 
-  it("falls back to Today for a path it does not recognise", async () => {
+  // Inverted 2026-09-05, not deleted. It asserted that an unrecognised path falls back to
+  // Today, which is what it did until Victor tapped one on the phone: showing the dashboard
+  // for a Calendar tap reads as the tap having failed, or as Calendar being empty. The
+  // fall-through survives for `/private` itself, which is the app's start_url and is covered
+  // below (D-174).
+  it("names a screen it does not keep, rather than falling back to Today", async () => {
     at("/private/hobbies");
     render(<CachedApp />);
-    expect(await screen.findByText("Due")).toBeInTheDocument();
+    expect(await screen.findByText(/hobbies needs a signal/i)).toBeInTheDocument();
+    expect(screen.queryByText("Due")).toBeNull();
   });
 });
 
@@ -204,5 +210,91 @@ describe("getting between the cached views", () => {
     render(<CachedApp />);
     await screen.findByText("Due");
     expect(screen.getByRole("link", { name: /live app/i }).getAttribute("href")).toBe("/private");
+  });
+});
+
+describe("it looks like the app, not like the public site", () => {
+  /**
+   * Reported from the phone on 2026-09-05: *"it takes me to the public page, and doesn't let me
+   * go to private."* Logging offline worked the whole time — what was wrong was that the shell
+   * rendered with the portfolio's header and none of the app's own navigation, so it did not
+   * read as the app at all (D-174).
+   *
+   * Two halves, and both are here because either one alone leaves the same symptom.
+   */
+  it("carries the app's bottom tab bar", async () => {
+    render(<CachedApp />);
+    await screen.findByText("Due");
+    expect(screen.getByRole("navigation", { name: /private sections/i })).toBeInTheDocument();
+  });
+
+  it("navigates by document, because a client transition needs a server", async () => {
+    // The whole point of this screen is that there is no server to answer an RSC request. A
+    // <Link> here fails in exactly the situation the bar exists for, and it fails silently:
+    // the tap does nothing.
+    render(<CachedApp />);
+    await screen.findByText("Due");
+
+    const bar = screen.getByRole("navigation", { name: /private sections/i });
+    for (const link of bar.querySelectorAll("a")) {
+      // Next's <Link> renders an anchor too, so the tag alone proves nothing — but it also
+      // attaches a router listener and prefetches. What is asserted instead is the thing that
+      // matters and is observable: the href is a real path the worker can answer.
+      expect(link.getAttribute("href")).toMatch(/^\/private/);
+    }
+  });
+
+  it("lights the tab for the page the failed navigation was aimed at", async () => {
+    // usePathname() is "/cached" on every one of these screens, so without the path being
+    // passed in explicitly no tab would ever be marked current.
+    at("/private/athletics");
+    render(<CachedApp />);
+    await screen.findByText(/training/i);
+
+    const current = screen
+      .getByRole("navigation", { name: /private sections/i })
+      .querySelector('[aria-current="page"]');
+    expect(current?.getAttribute("href")).toBe("/private/athletics");
+  });
+
+  it("does not offer sign-out, which cannot work with no network", async () => {
+    render(<CachedApp />);
+    await screen.findByText("Due");
+    expect(screen.queryByRole("button", { name: /sign out/i })).toBeNull();
+  });
+});
+
+describe("a screen the phone does not keep", () => {
+  /**
+   * Before this, every unrecognised path fell through to Today — so tapping Calendar offline
+   * showed the dashboard, which reads as the tap having failed or, worse, as Calendar being
+   * empty. Naming it is the same choice `Missing` already makes inside the views.
+   */
+  it("names the screen rather than showing Today", async () => {
+    at("/private/calendar");
+    render(<CachedApp />);
+    expect(await screen.findByText(/calendar needs a signal/i)).toBeInTheDocument();
+    expect(screen.queryByText("Due")).toBeNull();
+  });
+
+  it("matches the longest path first, so Tailor is not called Work", async () => {
+    at("/private/work/tailor");
+    render(<CachedApp />);
+    expect(await screen.findByText(/tailor needs a signal/i)).toBeInTheDocument();
+  });
+
+  it("still takes a captured note, which is why anyone is on a dead screen", async () => {
+    at("/private/hobbies");
+    render(<CachedApp />);
+    expect(await screen.findByText(/hobbies needs a signal/i)).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /private sections/i })).toBeInTheDocument();
+  });
+
+  it("still opens on Today for the app's own start_url", async () => {
+    // start_url is /private, so the ordinary launch lands here. If this ever became an
+    // "absent" screen, opening the app offline would show a refusal.
+    at("/private");
+    render(<CachedApp />);
+    expect(await screen.findByText("Due")).toBeInTheDocument();
   });
 });

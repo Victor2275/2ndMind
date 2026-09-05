@@ -57,8 +57,45 @@ function isActive(pathname: string, href: string): boolean {
 const ITEM =
   "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors";
 
-export function PrivateTabBar() {
-  const pathname = usePathname();
+/**
+ * How the bar's own links navigate.
+ *
+ * On `/private` a `<Link>` is right: the router prefetches, the transition is instant, and the
+ * shared layout is not re-rendered. On the offline shell it is wrong, and quietly so — a client
+ * transition fetches an RSC payload from a server that is not reachable, which is the one thing
+ * guaranteed to fail in the situation this bar exists to serve. A plain anchor is a document
+ * navigation, which the service worker intercepts and answers from the cache. `Elsewhere` in
+ * `cached-app.tsx` is a plain anchor for the same reason and says so.
+ */
+function NavLink({
+  href,
+  hard,
+  ...rest
+}: {
+  href: string;
+  hard: boolean;
+  children: React.ReactNode;
+  className?: string;
+  "aria-current"?: "page" | undefined;
+}) {
+  return hard ? <a href={href} {...rest} /> : <Link href={href} {...rest} />;
+}
+
+/**
+ * @param path      Which route to treat as current. Defaults to the live pathname; the offline
+ *                  shell passes the path its failed navigation was aimed at, because
+ *                  `usePathname()` there is `/cached` and no tab would light up at all.
+ * @param offline   Renders document navigations rather than client transitions, and drops the
+ *                  controls that cannot work without a network.
+ */
+export function PrivateTabBar({
+  path,
+  offline = false,
+}: { path?: string; offline?: boolean } = {}) {
+  // Called unconditionally — hooks cannot be skipped — and then overridden. The prop wins
+  // because on `/cached` the live pathname is not the page the user thinks they are on.
+  const livePathname = usePathname();
+  const pathname = path ?? livePathname;
 
   // The sheet remembers *which page* it was opened on rather than a boolean, so any route
   // change closes it by derivation. The obvious version — a boolean plus an effect that
@@ -116,9 +153,10 @@ export function PrivateTabBar() {
 
             <nav className="grid grid-cols-2 gap-2">
               {MORE.map((item) => (
-                <Link
+                <NavLink
                   key={item.href}
                   href={item.href}
+                  hard={offline}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
                   className={`flex min-h-12 items-center rounded-md border px-3 text-sm transition-colors ${
                     isActive(pathname, item.href)
@@ -127,7 +165,7 @@ export function PrivateTabBar() {
                   }`}
                 >
                   {item.label}
-                </Link>
+                </NavLink>
               ))}
             </nav>
 
@@ -139,7 +177,9 @@ export function PrivateTabBar() {
               <PublicSiteLink className="min-h-10 px-1 text-sm" />
               <div className="flex items-center gap-2">
                 <InstallButton />
-                <SignOutButton />
+                {/* Signing out posts to the server. Offline it can only fail, and a sign-out
+                    that appears to do nothing is worse than one that is not offered. */}
+                {!offline && <SignOutButton />}
               </div>
             </div>
           </div>
@@ -154,22 +194,37 @@ export function PrivateTabBar() {
       >
         <div className="flex items-stretch gap-1 px-2 py-1">
           {TABS.slice(0, 2).map(({ href, label, Icon }) => (
-            <TabLink key={href} href={href} label={label} Icon={Icon} pathname={pathname} />
+            <TabLink
+              key={href}
+              href={href}
+              label={label}
+              Icon={Icon}
+              pathname={pathname}
+              hard={offline}
+            />
           ))}
 
           {/* The centre action. Larger, filled, and labelled with a verb rather than a noun:
               it is the one control on this bar that writes something. */}
-          <Link
+          <NavLink
             href="/private/log"
+            hard={offline}
             aria-current={isActive(pathname, "/private/log") ? "page" : undefined}
             className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
           >
             <PlusIcon className="size-5" aria-hidden />
             <span className="font-mono text-[0.55rem] tracking-wide">Log</span>
-          </Link>
+          </NavLink>
 
           {TABS.slice(2).map(({ href, label, Icon }) => (
-            <TabLink key={href} href={href} label={label} Icon={Icon} pathname={pathname} />
+            <TabLink
+              key={href}
+              href={href}
+              label={label}
+              Icon={Icon}
+              pathname={pathname}
+              hard={offline}
+            />
           ))}
 
           <button
@@ -195,16 +250,19 @@ function TabLink({
   label,
   Icon,
   pathname,
+  hard,
 }: {
   href: string;
   label: string;
   Icon: typeof HouseIcon;
   pathname: string;
+  hard: boolean;
 }) {
   const active = isActive(pathname, href);
   return (
-    <Link
+    <NavLink
       href={href}
+      hard={hard}
       aria-current={active ? "page" : undefined}
       className={`${ITEM} ${
         active ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -212,6 +270,6 @@ function TabLink({
     >
       <Icon className="size-5" aria-hidden />
       <span className="font-mono text-[0.55rem] tracking-wide">{label}</span>
-    </Link>
+    </NavLink>
   );
 }

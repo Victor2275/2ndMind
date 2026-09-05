@@ -17,6 +17,65 @@ useful part.
 
 ---
 
+## 2026-09-05 · The offline app did not look like the app
+
+The device round found it, which is what the device round is for. Victor, in airplane mode:
+*"it takes me to the public page, and doesn't let me go to private, so logging in airplane
+mode/offline does not work."*
+
+**The last clause turned out to be wrong, and that is the interesting part.** Logging offline
+worked the whole time — he could write an entry and save it. What was broken was that the
+screen did not read as the app, so a working feature was reported as a missing one. A test
+could not have caught this: every assertion about `/cached` passed, because each was about what
+the component renders and none was about what surrounds it.
+
+### D-174 · The offline shell is the private app, and is dressed as it
+
+**Decision.** Four changes, all presentation, none touching the sync or write path.
+
+`hasPublicChrome()` now excludes `/cached` as well as `/private`, so the offline shell no
+longer renders the portfolio header and footer. `CachedApp` renders `<PrivateTabBar>` on every
+branch — including the two failure branches, since a screen that cannot show its content is
+when a way off it matters most. `viewFor()` returns a target rather than a view key, and names
+the five screens the phone keeps no copy of instead of silently showing Today. And
+`registration.update()` is skipped with the radio off.
+
+**Why the chrome was wrong and not merely untidy.** `/cached` lives outside `/private` for a
+reason that has nothing to do with how it looks: everything under `/private` is `force-dynamic`
+and calls `requireSession()`, so it cannot be precached, and D-161 moved the shell out to make
+it servable at all. The chrome predicate keyed on the path, the path had moved, and the header
+came back — carrying the portfolio's nav and none of the app's. The bottom tab bar lives in the
+private *layout*, so it was absent for the same reason. **What he saw was the public site's
+navigation above his own dashboard**, which is a fair description of "the public page".
+
+**The tab bar takes two new props, and one of them is not cosmetic.** `path` overrides
+`usePathname()`, which on this screen is always `/cached` — without it no tab is ever current.
+`offline` swaps `<Link>` for a plain anchor: a client transition fetches an RSC payload from a
+server that by definition is not reachable here, so every tab would have failed silently in the
+one situation the bar exists for. `Elsewhere` in the same file was already a plain `<a>` for
+exactly this reason, and the reason had not been generalised. Sign-out is dropped while
+offline, because it posts and can only fail.
+
+**Naming the absent screens reverses a fall-through.** Every unrecognised path used to resolve
+to Today, so tapping Calendar with no signal showed the dashboard — which reads as the tap
+having failed, or worse as Calendar being empty. This is the same argument D-161 already made
+for panels inside a view, applied one level up; `Missing` was making it correctly in the views
+while the router above it did the opposite. The prefix list is longest-first so
+`/private/work/tailor` is not reported as *Work*. `/private` itself still resolves to Today,
+because it is the manifest's `start_url` and is how the app is opened.
+
+**A crash report is not a normal outcome.** `registration.update()` fetches `/sw.js`; offline
+it rejects, and unhandled it reached the global reporter and filed itself as a crash. Two
+arrived from the phone during this very test — a diagnostic system reporting the absence of a
+network as a fault, at the moment its output was least affordable. Same `onLine !== false`
+guard the worker's retry already uses (D-157), plus a `catch` regardless.
+
+**How to reverse.** Restore the one-line `hasPublicChrome` predicate for the header; drop the
+`<PrivateTabBar>` from `CachedApp` and its two props for the navigation; return a bare
+`ViewKey` from `viewFor` for the fall-through. The four are independent.
+
+---
+
 ## 2026-09-05 · The gate, before the work it is meant to gate
 
 V3 was replanned this day (`docs/V3_PLAN.md` §3.0): everything remaining is pulled onto

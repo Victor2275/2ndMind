@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { LogForm } from "@/components/site/log-form";
+import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
 import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
@@ -38,15 +39,50 @@ const META = "font-mono text-[0.65rem] text-muted-foreground";
 /** Which of the cached views to show, from the path the navigation was trying to reach. */
 type ViewKey = "today" | "athletics" | "academics" | "log" | "sync";
 
-function viewFor(path: string): ViewKey {
-  if (path.startsWith("/private/athletics")) return "athletics";
-  if (path.startsWith("/private/academics")) return "academics";
-  if (path.startsWith("/private/log")) return "log";
+/**
+ * The private screens this page has no copy of, and what to call them on screen.
+ *
+ * Longest prefix first: `/private/work/tailor` has to be recognised before `/private/work`, or
+ * a model-backed page that cannot work offline at all would be named after its parent.
+ */
+const NOT_KEPT: ReadonlyArray<readonly [string, string]> = [
+  ["/private/work/tailor", "Tailor"],
+  ["/private/calendar", "Calendar"],
+  ["/private/work", "Work"],
+  ["/private/hobbies", "Hobbies"],
+  ["/private/now", "Now"],
+];
+
+/**
+ * What to render for a path, which is either one of the cached views or an honest refusal.
+ *
+ * Until 2026-09-05 everything unrecognised fell through to Today. That is the failure mode
+ * D-161 already argued against for panels — an unasked-for screen reads as the tap having
+ * failed, or worse, as Calendar being empty. Naming the screen costs one line and is the same
+ * choice `Missing` makes inside the views (D-174).
+ */
+type Target = { kind: "view"; key: ViewKey } | { kind: "absent"; name: string };
+
+function viewFor(path: string): Target {
+  if (path.startsWith("/private/athletics")) return { kind: "view", key: "athletics" };
+  if (path.startsWith("/private/academics")) return { kind: "view", key: "academics" };
+  if (path.startsWith("/private/log")) return { kind: "view", key: "log" };
   // §1.7's screen reads only IndexedDB, so it works here unchanged — and this is where it is
   // most likely to be wanted, since the reason to look at it is usually that there is no
   // signal. Without this line the link to it would land on Today.
-  if (path.startsWith("/private/sync")) return "sync";
-  return "today";
+  if (path.startsWith("/private/sync")) return { kind: "view", key: "sync" };
+
+  for (const [prefix, name] of NOT_KEPT) {
+    if (path.startsWith(prefix)) return { kind: "absent", name };
+  }
+
+  // `/private` itself, and the launch with no `from` at all — the app's start_url is
+  // `/private`, so this is the ordinary way in. Anything else under `/private` is a route
+  // added since this list was written, and saying so beats silently showing Today.
+  if (path === "" || path === "/private" || !path.startsWith("/private/")) {
+    return { kind: "view", key: "today" };
+  }
+  return { kind: "absent", name: "That screen" };
 }
 
 const TITLE: Record<ViewKey, string> = {
@@ -71,14 +107,23 @@ const TITLE: Record<ViewKey, string> = {
  * page away and rebuild it.
  */
 const NO_UPDATES = () => () => {};
-const readKey = (): ViewKey =>
-  viewFor(new URLSearchParams(window.location.search).get("from") ?? "");
-const serverKey = (): ViewKey => "today";
+
+/**
+ * The path the failed navigation was aimed at, not the view derived from it.
+ *
+ * The raw path is what is subscribed to because two things need it: which view to render, and
+ * which tab to light in the bottom bar. Deriving both from one string keeps them from ever
+ * disagreeing about where the user thinks they are.
+ */
+const readPath = (): string => new URLSearchParams(window.location.search).get("from") ?? "";
+const serverPath = (): string => "/private";
 
 export function CachedApp() {
   const [view, setView] = useState<CachedView | null>(null);
   const [failed, setFailed] = useState(false);
-  const key = useSyncExternalStore(NO_UPDATES, readKey, serverKey);
+  const path = useSyncExternalStore(NO_UPDATES, readPath, serverPath);
+  const target = viewFor(path);
+  const key = target.kind === "view" ? target.key : null;
   const capture = useMemo(() => localCaptureWriter(requestSync), []);
 
   useEffect(() => {
@@ -105,15 +150,53 @@ export function CachedApp() {
     };
   }, []);
 
+  // The bar renders on every branch below, including the failure and loading ones. It is the
+  // app's navigation, and a screen that cannot show its content is exactly when a way off it
+  // matters most. `path` rather than the live pathname, because the live one is `/cached`
+  // everywhere here and no tab would ever light up (D-174).
+  const bar = <PrivateTabBar path={path || "/private"} offline />;
+
   if (failed) {
     return (
-      <p className="mt-6 text-sm text-muted-foreground">
-        This device will not open its local database, so there is nothing stored to show.
-      </p>
+      <>
+        <p className="mt-6 text-sm text-muted-foreground">
+          This device will not open its local database, so there is nothing stored to show.
+        </p>
+        {bar}
+      </>
     );
   }
 
-  if (!view) return <p className="mt-6 text-sm text-muted-foreground">Reading what is here…</p>;
+  if (target.kind === "absent") {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className={PANEL}>
+          <p className="text-sm text-foreground">
+            {target.name} needs a signal — it is not kept on this phone.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Today, Training, Academics, the log and anything not yet sent are stored here. The rest
+            is read from the server each time, so there is nothing to show you offline.
+          </p>
+        </div>
+
+        {/* Still offered, because the reason to be on a screen with no signal is usually that
+            something needs writing down before it is lost (D-164). */}
+        <QuickCapture write={capture} />
+
+        <Elsewhere current={null} />
+        {bar}
+      </div>
+    );
+  }
+
+  if (!view)
+    return (
+      <>
+        <p className="mt-6 text-sm text-muted-foreground">Reading what is here…</p>
+        {bar}
+      </>
+    );
 
   return (
     <div className="mt-6 space-y-4">
@@ -143,6 +226,7 @@ export function CachedApp() {
       )}
 
       <Elsewhere current={key} />
+      {bar}
     </div>
   );
 }
@@ -413,7 +497,7 @@ function Missing({ what }: { what: string }) {
   );
 }
 
-function Elsewhere({ current }: { current: ViewKey }) {
+function Elsewhere({ current }: { current: ViewKey | null }) {
   const others = (["today", "athletics", "academics", "log", "sync"] as const).filter(
     (key) => key !== current,
   );

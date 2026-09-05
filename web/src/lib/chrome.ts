@@ -11,7 +11,15 @@
  * `pathname.startsWith("/private")` also matches `/privateer` and `/private-beta`; those do not
  * exist today, and a route added later that quietly loses its header is a confusing thing to
  * debug.
+ *
+ * **`/cached` is the private app too**, and leaving it out was a real bug rather than an
+ * oversight in taste: it is what the service worker serves in place of any failed `/private`
+ * navigation, so in airplane mode the app opened wearing the portfolio's header, without the
+ * tab bar, and read as the public site. Reported from the phone on 2026-09-05. The route sits
+ * outside `/private` for a reason that has nothing to do with chrome — everything under
+ * `/private` is `force-dynamic` and needs a server — so the two lists differ by exactly this
+ * one path, and that is why this function exists rather than a prefix check (D-174).
  */
 export function hasPublicChrome(pathname: string): boolean {
-  return !(pathname === "/private" || pathname.startsWith("/private/"));
+  return !(pathname === "/private" || pathname.startsWith("/private/") || pathname === "/cached");
 }

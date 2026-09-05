@@ -48,7 +48,20 @@ export function ServiceWorker() {
     // background for days, and the browser will not look for a new worker on its own.
     const handleVisibility = () => {
       if (document.visibilityState !== "visible") return;
-      container.getRegistration().then((registration) => registration?.update());
+      // Not with the radio off. `update()` fetches /sw.js, so offline it rejects with
+      // "unknown error when fetching the script" — which is not a fault, it is the answer to a
+      // question that should not have been asked. Unhandled, that rejection reached the global
+      // reporter and filed itself as a crash: two of those arrived from the phone on
+      // 2026-09-05, from an airplane-mode test, which is precisely when the report is least
+      // affordable and least true. Same `onLine !== false` test the worker's retry uses, for
+      // the same reason — weak evidence in general, conclusive when it says false.
+      if (navigator.onLine === false) return;
+      void container
+        .getRegistration()
+        .then((registration) => registration?.update())
+        // A failed update check is a normal outcome of a bad connection, not something to
+        // report. The next foreground tries again.
+        .catch(() => {});
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
