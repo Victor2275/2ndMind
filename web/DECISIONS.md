@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-05
+updated: 2026-09-06
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.

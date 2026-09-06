@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-05
+updated: 2026-09-06
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -597,8 +597,22 @@ them stands on something checked rather than argued.
       box to Today pushed the first task from 296px to 495px on a desktop — five pixels from
       failing the rule that exists to keep the first task reachable — so it moved below the list
       and the number went back to where it was.
-- [ ] **Round 4 · Offline search** (6h) — §2.3, now standing on proven ground.
-- [ ] **Round 5 · Phase 4, unblocked** (24h) — §4.2 light mode, §4.1 push, §4.3 voice.
+- [x] **Round 4 · Offline search** — **done 2026-09-06.** The log's search box works with no
+      signal, in the same box at the same address. It searches the copy on your phone. One
+      difference from online, and it is written down rather than left to be discovered:
+      searching "run" finds "running", but "ran" does not — matching whole word beginnings
+      instead of shipping a dictionary to the phone.
+- [x] **Round 5 · Phase 4, unblocked** — **done 2026-09-06.**
+      **Light mode**, following the phone by default, with a switch in the app. Trimmed to about
+      a third of its estimate: the switch works now and the colours get decided in V4's
+      overhaul, so the work is not done twice. Your portfolio stays dark for visitors.
+      **Notifications.** An evening nudge that only appears on a day you logged nothing, a
+      morning list of what is due that only appears when something is, and an alert when
+      something failed to send. You turn them on with a button; nothing asks you.
+      **Voice.** Say "bench press 185 for 5, three sets" and the form fills in. It never saves —
+      you still press the button — so a misheard number costs a correction, not a wrong record.
+      **Before notifications work you have to run `npm run push:keys` and paste two values plus
+      a `CRON_SECRET` into `.env.local` and into Vercel.**
 - [ ] **Round 6 · Phase 5** (7h) — §5.2 course planner, desktop-only.
 
 **~64h against ~72h.** Still blocked, and therefore not in the rounds: §4.4 resume upload (5h,

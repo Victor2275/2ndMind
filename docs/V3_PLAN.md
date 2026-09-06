@@ -229,7 +229,7 @@ than argued.
 | 2 | ~~**Prove the offline work**~~ **done 09-05** | §3.7 + the device round + what they found | ~11 | 09-05 |
 | 3 | ~~**Finish Feel**~~ **done 09-05** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-05 |
 | 4 | ~~**Offline search**~~ **done 09-06** | §2.3, on proven ground | 6 | 09-06 |
-| 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
+| 5 | ~~**Phase 4, unblocked**~~ **done 09-06** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-06 |
 | 6 | **Phase 5** | §5.2 course planner | 7 | 09-17 → 09-18 |
 | | **Total** | | **~64** | vs ~72 available |
 
@@ -1013,14 +1013,27 @@ Milestone C: it stops feeling like a website.
 
 ### Phase 4 · Term, third block — **29h**
 
-- **4.1 · Push notifications — 8h.** VAPID keys, subscription, and three triggers: stuck outbox,
-  end-of-day reminder, calendar/assignment alerts. Note the third duplicates notifications
-  Google Calendar and Canvas already send; if it becomes noise, it is one flag to disable.
-- **4.2 · Light mode — 8h.** `:root` redefined, `.dark` already mirrors it, `next-themes` already
-  installed. The work is the audit: every screen, both themes, and `npm run shots` in both.
-- **4.3 · Voice, whole-entry — 8h.** "Bench press 185 for 5, RPE 8" → a filled Training form.
-  **Always confirmed before saving** — an unreviewed transcription never writes.
-  Shows an explicit offline state, because it cannot work offline.
+- **4.1 · Push notifications — 8h.** ✅ **DONE 2026-09-06. D-185.** All three triggers, which
+  turn out to work three different ways. Two cron jobs — an evening nudge **only on a day with
+  nothing logged**, a morning digest **only when something is due** — both silent by default,
+  because a notification that arrives regardless is one you learn to swipe away. The stuck-outbox
+  alert is **not a push at all**: the server cannot see an outbox that lives on the phone, so the
+  app raises it through its own worker, only for ops that have actually failed. The day is
+  computed in `America/Los_Angeles`, tested across a daylight-saving change — the evening job
+  runs at 04:00 UTC, which is already tomorrow there. **Needs `npm run push:keys` and a
+  `CRON_SECRET` pasted into `.env.local` and Vercel before any of it fires.**
+- **4.2 · Light mode — 8h.** ✅ **DONE 2026-09-06, scoped to ~3h at Victor's call. D-184.**
+  The *mechanism* now, the colours in V4 — the overhaul includes the visual style, so the audit
+  would be done twice. The palette is computed rather than picked: `#d94f93` is **3.6:1** on
+  white and unreadable at body size, so every value is the same hue taken down until it carries.
+  **The portfolio stays dark** — a shopfront should look the same to everyone — using
+  `forcedTheme`, so visiting it cannot overwrite the app's setting.
+- **4.3 · Voice, whole-entry — 8h.** ✅ **DONE 2026-09-06. D-186.** The browser hears it, a
+  grammar reads it, Gemini gets what the grammar cannot. **"Always confirmed" is structural:**
+  the component has no way to write — it fills fields, and the ordinary save button saves.
+  Rules before the model because a grammar is wrong the *same way* every time and a model is
+  wrong differently each time, in a log whose value is that its numbers can be trusted. It gives
+  up rather than half-filling. Explicit offline state, as specified.
 - **4.4 · Upload your own resumes — 5h.** **Fallback** semantics: the generated resume shows
   where no upload exists. PDFs in `context/assets/resumes/`, served like images (V2 §7.3), and
   precached by 2.2. `/resume/[variant]` still resolves for a guessed URL.
