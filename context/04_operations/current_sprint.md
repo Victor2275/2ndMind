@@ -613,6 +613,19 @@ them stands on something checked rather than argued.
       you still press the button — so a misheard number costs a correction, not a wrong record.
       **Before notifications work you have to run `npm run push:keys` and paste two values plus
       a `CRON_SECRET` into `.env.local` and into Vercel.**
+- [x] **The last two, 2026-09-06.** **Filament and printers** are now on the Hobbies page —
+      add a spool with its colour, how much is left, and what a full one weighs, and the list
+      sorts itself so whatever you are about to run out of is at the top, with a count of what
+      needs buying. Printers sit under it with your four states. Nothing had to be handed over:
+      you enter it on the site.
+      **Your resume PDF** is now offered as a download on all three resume pages. It sits
+      *beside* the generated one rather than replacing it, because the PDF is from 20 August and
+      your vault content was updated on the 30th — an override would publish something ten days
+      stale and getting staler, and say nothing about it.
+      One thing worth knowing: everything in `context/assets/` becomes a public web address, and
+      your **transcripts** live one folder away in `99_archive/`. The copier now only takes PDFs
+      from the `resumes/` folder specifically, and only images from the image folders, so a file
+      dropped in the wrong place is served as nothing rather than as something private.
 - [x] **Round 6 · Phase 5** — **done 2026-09-06.** A course planner at
       `/private/academics/plan`, on the laptop only. Five columns for Winter 27 through Spring
       28; type what you intend to take and it tells you, as you type, what is still outstanding
@@ -625,9 +638,11 @@ them stands on something checked rather than argued.
       readable without the app and its history is in git. Editing that file by hand and editing
       it in the app are the same thing.
 
-**~64h against ~72h.** Still blocked, and therefore not in the rounds: §4.4 resume upload (5h,
-needs the PDFs) and §5.1 filament (9h, needs the inventory). If they arrive during the burst
-they fit the slack; if not, they are the two items that legitimately fall into term time.
+**~64h against ~72h.** ~~Still blocked: §4.4 resume upload and §5.1 filament.~~
+**Both done 2026-09-06, and neither was really blocked.** §4.4 needed a PDF that had been sitting
+in `99_archive/` the whole time. §5.1 waited on a filament inventory Victor was supposed to hand
+over — and his answer was that he wants to add spools *on the site*, which made the data entry
+the feature rather than its precondition. **V3 is complete.**
 
 **Done when:** the app is on the home screen and two real weeks pass without reaching for the
 laptop to log. Behaviour, not a date.
