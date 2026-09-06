@@ -336,6 +336,20 @@ async function main() {
       `${images.loaded}/${images.total} loaded`,
     );
 
+    // Search, offline, at the same URL the online box posts to (§2.3). The term is deliberately
+    // one nothing can match: the assertion is that the *search ran on the phone* and said so,
+    // which is true regardless of what this device happens to have synced. Asserting on a real
+    // hit would make the check depend on the contents of a real log.
+    await page.goto(`${BASE}/private/log?q=zzzznotathing`);
+    check(
+      await page
+        .getByText(/nothing on this phone matches/i)
+        .waitFor({ timeout: 10_000 })
+        .then(() => true)
+        .catch(() => false),
+      "the log is searchable with no network",
+    );
+
     /* -- 3. write a training entry with two sets, with no network ------------------- */
     console.log("\nwriting with no network");
     await page.goto(`${BASE}/private/log`);

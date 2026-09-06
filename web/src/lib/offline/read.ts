@@ -14,6 +14,7 @@ import {
   type Freshness,
 } from "@/lib/offline/panels";
 import { allChipSets, type ChipSets } from "@/lib/log/chips";
+import { searchLocalEntries } from "@/lib/offline/search";
 import { getLastSyncAt, listLocal, openSyncDb } from "@/lib/sync/store";
 
 /**
@@ -57,6 +58,23 @@ export type CachedView = {
   /** True when the mirror has never been filled — a new install that has not synced. */
   empty: boolean;
 };
+
+/**
+ * The log entries on this phone matching a query (§2.3).
+ *
+ * A separate read rather than a field on `CachedView`, because the snapshot is taken on every
+ * view and a search is asked for on almost none of them — putting every log entry the phone
+ * holds into that snapshot would cost the whole dashboard a scan it does not use.
+ */
+export async function searchCachedLog(query: string, limit = 50): Promise<CachedEntry[]> {
+  if (query.trim() === "") return [];
+  const db = await openSyncDb();
+  try {
+    return searchLocalEntries(await listLocal(db, "log_entry"), query, limit);
+  } finally {
+    db.close();
+  }
+}
 
 export async function readCachedView(now = new Date()): Promise<CachedView> {
   const db = await openSyncDb();

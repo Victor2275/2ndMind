@@ -228,7 +228,7 @@ than argued.
 | 1 | ~~**Trust the gates**~~ **done 09-05** | Test gate, suite audit, README | ~3 | 09-05 |
 | 2 | ~~**Prove the offline work**~~ **done 09-05** | §3.7 + the device round + what they found | ~11 | 09-05 |
 | 3 | ~~**Finish Feel**~~ **done 09-05** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-05 |
-| 4 | **Offline search** | §2.3, now standing on proven ground | 6 | 09-12 → 09-13 |
+| 4 | ~~**Offline search**~~ **done 09-06** | §2.3, on proven ground | 6 | 09-06 |
 | 5 | **Phase 4, unblocked** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-13 → 09-17 |
 | 6 | **Phase 5** | §5.2 course planner | 7 | 09-17 → 09-18 |
 | | **Total** | | **~64** | vs ~72 available |
@@ -861,7 +861,12 @@ Milestone B: nothing needs signal.
 
   *Done when:* ~~the portfolio and the resume render in airplane mode~~ — **still Victor's**, on
   the phone, along with the offline round trip already on his list.
-- **2.3 · Offline full-text search — 6h.** ~~Over logs and cached content, running locally.~~
+- **2.3 · Offline full-text search — 6h.** ✅ **DONE 2026-09-06. D-183.** The same box and the
+  same URL: `/private/log?q=…` is answered by the worker with the shell, which searches the
+  local mirror's `search_text` — the very column the server searches, already synced. Matching
+  is word-beginnings with every term required, and **the difference from Postgres is asserted as
+  a test**: `run` finds `running`, `ran` does not. Proven in the browser by `npm run e2e`.
+  ~~Over logs and cached content, running locally.~~
   **Deferred 2026-09-04, at Victor's call** — *"skip over the offline stuff and go onto the next
   thing."* Not cut and not descoped: still 6h, still the same design, still ahead of semantic
   search (which stays cut for the fourth time). It simply goes after §2.4 and §2.5 rather than

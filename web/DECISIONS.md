@@ -71,6 +71,48 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
+## 2026-09-06 · The log is searchable with no signal
+
+### D-183 · Offline search is the same box, the same URL, and a stated difference in matching
+
+**Decision.** The log's search box now works with no network. `/private/log?q=…` is answered by
+the worker with the offline shell, which reads the term back out of the path it was handed and
+searches the local mirror. The shell's log view carries the same plain GET form aimed at the
+same URL, so a search can be *started* offline as well as arrived at.
+
+**Nothing new is stored or synced for this.** The server searches `search_text`, a column
+denormalised on write so search never has to reach into JSON — and the ordinary pull already
+mirrors it. The offline search reads exactly the text the online search reads.
+
+**Where it differs from Postgres, stated rather than hidden.** Postgres stems: `run` matches
+`running`, and so does `ran`. Reproducing that means shipping an English stemmer into a bundle
+served to a phone. Victor chose **word-beginnings with every term required** instead:
+
+- `run` finds `running` — the common case, which is typing less than the whole word.
+- `ran` does **not** find `running`. That is the honest limit, and it is asserted as a test
+  rather than left as a comment, because the same box answers both online and off and a silent
+  difference in results is the kind of thing that gets acted on.
+- `erg piec` finds an entry containing both, in any order and not adjacent.
+
+No stopword list, deliberately: Postgres drops `the` and `a`, and copying somebody else's word
+list would still not match while adding a second thing to maintain. "Every term must match" is a
+rule that fits in one sentence.
+
+**An empty query matches nothing, not everything** — the same answer the server gives, and the
+one that cannot show a person their whole log because they cleared the box.
+
+**Ordered and capped like the server's query**, newest first and fifty, so a result list looks
+the same offline as on. Relevance ranking was not chosen: the online search does not do it, and
+two orderings for one box is worse than one imperfect one.
+
+**No "you are offline" banner**, at Victor's call. The shell already carries the age of its data
+at the top of every view; saying it again per feature is repetition, not honesty.
+
+**How to reverse.** Delete `lib/offline/search.ts`, `searchCachedLog`, and the form and results
+block in the shell's log view. The online search is untouched by all of this.
+
+---
+
 ### D-182 · The fold marker is opt-in, the gate measures the deepest, and the capture box moved
 
 **Decision.** Three changes that only work together:

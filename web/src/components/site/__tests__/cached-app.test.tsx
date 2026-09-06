@@ -31,7 +31,11 @@ vi.mock("next/link", () => ({
 }));
 
 const readCachedView = vi.fn<() => Promise<CachedView>>();
-vi.mock("@/lib/offline/read", () => ({ readCachedView: () => readCachedView() }));
+const searchCachedLog = vi.fn<(q: string) => Promise<unknown[]>>();
+vi.mock("@/lib/offline/read", () => ({
+  readCachedView: () => readCachedView(),
+  searchCachedLog: (q: string) => searchCachedLog(q),
+}));
 
 const { CachedApp } = await import("../cached-app");
 
@@ -59,6 +63,8 @@ function at(from: string) {
 beforeEach(() => {
   at("/private");
   readCachedView.mockResolvedValue(BLANK);
+  searchCachedLog.mockReset();
+  searchCachedLog.mockResolvedValue([]);
 });
 
 describe("it always says how old it is", () => {
@@ -339,5 +345,48 @@ describe("a screen the phone does not keep", () => {
     at("/private");
     render(<CachedApp />);
     expect(await screen.findByText("Due")).toBeInTheDocument();
+  });
+});
+
+describe("searching the log with no signal", () => {
+  /**
+   * §2.3. The same box and the same URL as online: the worker answers a failed
+   * `/private/log?q=…` with this screen, which reads the term back out of the path it was
+   * handed. The only thing that changes with signal is who answers.
+   */
+  it("searches for the term the failed navigation was carrying", async () => {
+    at("/private/log?q=erg");
+    searchCachedLog.mockResolvedValue([
+      { id: "1", category: "athletics", occurredAt: "2026-09-02T08:00:00.000Z", line: "erg 2000m" },
+    ]);
+    render(<CachedApp />);
+
+    expect(await screen.findByText("erg 2000m")).toBeInTheDocument();
+    expect(searchCachedLog).toHaveBeenCalledWith("erg");
+  });
+
+  it("says plainly when nothing on the phone matches", async () => {
+    // An empty result list and a broken search look identical unless one of them says so.
+    at("/private/log?q=nothingatall");
+    render(<CachedApp />);
+    expect(await screen.findByText(/nothing on this phone matches/i)).toBeInTheDocument();
+  });
+
+  it("carries the search box itself, so a search can be started with no signal", async () => {
+    // Without this the feature is unreachable offline: the live page's box is on a page that
+    // cannot render, and this screen is where you already are.
+    at("/private/log");
+    render(<CachedApp />);
+
+    const box = await screen.findByRole("searchbox", { name: /search the log/i });
+    expect(box.closest("form")?.getAttribute("action")).toBe("/private/log");
+    expect(box.getAttribute("name")).toBe("q");
+  });
+
+  it("does not search at all when there is no term", async () => {
+    at("/private/log");
+    render(<CachedApp />);
+    await screen.findByRole("searchbox", { name: /search the log/i });
+    expect(searchCachedLog).not.toHaveBeenCalled();
   });
 });

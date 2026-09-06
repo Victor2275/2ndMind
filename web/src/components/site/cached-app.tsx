@@ -11,8 +11,9 @@ import { reportError } from "@/lib/errors/client";
 import { approximateAge } from "@/lib/sync/outbox-view";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { localCaptureWriter, localLogWriter } from "@/lib/offline/write";
-import { readCachedView, type CachedView } from "@/lib/offline/read";
-import type { CachedTask } from "@/lib/offline/panels";
+import { readCachedView, searchCachedLog, type CachedView } from "@/lib/offline/read";
+import { queryFrom } from "@/lib/offline/search";
+import type { CachedEntry, CachedTask } from "@/lib/offline/panels";
 
 /**
  * The app with no signal (V3 §2.1).
@@ -219,7 +220,7 @@ export function CachedApp() {
           {key === "today" && <TodayView view={view} />}
           {key === "athletics" && <AthleticsView view={view} />}
           {key === "academics" && <AcademicsView view={view} />}
-          {key === "log" && <LogView view={view} />}
+          {key === "log" && <LogView view={view} query={queryFrom(path)} />}
           {key === "sync" && <OutboxConsole />}
         </>
       )}
@@ -388,9 +389,36 @@ function AcademicsView({ view }: { view: CachedView }) {
  * The chips come from the local mirror, which is why this is not a lesser form: they are built
  * from past entries, and past entries are already on the phone.
  */
-function LogView({ view }: { view: CachedView }) {
+function LogView({ view, query }: { view: CachedView; query: string }) {
   const [category, setCategory] = useState(CATEGORIES[0].key);
   const definition = categoryByKey(category) ?? CATEGORIES[0];
+
+  const [results, setResults] = useState<CachedEntry[] | null>(null);
+
+  useEffect(() => {
+    // No term, nothing to look up. Returning early rather than clearing the state: a
+    // synchronous `setState` in an effect is a cascading render, and there is nothing to clear
+    // anyway — `shown` below derives the empty case instead of storing it.
+    if (query === "") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await searchCachedLog(query);
+        if (!cancelled) setResults(found);
+      } catch (error) {
+        void reportError(error);
+        if (!cancelled) setResults([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  // Derived, not stored. This screen never navigates within itself — every search is a fresh
+  // document — so `query` is fixed for the life of the component and there is no stale-result
+  // case to clear.
+  const shown = query === "" ? null : results;
 
   // `requestSync` on every write: with no network the runner does nothing and the entry simply
   // waits, and the moment there is one this is what makes it leave without a foreground event.
@@ -398,6 +426,46 @@ function LogView({ view }: { view: CachedView }) {
 
   return (
     <>
+      {/* The same plain GET form the live page carries, aimed at the same URL (§2.3, D-183).
+          Online it reaches the server; offline the worker answers `/private/log?q=…` with this
+          screen, which reads the term back out of the path it was handed. One box, one URL, one
+          habit — the only thing that changes with signal is who answers. */}
+      <section className={PANEL}>
+        <form method="get" action="/private/log" className="flex items-center gap-2">
+          <input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="Search what is on this phone"
+            aria-label="Search the log on this phone"
+            className="min-h-10 w-full rounded-md border border-border bg-card/60 px-3 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
+          />
+        </form>
+
+        {shown !== null && (
+          <div className="mt-4">
+            <p className={META}>
+              {shown.length === 0
+                ? `Nothing on this phone matches "${query}".`
+                : `${shown.length} match${shown.length === 1 ? "" : "es"} for "${query}"`}
+            </p>
+            {shown.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {shown.map((entry) => (
+                  <li key={entry.id} className="flex items-baseline gap-3">
+                    <span className={`${META} shrink-0`}>{entry.occurredAt.slice(0, 10)}</span>
+                    <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+                      {categoryByKey(entry.category)?.label ?? entry.category}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm text-foreground">{entry.line}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className={PANEL}>
         <div className="flex flex-wrap gap-1.5">
           {CATEGORIES.map((each) => (
