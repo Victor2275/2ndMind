@@ -613,7 +613,17 @@ them stands on something checked rather than argued.
       you still press the button — so a misheard number costs a correction, not a wrong record.
       **Before notifications work you have to run `npm run push:keys` and paste two values plus
       a `CRON_SECRET` into `.env.local` and into Vercel.**
-- [ ] **Round 6 · Phase 5** (7h) — §5.2 course planner, desktop-only.
+- [x] **Round 6 · Phase 5** — **done 2026-09-06.** A course planner at
+      `/private/academics/plan`, on the laptop only. Five columns for Winter 27 through Spring
+      28; type what you intend to take and it tells you, as you type, what is still outstanding
+      against the degree audit and whether a term is over or under a normal load.
+      **It never suggests a schedule** — it does not know what is offered when, so a draft it
+      wrote would be confidently wrong. **A course only ever counts once**, which is the mistake
+      a plan written by hand actually makes. And where the audit's list of acceptable courses was
+      too long to keep in full, it says "might count" instead of pretending to have checked.
+      The plan is saved into the vault as `context/01_engineering/course_plan.md`, so it is
+      readable without the app and its history is in git. Editing that file by hand and editing
+      it in the app are the same thing.
 
 **~64h against ~72h.** Still blocked, and therefore not in the rounds: §4.4 resume upload (5h,
 needs the PDFs) and §5.1 filament (9h, needs the inventory). If they arrive during the burst

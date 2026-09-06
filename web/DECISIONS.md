@@ -71,6 +71,56 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
+## 2026-09-06 · The three-year plan, checked against the audit
+
+### D-187 · A course planner that checks, never suggests, and says what it cannot verify
+
+**Decision.** `/private/academics/plan`, desktop-only as §5.2 specified. Five term columns for
+the track to June 2028, a textarea each, and a continuously recomputed answer to one question:
+**what is still outstanding, and is any term overloaded?**
+
+**A checker, not a suggester.** Victor's call. It never proposes a schedule because it does not
+know what is offered when, what the prerequisites are, or what he wants to take — none of which
+is in a DARS audit. A draft built from what it *does* know would be confidently wrong in ways
+that take longer to unpick than to write from scratch.
+
+**It reads the generated audit rather than changing the generator.** `degree_audit.md` is
+markdown written to be read, and this is the first thing that needs to compute with it. Parsing
+it keeps one format: the file is regenerated whenever a fresh DARS is saved, and a second format
+would be a second thing to get wrong at the moment the first one changed.
+
+**A course counts once.** Double-counting is the whole failure mode of a plan written by hand —
+one elective quietly satisfying three lines, and the total coming out four courses short in the
+term it is too late to fix. Assigned in two passes, definite claims first, so a requirement whose
+list actually names the course is never beaten to it by one whose list was truncated and might
+name anything. Both halves checked by breaking them.
+
+**It separates *counts* from *might count*.** The GE lists run past two hundred courses and the
+generator truncates them. Rejecting a course because the parser dropped it would be worse than
+not checking, so `listNames` has three answers — yes, no, and **cannot tell** — and the screen
+renders the third as "might count … the audit's list is truncated, so this is not checked". A
+planner that renders a guess as a fact is claiming to know something it does not.
+
+**Stored in the vault, not Postgres.** Victor's call, and the reasoning is lifespan rather than
+speed: a document to read in five years and see the history of, not a fast-changing time series.
+D-036 moved tasks the other way for a latency this does not have. The cost is a commit per save,
+which is right for something touched a few times a year.
+
+**Textareas rather than drag-and-drop**, because the fastest way to move eight courses on a
+laptop is to edit text — and because it makes the screen and the committed file the same format,
+so a hand-edit in the repo shows up here unchanged. That claim was briefly false: `parsePlan`
+required a markdown bullet, so everything typed into the planner parsed as nothing and the
+checker never moved. The bullet is now optional, and the empty-term placeholder is excluded so
+the fix does not turn `_Nothing planned yet._` into a course.
+
+**Found by the production build, not by the tests:** `PLAN_PATH` was exported from a
+`"use server"` module, which may only export async functions. Nothing in a test environment
+enforces the Server Actions contract, so 1224 tests passed and the build failed. The constant
+now lives with the format.
+
+**How to reverse.** Delete the route, the action, `lib/academics/`, and the link on Academics.
+`course_plan.md` is an ordinary vault file and can stay.
+
 ## 2026-09-06 · Voice, notifications, light mode, and a searchable log with no signal
 
 ### D-186 · Voice entry: rules first, the model second, and it cannot save

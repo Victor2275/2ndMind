@@ -1,4 +1,5 @@
 import { describeDbError } from "@/lib/db/describe";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { PageHeader, Panel, Stat } from "@/components/site/page-shell";
@@ -130,6 +131,16 @@ export default function AcademicsPage() {
         eyebrow="Academics"
         title="Coursework"
         lede="What is left to graduate, and the work in front of it. Canvas still owns the week-to-week deadlines."
+        actions={
+          // The planner is desktop-only by design (§5.2), so this is the only way to it — and a
+          // page nothing links to is a page nobody opens.
+          <Link
+            href="/private/academics/plan"
+            className="nav-desktop min-h-10 rounded-md border border-primary/50 px-3 py-1.5 font-mono text-xs text-primary transition-colors hover:bg-primary/10"
+          >
+            Three-year plan
+          </Link>
+        }
       />
 
       <Suspense
