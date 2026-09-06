@@ -57,6 +57,13 @@
       "when": 1788685120549,
       "tag": "0007_clever_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788702440330,
+      "tag": "0008_brief_mister_fear",
+      "breakpoints": true
     }
   ]
 }

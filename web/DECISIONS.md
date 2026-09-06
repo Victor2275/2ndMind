@@ -71,6 +71,78 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
+## 2026-09-06 · The last two blocked items, unblocked by asking
+
+### D-188 · The resume PDF is offered beside the generated sheet, not instead of it
+
+**Decision.** `Victor_Gusev_Resume.pdf` is copied into `context/assets/resumes/`, synced to
+`public/` by the build, and offered as a download on all three variant pages. The generated
+resume stays primary.
+
+**This reverses D-138.** §4.4 was specified with *fallback* semantics — an uploaded PDF
+replacing the generated resume for that variant. Victor reversed it on 2026-09-06 once the file
+was actually in front of him, and the reason is in the dates: the PDF is from **20 August** and
+the vault's resume content was updated on the **30th**. An override would have published a
+document already ten days behind, drifting further with every project update, with nothing on
+screen saying so. The generated sheet is current, matches the site, and is gated at one page by
+`npm run shots`.
+
+**One PDF, offered on all three variants**, as a general fallback. A file named for a variant —
+`swe.pdf` — wins on that page, so making it specific later is a rename and no code change.
+
+**No upload path, at Victor's call.** PDFs are committed to the vault folder; a resume changes a
+few times a year. This is the opposite answer to §5.1's below, and the difference is frequency:
+`writeVaultFile` is text-only, and binary support would be real work bought for something that
+happens rarely.
+
+**The dangerous part is the folder, not the feature.** Everything under `context/assets/`
+becomes a public URL, and the file sitting next to this resume in the vault is a **university
+transcript**. So the sync script gained a **per-folder allowlist** rather than a widened global
+filter: `resumes/` takes PDFs, the image folders still take images only, and directories are
+never followed. Three tests pin that, and all three fail when the filter is widened.
+
+**How to reverse.** Delete `context/assets/resumes/`, the pair in `sync-vault-assets.mjs`, and
+the download link. `lib/resume-pdf.ts` returns null with no folder, so nothing else changes.
+
+### D-189 · Filament is entered on the site, which is why §5.1 was never actually blocked
+
+**Decision.** `filament_spools` and `printers` in Postgres, with add, edit and soft-delete on
+`/private/hobbies`. Spools sort emptiest-first; the count of what needs reordering is the first
+thing on the panel.
+
+**The blocker was a misread.** §5.1 sat blocked on "the inventory in `UPLOADS_NEEDED.md`" for
+weeks — a table Victor was supposed to hand over. His answer on 2026-09-06 was that he wants to
+add spools **on the site**, which makes the data entry the feature rather than its precondition.
+There was nothing to wait for and there never had been.
+
+**Postgres, not the vault** — the opposite of D-187's call for the course plan, one day earlier.
+The difference is what the data is: a spool count changes weekly and is a quantity to sort, not a
+document to read in five years. Same reasoning D-036 used to move tasks out of the vault.
+
+**Every field is optional except the material.** The upload brief this replaces said *a rough
+number now beats an exact one never*, and a form that refuses a spool because its hex is unknown
+is exactly how an inventory stops being kept current. An unfilled hex is stored as `null`, not
+`""`, so "no colour" is decided once at the boundary rather than on every render.
+
+**An empty spool stays in the list.** "I have no black PLA" is the single most useful thing this
+page can say, and filtering zeroes out would remove precisely that. `empty` is its own band
+rather than the bottom of `low`, because the two prompt different actions — a purchase and a
+plan.
+
+**The colour reaches a stylesheet, so it is an allowlist.** `swatch()` accepts `#rgb` and
+`#rrggbb` and nothing else; anything failing renders as a word. An unchecked string interpolated
+into a `style` attribute is how a colour field becomes a way to inject CSS. The form uses a
+native colour input, so the common path cannot produce a bad value at all — but the check is at
+the render, because the form is not the only way a row gets there.
+
+**Four printer states, Victor's own**, confirmed rather than invented: `printing`, `idle`,
+`needs maintenance`, `down`. Stored as text so adding a fifth is an edit to one array, not a
+migration — and that array lives in its own module with no `server-only`, because the form
+renders it and the action validates against it. Leaving it in the query module would have forced
+a duplicated vocabulary, which is a vocabulary that drifts.
+
+**How to reverse.** Drop the two panels from `/private/hobbies`; the tables can stay empty.
+
 ## 2026-09-06 · The three-year plan, checked against the audit
 
 ### D-187 · A course planner that checks, never suggests, and says what it cannot verify

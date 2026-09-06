@@ -107,7 +107,13 @@ the `/projects/proof` case study on this site?
 
 Fill these in wherever is convenient. Plain text is fine; I will do the formatting.
 
-### 2.1 · Filament inventory
+### 2.1 · Filament inventory — **no longer needed, 2026-09-06**
+
+> **Withdrawn.** Victor's answer was that he wants to add spools on the site rather than hand
+> over a table, so the data entry became the feature. `/private/hobbies` now has add and edit
+> forms for spools and printers (§5.1, D-189). Nothing below is required.
+
+### 2.1 · Filament inventory (original brief)
 
 One row per spool. **Amount** in whatever you actually measure — grams remaining, or a
 fraction, or "about half"; I will normalise it, and a rough number now beats an exact one

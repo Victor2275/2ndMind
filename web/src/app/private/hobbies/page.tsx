@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
+import { FilamentPanel } from "@/components/site/filament-panel";
+import { PrinterPanel } from "@/components/site/printer-panel";
+import { db, isDatabaseConfigured } from "@/lib/db/client";
+import { listPrinters, listSpools } from "@/lib/fabrication/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +29,39 @@ const DOCS = [
  * at all.
  */
 const PROOF_URL = "https://proof-cdvj.onrender.com";
+
+/**
+ * Filament and printers (§5.1, D-189).
+ *
+ * Above the reference documents, because this is the part of the page that changes — a spool
+ * runs out weekly and a CAD note does not. Reorder-first: the list arrives emptiest-first from
+ * SQL, so the thing to buy is the thing at the top.
+ */
+async function Workshop() {
+  if (!isDatabaseConfigured()) {
+    return (
+      <Panel title="Workshop" meta="no database">
+        <p className="text-sm text-muted-foreground">
+          Filament and printers live in Postgres. Set <code>DATABASE_URL</code> to use them.
+        </p>
+      </Panel>
+    );
+  }
+
+  const handle = db();
+  const [spools, machines] = await Promise.all([listSpools(handle), listPrinters(handle)]);
+
+  return (
+    <div className="mt-8 space-y-4">
+      <Panel title="Filament" meta="emptiest first">
+        <FilamentPanel spools={spools} />
+      </Panel>
+      <Panel title="Printers" meta="workshop">
+        <PrinterPanel printers={machines} />
+      </Panel>
+    </div>
+  );
+}
 
 async function Documents() {
   const docs = await Promise.all(DOCS.map((d) => loadVaultDoc(d.path)));
@@ -68,6 +105,17 @@ export default function HobbiesPage() {
         title="Hobbies"
         lede="Ratios, machine settings, and process notes worth not losing."
       />
+      <Suspense
+        fallback={
+          <div className="mt-8 space-y-4">
+            <SkeletonPanel rows={2} />
+            <SkeletonPanel rows={1} />
+          </div>
+        }
+      >
+        <Workshop />
+      </Suspense>
+
       <Suspense
         fallback={
           <div className="mt-8 space-y-4">

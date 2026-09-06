@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/site/print-button";
+import { resumeUpload } from "@/lib/resume-pdf";
 import { buildResume, RESUME_VARIANTS } from "@/lib/resume";
 import type { ResumeVariant } from "@/lib/vault/schemas";
 
@@ -28,6 +29,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
   if (!isVariant(variant)) notFound();
 
   const doc = buildResume(variant);
+  const upload = resumeUpload(variant);
   // Every variant, always, in the order declared by RESUME_VARIANTS -- robotics, ml, swe.
   // Before this it rendered only the *other* two, so the row re-ordered itself on every
   // switch and the control moved out from under the cursor.
@@ -65,7 +67,21 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
             ),
           )}
         </div>
-        <PrintButton />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The uploaded PDF, offered beside the generated sheet rather than instead of it
+              (§4.4, D-188). The size is stated because a download that starts without warning
+              is a download nobody chose. */}
+          {upload && (
+            <a
+              href={upload.url}
+              download
+              className="rounded-md border border-border px-3.5 py-1.5 font-mono text-xs text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:text-foreground"
+            >
+              PDF · {Math.round(upload.bytes / 1024)} KB
+            </a>
+          )}
+          <PrintButton />
+        </div>
       </div>
 
       {/* The sheet. On screen it uses the site palette; @media print in globals.css

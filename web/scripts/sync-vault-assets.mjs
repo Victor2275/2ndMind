@@ -23,12 +23,28 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const vault = path.join(here, "..", "..", "context", "assets");
 const publicDir = path.join(here, "..", "public");
 
-const PAIRS = [
-  { from: path.join(vault, "labs"), to: path.join(publicDir, "labs"), label: "public/labs" },
-  { from: vault, to: path.join(publicDir, "assets"), label: "public/assets" },
-];
+const IMAGE_ONLY = /\.(png|jpe?g|webp|svg)$/i;
+const PDF_ONLY = /\.pdf$/i;
 
-const IMAGE = /\.(png|jpe?g|webp|svg)$/i;
+const PAIRS = [
+  {
+    from: path.join(vault, "labs"),
+    to: path.join(publicDir, "labs"),
+    label: "public/labs",
+    allow: IMAGE_ONLY,
+  },
+  { from: vault, to: path.join(publicDir, "assets"), label: "public/assets", allow: IMAGE_ONLY },
+  // Resume PDFs (V3 §4.4, D-188). Its own pair with its own filter, rather than widening the
+  // one above: everything under `context/assets/` becomes a public URL, and the file sitting
+  // next to these in the vault is a university transcript. A per-folder allowlist means adding
+  // a PDF to the wrong folder serves nothing rather than serving something private.
+  {
+    from: path.join(vault, "resumes"),
+    to: path.join(publicDir, "assets", "resumes"),
+    label: "public/assets/resumes",
+    allow: PDF_ONLY,
+  },
+];
 
 if (!fs.existsSync(vault)) {
   console.error(`sync-vault-assets: vault assets not found at ${vault}`);
@@ -49,7 +65,7 @@ for (const pair of PAIRS) {
   for (const entry of fs.readdirSync(pair.from, { withFileTypes: true })) {
     // Directories are never followed. `labs/` is its own pair above, and a nested directory
     // copied here would be served from a second URL that nothing references.
-    if (!entry.isFile() || !IMAGE.test(entry.name)) continue;
+    if (!entry.isFile() || !pair.allow.test(entry.name)) continue;
 
     const from = path.join(pair.from, entry.name);
     const to = path.join(pair.to, entry.name);

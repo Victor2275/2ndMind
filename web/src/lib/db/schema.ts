@@ -443,3 +443,69 @@ export const pushSubscriptions = pgTable(
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+/**
+ * Filament spools (V3 §5.1, D-189).
+ *
+ * Postgres rather than the vault, unlike the course plan: this changes weekly, is a list of
+ * quantities rather than a document, and the question it answers — *what am I about to run out
+ * of* — wants a sort, not a diff. Same reasoning D-036 used to move tasks out of the vault.
+ *
+ * **Entered in the app, not handed over as a table.** The plan carried this as blocked on an
+ * inventory in `docs/UPLOADS_NEEDED.md`; Victor's answer on 2026-09-06 was that he wants to add
+ * spools on the site. The data entry *is* the feature, so there was never anything to wait for.
+ */
+export const filamentSpools = pgTable(
+  "filament_spools",
+  {
+    id: serial("id").primaryKey(),
+    /** PLA, PETG, ABS, TPU — free text, because a new material is a purchase not a migration. */
+    material: text("material").notNull(),
+    brand: text("brand").notNull().default(""),
+    colourName: text("colour_name").notNull().default(""),
+    /**
+     * `#rrggbb`, for a real swatch instead of a word.
+     *
+     * Nullable on purpose: the upload brief said a rough entry now beats an exact one never,
+     * and refusing a spool because its hex is unknown is exactly how an inventory stops being
+     * kept up to date.
+     */
+    colourHex: text("colour_hex"),
+    /** Grams left. The reorder sort is on this, so it is the one field worth being honest in. */
+    gramsRemaining: integer("grams_remaining").notNull().default(0),
+    /** What a full spool of this was, so "how little is left" can be a fraction not a count. */
+    gramsFull: integer("grams_full").notNull().default(1000),
+    notes: text("notes").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Soft delete, like every other row here — a spool used up is history, not an absence. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("filament_spools_remaining_idx").on(t.gramsRemaining)],
+);
+
+export type FilamentSpool = typeof filamentSpools.$inferSelect;
+export type NewFilamentSpool = typeof filamentSpools.$inferInsert;
+
+/**
+ * Printers (V3 §5.1, D-189).
+ *
+ * The status vocabulary is Victor's, confirmed 2026-09-06: `idle`, `printing`,
+ * `needs maintenance`, `down`. The plan deliberately refused to invent a taxonomy — those four
+ * are the distinctions that change what he does next, and a fifth nobody uses is a field that
+ * silently goes stale.
+ *
+ * Stored as text rather than a Postgres enum: adding a state should not be a migration.
+ */
+export const printers = pgTable("printers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("idle"),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export type Printer = typeof printers.$inferSelect;
+export type NewPrinter = typeof printers.$inferInsert;

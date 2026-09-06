@@ -1034,18 +1034,26 @@ Milestone C: it stops feeling like a website.
   Rules before the model because a grammar is wrong the *same way* every time and a model is
   wrong differently each time, in a log whose value is that its numbers can be trusted. It gives
   up rather than half-filling. Explicit offline state, as specified.
-- **4.4 · Upload your own resumes — 5h.** **Fallback** semantics: the generated resume shows
-  where no upload exists. PDFs in `context/assets/resumes/`, served like images (V2 §7.3), and
-  precached by 2.2. `/resume/[variant]` still resolves for a guessed URL.
+- **4.4 · Upload your own resumes — 5h.** ✅ **DONE 2026-09-06. D-188, which reverses D-138.**
+  ~~**Fallback** semantics: the generated resume shows where no upload exists.~~ **Alongside, not
+  instead of** — Victor's call once the file was in front of him. The PDF is dated 20 August and
+  the vault's resume content was updated on the 30th, so an override would publish a document
+  already ten days behind with nothing saying so. The generated sheet stays primary and the PDF
+  is a download beside it, on all three variants. **The risk was the folder, not the feature:**
+  everything in `context/assets/` becomes a public URL and a transcript sits next to this file in
+  the vault, so the sync script now carries a per-folder allowlist.
 
 ---
 
 ### Phase 5 · Carried from the old plan — **16h**
 
-- **5.1 · Filament and printers — 9h.** **Reorder-first layout**: spools sorted by how little is
-  left, colour swatches prominent, low stock at the top. Printers are a secondary panel using
-  Victor's own status vocabulary. Postgres, alongside the other mutable rows. *Blocked on the
-  inventory in `docs/UPLOADS_NEEDED.md` §2.1–2.2.*
+- **5.1 · Filament and printers — 9h.** ✅ **DONE 2026-09-06. D-189.** Reorder-first as
+  specified: spools emptiest-first, swatches from a validated hex, and the count of what needs
+  buying at the top. Printers are a secondary panel on Victor's own four states. ~~*Blocked on
+  the inventory in `docs/UPLOADS_NEEDED.md` §2.1–2.2.*~~ **The block was a misread.** It waited
+  weeks on a table Victor was meant to hand over; his answer was that he wants to add spools *on
+  the site*, which makes the data entry the feature rather than its precondition. There was never
+  anything to wait for.
 - **5.2 · Three-year course planner, desktop-only — 7h.** ✅ **DONE 2026-09-06. D-187.**
   `/private/academics/plan`: five term columns to June 2028, checked continuously against the
   parsed audit. **A checker, never a suggester** — it does not know what is offered when, and a
