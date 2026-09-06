@@ -58,10 +58,18 @@ describe("the service worker's caching policy", () => {
     expect(writes.length).toBeGreaterThan(0);
     for (const write of writes) expect(write).not.toContain("/private");
 
-    // Three mentions, all reads: two in the navigation branch choosing a fallback page, and
-    // one filtering the sitemap before anything from it is written to disk (§2.2).
+    // A tripwire on top of the real assertion above: every mention is accounted for, so a new
+    // one has to be justified here rather than slipping in. It fired for the first time on
+    // 2026-09-06 when §4.1 added two, and both are notification *destinations* — where a tap
+    // lands — which never touch a cache (D-185).
+    //
+    // Five, all reads:
+    //   1-2  the navigation branch, choosing which fallback page to serve (§2.1)
+    //   3    filtering the sitemap before anything from it is written to disk (§2.2)
+    //   4    the push handler's default landing page
+    //   5    the notification-click handler's default landing page
     const mentions = [...code.matchAll(/["'`]\/private/g)];
-    expect(mentions.length).toBeLessThanOrEqual(3);
+    expect(mentions.length).toBeLessThanOrEqual(5);
   });
 
   it("only ever caches GET", () => {

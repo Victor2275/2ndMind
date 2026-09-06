@@ -405,3 +405,41 @@ export const errorReports = pgTable(
 
 export type ErrorReport = typeof errorReports.$inferSelect;
 export type NewErrorReport = typeof errorReports.$inferInsert;
+
+/**
+ * Devices that have agreed to be notified (V3 §4.1, D-185).
+ *
+ * A Web Push subscription is three opaque strings the browser hands over: an endpoint URL at
+ * the vendor's push service, and two keys used to encrypt the payload so the push service
+ * cannot read it. There is no user column because this vault has exactly one user, which is
+ * the same reason `sessions` does not have one.
+ *
+ * The endpoint is the identity — the browser reissues the same one for the same installation —
+ * so it is the upsert target. Re-subscribing after a permission reset writes over the old row
+ * rather than accumulating a second dead one.
+ *
+ * **These rows go stale on their own.** A push service answers 404 or 410 for a subscription
+ * that has been revoked, an app that was uninstalled, or a browser whose storage was cleared,
+ * and the sender deletes the row when it sees that. Nothing else prunes them, and nothing
+ * needs to.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    endpoint: text("endpoint").notNull(),
+    /** The client's public key, for payload encryption. Opaque to us. */
+    p256dh: text("p256dh").notNull(),
+    /** The client's auth secret, for payload encryption. Opaque to us. */
+    auth: text("auth").notNull(),
+    /** Coarse only, to tell one device from another in a list. Never fingerprintable detail. */
+    agent: text("agent").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Set on the last successful send, so a dead device is visible before it is pruned. */
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("push_subscriptions_endpoint_idx").on(t.endpoint)],
+);
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;

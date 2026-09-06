@@ -297,6 +297,74 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
+/**
+ * A notification arriving from the server (V3 §4.1, D-185).
+ *
+ * The payload is JSON the sender built and encrypted; the push service could not read it and
+ * neither could anyone in between. It is still parsed defensively — this handler runs with no
+ * page open and nobody watching, so a malformed payload must produce a dull notification rather
+ * than a worker that throws during a push event.
+ *
+ * `tag` collapses notifications that mean the same thing: Android replaces one carrying a tag
+ * it already shows, so two evening reminders on two days do not stack into a pile nobody reads.
+ */
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      let payload = {};
+      try {
+        payload = event.data ? event.data.json() : {};
+      } catch {
+        // Not JSON. Better a notification saying nothing useful than none at all — the fact
+        // that the server tried to say something is itself the signal.
+      }
+
+      const title = typeof payload.title === "string" ? payload.title : "2ndMind";
+      await self.registration.showNotification(title, {
+        body: typeof payload.body === "string" ? payload.body : "",
+        tag: typeof payload.tag === "string" ? payload.tag : "2ndmind",
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        data: { url: typeof payload.url === "string" ? payload.url : "/private" },
+      });
+    })(),
+  );
+});
+
+/**
+ * Tapping one.
+ *
+ * Focuses a window that is already open rather than launching a second copy of the app — an
+ * installed PWA that opens a new window per notification is how you end up with four of them,
+ * and the one you were mid-entry in is not necessarily the one that comes forward.
+ *
+ * `includeUncontrolled` because a window opened before this worker took over is still a window
+ * the user would expect to be reused.
+ */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url ?? "/private";
+
+  event.waitUntil(
+    (async () => {
+      const open = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of open) {
+        if (client.url.includes(new URL(target, self.location.origin).pathname)) {
+          await client.focus();
+          return;
+        }
+      }
+      const any = open[0];
+      if (any) {
+        await any.focus();
+        await any.navigate(target).catch(() => {});
+        return;
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;

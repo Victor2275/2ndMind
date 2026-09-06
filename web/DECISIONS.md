@@ -71,7 +71,74 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
-## 2026-09-06 · Light mode, and the log is searchable with no signal
+## 2026-09-06 · Notifications, light mode, and a searchable log with no signal
+
+### D-185 · Notifications: two scheduled jobs from the server, one raised by the app itself
+
+**Decision.** Web Push, with all three of §4.1's triggers — and they work by three different
+mechanisms, which is the thing the plan's one-line description hid.
+
+**Permission is never asked for automatically.** Victor's call. The prompt is a consumable:
+Chrome hardens against sites that spend it badly, and on Android a denial is sticky and awkward
+enough to reverse that most people never do. A control in *More* that you went looking for
+cannot be spent by accident and arrives with the answer already decided.
+
+**Two cron jobs, both silent by default.** `vercel.json` schedules `/api/cron/evening` at 04:00
+UTC (21:00 Pacific) and `/api/cron/morning` at 15:00 UTC (08:00 Pacific).
+
+- The evening job sends **only on a day with nothing logged**. A reminder that arrives every
+  evening regardless is one you learn to swipe away within a week, at which point it costs
+  attention and buys nothing. Its presence is the information.
+- The morning job sends **only when something is due**, names up to three and counts the rest.
+  A notification is read at a glance on a lock screen; a list of nine is a wall that gets
+  dismissed unread. The plan itself flagged this trigger as the one most likely to duplicate
+  what Canvas and Google already send, which is exactly why it stays quiet on an empty day.
+
+**The day is computed in `America/Los_Angeles`, not UTC.** The app's canonical zone already —
+`athletics/trends.ts` uses it and the calendar feeds publish in it. This matters more than it
+looks: the evening job runs at 04:00 UTC, which *is the next day* in UTC, so a naive boundary
+would ask "was anything logged today" about tomorrow and stay silent on a day that really was
+empty. Derived from formatted parts rather than arithmetic on an offset, because an offset
+changes twice a year and the resulting bug is a one-hour window, once, in the dark. Tested on
+both sides of a daylight-saving change.
+
+**The cron routes refuse everything when `CRON_SECRET` is unset.** A cron route is a public URL
+and "make Victor's phone buzz" is exactly the kind of endpoint that gets found and poked. A
+missing secret is a deployment mistake, and the safe reading of a deployment mistake is *nobody
+may ring this bell*, not *everybody may*. Checked by breaking it: making it fall open fails a
+test.
+
+**The stuck-outbox alert is not a push at all.** The server cannot know — the outbox is on the
+phone, and a server that could see it would not need one. The app raises it through the service
+worker it already has, which needs no key, no subscription and no network. It fires **only on
+ops that have actually failed**, never on merely pending ones: pending is the system working,
+and notifying about it would fire on every tunnel and every lift. And it fires only when the
+failed count *rises*, remembered across reloads, because the runner flushes on reconnect, on
+foreground and whenever anything asks — so one unchanged problem would otherwise produce a
+burst.
+
+**Dead subscriptions prune themselves, on exactly two statuses.** 404 and 410 mean *this will
+never work again*; a 500, a timeout or a rate limit is the push service having a bad minute.
+Getting this wrong in either direction is quietly bad: too eager and a working phone stops being
+notified after one blip, too shy and every reinstall leaves a row that fails forever.
+
+**Keys are generated once, by hand.** `npm run push:keys` prints a pair to paste into
+`.env.local` and Vercel; nothing is written to disk by that script and nothing generates keys at
+runtime. A pair that changed on deploy would invalidate every stored subscription silently, and
+the symptom would be notifications simply stopping.
+
+**`sw-template.test.ts` fired for the first time**, capping mentions of `/private` in the worker
+at three. The two additions are notification *destinations* — where a tap lands — and never
+touch a cache, so the strong assertion (no `/private` in any `cache.put`) still holds unchanged.
+The cap was raised to five with all five enumerated, so the next one still has to be justified.
+
+**Still to do by hand, and it will not work until then:** `npm run push:keys`, then paste both
+values plus a `CRON_SECRET` into `.env.local` and into Vercel. Without them the toggle renders
+nothing and the cron routes refuse.
+
+**How to reverse.** Delete `vercel.json`'s `crons`, the two cron routes, `/api/push/subscribe`,
+`lib/push/`, the two handlers in the worker, and the toggle. The `push_subscriptions` table can
+stay empty harmlessly.
 
 ### D-184 · Light mode: the switch now, the palette in V4
 

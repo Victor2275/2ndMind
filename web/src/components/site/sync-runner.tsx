@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { reportError } from "@/lib/errors/client";
+import { alertIfStuck } from "@/lib/push/local-alert";
 import { buzzFailed } from "@/lib/haptics";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
 import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
@@ -128,7 +129,14 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
           if (outcome.status !== "synced" || !outcome.hasMore) break;
         }
 
-        if (!cancelled) setOutbox(summariseOutbox(await allOps(db)));
+        if (!cancelled) {
+          const summary = summariseOutbox(await allOps(db));
+          setOutbox(summary);
+          // Raised by the app about itself, not pushed by the server — which could not know
+          // (§4.1, D-185). Only for ops that have actually failed, and only when the count
+          // rises, so one unchanged problem does not fire on every flush.
+          void alertIfStuck(summary);
+        }
       } catch (error) {
         // IndexedDB can be unavailable outright — private browsing, a blocked upgrade. Sync
         // failing must never take the page down with it.

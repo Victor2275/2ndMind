@@ -20,6 +20,7 @@
     "db:status": "node --env-file-if-exists=.env.local scripts/db-status.mjs",
     "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs",
     "e2e": "npm run build && node --env-file-if-exists=.env.local scripts/e2e-offline.mjs",
+    "push:keys": "node scripts/push-keys.mjs",
     "freeze": "node scripts/freeze.mjs"
   },
   "dependencies": {

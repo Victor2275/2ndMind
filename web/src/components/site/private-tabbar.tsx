@@ -16,6 +16,7 @@ import { InstallButton } from "@/components/site/install-button";
 import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SignOutButton } from "@/components/site/sign-out-button";
 import { ThemeToggle } from "@/components/site/theme-toggle";
+import { PushToggle } from "@/components/site/push-toggle";
 
 /**
  * The private app's bottom navigation, phone only (V3 §0.5, D-132).
@@ -92,7 +93,8 @@ function NavLink({
 export function PrivateTabBar({
   path,
   offline = false,
-}: { path?: string; offline?: boolean } = {}) {
+  pushKey = "",
+}: { path?: string; offline?: boolean; pushKey?: string } = {}) {
   // Called unconditionally — hooks cannot be skipped — and then overridden. The prop wins
   // because on `/cached` the live pathname is not the page the user thinks they are on.
   const livePathname = usePathname();
@@ -180,6 +182,9 @@ export function PrivateTabBar({
                 {/* Works offline: it writes to localStorage and toggles a class, and needs no
                     server at all (§4.2). */}
                 <ThemeToggle />
+                {/* Empty offline: subscribing needs a round trip, and a control that fails
+                    silently is worse than one that is not there (§4.1). */}
+                {!offline && <PushToggle publicKey={pushKey} />}
                 <InstallButton />
                 {/* Signing out posts to the server. Offline it can only fail, and a sign-out
                     that appears to do nothing is worse than one that is not offered. */}

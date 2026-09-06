@@ -2,6 +2,8 @@ import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PullToRefresh } from "@/components/site/pull-to-refresh";
 import { ThemeToggle } from "@/components/site/theme-toggle";
+import { PushToggle } from "@/components/site/push-toggle";
+import { publicKey } from "@/lib/push/config";
 import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SyncRunner } from "@/components/site/sync-runner";
 import { SignOutButton } from "@/components/site/sign-out-button";
@@ -42,6 +44,10 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
           <div className="flex shrink-0 items-center gap-4">
             <PublicSiteLink className="font-mono text-xs" />
             <ThemeToggle />
+            {/* The VAPID public key is read on the server and handed down: it is public by
+                construction — a subscription cannot be made without it and it grants nothing —
+                but reading `process.env` in a Client Component would not work at all. */}
+            <PushToggle publicKey={publicKey()} />
             <SignOutButton />
           </div>
         </div>
@@ -57,7 +63,7 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
             them is worse than one that works on none (§3.3). */}
         <PullToRefresh />
 
-        <PrivateTabBar />
+        <PrivateTabBar pushKey={publicKey()} />
       </div>
     </>
   );
