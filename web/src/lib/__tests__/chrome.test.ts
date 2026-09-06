@@ -40,3 +40,20 @@ describe("hasPublicChrome", () => {
     expect(hasPublicChrome("/private-beta")).toBe(true);
   });
 });
+
+describe("the same boundary decides the theme", () => {
+  /**
+   * §4.2 pins the portfolio to dark and lets the app follow the phone, and it asks this same
+   * function which is which. Two lists of "what counts as private" is how they drift apart —
+   * so the offline shell, which lives outside /private and is still the app, has to be on the
+   * app's side here for the same reason it is for the header (D-174, D-184).
+   */
+  it("puts the offline shell on the app's side, not the portfolio's", () => {
+    expect(hasPublicChrome("/cached")).toBe(false);
+  });
+
+  it("puts sign-in on the portfolio's side", () => {
+    // It is reached before there is an app to have a preference about.
+    expect(hasPublicChrome("/signin")).toBe(true);
+  });
+});

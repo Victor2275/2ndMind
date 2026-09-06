@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { InstallButton } from "@/components/site/install-button";
 import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SignOutButton } from "@/components/site/sign-out-button";
+import { ThemeToggle } from "@/components/site/theme-toggle";
 
 /**
  * The private app's bottom navigation, phone only (V3 §0.5, D-132).
@@ -176,6 +177,9 @@ export function PrivateTabBar({
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
               <PublicSiteLink className="min-h-10 px-1 text-sm" />
               <div className="flex items-center gap-2">
+                {/* Works offline: it writes to localStorage and toggles a class, and needs no
+                    server at all (§4.2). */}
+                <ThemeToggle />
                 <InstallButton />
                 {/* Signing out posts to the server. Offline it can only fail, and a sign-out
                     that appears to do nothing is worse than one that is not offered. */}

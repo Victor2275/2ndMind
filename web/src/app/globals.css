@@ -14,8 +14,10 @@
    down in lightness; the other five stay verbatim as accents. Teal leads, rose
    supports, peach is the single warm note and is spent sparingly.
 
-   V1 is dark-only, so the dark palette lives in :root and .dark mirrors it.
-   To add light mode in V2, redefine :root and leave .dark alone.
+   Light lives in :root and dark in .dark, which is what `next-themes` toggles (V3 §4.2,
+   D-184). Until 2026-09-06 both blocks held the dark palette, because V1 was dark-only —
+   the note here said "to add light mode, redefine :root and leave .dark alone", and that is
+   exactly what happened.
    --------------------------------------------------------------------------- */
 
 @theme inline {
@@ -68,61 +70,69 @@
 }
 
 :root {
-  /* grounds — a near-black carrying the magenta hue, so the accent sits on a
-     surface that shares its temperature instead of fighting it */
-  --background: #140a10;
-  --surface: #1e1018;
-  --card: #1e1018;
-  --card-foreground: #f2e9ee;
-  --popover: #26141e;
-  --popover-foreground: #f2e9ee;
-  --foreground: #f2e9ee;
+  /* The light palette (§4.2, D-184).
+     
+     Plain on purpose. Victor's call was to build the *mechanism* now and leave the colour
+     choices to V4's overhaul, so this is the dark palette's own hues carried onto a light
+     ground and darkened until each one is legible — not a new visual direction. Every value
+     below was computed against its own background rather than picked by eye, because the
+     magenta that carries the identity is exactly the colour that fails first on white:
+     #d94f93 lands at 3.6:1 there, which is under the bar for body text.
 
-  /* magenta — primary accent, 5.1:1 on the ground.
-     Victor asked for "a very dark pink/magenta". The *grounds* are where the
-     darkness lives: --primary drives link text, values and labels, and a truly
-     dark magenta (#8c1d52) lands near 2:1 here, which is unreadable. This is as
-     deep as the accent can go and still be legible at body size. */
-  --primary: #d94f93;
-  --primary-foreground: #1a0710;
+     Ratios are against --background (#fbf7f9); on --card (#ffffff) each is ~5% higher. */
 
-  /* steel — secondary accent, from the original six swatches. Cool against the
-     magenta lead, where the old rose would now read as a muddy near-primary. */
-  --secondary: #5484a4;
-  --secondary-foreground: #12212a;
+  /* grounds — near-white carrying the same magenta hue the dark grounds do, so the two
+     themes read as one app rather than as an app and its negative */
+  --background: #fbf7f9;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #1a0e15;
+  --popover: #ffffff;
+  --popover-foreground: #1a0e15;
+  --foreground: #1a0e15; /* 17.7:1 */
 
-  /* peach — the one warm note. Eyebrows, tier markers, nothing structural. */
-  --highlight: #f6c992;
+  /* magenta — the same accent, taken down until it carries text. #d94f93 is 3.6:1 here and
+     unreadable at body size; this is 5.4:1 and still recognisably the same colour. */
+  --primary: #b8306f; /* 5.4:1 */
+  --primary-foreground: #ffffff; /* 5.7:1 on the primary fill */
 
-  --muted: #26141e;
-  --muted-foreground: #b6a2ac;
-  --accent: #2c1620;
-  --accent-foreground: #f2e9ee;
+  /* steel — same story: #5484a4 is 3.8:1 on this ground. */
+  --secondary: #3d6d8c; /* 5.3:1 */
+  --secondary-foreground: #ffffff; /* 5.6:1 */
 
-  --destructive: #e0616b;
+  /* the one warm note. Peach is 1.4:1 on white — invisible — so in light mode it is the same
+     hue at a much lower lightness, which reads as amber. */
+  --highlight: #8f5716; /* 5.6:1 */
 
-  --border: #3a1f2c;
-  --input: #3a1f2c;
-  --ring: #d94f93;
+  --muted: #f3ebef;
+  --muted-foreground: #6b5560; /* 6.4:1 */
+  --accent: #f6ecf1;
+  --accent-foreground: #1a0e15;
 
-  /* charts run warm -> cool -> warm across the swatch family, so a multi-series
-     plot reads as one set instead of six unrelated colors */
-  --chart-1: #d94f93;
-  --chart-2: #5484a4;
-  --chart-3: #acc0d3;
-  --chart-4: #d396a6;
-  --chart-5: #f6c992;
+  --destructive: #c22d3c; /* 5.3:1 */
+
+  --border: #dcc9d4;
+  --input: #dcc9d4;
+  --ring: #b8306f;
+
+  /* charts run the same warm -> cool -> warm family as the dark set, darkened so a fill is
+     visible on white. The two lightest of the dark five would vanish here. */
+  --chart-1: #b8306f;
+  --chart-2: #3d6d8c;
+  --chart-3: #6f8ba6;
+  --chart-4: #a8556c;
+  --chart-5: #8f5716;
 
   --radius: 0.625rem;
 
-  --sidebar: #1e1018;
-  --sidebar-foreground: #f2e9ee;
-  --sidebar-primary: #d94f93;
-  --sidebar-primary-foreground: #1a0710;
-  --sidebar-accent: #2c1620;
-  --sidebar-accent-foreground: #f2e9ee;
-  --sidebar-border: #3a1f2c;
-  --sidebar-ring: #d94f93;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a0e15;
+  --sidebar-primary: #b8306f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6ecf1;
+  --sidebar-accent-foreground: #1a0e15;
+  --sidebar-border: #dcc9d4;
+  --sidebar-ring: #b8306f;
 }
 
 .dark {

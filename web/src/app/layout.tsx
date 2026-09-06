@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { PublicChrome } from "@/components/site/public-chrome";
+import { ThemeProvider } from "@/components/site/theme-provider";
 import { ErrorWatch } from "@/components/site/error-watch";
 import { ServiceWorker } from "@/components/site/service-worker";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -85,30 +86,36 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      // V1 is dark-only. Removing this class is how light mode gets enabled in V2.
-      className={`dark ${bricolage.variable} ${instrument.variable} ${plexMono.variable} h-full antialiased`}
+      // `next-themes` writes the theme class here on the client, and does it before paint via
+      // the script it injects — so the server's markup and the first client render disagree by
+      // design. `suppressHydrationWarning` is the documented way to say that is expected; it
+      // suppresses the warning for this element's attributes only, not for its subtree.
+      suppressHydrationWarning
+      className={`${bricolage.variable} ${instrument.variable} ${plexMono.variable} h-full antialiased`}
     >
       {/* No background here on purpose — globals.css paints the ground on <html>
           so body's ::before/::after atmosphere layers can sit above it. */}
       <body className="flex min-h-full flex-col text-foreground">
-        {/* The header and footer are passed in rather than rendered here, so that
+        <ThemeProvider>
+          {/* The header and footer are passed in rather than rendered here, so that
             `PublicChrome` can drop them on /private without `SiteFooter` having to become a
             Client Component — it reads the vault, which a client component cannot (D-149). */}
-        <PublicChrome
-          header={<SiteHeader name={profile.name} />}
-          footer={<SiteFooter profile={profile} />}
-        >
-          {children}
-        </PublicChrome>
-        {/* Registers the worker and offers the reload when a new build is waiting. Mounted at
+          <PublicChrome
+            header={<SiteHeader name={profile.name} />}
+            footer={<SiteFooter profile={profile} />}
+          >
+            {children}
+          </PublicChrome>
+          {/* Registers the worker and offers the reload when a new build is waiting. Mounted at
             the root rather than under /private because Chrome only offers to install from a
             page inside the worker's scope, and a first visit lands on the portfolio. */}
-        <ServiceWorker />
-        {/* In the root layout, not the private one: a broken portfolio page is exactly the
+          <ServiceWorker />
+          {/* In the root layout, not the private one: a broken portfolio page is exactly the
             failure nobody would otherwise mention, because the person who saw it was a
             stranger (D-165). */}
-        <ErrorWatch />
-        <Analytics />
+          <ErrorWatch />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );

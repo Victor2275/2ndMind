@@ -1,6 +1,7 @@
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PullToRefresh } from "@/components/site/pull-to-refresh";
+import { ThemeToggle } from "@/components/site/theme-toggle";
 import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SyncRunner } from "@/components/site/sync-runner";
 import { SignOutButton } from "@/components/site/sign-out-button";
@@ -40,6 +41,7 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
           <PrivateNav />
           <div className="flex shrink-0 items-center gap-4">
             <PublicSiteLink className="font-mono text-xs" />
+            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>
