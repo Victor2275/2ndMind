@@ -12,8 +12,11 @@ read_when: Always — anything about current priorities or scheduling.
 *Identify top 3 priorities across all domains for the week here.*
 - **Engineering / Career:** 2ndMind is live at https://victorgusev.com. V1 complete
   2026-08-21, **V2 complete 2026-08-30** — all seven features plus the offline review round.
-  **V3 is now active: the phone.** Scoped 2026-08-30, `docs/V3_PLAN.md`. Phase 0 starts
-  immediately at ~2h/day; the hard date is Milestone A on 2026-09-18.
+  **V3 complete 2026-09-06** — the phone app, every phase, scoped 2026-08-30 in
+  `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
+  Nothing left on Victor except pasting three env values into Vercel (push notifications).
+  A **V4 UI overhaul** is named but deliberately not started — offline behaviour was proven
+  first, on purpose, before the look changes underneath it. Not yet its own plan document.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
@@ -661,8 +664,8 @@ Also photo capture (Victor's explicit call), editing the job sheet (D-141),
 the Android share target, a portfolio-only "show" mode (D-130 accepts the exposure instead),
 semantic search (cut a fourth time — it cannot work offline).
 
-**Blocked on Victor:** filament inventory + printer status vocabulary (`UPLOADS_NEEDED.md`
-§2.1-2.2) blocks Phase 5.1; the resume PDFs themselves block Phase 4.4.
+**Blocked on Victor:** nothing. Both items above were the last two, and neither turned out to
+need him to hand anything over — see D-188 and D-189.
 
 ## 2. Operational Rules & Boundaries
 - **The Weekly Purge:** At the start of every sprint, any blocker or to-do that has rolled over twice must be: (1) Hard-scheduled into a calendar block, (2) Delegated to an AI, or (3) Ruthlessly deleted. No endless piling up.
