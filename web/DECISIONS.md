@@ -71,7 +71,57 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
-## 2026-09-06 · The log is searchable with no signal
+## 2026-09-06 · Light mode, and the log is searchable with no signal
+
+### D-184 · Light mode: the switch now, the palette in V4
+
+**Decision.** `next-themes` is mounted with `attribute="class"`, `defaultTheme="system"`, and a
+three-state toggle in both navigations. `:root` holds a light palette and `.dark` keeps the dark
+one — which is exactly what `globals.css` has instructed since V1: *"to add light mode, redefine
+`:root` and leave `.dark` alone."*
+
+**Scoped to about a third of the estimate, at Victor's call.** §4.2 was 8h, most of it auditing
+every screen in both themes. V4's overhaul explicitly includes the visual style, so the colour
+work would be done twice. What shipped is the **mechanism** — provider, toggle, boundary,
+browser-chrome colour — with a palette that is correct and deliberately plain. The same argument
+that trimmed §3.4.
+
+**The palette is computed, not picked.** Every value was measured against its own ground, because
+the colour carrying the identity is the one that fails first on white: `#d94f93` is **3.6:1**
+there, under the bar for body text. The light values are the same hues taken down until they
+carry — primary 5.4:1, steel 5.3:1, destructive 5.3:1, muted text 6.4:1. The peach is the
+interesting one: at **1.4:1** on white it is invisible, so in light mode it is the same hue at a
+much lower lightness and reads as amber.
+
+**The portfolio does not follow the phone.** Victor's call: it is a shopfront and should look the
+same to everyone, the case-study images were composed against a dark ground, and a reader on a
+light laptop would otherwise be shown a palette nobody has looked at. Done with `forcedTheme`,
+not `setTheme` — and the distinction is the whole point: `setTheme("dark")` on a public page
+would *write* dark into storage, so visiting the portfolio would silently undo the app's setting.
+`forcedTheme` overrides what is applied without touching what is stored. The boundary is
+`hasPublicChrome`, already the app's one answer to "is this the private app?", including the
+offline shell (D-174). Two lists of what counts as private is how they drift apart.
+
+**`theme-color` follows the resolved theme at runtime.** It is static markup, so it was fixed at
+the dark ground — a black status bar over a white page. Driven by `resolvedTheme` rather than a
+`prefers-color-scheme` media query, which is the obvious alternative and is wrong in a specific
+way: the portfolio is *forced* dark, so on a public page with a light OS the query would turn the
+chrome white over a page that stayed dark. The **manifest** stays dark, deliberately — it carries
+one colour and the splash is a fraction of a second into an app whose icon is dark.
+
+**The toggle has three states, and "system" is one of them** rather than the absence of a choice.
+A two-way switch starts somewhere and whichever way it starts is wrong for half the day. Its
+label names where a press will take you rather than where you are, which is the ambiguity every
+theme toggle has.
+
+**`brand.test.ts` went red on its own**, and its own comment had predicted it: *"keeps this
+passing if a light theme adds a third, at which point this test is the thing that will say so out
+loud."* It asserted both `--background` declarations equalled the dark ground. Rewritten to the
+new truth — each matches its own theme's constant, in order — rather than deleted.
+
+**How to reverse.** Remove `<ThemeProvider>` from the root layout and copy `.dark`'s block back
+over `:root`. The toggle then renders a control with nothing behind it, so it goes too.
+
 
 ### D-183 · Offline search is the same box, the same URL, and a stated difference in matching
 
