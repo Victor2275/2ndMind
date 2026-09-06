@@ -230,7 +230,7 @@ than argued.
 | 3 | ~~**Finish Feel**~~ **done 09-05** | §3.3, §3.4, §3.5, §3.6 | 13 | 09-05 |
 | 4 | ~~**Offline search**~~ **done 09-06** | §2.3, on proven ground | 6 | 09-06 |
 | 5 | ~~**Phase 4, unblocked**~~ **done 09-06** | §4.2 light mode, §4.1 push, §4.3 voice | 24 | 09-06 |
-| 6 | **Phase 5** | §5.2 course planner | 7 | 09-17 → 09-18 |
+| 6 | ~~**Phase 5**~~ **done 09-06** | §5.2 course planner, desktop-only | 7 | 09-06 |
 | | **Total** | | **~64** | vs ~72 available |
 
 ~8h of slack, and it is thinner than it looks: **the device round is the one item here that can
@@ -1046,10 +1046,14 @@ Milestone C: it stops feeling like a website.
   left, colour swatches prominent, low stock at the top. Printers are a secondary panel using
   Victor's own status vocabulary. Postgres, alongside the other mutable rows. *Blocked on the
   inventory in `docs/UPLOADS_NEEDED.md` §2.1–2.2.*
-- **5.2 · Three-year course planner, desktop-only — 7h.** Whether the remaining requirements fit
-  the remaining terms on a 3-year track to June 2028, built on the parsed `degree_audit.md`.
-  Deliberately no mobile work: this is a sit-down activity, and its first real use is Winter
-  enrollment.
+- **5.2 · Three-year course planner, desktop-only — 7h.** ✅ **DONE 2026-09-06. D-187.**
+  `/private/academics/plan`: five term columns to June 2028, checked continuously against the
+  parsed audit. **A checker, never a suggester** — it does not know what is offered when, and a
+  draft built without that would be confidently wrong. **A course counts once**, which is the
+  failure mode of a hand-written plan. And it separates *counts* from *might count*, because the
+  audit's GE lists are truncated in the generated file and rejecting a course the parser dropped
+  would be worse than not checking. Stored as a vault file, not in Postgres: a document to read
+  in five years, not a time series.
 
 > ### ⚑ Milestone D — ~2027-01-03
 > **Full scope. Not a hard date.**
