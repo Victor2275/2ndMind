@@ -26,6 +26,8 @@ import { buzzSaved } from "@/lib/haptics";
 import type { Chip, ChipSets } from "@/lib/log/chips";
 import { stickyStore, submittedValues, writeSticky } from "@/lib/log/sticky";
 import type { ActionState } from "@/lib/sprint-goals";
+import { VoiceEntry } from "@/components/site/voice-entry";
+import type { SpokenEntry } from "@/lib/voice/parse";
 
 /**
  * The quick-log form, generated from a category definition.
@@ -403,6 +405,12 @@ function RowFields({
         <button
           type="button"
           onClick={add}
+          // Marked so a spoken entry can add its extra sets through *this* button rather than
+          // through a second copy of the row logic (§4.3, D-186). "185 for 5, three sets" means
+          // the same set three times, and `add` already carries the previous row's values down
+          // — so pressing it twice is exactly the right behaviour, and there is no second path
+          // to keep in step.
+          data-add-row
           className="mt-2 min-h-10 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
         >
           + {group.addLabel}
@@ -488,6 +496,47 @@ export function LogForm({
   }, []);
 
   /**
+   * A spoken entry, poured into the fields (§4.3, D-186).
+   *
+   * **It fills and stops.** Nothing here submits — the same button that was always there is
+   * what turns these values into a row, so "always confirmed before saving" is a property of
+   * the wiring rather than a rule anyone has to keep.
+   *
+   * `kind` goes in first and on its own, because it decides which fields the set rows even
+   * have (D-162): writing a split into an erg piece before the shape has changed writes it into
+   * a field that is about to be unmounted. The rest follows a microtask later, once the new
+   * shape has rendered.
+   *
+   * Extra sets are added by pressing the add-set button, not by a second copy of the row logic
+   * — it already carries the previous row's values down, which is precisely what "three sets"
+   * means.
+   */
+  const fillSpoken = useCallback(
+    (entry: SpokenEntry) => {
+      const element = form.current;
+      if (!element || !category.rows) return;
+
+      if (shapeName) {
+        fill({ [shapeName]: entry.kind });
+        setShape(entry.kind);
+      }
+
+      queueMicrotask(() => {
+        const values: Record<string, string> = { exercise: entry.exercise };
+        if (entry.rpe !== null) values.rpe = String(entry.rpe);
+        for (const [field, value] of Object.entries(entry.sets[0] ?? {})) {
+          values[`${category.rows?.name}.0.${field}`] = String(value);
+        }
+        fill(values);
+
+        const addRow = element.querySelector<HTMLButtonElement>("button[data-add-row]");
+        for (let extra = 1; extra < entry.sets.length; extra += 1) addRow?.click();
+      });
+    },
+    [category.rows, fill, shapeName],
+  );
+
+  /**
    * What was in the form when it was submitted.
    *
    * Captured here rather than read back in an effect, because React resets a function-action
@@ -553,6 +602,10 @@ export function LogForm({
       )}
 
       {category.rows && <RowFields group={category.rows} shape={shape} onPick={fill} />}
+
+      {/* Only where a sentence maps onto fields (§4.3). Training is the category with numbers
+          worth dictating; a note is already one text box and a microphone on the keyboard. */}
+      {category.key === "athletics" && <VoiceEntry onParsed={fillSpoken} />}
 
       <div>
         <div className="flex items-center justify-between gap-2">

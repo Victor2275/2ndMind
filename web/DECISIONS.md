@@ -71,7 +71,57 @@ phone being fast rather than about taste. Narrows D-007, does not reverse it.
 
 ---
 
-## 2026-09-06 · Notifications, light mode, and a searchable log with no signal
+## 2026-09-06 · Voice, notifications, light mode, and a searchable log with no signal
+
+### D-186 · Voice entry: rules first, the model second, and it cannot save
+
+**Decision.** A microphone on the Training form. The browser's own `SpeechRecognition` hears it,
+a small grammar reads it, and anything the grammar cannot read is offered to Gemini. The result
+**fills the form**; the same button that was always there is what saves.
+
+**"Always confirmed before saving" is structural, not remembered.** `VoiceEntry` has no way to
+write — its only output is a callback that sets field values. A misheard number therefore costs
+a correction, never a wrong record, and that is the only footing on which a transcript belongs
+near a log whose whole value is that its numbers can be trusted.
+
+**Rules before the model, and not for cost.** A grammar is **wrong the same way every time**:
+mishear it once and you phrase around it forever after. A model is wrong differently each time
+and confidently. The grammar is also instant, free, and works with no signal. Gemini exists for
+the phrasings nobody anticipated, which is exactly what `parseSpoken` returning `null` means.
+
+**It gives up rather than half-filling.** A partial parse that looks like success is the worst
+outcome available: it puts a wrong number in a form somebody is about to confirm because they
+trust it. So "bench press 185" — genuinely ambiguous between one rep and an unfinished sentence
+— returns nothing rather than inventing a rep count. The model's answer is schema-validated for
+the same reason, and a response that does not fit is a refusal rather than a partial fill.
+
+**The kind is read off the numbers when the words do not give it.** The first version gave up on
+"2000 metres in 7:12" — no rowing word, so it tried to read a lift, found no weight-for-reps, and
+sent to the model a sentence the grammar could read perfectly well. It now falls through to the
+distance shape and calls the kind `conditioning` rather than `erg`: a distance and a time is all
+that was said, and inferring the machine from Victor's habits would put a fact in the form that
+nobody stated.
+
+**Extra sets are added by pressing the add-set button.** "185 for 5, three sets" means the same
+set three times, and that button already carries the previous row's values down — so pressing it
+twice is exactly right and there is no second copy of the row logic to keep in step. `kind` is
+filled first and alone, because it decides which fields the rows even have (D-162): writing a
+split before the shape changes writes it into a field about to be unmounted.
+
+**Where the audio goes is on the control.** Chrome streams it to Google to transcribe, the same
+way a voice search does. Nothing is stored by this app and nothing about the vault is sent, but
+that is a real thing to know rather than a detail, so the button's own label says it.
+
+**Offline it refuses out loud.** Recognition needs the network; §4.3 asked for an explicit
+offline state and this is it — disabled, labelled, and the keyboard's own microphone still
+works on every field underneath.
+
+**The test's first version failed for a reason worth keeping:** the mock recogniser was an arrow
+function, and the component calls it with `new`. Arrow functions are not constructors, so every
+case failed in a way that looked like the component being broken.
+
+**How to reverse.** Remove `<VoiceEntry>` from `log-form.tsx`. `lib/voice/parse.ts` and the API
+route are then unreferenced and can go with it; `data-add-row` is harmless either way.
 
 ### D-185 · Notifications: two scheduled jobs from the server, one raised by the app itself
 
