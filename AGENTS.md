@@ -18,7 +18,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 |---|---|
 | Who Victor is, school, year, timezone | `context/00_meta/core_profile.md` |
 | How to respond, tone, domain mode | `context/00_meta/ai_directives.md` |
-| Design, branding, colors, portfolio site | `context/00_meta/brand_and_voice.md` |
+| Brand: why the colours are what they are, the mark, the design thesis | `context/00_meta/brand_and_voice.md` |
 | Target roles, companies, locations, timeline | `context/01_engineering/career_targets.md` |
 | Languages, tooling, OS, code standards | `context/01_engineering/technical_standards.md` |
 | Courses, grades, academic background | `context/01_engineering/coursework_and_labs.md` |
@@ -36,6 +36,8 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Past sprints, parked automation ideas | `context/04_operations/logbook_archive.md` |
 | The website, the web app, deploying it | `web/context.md` |
 | Why the site looks/works the way it does; undoing a choice | `web/DECISIONS.md` |
+| Tokens, type scale, spacing, motion — what a value should be | `web/DESIGN.md` |
+| What V4 is doing and in what order | `docs/V4_PLAN.md` |
 
 ## Rules for reading this vault
 

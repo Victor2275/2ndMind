@@ -13,12 +13,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Read `context.md` in this directory before doing anything here. It states the scope,
 architecture, and non-negotiables.
 
+Read `DESIGN.md` before changing anything visual. It is the design system of record —
+tokens, type scale, spacing, motion, and the standing rules. **V4 is underway**
+(`../docs/V4_PLAN.md`); sections marked `PENDING` in DESIGN.md are deliberately empty, and
+inventing a value to fill one is worse than the gap.
+
 Read `DECISIONS.md` before changing anything that looks deliberate. Every non-obvious choice
 is logged there with its reason and how to reverse it. If Victor asks for something to be
 undone, look it up first — several entries bundle a bug fix with a style choice and say
 explicitly which half must survive a reversal. Add an entry for every decision you make.
 
-Four rules that are easy to violate by accident:
+Five rules that are easy to violate by accident:
 
 1. **Public routes must never import a private loader or read a non-whitelisted field.**
    The vault at `../context/` holds a GPA, per-course grades, transcripts, and a phone number.
@@ -42,6 +47,11 @@ Four rules that are easy to violate by accident:
    something hidden, take it out of the projection — see D-114, where pursuit `facts` held
    erg splits he had just made private.
 
-Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`, `npm run shots`, `npm run e2e`
-(layout and resume page-count gate, dev server must be running), `npm run freeze` (offline
-snapshot of the site).
+**Do not trust `npm run shots` for text size or tap targets** (D-190). It prints those
+numbers and never fails on them, and it does not check them on private pages at all. Four
+things fail a run: horizontal overflow, a resume over one page, a private page burying or
+missing its `data-first-action` marker, and a signed-in header that does not fit.
+
+Commands: `npm run dev`, `npm test`, `npm run typecheck`, `npm run build`, `npm run shots`,
+`npm run e2e` (layout and resume page-count gate, dev server must be running),
+`npm run paint` (ambient-layer cost, D-193), `npm run freeze` (offline snapshot of the site).

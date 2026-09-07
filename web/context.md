@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-04
+updated: 2026-09-06
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -101,22 +101,42 @@ faces live in `src/app/fonts/` and load via `next/font/local`. Source files came
 
 ## Theme
 
-Dark only in V1, per `context/00_meta/brand_and_voice.md`. V2's redesign replaced the original
-teal/rose pairing: **magenta** (`#d94f93`) is the primary accent, **steel** (`#5484a4`) the
-secondary, and peach (`#f6c992`) remains the single warm note — eyebrows and tier markers,
-nothing structural — on near-black grounds carrying the magenta hue. The
-dark palette lives in `:root` and `.dark` mirrors it, so adding light mode in V2 means
-redefining `:root` and nothing else. `<html>` carries a hardcoded `dark` class.
+**Two palettes, one per theme** — settled in V4 scoping, 2026-09-06. `web/DESIGN.md` is the
+design system of record and `context/00_meta/brand_and_voice.md` carries the brand reasoning;
+this section is the orientation.
+
+- **Dark** (default, and the one Victor uses): magenta `#d94f93` primary, steel `#5484a4`
+  secondary, peach `#f6c992` as the single warm note — eyebrows and emphasis, nothing
+  structural — on near-black grounds carrying the magenta hue.
+- **Light**: teal-led on warm paper, from the vault's original six swatches. The canonical
+  teal `#09A1A1` is **2.94:1 on paper** and cannot carry text, so the token is that hue
+  darkened — the same problem the magenta had on white, with the same answer.
+
+**Light lives in `:root` and dark in `.dark`**, which is what `next-themes` toggles (D-184).
+Both blocks held the dark palette until 2026-09-06, because V1 was dark-only. `<html>` no
+longer carries a hardcoded `dark` class — `next-themes` writes it before paint, which is why
+the element carries `suppressHydrationWarning`.
+
+**V4 is underway** (`docs/V4_PLAN.md`). Two things about this section will change under it and
+are not true yet:
+
+1. **The light palette is a placeholder** — contrast-computed by D-184, never designed. V4 §1.4
+   designs it.
+2. **Themes become a registry, not two CSS blocks.** V4 §1.2 makes the palette data, with five
+   shipping: dark-magenta, light-teal, high-contrast dark, and two experimental slots. Public
+   offers light/dark/system; the full picker is in private settings. Do not add a third
+   hand-written block in the meantime — add it to the registry or wait.
 
 The ground is deliberately not a flat fill: `<html>` paints the base colour and `body`'s
 `::before`/`::after` layer three drifting radial pools plus an SVG-noise grain over it.
 That is also why `body` must stay background-less — giving it an opaque background buries
 both layers.
 
-Motion is centralised as two custom utilities in `globals.css` rather than repeated Tailwind
-chains: `card-scan` (lift, a magenta glow, and a trace sweeping across the card the way a scope
-refreshes) and `link-wipe` (underline growing from the leading edge). Both, and the ambient
-drift, collapse under `prefers-reduced-motion`.
+Motion is centralised as **three** custom utilities in `globals.css` rather than repeated
+Tailwind chains: `card-scan` (lift, a magenta glow, and a trace sweeping across the card the way
+a scope refreshes), `link-wipe` (underline growing from the leading edge), and `rise` (the
+staggered reveal). All three, and the ambient drift, collapse under `prefers-reduced-motion`.
+V4 §1.8 drops `card-scan`'s lift and moves `rise`'s stagger out of inline `animationDelay`.
 
 ## Testing expectations
 
@@ -136,18 +156,34 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **582 tests across 36 files** as of
-2026-08-30, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,240 tests across 86 files** as of
+2026-09-06, all passing. A drop from that count is a regression, not noise.
+
+(It read "582 across 36 files as of 2026-08-30" until 2026-09-06. The suite more than doubled
+during V3 and the floor was never re-stated, so for a week the number that is supposed to catch
+a regression would have accepted losing half the suite. Re-state it whenever it moves.)
 
 ### Layout is checked by measurement, not by looking
 
 `npm run shots` (dev server must be running) is the third gate. It sweeps the public pages at
-four device widths reporting horizontal overflow, sub-40px tap targets and sub-12px text, and
-it measures every resume variant against one printed Letter page. It exits non-zero on a
-fault, so it can gate a commit. See D-077 — the resume ran at 1.33 pages for weeks because the
-only check anyone ran was looking at it. It earned its keep again on 2026-08-29: adding Proof
-to the robotics variant and two roles to all three pushed every variant onto a second page,
-and nothing else would have noticed (D-115).
+four device widths, sweeps every private screen, and measures every resume variant against one
+printed Letter page. It exits non-zero on a fault, so it can gate a commit. See D-077 — the
+resume ran at 1.33 pages for weeks because the only check anyone ran was looking at it. It
+earned its keep again on 2026-08-29: adding Proof to the robotics variant and two roles to all
+three pushed every variant onto a second page, and nothing else would have noticed (D-115).
+
+**Know which of its numbers are gates and which are only printed** (D-190). Four things fail
+the run: horizontal overflow, a resume over one page, a private page burying its first action
+or missing its marker, and a signed-in header that does not fit.
+
+**`tap<40px` and `text<12px` are diagnostics, not gates.** They are measured, printed, and
+never added to the fault count — the public sweep has been reporting 68 sub-12px elements and
+~13 sub-40px tap targets per width, passing, for the life of the script. They are also
+**public-only**: the private loop measures the fold and nothing else, which is why the
+private app's 8.8px tab-bar and `Stat` labels have never been measured by anything. V4 §7.1
+turns both into real gates, raises the floors to 44px and 11px, and extends them across the
+private sweep. Until then, do not read a passing `npm run shots` as a statement about text
+size or tap targets anywhere, or about layout on a private screen.
 
 ### Reviewing the site offline
 

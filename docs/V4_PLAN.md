@@ -2,7 +2,7 @@
 updated: 2026-09-06
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Eight phases, ~233 points.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Eight phases, 241 points. Phase 0 done.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 |---|---|
 | **Goal** | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt. |
 | **Scope** | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. |
-| **Budget** | **~233 points.** You said 120–140. The gap is real and is §7 R2, not a rounding error. |
-| **Order** | Foundations → tokens → **training** → tags → private shell → private screens → brand+public → gates. |
+| **Budget** | **241 points.** You said 120–140. The gap is real and is §7 R2, not a rounding error. |
+| **Order** | Foundations → tokens → **training** → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 is done** (2026-09-06). Next is Phase 1. |
 | **Milestone A** | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not. |
 | **Milestone B** | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it. |
 | **Milestone C** | End of Phase 5 — the private app is finished. This is the one that matters daily. |
@@ -256,25 +256,65 @@ and the PDF as the primary action (Q347–Q356). **The print block is frozen** (
 Eight phases. **Each ends with the app in a coherent state** — stopping after any phase leaves
 something shippable, which is the whole reason for this ordering.
 
-### Phase 0 · Say what is true — **8 pts**
+### Phase 0 · Say what is true — **8 pts** — ✅ **DONE 2026-09-06**
 
-Nothing renders differently. This exists because three documents currently lie, and every phase
-below is read against them.
+Nothing renders differently. This existed because three documents described a codebase that had
+drifted away from them, and every phase below is read against those documents.
 
-| # | Item | Pts |
-|---|---|---:|
-| 0.1 | Rewrite `brand_and_voice.md`: teal is the **light** palette, magenta the **dark** one. Both documented, neither stale | 2 |
-| 0.2 | Rewrite `web/context.md` §Theme for the registry, and note V4 is underway | 1 |
-| 0.3 | Create `web/DESIGN.md` — the empty skeleton Phase 1 fills. Reference it from `context.md`'s routing table | 1 |
-| 0.4 | **Investigate C7.** `npm run shots` claims a 12px floor; `Stat` labels and tab-bar labels are 8.8px and pass. Find out whether the selector misses them or the threshold is not what the docs say. Do not fix yet — Phase 1 sets the real floor | 2 |
-| 0.5 | Audit every hover-only affordance a touch device can never reveal (Q194). Produce the list; fix in Phase 5 | 1 |
-| 0.6 | Measure the ambient layer's paint cost on the Samsung — the **before** number for Q462 | 1 |
+| # | Item | Pts | Result |
+|---|---|---:|---|
+| 0.1 | Rewrite `brand_and_voice.md`: teal is the **light** palette, magenta the **dark** one | 2 | ✅ Done. Contrast measured, not asserted — `#09A1A1` is **2.94:1 on paper** and cannot carry text, so the light token is that hue darkened to `#0a7474` (5.2:1) |
+| 0.2 | Rewrite `web/context.md` §Theme for the registry | 1 | ✅ Done. Found **two further staleness bugs**: it said the dark palette lives in `:root` with `.dark` mirroring it (D-184 inverted this), and that `<html>` carries a hardcoded `dark` class (`next-themes` replaced it) |
+| 0.3 | Create `web/DESIGN.md`, referenced from the routing table | 1 | ✅ Done. Routing table in `CLAUDE.md`/`AGENTS.md` gained rows for `DESIGN.md` and this plan |
+| 0.4 | Investigate the 8.8px text passing a 12px gate | 2 | ✅ Done — **the prediction was wrong and the truth is worse.** D-190 |
+| 0.5 | Audit hover-only affordances | 1 | ✅ Done. **2 real faults**, 3 already correct, 3 acceptable. D-191 |
+| 0.6 | Measure the ambient layer's paint cost | 1 | ✅ Harness built (`npm run paint`, D-193) and run. **Both deltas came back below the noise floor** — the layer's cost is not measurable here. The Samsung number is still owed and is the only one that can settle it — §8 |
 
-**Ends with:** no document in the repo contradicting the code.
+**Three findings the plan did not predict**, all from running the code rather than reading it:
+
+1. **The text-size and tap-target checks were never gates** (D-190). The selector was never the
+   problem — it finds the small text and prints it. Nothing sums the column. Measured live:
+   **68 sub-12px elements and 13–16 sub-40px tap targets at every width, exit code 0.** And the
+   private loop never asks either question at all, which is why the 8.8px tab bar has never been
+   measured by anything.
+2. **Seventeen of nineteen vendored shadcn components are imported by nothing** (D-192). Only
+   `badge` and `button` are used.
+3. **There is no toast system** (D-192). `sonner` is a dependency, its wrapper exists, no
+   `<Toaster />` is mounted and `toast()` is never called. Four V4 answers (Q265–Q268) assume
+   toasts exist. They do not.
+
+Findings 2 and 3 move points between phases — see 1.10 and 5.2. The total does not change.
+
+**Baseline recorded 2026-09-06** (`npm run shots`, dev server, all four widths):
+
+| | |
+|---|---|
+| Horizontal overflow | 0 everywhere — the one gate that works, passing |
+| Sub-12px text, public | 68 per width (home 11, projects 24, project-detail 28, resume 5) |
+| Sub-40px tap targets, public | 13–16 per width |
+| First action, phone | today 208px · log 205px · academics 266px · calendar 297–362px · athletics 342px |
+| Signed-in header | fits at all widths; name 46px at 360, 97px at desktop |
+
+Athletics at 342px and calendar at 362px are the two closest to the 500px limit and are the
+first to break when Phase 5 adds anything above the fold.
+
+**Ambient layer, 2026-09-06** (`npm run paint`, 2 pairs of 5s, headed):
+
+| | on | off | delta | noise |
+|---|---|---|---|---|
+| Desktop 1280, drift ON | 123.65 ms/s | 119.65 ms/s | +4.00 | ±6.93 |
+| Phone proxy 390 @ x6, drift OFF | 31.58 ms/s | 32.12 ms/s | −0.54 | ±0.82 |
+
+**Both deltas are inside the noise.** This changes an argument in §1.4: **do not redesign the
+ambient layer for performance.** D-179 disabled the drift below 40rem on a first-principles
+cost argument, and nothing measurable on this machine supports it — which does not clear the
+Samsung, where a mobile GPU, a tiled renderer, thermal throttling and OLED draw all exist and
+none of them are reproduced here. Redesign the layer because the gradients were placed by eye
+once (Q162). That reason needs no measurement.
 
 ---
 
-### Phase 1 · Tokens and primitives — **42 pts**
+### Phase 1 · Tokens and primitives — **40 pts**
 
 The system. Every screen depends on it, which is why it is first (Q471), and why a period of
 half-migrated screens is acceptable (Q472).
@@ -284,13 +324,13 @@ half-migrated screens is acceptable (Q472).
 | 1.1 | **Token architecture in OKLCH** (Q51). Primary ramp 50–950 replacing scattered `color-mix()` (Q50). Three grounds, two muted foregrounds, success/warning/destructive/focus | 6 |
 | 1.2 | **Theme registry** (§2.5). Themes as data, five shipped: dark-magenta, light-teal, high-contrast-dark, two experimental slots | 5 |
 | 1.3 | **Dark palette re-tune** — less saturated, warmer, wider ground separation (Q48, Q49, Q55) | 3 |
-| 1.4 | **Light palette, designed** — teal-led on warm paper, shadows where dark uses ground-shifts, no grain, weaker ambient pools (Q77–Q85) | 5 |
+| 1.4 | **Light palette, designed** — teal-led on warm paper, shadows where dark uses ground-shifts, no grain, weaker ambient pools (Q77–Q85). **The ambient redesign is an aesthetic call, not a performance one** — §0.6 measured its cost below the noise floor | 5 |
 | 1.5 | **Type scale** — nine steps, modular 1.2, fluid display / stepped body, optical tracking per step (Q101–Q106) | 4 |
 | 1.6 | **Mono eviction** — mono leaves nav, eyebrows, tab bar, panel meta. Body face, tracked, replaces it (Q96–Q98, Q111) | 3 |
 | 1.7 | **Space, radius, elevation, breakpoints** — eight-value spacing vocabulary on 4pt, radius scaling with size, four elevation levels, one named breakpoint set reconciling the two "phone" definitions (Q127, Q137, Q143, Q144, Q152, Q156) | 4 |
 | 1.8 | **Motion tokens** — three durations, three easings, `card-scan` loses its lift, stagger moves to CSS, two new utilities (Q174–Q189) | 3 |
 | 1.9 | **Icon tokens** — sizes 16/20/24, stroke 1.75 (Q213, Q214) | 1 |
-| 1.10 | **Rework `components/ui/` by hand** at the new tokens. Remove from `.prettierignore`. **`form.tsx` is hand-authored and must survive** (Q473, Q474). Drop `tw-animate-css` if unused after (Q475) | 4 |
+| 1.10 | **Rework `components/ui/` by hand** at the new tokens — **two files, not nineteen** (D-192): only `badge` and `button` are imported anywhere. Decide the other seventeen file by file: keep as the base for a V4 form control, or delete. **`form.tsx` is hand-authored and must survive** (Q473, Q474). Drop `tw-animate-css` if unused after (Q475) | 2 |
 | 1.11 | **`/private/kitchen-sink`** — every component, every state, every theme, one page (Q24) | 2 |
 | 1.12 | **Tests:** token completeness across all themes; contrast over every token pair, failing the build; no raw hex outside the token file (Q23, Q440, Q469) | 2 |
 
@@ -313,7 +353,7 @@ Its own phase because it is a feature, not a redesign. §2.2 has the reversal; `
 | 2.5 | **Session logging screen** — exercise → sets, numbered (Q399), duplicate-last-set (Q400), running totals (Q398), three taps per set (Q392). Its own route, which you said is fine | 8 |
 | 2.6 | **PR board + searchable PR table** (Q409), including **PRs visible while logging** — the reason the table exists | 5 |
 | 2.7 | **Reconcile with D-159.** `allEfforts()` currently unions two sources. With sessions writable, decide whether quick-log training stays or folds in. **Do not add a third reader** — that is D-159's whole design | 3 |
-| 2.8 | **Tests:** PGlite against the committed migrations, sync round-trip, offline e2e. The 582 count may not drop (Q470) | 4 |
+| 2.8 | **Tests:** PGlite against the committed migrations, sync round-trip, offline e2e. The 1,240 count may not drop (Q470) | 4 |
 
 **Ends with (Milestone B):** you log a gym session on the phone, offline, and it syncs.
 
@@ -353,14 +393,14 @@ Navigation, chrome, settings. Everything that wraps a screen rather than being o
 
 ---
 
-### Phase 5 · The private screens — **48 pts**
+### Phase 5 · The private screens — **50 pts**
 
 Milestone C. The phase that changes your day.
 
 | # | Item | Pts |
 |---|---|---:|
 | 5.1 | **Shared states** — one "as of" staleness component used everywhere (Q285, Q286, Q241); empty states that name and offer the action that fills them (Q275, Q277); exact-shape skeletons (Q279); designed error boundary, 404, and the "database is behind this build" state (Q283, Q291, Q292); queued vs failed made unmissable (Q289) | 8 |
-| 5.2 | **Forms pass** — 48px touch targets, labels above, never placeholder-as-label, blur validation, sticky save on long forms, dirty indicator, chips as tokens, the four shortcut kinds made visually distinct (Q245–Q256) | 8 |
+| 5.2 | **Forms pass** — 48px touch targets, labels above, never placeholder-as-label, blur validation, sticky save on long forms, dirty indicator, chips as tokens, the four shortcut kinds made visually distinct (Q245–Q256).<br>**Includes building the toast system** (D-192): mount a `Toaster`, wire the first `toast()`, then style it. Q265–Q268 were scoped as a styling pass and are a build | 10 |
 | 5.3 | **Motion and touch pass** — pressed states within 100ms everywhere, redesigned swipe reveals (colour then icon), designed pull-to-refresh, haptics on swipe-complete and save, hover stripped on touch (Q193–Q200) | 6 |
 | 5.4 | **Today** — capture box made the loudest thing, domain icons on tasks, overdue loud but not red, completed collapsed, summaries collapsed and quieter, agenda with a "now" marker, archive moved to the log (Q376–Q390) | 6 |
 | 5.5 | **Log (non-training tabs)** — last-used category, drafts surviving restart, today's entries below the form, marked search results (Q393, Q394, Q401, Q404) | 5 |
@@ -416,12 +456,12 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 
 | Phase | What | Pts | Feature? |
 |---|---|---:|---|
-| 0 | Say what is true — docs, and the 8.8px gate mystery | 8 | |
-| 1 | Tokens, themes, type, space, motion, primitives | 42 | |
+| 0 | Say what is true — docs, and the 8.8px gate mystery | 8 | ✅ done |
+| 1 | Tokens, themes, type, space, motion, primitives | 40 | |
 | 2 | Training, end to end | 45 | **[FEATURE]** |
 | 3 | Tags | 12 | **[FEATURE]** |
 | 4 | The private shell — sidebar, settings, tab bar | 28 | part |
-| 5 | The private screens | 48 | |
+| 5 | The private screens | 50 | |
 | 6 | Brand and the public site | 36 | |
 | 7 | Gates, performance, review | 22 | |
 | | **Total** | **241** | |
@@ -440,7 +480,7 @@ Unchanged by V4 and easy to break while redesigning:
 4. **`/cached` stays static and holds no server data.** Making it dynamic silently kills offline.
 5. **The print stylesheet is frozen** (Q123, Q355). The resume page-count gate stays (Q468).
 6. **`local-lock.tsx` is built and unmounted** (D-158). Do not delete it while tidying.
-7. **582 tests is a floor, not a target** (Q470).
+7. **1,240 tests is a floor, not a target** (Q470). It was recorded as 582 until Phase 0 re-measured it — re-state the number whenever it moves, or the floor stops being one.
 8. **Every decision gets a `DECISIONS.md` entry**, continuing from D-190 (Q477, Q478).
 9. **Lands on main, screen by screen** (Q25, Q479). Inconsistency is acceptable on private only (Q26).
 10. **Colour never signals alone** (Q72).
@@ -524,7 +564,11 @@ Small, and none of it blocks Phase 0 or Phase 1.
    indicates "too much going on there". The sidebar fixes the presentation; it does not answer
    whether any two of Today / Now / Log / Athletics / Academics / Work / Calendar / Hobbies / Sync
    should merge.
-5. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
+5. **The Samsung paint number** (§0.6). `npm run paint` gives a desktop and a throttled-proxy
+   figure; the real one needs the phone. Procedure is printed by the script — `chrome://inspect`,
+   port-forward 3000, record six idle seconds of Rendering + Painting with the layer on and off.
+   Ten minutes, and it is the number V4 §1.4's redesign gets held to.
+6. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
    run, nothing else.
-6. **R2 — which reading of the budget?** ~240 points, or features to V5, or stop after Phase 5.
+7. **R2 — which reading of the budget?** ~240 points, or features to V5, or stop after Phase 5.
    Answerable later; Phases 0 and 1 are common to all three.
