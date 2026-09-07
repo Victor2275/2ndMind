@@ -17,6 +17,227 @@ useful part.
 
 ---
 
+## 2026-09-06 · V4 Phase 0 — what the docs claimed, and what is actually there
+
+Four entries, all from V4 Phase 0 (`docs/V4_PLAN.md`). Phase 0 renders nothing; it exists
+because several documents described a codebase that had drifted away from them, and every V4
+phase is read against those documents. Three of the four findings below were not predicted by
+the plan — they were found by running the thing rather than reading about it.
+
+### D-190 · `tap<40px` and `text<12px` were never gates, and never covered the private app
+
+**The finding.** `web/context.md` said `npm run shots` "sweeps the public pages at four device
+widths reporting horizontal overflow, sub-40px tap targets and sub-12px text… It exits non-zero
+on a fault." That reads as three checks. It is one check and two diagnostics.
+
+In `scripts/shots.mjs` the public sweep computes `overflow`, `small` (tap targets) and `tiny`
+(text size), prints all three — and then:
+
+```js
+const bad = report.overflow > 0;
+if (bad) faults += 1;
+```
+
+`small` and `tiny` are never added to `faults`. They have never failed a run and never could.
+Measured on 2026-09-06 against the live dev server, the public sweep reports **68 sub-12px
+elements and 13–16 sub-40px tap targets at every one of the four widths, and exits 0.**
+
+**And the private app is not covered at all.** `PRIVATE_PAGES` runs a different loop: fold
+position, session rejection, screenshot. No overflow check, no tap targets, no text size. So
+the 0.55rem (8.8px) labels in the tab bar and in `Stat` — the two smallest pieces of type in
+the app, on the surface Victor uses daily, on a phone — have never been measured by anything.
+
+**Why this was mis-predicted.** `V4_PLAN.md` §0.4 guessed the sweep's *selector* was missing
+the small text. The selector is fine; it finds it and prints it. The gap is that nothing acts
+on the number, and that the private loop never asks the question. A gate that reports a fault
+in a column nobody sums is indistinguishable from no gate, and it is worse than none, because
+`context.md` cited it as coverage.
+
+**What changed now.** Only the documentation. `web/context.md` and `web/DESIGN.md` §10 now
+state exactly which four things fail a run — overflow, a resume over one page, a private page
+burying or missing its `data-first-action` marker, and a signed-in header that does not fit —
+and state that the other two numbers are printed, unenforced, and public-only.
+
+**The fix is V4 §7.1**, not this entry, and deliberately so: raising the floors to 44px and
+11px turns 68 existing reports into 68 failures, which is a redesign, not a Phase 0 edit.
+Turning the gate on before the design that satisfies it exists would mean committing with
+`--no-verify` for the length of V4, which is how a gate gets uninstalled.
+
+**Related:** this is the same class of failure as D-077 (the resume printed at 1.33 pages for
+weeks because the only check was looking at it), except one layer up — here there *was* a
+check, and it was reporting into a variable nobody read.
+
+**How to reverse.** Nothing to reverse; this is a correction to prose. If §7.1 is later
+declined, delete the "V4 §7.1 turns both into real gates" sentence and leave the rest, because
+the rest is a true statement about the script either way.
+
+### D-191 · Two things in the app can only be read by hovering
+
+**The audit** (V4 §0.5, Q194). Every hover-only affordance, checked against whether a phone can
+reach it. Two faults, and they are both *information*, not decoration:
+
+1. **`rehab-checklist.tsx:106` — the fourteen-day history strip.** Each day is a 10px square
+   whose fill encodes done / part-done / not-done, and whose count lives in a `title`
+   attribute. The wrapping element is `aria-hidden`. So on a phone there is no hover, no
+   screen-reader text, and no visible number: **the value is unreachable by any means.** It
+   also breaks the "colour never signals alone" rule, since fill is the only channel left.
+2. **`course-planner.tsx:95` — the per-term unit count.** Colour encodes heavy / light / fine,
+   and the band that makes the colour meaningful is in a `title`. The code comment above it
+   reads *"The band is stated rather than left to be inferred from a colour"* — the intent was
+   right and the mechanism cannot deliver it on the device the planner is used on.
+
+**Three that are already correct**, recorded so they are not "fixed" again:
+
+- `log-console.tsx:81` and `task-list.tsx:140` — the delete control is `opacity-100` at base and
+  only fades to hover-reveal at `sm:` and up. Correct: visible on a phone, quiet on a desktop.
+- `project-grid.tsx:130` — "Read more →" is wrapped in `[@media(hover:hover)]:block`, so on
+  touch it does not occupy space at all. This is the pattern the two faults above need.
+
+**Three that are acceptable.** `theme-toggle.tsx`, `push-toggle.tsx` and `voice-entry.tsx` each
+carry `title` *and* `aria-label` with the same text. The `title` is redundant rather than
+load-bearing — the accessibility tree has the label — and icon-only controls in a dense toolbar
+are permitted (V4 Q212, Q273).
+
+**One decorative case, kept deliberately.** `app/page.tsx:147`, the radial glow behind the
+spotlighted role, is `opacity-0` until hover. A touch user never sees it. Victor kept it in
+Q315; it carries no information, so it is a decoration that desktop gets and phones do not,
+which is allowed.
+
+**Not fixed here.** Both faults are fixed in V4 §5.6 (rehab) and §5.7 (planner), where those
+components are being rebuilt anyway. Fixing them now means touching a component twice.
+
+**The rule this produced** is now standing, in `web/DESIGN.md` §9: nothing may be reachable
+only by hover, and `title` is not a mechanism on a phone — it is invisible there.
+
+**How to reverse.** Not applicable; this is an audit. The rule in DESIGN.md §9 is the reversible
+part, and reversing it means accepting that the rehab history is desktop-only.
+
+### D-192 · Seventeen of nineteen vendored shadcn components are unused, and there is no toast system
+
+**The finding.** `src/components/ui/` holds 19 files. Exactly two are imported anywhere:
+
+```
+4 × @/components/ui/badge
+3 × @/components/ui/button
+```
+
+The other seventeen — `alert`, `card`, `checkbox`, `dialog`, `dropdown-menu`, `input`, `label`,
+`scroll-area`, `select`, `separator`, `sheet`, `skeleton`, `sonner`, `table`, `tabs`,
+`textarea`, `tooltip` — are imported by nothing. Every form control in the app is hand-rolled;
+`components/site/skeleton.tsx` duplicates `ui/skeleton.tsx`; the `Panel` collapsible uses native
+`<details>` rather than `ui/accordion`-style machinery.
+
+**The part that is a live gap, not just dead weight: there is no toast system.** `sonner` is a
+production dependency, `ui/sonner.tsx` wraps its `<Toaster>` — and **no `<Toaster />` is
+rendered anywhere in the app, and `toast()` is never called.** Nothing in 2ndMind has ever
+shown a toast.
+
+This matters because four V4 answers assume toasts exist: destructive actions are undoable *via
+the toast* (Q265), toast styling is customised (Q266), toasts sit above the tab bar on a phone
+(Q267), and they carry an undo affordance (Q268). Those were scoped as a styling pass inside
+§5.2. They are a build.
+
+**Consequences for the plan**, recorded rather than silently absorbed:
+
+- **§1.10 gets cheaper.** "Rework `components/ui/` by hand at the new tokens" is two files, not
+  nineteen. The other seventeen are deleted, not restyled — with the exception noted below.
+- **§5.2 gets more expensive.** It has to mount a `Toaster` and wire the first `toast()` call
+  before it can style one.
+- **The deletion is not free and is not Phase 0's to make.** V4 §5.2 wants proper form controls
+  (48px targets, labels above, blur validation), and some of `input` / `label` / `textarea` /
+  `select` / `checkbox` are the obvious starting point for those. Deleting them in Phase 0 and
+  re-vendoring them in Phase 5 is churn. **They are marked, not removed**, and Phase 1.10
+  decides file by file: keep as the base for a V4 control, or delete.
+- **`form.tsx` still must survive** — it is hand-authored, the registry never emitted it, and it
+  is the one file in `ui/` that is not vendored (D-142).
+
+**How to reverse.** Nothing has been deleted, so there is nothing to undo. If the seventeen are
+later removed and one is wanted back, `npx shadcn@latest add <name>` re-vendors it — but it
+will arrive at the *old* token names, which is precisely the work §1.10 exists to do.
+
+### D-193 · `npm run paint` measures what the ambient layer costs
+
+**Decision.** A new script, `scripts/paint-cost.mjs`, traces the same page with and without
+`body::before`/`::after` and reports the difference in raster and composite time per second.
+
+**Why.** D-179 turned the ambient drift off below 40rem on the argument that a fixed,
+full-viewport, continuously-animated layer costs battery and warmth rather than frames. The
+argument is sound and was never measured. V4 §1.4 redesigns the layer (Q162), and a redesign
+with no baseline can only be argued about — "it feels lighter" is not a finding.
+
+**The first version measured nothing, and did it silently.** Both bugs are worth recording,
+because both are the kind that return:
+
+1. **The event names were invented.** `Paint`, `RasterTask` and `CompositeLayers` are what
+   DevTools shows in its UI and what every article about tracing uses. They are not what this
+   Chromium emits. Dumping the trace showed the real names:
+   `RendererRasterWorker`, `RasterDecoderImpl::DoEndRasterCHROMIUM`,
+   `ProxyImpl::ScheduledActionDraw`, `DirectRenderer::DrawFrame`. Matching on a name that does
+   not exist does not throw — it sums zero, and zero looks like an answer.
+2. **Headless Chromium has no GPU raster pipeline.** The desktop run reported `0.00 ms/s` across
+   **34,600 trace events**. Headless draws through `DirectRenderer::DrawFrame` with nothing
+   behind it, so measuring a GPU cost there measures the absence of a GPU. The script is
+   **headed by default**; `--headless` exists for CI and says in its own output that raster will
+   read zero.
+
+**And one sample was not enough.** The first phone-proxy run reported the layer *saving*
+3.6 ms/s — a negative cost, which is noise with a finding's face on. The script now runs
+**alternating pairs** (default three) and reports the **median**, alongside the run-to-run
+spread. **If the delta is smaller than the spread it prints `BELOW THE NOISE, do not quote
+this`** rather than a number, because a gate that reports unfalsifiable figures is how the
+`text<12px` column in D-190 got ignored for months.
+
+**And it hung the first time it was run for real.** With `cc` and `gpu` in the trace config,
+`Tracing.dataCollected` delivers roughly ten thousand events a second; retaining all of them
+across twelve samples wedged the process — node sat at a constant 12s of CPU for ten minutes
+with 28 orphaned browser processes and never returned. Two fixes: **events are filtered inside
+the handler** rather than after (a ~99% reduction, since only a handful of names matter), and
+`Tracing.end` now waits on a **20-second bounded** promise, because a measurement script that
+can block forever is worse than one that reports a short sample.
+
+**Two implementation details that are easy to get wrong.** The kill switch goes in through
+`addInitScript`, not `addStyleTag`, or the first frames measured still have the layer up. And
+nested trace events double-count: `RasterDecoderImpl::DoEndRasterCHROMIUM::Flush` sits inside
+its parent, and `MainFrame.Draw` inside `ProxyImpl::ScheduledActionDraw`. Only the outer name
+of each pair is counted.
+
+**The result, 2026-09-06 — and it is a finding.** Two pairs of five seconds, headed,
+against the dev server on `/`:
+
+| | ambient on | ambient off | delta | run-to-run spread |
+|---|---|---|---|---|
+| Desktop 1280, drift ON | 123.65 ms/s | 119.65 ms/s | +4.00 | **6.93** |
+| Phone proxy 390, x6, drift OFF | 31.58 ms/s | 32.12 ms/s | −0.54 | **0.82** |
+
+**Both deltas are smaller than the noise, and the script says so rather than printing them as
+results.** So on this machine, headed, the ambient layer's cost is **not measurable above
+run-to-run variance** — on desktop with the drift running, and on a throttled proxy with it
+off.
+
+**What that does and does not license.** It does not prove the layer is free on the Samsung:
+none of a mobile GPU, a tiled renderer, thermal throttling or OLED draw is reproduced here, and
+those are the actual complaint. What it does mean is that **D-179's premise is unsupported by
+everything measurable on this machine**, and that V4 §1.4 must not justify redesigning the
+layer on performance grounds unless the phone number says otherwise. Redesign it because the
+gradients were placed by eye once (Q162) — that reason stands on its own.
+
+A side observation worth keeping: desktop reports `raster 0.00, draw 123.65` and the throttled
+phone proxy reports `raster 30.98, draw 0.60`. They are different pipelines — headed desktop
+rasters on the GPU, where the work does not appear under these names at all, while mobile
+emulation rasters on the CPU. Comparing the two numbers to each other is meaningless; only
+on-vs-off within one row means anything.
+
+**Still owed: the Samsung.** CPU throttling slows script and layout; it does not reproduce a
+mobile GPU, a tiled renderer, or thermal behaviour, which is the actual complaint. The script
+prints the real-device procedure — `chrome://inspect`, port-forward 3000, six idle seconds of
+Rendering + Painting with the layer on and off. That number settles Q462 and is in
+`V4_PLAN.md` §8.
+
+**How to reverse.** Delete `scripts/paint-cost.mjs` and the `paint` entry in `package.json`.
+Nothing imports it and no gate depends on it.
+
+---
+
 ## 2026-09-05 · Round 3 — the things you notice using it
 
 ### D-178 · The icon's long-press menu, and the two deep links it needed
