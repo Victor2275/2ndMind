@@ -31,7 +31,7 @@ read-only text defeats the point"** (Q130).
 | **Goal** | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt. |
 | **Scope** | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. |
 | **Budget** | **241 points.** You said 120–140. The gap is real and is §7 R2, not a rounding error. |
-| **Order** | Foundations → tokens → **training** → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 is done** (2026-09-06). Next is Phase 1. |
+| **Order** | Foundations → tokens → **training** → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1.1–1.4 done** (2026-09-07): colour is finished. Next is 1.5 (type scale). |
 | **Milestone A** | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not. |
 | **Milestone B** | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it. |
 | **Milestone C** | End of Phase 5 — the private app is finished. This is the one that matters daily. |
@@ -314,17 +314,17 @@ once (Q162). That reason needs no measurement.
 
 ---
 
-### Phase 1 · Tokens and primitives — **40 pts**
+### Phase 1 · Tokens and primitives — **40 pts** — ◐ **1.1–1.4 done 2026-09-07**
 
 The system. Every screen depends on it, which is why it is first (Q471), and why a period of
 half-migrated screens is acceptable (Q472).
 
 | # | Item | Pts |
 |---|---|---:|
-| 1.1 | **Token architecture in OKLCH** (Q51). Primary ramp 50–950 replacing scattered `color-mix()` (Q50). Three grounds, two muted foregrounds, success/warning/destructive/focus | 6 |
-| 1.2 | **Theme registry** (§2.5). Themes as data, five shipped: dark-magenta, light-teal, high-contrast-dark, two experimental slots | 5 |
-| 1.3 | **Dark palette re-tune** — less saturated, warmer, wider ground separation (Q48, Q49, Q55) | 3 |
-| 1.4 | **Light palette, designed** — teal-led on warm paper, shadows where dark uses ground-shifts, no grain, weaker ambient pools (Q77–Q85). **The ambient redesign is an aesthetic call, not a performance one** — §0.6 measured its cost below the noise floor | 5 |
+| 1.1 | ✅ **Done.** Tokens in OKLCH, **generated** from contrast targets by `scripts/build-tokens.mts` — a token is declared as "teal, at whatever clears 5.4:1 on a card" and the solver returns it. Three grounds, two muted levels, success/warning, dedicated ring, 50–950 ramp. *The plan said forty `color-mix()` calls; there were nine — the scattering was in ~300 opacity utilities, which still work and migrate screen by screen* | 6 |
+| 1.2 | ✅ **Done.** Five themes: dark-magenta, light-teal, hc-dark, and two experimental — `carbon` (hueless near-black) and `steel-light` (steel as accent, a deliberate test of the "steel is never interactive" rule). `data-theme` only; the `dark:` variant is a **generated** selector list, verified in the production bundle | 5 |
+| 1.3 | ✅ **Done.** Chroma 0.17 → 0.145, hue 356 → 346, primary `#d36da8` at 5.22:1. Three grounds with a wider step than the old pair | 3 |
+| 1.4 | ✅ **Done.** Teal on warm paper, primary `#007777` at 5.26:1. Grain off and pools at 0.45 — as **tokens**, not scheme selectors, so they are right on the first painted frame. *Shadow-based elevation is component work and lands with §4/§5* | 5 |
 | 1.5 | **Type scale** — nine steps, modular 1.2, fluid display / stepped body, optical tracking per step (Q101–Q106) | 4 |
 | 1.6 | **Mono eviction** — mono leaves nav, eyebrows, tab bar, panel meta. Body face, tracked, replaces it (Q96–Q98, Q111) | 3 |
 | 1.7 | **Space, radius, elevation, breakpoints** — eight-value spacing vocabulary on 4pt, radius scaling with size, four elevation levels, one named breakpoint set reconciling the two "phone" definitions (Q127, Q137, Q143, Q144, Q152, Q156) | 4 |
@@ -332,7 +332,7 @@ half-migrated screens is acceptable (Q472).
 | 1.9 | **Icon tokens** — sizes 16/20/24, stroke 1.75 (Q213, Q214) | 1 |
 | 1.10 | **Rework `components/ui/` by hand** at the new tokens — **two files, not nineteen** (D-192): only `badge` and `button` are imported anywhere. Decide the other seventeen file by file: keep as the base for a V4 form control, or delete. **`form.tsx` is hand-authored and must survive** (Q473, Q474). Drop `tw-animate-css` if unused after (Q475) | 2 |
 | 1.11 | **`/private/kitchen-sink`** — every component, every state, every theme, one page (Q24) | 2 |
-| 1.12 | **Tests:** token completeness across all themes; contrast over every token pair, failing the build; no raw hex outside the token file (Q23, Q440, Q469) | 2 |
+| 1.12 | ◐ **Mostly done.** 57 tests: completeness (including the asymmetric case), contrast on every ground, registry/stylesheet agreement, staleness. **The "no raw hex" lint is still to write** — it has to land with the pass that removes the literals | 2 |
 
 **Ends with (Milestone A):** every colour, size, space and motion value comes from one place,
 and a test fails if it does not.
@@ -457,7 +457,7 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | Phase | What | Pts | Feature? |
 |---|---|---:|---|
 | 0 | Say what is true — docs, and the 8.8px gate mystery | 8 | ✅ done |
-| 1 | Tokens, themes, type, space, motion, primitives | 40 | |
+| 1 | Tokens, themes, type, space, motion, primitives | 40 | ◐ 1.1–1.4 done |
 | 2 | Training, end to end | 45 | **[FEATURE]** |
 | 3 | Tags | 12 | **[FEATURE]** |
 | 4 | The private shell — sidebar, settings, tab bar | 28 | part |
@@ -564,11 +564,15 @@ Small, and none of it blocks Phase 0 or Phase 1.
    indicates "too much going on there". The sidebar fixes the presentation; it does not answer
    whether any two of Today / Now / Log / Athletics / Academics / Work / Calendar / Hobbies / Sync
    should merge.
-5. **The Samsung paint number** (§0.6). `npm run paint` gives a desktop and a throttled-proxy
+5. **The five themes need looking at.** They are correct — every ratio is solved and tested —
+   but correct is not the same as good, and `carbon` and `steel-light` exist specifically for you
+   to judge. The kitchen-sink page (§1.11) is where that happens; until then they can be switched
+   from the theme toggle.
+6. **The Samsung paint number** (§0.6). `npm run paint` gives a desktop and a throttled-proxy
    figure; the real one needs the phone. Procedure is printed by the script — `chrome://inspect`,
    port-forward 3000, record six idle seconds of Rendering + Painting with the layer on and off.
    Ten minutes, and it is the number V4 §1.4's redesign gets held to.
-6. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
+7. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
    run, nothing else.
-7. **R2 — which reading of the budget?** ~240 points, or features to V5, or stop after Phase 5.
+8. **R2 — which reading of the budget?** ~240 points, or features to V5, or stop after Phase 5.
    Answerable later; Phases 0 and 1 are common to all three.

@@ -6,6 +6,11 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // `scripts/build-tokens.mts` imports `../src/lib/theme/color.ts` with its extension, which
+    // is what node needs to run the script directly and what TypeScript rejects by default.
+    // Safe here precisely because `noEmit` is on: nothing is compiled, so an extension that
+    // would be wrong in emitted output never reaches any.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

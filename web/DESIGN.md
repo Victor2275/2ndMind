@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-06
+updated: 2026-09-07
 domain: engineering
 stability: volatile
 summary: The design system of record — tokens, type, space, motion, and the rules that govern them.
@@ -8,9 +8,10 @@ read_when: Changing anything visual, or adding a component.
 
 # 2ndMind — Design System
 
-**Status: skeleton.** Created in V4 Phase 0 (2026-09-06). The sections marked
-**`PENDING §1.x`** are filled by V4 Phase 1 and are empty on purpose — an invented value here
-would be worse than a gap, because the gap is honest and a wrong number gets copied.
+**Status: colour is done; type, space, surface and motion are not.** Created in V4 Phase 0
+(2026-09-06); §3 filled by Phase 1.1–1.4 (2026-09-07). Sections still marked **`PENDING §1.x`**
+are empty on purpose — an invented value here would be worse than a gap, because the gap is
+honest and a wrong number gets copied.
 
 Three documents, three jobs:
 
@@ -20,8 +21,9 @@ Three documents, three jobs:
 | **`web/DESIGN.md`** (this) | *What* — the tokens and the rules for using them |
 | `web/DECISIONS.md` | *When and how to undo* — dated log, one entry per choice |
 
-`src/app/globals.css` is the implementation. Where it and this file disagree, **the CSS is
-right and this file needs a commit.**
+`src/app/tokens.css` (generated) holds the colour values and `src/app/globals.css` everything
+else. Where they and this file disagree, **the CSS is right and this file needs a commit** — and
+for colour, the generator is right and the CSS needs a `npm run tokens`.
 
 ---
 
@@ -86,15 +88,56 @@ Every theme defines all of these. A theme missing one fails the token test (V4 �
 | `--ring` | Focus. **A dedicated value**, not the primary — it has to survive on a filled primary button |
 | `--chart-1` … `--chart-5` | Categorical series. A separate ramp handles ordered data |
 
-`PENDING §1.1` — the OKLCH values, and the 50–950 primary ramp that replaces the scattered
-`color-mix(in oklab, …)` calls.
+**Done (V4 §1.1, D-194).** Values live in `src/app/tokens.css`, **generated** by
+`scripts/build-tokens.mts`. Every colour is *solved for a contrast ratio* rather than chosen and
+then checked — declare "teal, at whatever lightness clears 5.4:1 on a card" and the solver
+returns it. Edit the generator, never the CSS; `npm run tokens` writes it and
+`npm run tokens:check` fails when it is stale.
+
+Two rules produce the values, and they differ because the tokens are used differently:
+
+- **Text solves against the worst ground** — `raised` on a dark theme, `background` on a light
+  one. Solving against the page ground alone is how a faint grey passed at 4.61:1 and then sat
+  on a card at 4.07:1.
+- **Accents solve against `surface`**, the card they are on almost everywhere. Holding them to
+  `raised` too drove the magenta to `#e981bc`, a pale pink.
+
+The **50–950 primary ramp** exists as the deterministic replacement for `bg-primary/10` and the
+~300 other opacity utilities: compositing an accent over a card gives a different colour on
+every ground, a ramp step is the same colour everywhere. **Migrated screen by screen**, not in
+one pass — the utilities still work.
+
+*(The plan said "forty scattered `color-mix()` calls". There were nine. The scattering was in
+the opacity utilities all along.)*
 
 ### 3.2 Themes
 
-`PENDING §1.2` — the registry. Five ship: dark-magenta (default), light-teal,
-high-contrast-dark, and two experimental slots.
+**Done (V4 §1.2, D-194).** Five themes ship, listed in `src/lib/theme/registry.ts`:
 
-Public offers light / dark / system. The full picker lives in private settings.
+| id | Scheme | Ground | What it is |
+|---|---|---|---|
+| `dark-magenta` | dark | `#12090d` | The default. V2's identity, re-tuned |
+| `light-teal` | light | `#eef4f4` | The light theme. Teal on warm paper |
+| `hc-dark` | dark | `#030303` | Every colour clears 7.5:1. Also what `prefers-contrast: more` selects |
+| `carbon` | dark | `#0e0e0e` | Experimental. Hueless near-black, cyan accent |
+| `steel-light` | light | `#f2f5f8` | Experimental. Steel as the accent — a deliberate test of the "steel is never interactive" rule |
+
+**One attribute.** `next-themes` writes `data-theme` on `<html>` and nothing else. Tailwind's
+`dark:` variant is a selector list over the dark-family themes, **generated into `tokens.css`**,
+so adding a theme is one spec in the generator plus one registry entry — no component edits.
+
+A runtime `data-scheme` attribute was the first design and was dropped: a second pre-hydration
+script alongside next-themes' can land a frame late, and every `dark:` utility then renders its
+light branch on a dark ground. Anything that varies by *scheme* rather than by theme — the
+ambient pools, the grain — is a **token** (`--ambient-opacity`, `--grain-opacity`), which is
+right on the first painted frame.
+
+`enableSystem` resolves the OS preference to the literal strings `light` and `dark`, so those
+two themes are *named* that and mapped onto their ids by next-themes' `value` prop.
+
+Public offers light / dark / system and is **pinned dark** with a toggle that lifts the pin for
+the current visit only — never writing to storage, so a visitor cannot change Victor's app
+(D-184, extended by Q87). The full five-theme picker lives in private settings (Phase 4.4).
 
 ---
 
@@ -224,8 +267,22 @@ and a signed-in header that does not fit.
 read a passing run as a statement about either, or about layout on a private screen. V4 §7.1
 fixes this.
 
-`PENDING §1.12` — the token tests: completeness across every theme, contrast over every pair,
-and no raw hex outside the token file.
+**Mostly done (V4 §1.12, D-194)** — `src/lib/theme/__tests__/tokens.test.ts`, 57 tests:
+
+- **completeness** — every theme defines every token, plus the whole ramp. Also the asymmetric
+  case: a token defined in *some* themes and not others silently inherits the default theme's
+  value, so that is checked too.
+- **contrast** — body text clears AAA on all three grounds, both muted levels clear AA on all
+  three, accents clear AA on background and surface, text on a filled accent clears AA, the
+  three grounds are distinguishable, borders are visible, and the high-contrast theme really is
+  one.
+- **agreement** — the registry and the stylesheet list the same themes, every registered ground
+  matches the generated value *computed from its OKLCH* rather than read from a comment, and the
+  `dark:` variant covers exactly the dark themes.
+- **freshness** — the committed CSS is what the generator produces now.
+
+`PENDING` — the "no raw hex outside the token file" lint. Not yet written: there are still raw
+hex literals in components, and the rule has to land with the pass that removes them.
 
 `PENDING §7.1` — the extended sweep: 44px targets, an 11px text floor with a data-attribute
 allowlist, a contrast sweep, a theme sweep, and the 1440 / 1920 widths.

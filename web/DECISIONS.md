@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-06
+updated: 2026-09-07
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,122 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-07 · V4 Phase 1.1–1.4 — colour becomes something you can compute
+
+### D-194 · Palettes are solved for contrast by a generator, not chosen by eye
+
+**Decision.** `src/app/tokens.css` is **generated** by `scripts/build-tokens.mts` and committed.
+Five themes, every colour authored in OKLCH and **solved for a target contrast ratio** rather
+than picked and then checked. `npm run tokens` writes it, `npm run tokens:check` fails when it
+is stale, and a test runs that check.
+
+**Why.** This project has now been bitten twice by a colour nobody could compute. `#09A1A1` sat
+in the vault as the named primary accent for six weeks while being **2.94:1 on paper** —
+unusable for text — and nothing about looking at it said so. `:root` and `.dark` held the *same*
+dark palette for the whole of V1 and V2 because two hand-maintained blocks have no way to
+disagree out loud. A generator turns "is this legible" from something you remember to verify
+into something that cannot be skipped.
+
+You declare a token as *"teal, at whatever lightness clears 5.4:1 on a card"*; the solver
+returns the value. Adding a theme is a spec, not a palette.
+
+**The two rules that produce the values**, and they differ because the tokens are used
+differently:
+
+- **Text solves against the worst ground** it can sit on — `raised` on a dark theme,
+  `background` on a light one. Solving against the page ground alone is exactly how the first
+  pass produced a faint grey at 4.61:1 that sat on a card at **4.07:1**.
+- **Accents solve against `surface`**, the card they are on nearly everywhere. Holding them to
+  `raised` as well drove the magenta to `#e981bc`, a pale pink — the opposite of the "less
+  saturated, warmer" Q49 asked for. A rule that produces the wrong colour is the wrong rule.
+
+**The five themes.**
+
+| id | Scheme | Ground | What it is |
+|---|---|---|---|
+| `dark-magenta` | dark | `#12090d` | Default. Chroma 0.17 → 0.145 and hue 356 → 346: the Q49 re-tune. Primary `#d36da8` at 5.22:1 |
+| `light-teal` | light | `#eef4f4` | Teal on warm paper. Primary `#007777` at 5.26:1 |
+| `hc-dark` | dark | `#030303` | Every accent clears 7.5:1, not just the named ones — a "high contrast" theme whose destructive red sits at 5:1 is not one |
+| `carbon` | dark | `#0e0e0e` | Experimental. Hueless grounds, so any component assuming a tinted surface shows up |
+| `steel-light` | light | `#f2f5f8` | Experimental. Steel as the accent, which DESIGN.md §2 says it must never be — built to find out whether that rule holds |
+
+**Three grounds, not two** (Q55, Q56). `background` / `surface` / `raised`, with a wider step
+than the old `#140a10` / `#1e1018` pair. Plus `faint-foreground` as a second muted level that
+still clears 4.5:1, and `success` / `warning`, which the app had been signalling with muted grey
+and destructive red.
+
+**Two bugs in the colour maths, both of which returned silent wrong answers rather than errors.**
+Worth recording because both will come back:
+
+1. **Out-of-gamut was treated as invalid rather than as needing mapping.** OKLCH describes
+   colours sRGB cannot show — teal at chroma 0.1 is outside it at every mid lightness — and
+   asking for one does not fail, it clamps a channel. The solver rejected every usable teal and
+   returned a near-black "accent" at **19.45:1**. `fitToGamut` now reduces chroma until the
+   colour fits: hue is what the palette *means* and lightness is what carries contrast, so
+   saturation is the one of the three that can give way.
+2. **A `[^)]*` regex in the test stopped at the `)` inside `:not([data-theme])`**, so the dark
+   variant check reported every theme as absent. The test failed loudly, which is the only
+   reason this is a footnote rather than a defect.
+
+**The switching mechanism: `data-theme` only.** `next-themes` writes one attribute. Tailwind's
+`dark:` variant is a selector list over the dark-family themes, **generated into `tokens.css`**
+by the same script, so adding a theme needs no component edit and no selector anyone has to
+remember. Verified in the production bundle: it compiles to
+`[data-theme=dark-magenta] *,[data-theme=hc-dark] *,[data-theme=carbon] *`.
+
+A runtime `data-scheme` attribute was the first plan — and was what Victor picked when asked —
+but it was dropped on implementation and this is the deviation: setting a second attribute
+before first paint needs a second pre-hydration script alongside next-themes', and if it lands a
+frame late every `dark:` utility renders its light branch on a dark ground. The generated
+selector list delivers the thing the choice was *for* — one edit to add a theme, no silent
+failure — without that hazard. Anything genuinely varying by scheme rather than by theme is a
+**token** instead (`--ambient-opacity`, `--grain-opacity`), which is right on the first painted
+frame.
+
+**`enableSystem` forced a naming compromise.** It resolves the OS preference to the literal
+strings `light` and `dark` and will not find a theme called `light-teal`. So the two defaults
+are *named* `light` and `dark` and mapped onto their ids by next-themes' `value` prop: storage
+holds `dark`, the DOM gets `data-theme="dark-magenta"`.
+
+**The public site is pinned dark, and the pin can now be lifted.** D-184 forced dark on the
+portfolio and that still holds as the default. Q87 asked for a footer toggle, which `forcedTheme`
+would have rendered inert — and a toggle a visitor presses to no effect is worse than none. The
+forced value is now component state: pressing it changes the current visit and **never writes to
+storage**, so a visitor's curiosity cannot follow Victor into the private app. That distinction
+is D-184's own, kept.
+
+**Light mode gets its own atmosphere.** The ambient pools drop to 0.45 opacity (Q81) and the
+grain goes to zero (Q82) — it dithers banding in wide radial fills on dark grounds, and over
+paper the same texture reads as a dirty screen.
+
+**What did not change.** The ~300 `bg-primary/10`-style opacity utilities still work and are
+untouched. The 50–950 ramp is the deterministic replacement — a ramp step is the same colour on
+every ground, where a composite is not — but migrating them is screen-by-screen work in Phases
+4–6, not a single pass.
+
+*(The plan claimed "forty scattered `color-mix()` calls". There were **nine**. The scattering was
+in the opacity utilities the whole time.)*
+
+**Tests.** `src/lib/theme/__tests__/tokens.test.ts`, 57 of them: completeness per theme
+(including the asymmetric case, where a token defined in some themes and not others silently
+inherits the default's value), contrast on every ground, registry/stylesheet agreement with
+grounds **computed from the OKLCH rather than read from the hex comment beside it**, and a
+staleness check. Suite is 1,298 across 87 files, up from 1,240.
+
+**One tsconfig change.** `allowImportingTsExtensions: true`, because the generator imports
+`../src/lib/theme/color.ts` with its extension — which is what node needs to run it directly and
+what TypeScript rejects by default. Safe because `noEmit` is already on: nothing is compiled, so
+an extension that would be wrong in emitted output never reaches any.
+
+**How to reverse.** Delete `scripts/build-tokens.mts`, `src/lib/theme/`, `src/app/tokens.css`
+and the `tokens` scripts in `package.json`; restore the `:root` and `.dark` blocks and
+`@custom-variant dark (&:is(.dark *))` in `globals.css` from the commit before this one; set
+`attribute="class"` in `theme-provider.tsx`. Note that reversing loses the light palette as
+well, since the pre-V4 one was contrast-computed rather than designed (D-184) and no longer
+exists anywhere else.
 
 ---
 

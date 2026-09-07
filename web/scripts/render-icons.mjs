@@ -23,10 +23,11 @@ import { chromium } from "playwright";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const iconsDir = path.join(here, "..", "public", "icons");
 
-// Must equal `GROUND` in src/lib/brand.ts and `--background` in globals.css; a test pins
+// Must equal `GROUND` in src/lib/brand.ts, which is the default theme's ground in
+// src/lib/theme/registry.ts and is generated into src/app/tokens.css. A test pins
 // all three together. This file is run by node rather than the bundler, so it cannot import
 // the constant and carries the literal instead.
-const GROUND = "#140a10";
+const GROUND = "#12090d";
 
 /** The mark's own markup, lifted out of the source file so both variants share one drawing. */
 async function markBody() {

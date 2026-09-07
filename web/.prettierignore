@@ -20,6 +20,10 @@ next-env.d.ts
 # SQL parser anyway, so they are only listed to make the intent explicit.
 drizzle/
 package-lock.json
+# `npm run tokens` rewrites src/app/tokens.css from its own serializer, and `tokens:check`
+# compares the two byte for byte. Formatting it means the next generate reverts the formatting
+# and the staleness check fails on a clean tree — the same trap as drizzle/ above.
+src/app/tokens.css
 
 # ── Vendored from the shadcn registry ─────────────────────────────────────────
 # These arrive with 500–1200 character class strings on one line, which is why they are every

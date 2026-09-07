@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import manifest from "@/app/manifest";
 import { GROUND, GROUND_LIGHT } from "@/lib/brand";
+import { DEFAULT_THEME, groundFor } from "@/lib/theme/registry";
 
 const root = path.join(__dirname, "..", "..", "..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
@@ -25,15 +26,24 @@ describe("the ground colour is one colour", () => {
   // test is the thing that will say so out loud". §4.2 made `:root` light and left `.dark`
   // dark, so "both agree" stopped being the truth and "each matches its own theme's constant"
   // became it (D-184).
-  it("matches --background in globals.css, per theme", () => {
-    const css = read("src/app/globals.css");
-    const declared = [...css.matchAll(/--background:\s*(#[0-9a-f]{6})\s*;/gi)].map((m) =>
-      m[1].toLowerCase(),
-    );
+  // Rewritten again 2026-09-07 (D-194). The palettes moved out of `globals.css` into the
+  // generated `tokens.css`, there are five of them rather than two, and the values are OKLCH
+  // rather than hex — so "the first --background is light and the second is dark" stopped being
+  // true in every particular. `lib/theme/__tests__/tokens.test.ts` now checks every theme's
+  // ground against the generated CSS by converting the colour; what is left here is the part
+  // that is genuinely about *this* module: that the two exported constants still name the right
+  // themes.
+  it("exports the default theme's ground and the light theme's", () => {
+    expect(GROUND).toBe(groundFor(DEFAULT_THEME));
+    expect(GROUND_LIGHT).toBe(groundFor("light-teal"));
+    expect(GROUND).not.toBe(GROUND_LIGHT);
+  });
 
-    // Exactly two, and which is which matters: the light one is declared first, in `:root`,
-    // because that is the block `next-themes` leaves alone and `.dark` is what it toggles on.
-    expect(declared).toEqual([GROUND_LIGHT.toLowerCase(), GROUND.toLowerCase()]);
+  it("is not a hand-typed literal any more", () => {
+    // The drift this whole file exists to stop began with a hex typed into a second place.
+    const source = read("src/lib/brand.ts");
+    expect(source).toMatch(/from "@\/lib\/theme\/registry"/);
+    expect(source).not.toMatch(/=\s*"#[0-9a-f]{6}"/i);
   });
 
   it("is what the manifest gives Android to build the splash screen from", () => {
