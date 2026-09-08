@@ -17,6 +17,65 @@ useful part.
 
 ---
 
+## 2026-09-08 · Carbon is the default, and amber stops being decoration
+
+### D-197 · The default theme is `carbon`, everywhere
+
+**Decision.** `DEFAULT_THEME` in `src/lib/theme/registry.ts` moves from `dark-magenta` to
+`carbon` — a hueless near-black with a cyan accent. Victor asked for it directly.
+
+**What that constant actually controls,** because it is more than the app's opening colour and
+he confirmed all of it deliberately: the bare `:root` block in the generated CSS (so it is what
+anyone who has never chosen a theme sees), the theme the **public portfolio is pinned to** via
+`forcedTheme` in `theme-provider.tsx`, `GROUND` in `lib/brand.ts`, and through that the PWA
+manifest, the Android splash screen and the Samsung status-bar tint. `scripts/render-icons.mjs`
+carries the same value as a literal because it is plain ESM that cannot import, and
+`__tests__/brand.test.ts` pins the two together.
+
+So victorgusev.com is no longer magenta. Magenta is still shipped, still contrast-solved, and
+still one tap away in settings — it is now the identity of a *theme* rather than of the site.
+`context/00_meta/brand_and_voice.md` §3 was rewritten to say so.
+
+**Also changed:** `scripts/build-tokens.mts` had `"dark-magenta"` hard-coded twice — once for
+the `:root` block and once for the `@custom-variant dark` selector list. It now imports
+`DEFAULT_THEME` from the registry. That is the actual fix here: the default was two literals in
+two files, and changing one would have shipped a `:root` palette belonging to a different theme
+than the one the app thought was default, with nothing failing.
+
+**How to reverse.** One line: `DEFAULT_THEME = "dark-magenta"` in `registry.ts`, then
+`npm run tokens` and `node scripts/render-icons.mjs`. Everything else derives. Nothing about the other four
+themes changes.
+
+### D-196 · Amber is a signal, not a kicker
+
+**Decision.** The eyebrow — the small tracked uppercase label above a page title — moves from
+`text-highlight` to `text-primary`. Eight places: `page-shell.tsx`'s `PageHeader` (which is
+every private page), the homepage's three, both sign-in pages, `/offline` and `/cached`.
+
+**The report.** Victor: "a couple of things are sticking orange in the website, not with the
+theme." Correct, and it was deliberate rather than accidental — `brand_and_voice.md` §3.4 said
+"peach/amber is spent sparingly — eyebrows and emphasis, never structure", so the eyebrow was
+following a written rule.
+
+**Why the rule was wrong.** `--highlight` is hue 70 in **all five** themes, because it is the
+semantic warning hue and a warning that changes colour per theme is not a warning. Spending it
+on decoration therefore pins one element to amber no matter what theme is applied — which is
+invisible on a magenta-tinted ground and obvious the moment the ground is hueless. Carbon made
+an existing problem visible rather than creating one. It also meant a stale-data badge and a
+page kicker were the same colour, which is what "colour never signals alone" exists to prevent.
+
+`training-panels.tsx` was already using `text-primary` for the same kind of label, so this
+makes the codebase agree with itself.
+
+**What keeps amber:** everything genuinely asking for attention — the freshness badge, the
+sync badge's stale state, filament running low, a printer needing maintenance, a task due
+tomorrow, an out-of-range training flag, and the warning callouts. Those are untouched.
+
+**How to reverse.** `text-primary uppercase` → `text-highlight uppercase` in those eight files,
+and restore the §3.4 bullet.
+
+---
+
 ## 2026-09-08 · A settings screen, and one home per control
 
 ### D-195 · `/private/settings`, and both navigations give up their controls

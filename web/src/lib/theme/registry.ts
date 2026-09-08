@@ -72,7 +72,7 @@ export const THEMES: readonly Theme[] = [
     id: "dark-magenta",
     name: "dark",
     label: "Magenta",
-    note: "The default. Warm near-black, magenta accent.",
+    note: "Warm near-black, magenta accent. V2's identity.",
     scheme: "dark",
     ground: "#12090d",
     accent: "#d36da8",
@@ -105,7 +105,7 @@ export const THEMES: readonly Theme[] = [
     id: "carbon",
     name: "carbon",
     label: "Carbon",
-    note: "Experimental. Hueless near-black, cyan accent.",
+    note: "The default. Hueless near-black, cyan accent.",
     scheme: "dark",
     ground: "#0e0e0e",
     accent: "#00aeb6",
@@ -126,7 +126,7 @@ export const THEMES: readonly Theme[] = [
 ] as const;
 
 /** The theme applied when nothing has been chosen, and what the public site is pinned to. */
-export const DEFAULT_THEME = "dark-magenta";
+export const DEFAULT_THEME = "carbon";
 
 export const THEME_IDS = THEMES.map((t) => t.id);
 

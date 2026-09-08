@@ -40,6 +40,10 @@ import {
   parseOklch,
   type Oklch,
 } from "../src/lib/theme/color.ts";
+// Which theme owns the bare `:root` block is the registry's call, not this script's. It was a
+// literal in both files until the default moved to Carbon, and the way that fails is silent:
+// change one and the app ships a default whose palette belongs to a different theme.
+import { DEFAULT_THEME } from "../src/lib/theme/registry.ts";
 
 /**
  * The colour as the stylesheet will actually contain it.
@@ -110,7 +114,7 @@ const SPECS: Spec[] = [
     id: "dark-magenta",
     label: "Magenta",
     scheme: "dark",
-    note: "The default. V2's identity, re-tuned: less saturated, warmer, and three grounds instead of two.",
+    note: "V2's identity, re-tuned: less saturated, warmer, and three grounds instead of two.",
     grounds: [
       { l: 0.155, c: 0.016, h: 350 },
       { l: 0.235, c: 0.021, h: 350 },
@@ -178,7 +182,7 @@ const SPECS: Spec[] = [
     id: "carbon",
     label: "Carbon",
     scheme: "dark",
-    note: "Experimental. A hueless near-black: nothing in the grounds carries an accent hue, which is what exposes any component assuming a tinted surface.",
+    note: "The default. A hueless near-black: nothing in the grounds carries an accent hue, so any component that assumes a tinted surface shows itself immediately.",
     grounds: [
       { l: 0.165, c: 0.0, h: 0 },
       { l: 0.245, c: 0.0, h: 0 },
@@ -344,7 +348,7 @@ lines.push("/* Generated: every dark-family theme. Adding one updates this autom
 lines.push(
   `@custom-variant dark (&:is(${SPECS.filter((s) => s.scheme === "dark")
     .map((s) =>
-      s.id === "dark-magenta"
+      s.id === DEFAULT_THEME
         ? `:root:not([data-theme]) *, [data-theme="${s.id}"] *`
         : `[data-theme="${s.id}"] *`,
     )
@@ -355,9 +359,7 @@ lines.push("");
 for (const { spec, tokens } of built) {
   const scheme = spec.scheme;
   const selector =
-    spec.id === "dark-magenta"
-      ? `:root,\n[data-theme="dark-magenta"]`
-      : `[data-theme="${spec.id}"]`;
+    spec.id === DEFAULT_THEME ? `:root,\n[data-theme="${spec.id}"]` : `[data-theme="${spec.id}"]`;
 
   lines.push(`/* ${spec.label} (${spec.id}) — ${scheme}`);
   lines.push(` * ${spec.note} */`);

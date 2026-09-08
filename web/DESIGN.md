@@ -116,10 +116,10 @@ the opacity utilities all along.)*
 
 | id | Scheme | Ground | What it is |
 |---|---|---|---|
-| `dark-magenta` | dark | `#12090d` | The default. V2's identity, re-tuned |
+| `dark-magenta` | dark | `#12090d` | V2's identity, re-tuned |
 | `light-teal` | light | `#eef4f4` | The light theme. Teal on warm paper |
 | `hc-dark` | dark | `#030303` | Every colour clears 7.5:1. Also what `prefers-contrast: more` selects |
-| `carbon` | dark | `#0e0e0e` | Experimental. Hueless near-black, cyan accent |
+| `carbon` | dark | `#0e0e0e` | **The default.** Hueless near-black, cyan accent |
 | `steel-light` | light | `#f2f5f8` | Experimental. Steel as the accent — a deliberate test of the "steel is never interactive" rule |
 
 **One attribute.** `next-themes` writes `data-theme` on `<html>` and nothing else. Tailwind's

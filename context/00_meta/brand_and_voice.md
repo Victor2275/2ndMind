@@ -1,8 +1,8 @@
 ---
-updated: 2026-09-06
+updated: 2026-09-08
 domain: meta
 stability: stable
-summary: Visual identity — two palettes (teal light, magenta dark), typefaces, logo concept, portfolio links.
+summary: Visual identity — five palettes (Carbon is the default), typefaces, logo concept, portfolio links.
 read_when: Design, branding, portfolio, or personal-site work.
 ---
 
@@ -45,6 +45,14 @@ describing the one that had not been built yet.**
 Dark is the default and the one Victor uses. Light is a real, designed theme as of V4 — not
 a contrast-computed fallback (`DECISIONS.md` D-184 built the switch and deliberately left the
 palette to V4).
+
+**Which dark, though, changed on 2026-09-08 (D-197): the default is now `carbon`, not
+`dark-magenta`.** Carbon is a hueless near-black with a cyan accent. That makes magenta the
+identity of a theme rather than the identity of the site — the portfolio, the app icon, the
+splash screen and the phone's status bar are all Carbon now, because one constant drives all
+four. Magenta is still shipped, still solved, and still one tap away in settings; it is simply
+no longer what a first-time visitor sees. §3.2 below describes it as a palette, not as the
+brand.
 
 ### 3.1 The six canonical swatches
 
@@ -112,7 +120,13 @@ Two rules that are easy to break here:
   dark-theme only — on paper it reads as a dirty screen.
 - **Colour never signals alone.** Every colour signal is doubled with an icon, a word, or a
   weight.
-- **Peach/amber is spent sparingly** — eyebrows and emphasis, never structure.
+- **Peach/amber means attention, and nothing else** (changed 2026-09-08, D-196). It used to be
+  spent on eyebrows and emphasis as well. That made it decoration and a signal at the same
+  time, so a stale-data warning and a page's kicker were the same colour — and once the ground
+  stopped being magenta-tinted, the decorative half read as stray orange that belonged to no
+  theme. Eyebrows now take `--primary`, so they carry the theme. Amber is left to the things
+  that are actually asking to be looked at: stale data, a queue that has not sent, a filament
+  spool running low, a target missed.
 - **Steel is structural and never interactive.**
 - **`web/src/app/globals.css` is the implementation of record.** These are the decisions; that
   file is the truth. If they disagree, the CSS is right and this file needs a commit.
@@ -120,9 +134,13 @@ Two rules that are easy to break here:
 ### 3.5 Themes are a registry, not two blocks
 
 As of V4 the palette is data, not a `:root` block and a `.dark` block. Five ship:
-dark-magenta (default), light-teal, high-contrast dark, and two experimental slots for Victor
-to fill and judge. The public site offers light/dark/system only; the full picker is in the
-private app's settings.
+carbon (default), dark-magenta, light-teal, high-contrast dark, and steel-light. The public
+site offers light/dark/system only; the full picker is in the private app's settings.
+
+The default is named once, in `web/src/lib/theme/registry.ts`, and everything else derives from
+it — the `:root` block in the generated CSS, the icon ground, the manifest, the status bar and
+the theme the portfolio is pinned to. Moving it is a one-line change; the reason it is safe is
+that nothing else carries a copy.
 
 ## 4. Typography
 

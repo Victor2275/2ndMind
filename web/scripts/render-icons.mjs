@@ -27,7 +27,7 @@ const iconsDir = path.join(here, "..", "public", "icons");
 // src/lib/theme/registry.ts and is generated into src/app/tokens.css. A test pins
 // all three together. This file is run by node rather than the bundler, so it cannot import
 // the constant and carries the literal instead.
-const GROUND = "#12090d";
+const GROUND = "#0e0e0e";
 
 /** The mark's own markup, lifted out of the source file so both variants share one drawing. */
 async function markBody() {
