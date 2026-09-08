@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-06
+updated: 2026-09-08
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -105,27 +105,41 @@ faces live in `src/app/fonts/` and load via `next/font/local`. Source files came
 design system of record and `context/00_meta/brand_and_voice.md` carries the brand reasoning;
 this section is the orientation.
 
-- **Dark** (default, and the one Victor uses): magenta `#d94f93` primary, steel `#5484a4`
-  secondary, peach `#f6c992` as the single warm note — eyebrows and emphasis, nothing
-  structural — on near-black grounds carrying the magenta hue.
+- **Dark**: magenta primary, steel secondary, on near-black grounds carrying the magenta hue.
 - **Light**: teal-led on warm paper, from the vault's original six swatches. The canonical
   teal `#09A1A1` is **2.94:1 on paper** and cannot carry text, so the token is that hue
   darkened — the same problem the magenta had on white, with the same answer.
 
-**Light lives in `:root` and dark in `.dark`**, which is what `next-themes` toggles (D-184).
-Both blocks held the dark palette until 2026-09-06, because V1 was dark-only. `<html>` no
-longer carries a hardcoded `dark` class — `next-themes` writes it before paint, which is why
-the element carries `suppressHydrationWarning`.
+### This section was rewritten on 2026-09-08. V4 §1.1–1.4 landed.
 
-**V4 is underway** (`docs/V4_PLAN.md`). Two things about this section will change under it and
-are not true yet:
+**Themes are a registry, and the palettes are generated.** Five ship, listed in
+`src/lib/theme/registry.ts`: `carbon` (**the default**), `dark-magenta`, `light-teal`,
+`hc-dark`, `steel-light`. Public offers light/dark/system; the full picker is in
+`/private/settings`.
 
-1. **The light palette is a placeholder** — contrast-computed by D-184, never designed. V4 §1.4
-   designs it.
-2. **Themes become a registry, not two CSS blocks.** V4 §1.2 makes the palette data, with five
-   shipping: dark-magenta, light-teal, high-contrast dark, and two experimental slots. Public
-   offers light/dark/system; the full picker is in private settings. Do not add a third
-   hand-written block in the meantime — add it to the registry or wait.
+**Never hand-write a palette.** `src/app/tokens.css` is **generated** by
+`scripts/build-tokens.mts` and committed; `npm run tokens` writes it and `npm run tokens:check`
+fails when it is stale (the test suite runs that check). Every value is *solved for a contrast
+ratio* rather than picked — declare "teal, at whatever clears 5.4:1 on a card" and the solver
+returns it. Edit the generator, never the CSS. A new theme is one spec in the generator plus one
+entry in the registry; no component changes.
+
+**`next-themes` writes `data-theme` on `<html>` and nothing else.** There is no `.dark` class and
+no `data-scheme` attribute. Tailwind's `dark:` variant is a **generated selector list** over the
+dark-family themes, emitted into `tokens.css` by the same script — so it cannot go stale and
+cannot be forgotten. `<html>` carries `suppressHydrationWarning` because the attribute is written
+before paint by an injected script.
+
+**The default is named once**, as `DEFAULT_THEME` in the registry. Everything derives from it:
+the bare `:root` block, `GROUND` in `lib/brand.ts`, the manifest, the splash screen, the status
+bar, and the theme the public site is pinned to. `scripts/render-icons.mjs` carries a literal
+copy only because it is plain ESM that cannot import, and a test pins the two together. It was
+two literals in two files until D-197 and that fails silently — do not reintroduce a second copy.
+
+**Amber (`--highlight`, `--warning`) means attention and nothing else** (D-196). It is hue 70 in
+every theme, on purpose, because a warning that changes colour per theme is not a warning. That
+is exactly why it must not be spent on decoration: an eyebrow painted with it is pinned to orange
+in all five themes. Eyebrows take `--primary`.
 
 The ground is deliberately not a flat fill: `<html>` paints the base colour and `body`'s
 `::before`/`::after` layer three drifting radial pools plus an SVG-noise grain over it.

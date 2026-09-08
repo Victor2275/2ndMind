@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-07
+updated: 2026-09-08
 domain: engineering
 stability: volatile
 summary: The design system of record — tokens, type, space, motion, and the rules that govern them.
@@ -46,7 +46,11 @@ These hold across every token, component and screen. They are the ones broken by
 2. **Mono is real data only** — dates, splits, PRs, counts, file paths. Not nav labels, not
    eyebrows, not tab bars. If it is not a number, a date, or a path, it is not mono.
 3. **Steel is structural and never interactive.** Nothing clickable is steel.
-4. **Peach/amber is the single warm note** — eyebrows and emphasis, never structure.
+4. **Peach/amber means attention, and nothing else** (D-196, changed 2026-09-08). It used to
+   read "the single warm note — eyebrows and emphasis". That made it decoration and a signal at
+   once, and since `--highlight` is hue 70 in *every* theme, the decorative half was pinned to
+   orange no matter which theme was applied. Eyebrows take `--primary`. Amber is for stale data,
+   an unsent queue, low filament, a missed target.
 5. **Every text token clears 4.5:1** against the surface behind it, including the
    tertiary/metadata level. Body text clears 7:1.
 6. **No raw hex outside the token file.** Components take colour from tokens, so a theme that
@@ -80,7 +84,7 @@ Every theme defines all of these. A theme missing one fails the token test (V4 �
 | `--faint-foreground` | Tertiary / metadata — **new in V4**. Still clears 4.5:1 |
 | `--primary` / `--primary-foreground` | Lead accent, and text on a filled accent |
 | `--secondary` / `--secondary-foreground` | Steel. Structure and data |
-| `--highlight` | The warm note |
+| `--highlight` | Attention — stale, waiting, running low. **Never decoration** (D-196) |
 | `--success` | **New in V4** — completion, met targets |
 | `--warning` | **New in V4** — attention, not failure |
 | `--destructive` | Failure and deletion. Shifted toward orange-red so it is not read as the magenta accent |
@@ -135,9 +139,10 @@ right on the first painted frame.
 `enableSystem` resolves the OS preference to the literal strings `light` and `dark`, so those
 two themes are *named* that and mapped onto their ids by next-themes' `value` prop.
 
-Public offers light / dark / system and is **pinned dark** with a toggle that lifts the pin for
-the current visit only — never writing to storage, so a visitor cannot change Victor's app
-(D-184, extended by Q87). The full five-theme picker lives in private settings (Phase 4.4).
+Public offers light / dark / system and is **pinned to `DEFAULT_THEME`** — Carbon since D-197,
+so the portfolio is hueless black with a cyan accent — with a toggle that lifts the pin for the
+current visit only, never writing to storage, so a visitor cannot change Victor's app (D-184,
+extended by Q87). The full five-theme picker lives in private settings (Phase 4.4).
 
 ---
 
