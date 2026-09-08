@@ -235,12 +235,22 @@ describe("the registry and the stylesheet agree", () => {
     expect([...new Set(inCss)].sort()).toEqual([...THEME_IDS].sort());
   });
 
-  it("every registered ground matches the generated value", () => {
+  it("every registered swatch colour matches the generated value", () => {
     // Computed from the OKLCH, not read from the hex comment beside it — a comment is not a
     // value, and this is the exact drift `lib/brand.ts` exists to prevent.
+    //
+    // All three matter. `ground` drives the status bar; `accent` and `foreground` paint the
+    // settings picker's swatches, which cannot use `var(--primary)` because a swatch renders a
+    // theme that is not the active one — so they are literals, and literals drift.
     for (const theme of THEMES) {
-      const parsed = parseOklch(BLOCKS[theme.id].background)!;
-      expect(oklchToHex(parsed), theme.id).toBe(theme.ground);
+      for (const [field, token] of [
+        ["ground", "background"],
+        ["accent", "primary"],
+        ["foreground", "foreground"],
+      ] as const) {
+        const parsed = parseOklch(BLOCKS[theme.id][token])!;
+        expect(oklchToHex(parsed), `${theme.id}.${field}`).toBe(theme[field]);
+      }
     }
   });
 

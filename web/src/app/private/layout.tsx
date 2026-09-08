@@ -1,12 +1,10 @@
+import { SettingsIcon } from "lucide-react";
+import Link from "next/link";
+
 import { PrivateNav } from "@/components/site/private-nav";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PullToRefresh } from "@/components/site/pull-to-refresh";
-import { ThemeToggle } from "@/components/site/theme-toggle";
-import { PushToggle } from "@/components/site/push-toggle";
-import { publicKey } from "@/lib/push/config";
-import { PublicSiteLink } from "@/components/site/public-site-link";
 import { SyncRunner } from "@/components/site/sync-runner";
-import { SignOutButton } from "@/components/site/sign-out-button";
 import { requireSession } from "@/lib/auth/dal";
 
 export const metadata = {
@@ -39,17 +37,22 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
 
           Since D-149 this is the topmost thing on the page: the public header no longer renders
           here, so `PublicSiteLink` is the only way back to the portfolio on a desktop. */}
+        {/* Section links on the left, one way into settings on the right (V4 §4.4).
+            The theme toggle, push toggle, public-site link and sign-out used to sit here and are
+            now in `/private/settings` — Victor's rule being that anything affecting the app and
+            reached rarely belongs there, and one home per control means the two navigations
+            cannot drift apart. Settings is a link rather than a nav entry because `PrivateNav`
+            is already eight items and a scrolling bar at 1440px (§4.1). */}
         <div className="nav-desktop mb-8 flex items-center justify-between gap-4 border-b border-border pb-3">
           <PrivateNav />
-          <div className="flex shrink-0 items-center gap-4">
-            <PublicSiteLink className="font-mono text-xs" />
-            <ThemeToggle />
-            {/* The VAPID public key is read on the server and handed down: it is public by
-                construction — a subscription cannot be made without it and it grants nothing —
-                but reading `process.env` in a Client Component would not work at all. */}
-            <PushToggle publicKey={publicKey()} />
-            <SignOutButton />
-          </div>
+          <Link
+            href="/private/settings"
+            aria-current={undefined}
+            className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          >
+            <SettingsIcon className="size-3.5" aria-hidden />
+            Settings
+          </Link>
         </div>
 
         {children}
@@ -63,7 +66,7 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
             them is worse than one that works on none (§3.3). */}
         <PullToRefresh />
 
-        <PrivateTabBar pushKey={publicKey()} />
+        <PrivateTabBar />
       </div>
     </>
   );

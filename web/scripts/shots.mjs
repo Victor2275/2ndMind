@@ -101,6 +101,10 @@ const PRIVATE_PAGES = [
   { name: "private-tailor", url: "/private/work/tailor", gated: false },
   { name: "private-hobbies", url: "/private/hobbies", gated: false },
   { name: "private-sync", url: "/private/sync", gated: false },
+  // Ungated (V4 §4.4). Every row on settings is actionable, so there is no single "the thing
+  // you came to do" for the fold check to measure — gating it would mean picking one control
+  // arbitrarily and then defending the number. Swept for the screenshots and the overflow read.
+  { name: "private-settings", url: "/private/settings", gated: false },
 ];
 
 /**

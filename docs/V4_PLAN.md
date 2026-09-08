@@ -384,7 +384,7 @@ Navigation, chrome, settings. Everything that wraps a screen rather than being o
 | 4.1 | **Desktop sidebar** — collapsible to icons, state persisted, content width widened (Q360–Q363). Kills the scrolling row (Q359) | 6 |
 | 4.2 | **`PageHeader` collapses into the nav on phones**; compact title bar (Q132, Q133, Q372) | 3 |
 | 4.3 | **Tab bar** — filled active icons, outbox badge, sheet grabber, partial-height sheet draggable to full (Q367, Q287, Q172, Q173) | 4 |
-| 4.4 | **`/private/settings`** — theme picker (five), density toggle, push, install, **manual sync**, sign-out (Q369–Q371, Q375, Q131) | 6 |
+| 4.4 | ✅ **Done 2026-09-08** (pulled forward, D-195). Theme picker (switch + five), push, install, manual sync, passkey, public site, sign-out, deployed commit. Both navigations gave the controls up rather than copying them. **Density toggle deferred** — §1.7 has not defined the spacing vocabulary, so it would have nothing to switch | 6 |
 | 4.5 | **Connection/sync glyph** in the header, persistent (Q375) | 2 |
 | 4.6 | **Two-column desktop** for Today, Athletics, Academics (Q150) | 4 |
 | 4.7 | Skip links, landmarks, heading-order audit, focus state on every interactive element including cards (Q443–Q447) | 3 |
@@ -460,7 +460,7 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 1 | Tokens, themes, type, space, motion, primitives | 40 | ◐ 1.1–1.4 done |
 | 2 | Training, end to end | 45 | **[FEATURE]** |
 | 3 | Tags | 12 | **[FEATURE]** |
-| 4 | The private shell — sidebar, settings, tab bar | 28 | part |
+| 4 | The private shell — sidebar, settings, tab bar | 28 | part · 4.4 done |
 | 5 | The private screens | 50 | |
 | 6 | Brand and the public site | 36 | |
 | 7 | Gates, performance, review | 22 | |

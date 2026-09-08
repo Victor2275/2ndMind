@@ -13,10 +13,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { InstallButton } from "@/components/site/install-button";
-import { PublicSiteLink } from "@/components/site/public-site-link";
-import { SignOutButton } from "@/components/site/sign-out-button";
 import { ThemeToggle } from "@/components/site/theme-toggle";
-import { PushToggle } from "@/components/site/push-toggle";
 
 /**
  * The private app's bottom navigation, phone only (V3 §0.5, D-132).
@@ -49,6 +46,7 @@ const MORE = [
   { href: "/private/hobbies", label: "Hobbies" },
   // Last, because it is only interesting when the badge has already said so (§1.7).
   { href: "/private/sync", label: "Not sent" },
+  { href: "/private/settings", label: "Settings" },
 ] as const;
 
 /** Exact match for the index, prefix for the rest — otherwise "/private" lights up everywhere. */
@@ -87,14 +85,14 @@ function NavLink({
  * @param path      Which route to treat as current. Defaults to the live pathname; the offline
  *                  shell passes the path its failed navigation was aimed at, because
  *                  `usePathname()` there is `/cached` and no tab would light up at all.
- * @param offline   Renders document navigations rather than client transitions, and drops the
- *                  controls that cannot work without a network.
+ * @param offline   Renders document navigations rather than client transitions, and shows the
+ *                  reduced control row — offline being the one case where `/private/settings`
+ *                  cannot be reached at all.
  */
 export function PrivateTabBar({
   path,
   offline = false,
-  pushKey = "",
-}: { path?: string; offline?: boolean; pushKey?: string } = {}) {
+}: { path?: string; offline?: boolean } = {}) {
   // Called unconditionally — hooks cannot be skipped — and then overridden. The prop wins
   // because on `/cached` the live pathname is not the page the user thinks they are on.
   const livePathname = usePathname();
@@ -172,25 +170,28 @@ export function PrivateTabBar({
               ))}
             </nav>
 
-            {/* `InstallButton` renders nothing unless Chrome says the app is installable, so
-                this row collapses to the public-site link and sign-out in every other case.
-                Since D-149 the public header does not render on /private, which makes
-                `PublicSiteLink` the only way back to the portfolio from a phone. */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-              <PublicSiteLink className="min-h-10 px-1 text-sm" />
-              <div className="flex items-center gap-2">
-                {/* Works offline: it writes to localStorage and toggles a class, and needs no
-                    server at all (§4.2). */}
-                <ThemeToggle />
-                {/* Empty offline: subscribing needs a round trip, and a control that fails
-                    silently is worse than one that is not there (§4.1). */}
-                {!offline && <PushToggle publicKey={pushKey} />}
-                <InstallButton />
-                {/* Signing out posts to the server. Offline it can only fail, and a sign-out
-                    that appears to do nothing is worse than one that is not offered. */}
-                {!offline && <SignOutButton />}
+            {/* Online, this row is empty and does not render: every control that used to live
+                here is in `/private/settings` now (V4 §4.4), which is one tap away in the list
+                above.
+
+                Offline it is the only place left. `/private/settings` is `force-dynamic`, so a
+                failed navigation to it is served the cached shell instead — the settings screen
+                genuinely cannot be reached without a network. The theme is the one control that
+                needs no server at all (it writes to `localStorage` and sets an attribute), so
+                it stays reachable here rather than becoming something you can only change when
+                online. Push, sign-out and the public site all need a round trip and are already
+                absent offline for that reason. */}
+            {offline && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                <span className="font-mono text-[0.6rem] tracking-[0.12em] text-faint-foreground uppercase">
+                  Offline
+                </span>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <InstallButton />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-07
+updated: 2026-09-08
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,76 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-08 · A settings screen, and one home per control
+
+### D-195 · `/private/settings`, and both navigations give up their controls
+
+**Decision.** A settings route, and the theme toggle, push toggle, install button, public-site
+link and sign-out **move out** of the phone's More sheet and the desktop nav row rather than
+being copied. Manual sync, a passkey link and the deployed commit join them.
+
+**The rule, in Victor's words (Q371):** *anything that affects the website and is not used
+regularly.* Everything here meets it. The reason for moving rather than copying is that two
+homes for one control is how the two navigations drift apart — which this codebase has already
+paid for once, with `PrivateNav` and `PrivateTabBar` maintained as deliberate duplicates
+(D-132).
+
+**This closes Q375**, which had been unreadable: *"I do not like the manual sync being in more.
+It should be in settings (the Match the ...)"*. "Match the phone" is the theme toggle's label
+for `system`, so the parenthesis was naming the other controls in that sheet, not a separate
+request. Manual sync is under Sync; the rest is here too.
+
+**The theme picker is a switch and then a list, not a six-item list.** "Match the phone" is a
+different *kind* of choice from "use Carbon", and a list that mixes them makes the app changing
+colour at sunset look like a bug — nothing on screen says the OS is driving it. With the switch,
+the list stays visible while following the phone and marks the theme the OS resolved to, so
+"why is it light right now" is answerable from the screen. Turning the switch off keeps whatever
+was showing rather than snapping to the default.
+
+**Swatches are painted from literals, not from `var(--primary)`.** A swatch renders a theme that
+is *not* the active one, so a custom property resolves to whatever is applied and paints all
+five identically. `registry.ts` carries `ground`, `accent` and `foreground` per theme and the
+token test pins each against the generated CSS by converting the OKLCH — not by reading the hex
+comment beside it.
+
+**Two bugs the work surfaced, both of which fail silently:**
+
+1. **`peer-checked:` only reaches siblings.** It compiles to `.peer:checked ~ &`, so the switch's
+   knob nested inside its track never moved. The track and the knob are both siblings of the
+   input now.
+2. **`setTheme` takes a *name*, not an id.** The switch passed `light-teal` where `light` was
+   wanted, which is a no-op with no error anywhere. A test caught it; the component now keeps
+   the whole registry entry so the id (for marking the row) and the name (for `setTheme`) cannot
+   be confused.
+
+**A generator bug found on the way.** The hex and contrast comments in `tokens.css` were computed
+from the *pre-rounded* OKLCH, while the CSS ships a 4-decimal value — so the documentation was
+off by a channel from the colour actually rendered, and the registry literals copied from those
+comments failed the test. `asShipped()` now round-trips every value through the formatter before
+anything is annotated or written. Several tokens moved by one channel; the CSS and its own
+comments now describe the same colour.
+
+**Offline keeps a reduced control row.** `/private/settings` is `force-dynamic`, so a failed
+navigation to it is served the cached shell — settings genuinely cannot be reached without a
+network. The theme is the one control needing no server at all (`localStorage` plus an
+attribute), so it stays in the offline More sheet alongside the install button. Push, sign-out
+and the public site all need a round trip and were already absent offline.
+
+**Not included: the density toggle.** Q131 asked for one, but §1.7 has not defined the spacing
+vocabulary yet, so it would have nothing to switch. A control that visibly does nothing is worse
+than a missing one; it lands with §1.7.
+
+**Ungated in `npm run shots`.** Every row on settings is actionable, so there is no single "the
+thing you came to do" for the fold check to measure. Gating it would mean picking a control
+arbitrarily and then defending the number. It is swept for screenshots and overflow.
+
+**How to reverse.** Delete `app/private/settings/`, `components/site/settings-*.tsx` and
+`theme-picker.tsx`; restore the controls row in `private-tabbar.tsx` and the control cluster in
+`app/private/layout.tsx` from the commit before this one. `ThemeToggle` is untouched and still
+cycles system/light/dark, so the pre-V4 arrangement works as it did.
 
 ---
 

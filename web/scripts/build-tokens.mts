@@ -37,8 +37,24 @@ import {
   formatOklch,
   lightnessForContrast,
   oklchToHex,
+  parseOklch,
   type Oklch,
 } from "../src/lib/theme/color.ts";
+
+/**
+ * The colour as the stylesheet will actually contain it.
+ *
+ * `formatOklch` rounds to 4 decimal places, so the value written to CSS is not bit-identical to
+ * the one the solver returned. Everything downstream — the hex in the comment, the contrast
+ * ratio beside it, the swatch literals in `lib/theme/registry.ts` — has to describe the *shipped*
+ * colour, not the one before rounding, or the documentation is off by a channel and the test
+ * that compares them fails for a reason that looks like a typo.
+ *
+ * Round-tripping through the formatter is the whole fix: format, parse back, use that.
+ */
+function asShipped(color: Oklch): Oklch {
+  return parseOklch(formatOklch(color)) ?? color;
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "src", "app", "tokens.css");
@@ -213,7 +229,11 @@ type Built = { spec: Spec; tokens: Record<string, Oklch>; warnings: string[] };
 function build(spec: Spec): Built {
   const [background, surface, raised] = spec.grounds;
   const worst = spec.scheme === "dark" ? raised : background;
-  const tokens: Record<string, Oklch> = { background, surface, raised };
+  const tokens: Record<string, Oklch> = {
+    background: asShipped(background),
+    surface: asShipped(surface),
+    raised: asShipped(raised),
+  };
   const warnings: string[] = [];
 
   for (const [name, seed] of Object.entries(spec.seeds)) {
@@ -228,13 +248,13 @@ function build(spec: Spec): Built {
       warnings.push(`${spec.id}/${name}: cannot reach ${seed.target}:1 at chroma ${seed.c}`);
       continue;
     }
-    tokens[name] = solved;
+    tokens[name] = asShipped(solved);
   }
 
   /* Derived. Borders and the muted/accent grounds are steps off a ground rather than solved
      colours: they are never text, so a contrast target would be inventing a requirement. */
   const step = (base: Oklch, delta: number): Oklch =>
-    fitToGamut({ ...base, l: Math.max(0, Math.min(1, base.l + delta)) });
+    asShipped(fitToGamut({ ...base, l: Math.max(0, Math.min(1, base.l + delta)) }));
 
   const borderDelta = spec.scheme === "dark" ? 0.09 : -0.075;
   tokens.border = step(surface, borderDelta);
@@ -243,11 +263,11 @@ function build(spec: Spec): Built {
   tokens.accent = raised;
   tokens["accent-foreground"] = tokens.foreground;
 
-  tokens["primary-foreground"] = onFill(tokens.primary, spec.scheme);
-  tokens["secondary-foreground"] = onFill(tokens.secondary, spec.scheme);
-  tokens["destructive-foreground"] = onFill(tokens.destructive, spec.scheme);
-  tokens["success-foreground"] = onFill(tokens.success, spec.scheme);
-  tokens["warning-foreground"] = onFill(tokens.warning, spec.scheme);
+  tokens["primary-foreground"] = asShipped(onFill(tokens.primary, spec.scheme));
+  tokens["secondary-foreground"] = asShipped(onFill(tokens.secondary, spec.scheme));
+  tokens["destructive-foreground"] = asShipped(onFill(tokens.destructive, spec.scheme));
+  tokens["success-foreground"] = asShipped(onFill(tokens.success, spec.scheme));
+  tokens["warning-foreground"] = asShipped(onFill(tokens.warning, spec.scheme));
 
   /* shadcn compatibility. `card`/`popover`/`sidebar` are the vendored components' names for
      grounds this system already has; aliasing them keeps badge.tsx and button.tsx working
@@ -290,10 +310,10 @@ function ramp(primary: Oklch, scheme: "dark" | "light"): Array<[number, Oklch]> 
     // Chroma peaks in the middle: the extremes are near-white and near-black, which cannot hold
     // saturation without leaving gamut.
     const bell = 1 - Math.abs(t - 0.5) * 1.6;
-    return [stop, fitToGamut({ l, c: primary.c * Math.max(0.15, bell), h: primary.h })] as [
-      number,
-      Oklch,
-    ];
+    return [
+      stop,
+      asShipped(fitToGamut({ l, c: primary.c * Math.max(0.15, bell), h: primary.h })),
+    ] as [number, Oklch];
   });
 }
 

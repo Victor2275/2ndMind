@@ -44,6 +44,16 @@ export type Theme = {
   scheme: Scheme;
   /** `--background` as a hex literal, for `<meta name="theme-color">`, which cannot read CSS. */
   ground: string;
+  /**
+   * `--primary` and `--foreground`, for the settings picker's swatches.
+   *
+   * A swatch has to render in a theme it is not currently showing, so it cannot use
+   * `var(--primary)` — that would resolve to the *active* theme and paint all five identically.
+   * These are literals for the same reason `ground` is, and the same test pins them: every one
+   * is checked against the generated CSS by converting the OKLCH, not by reading a comment.
+   */
+  accent: string;
+  foreground: string;
   /** Offered in the private settings picker. Experimental themes are, deliberately. */
   selectable: boolean;
 };
@@ -65,6 +75,8 @@ export const THEMES: readonly Theme[] = [
     note: "The default. Warm near-black, magenta accent.",
     scheme: "dark",
     ground: "#12090d",
+    accent: "#d36da8",
+    foreground: "#f9f0f5",
     selectable: true,
   },
   {
@@ -74,6 +86,8 @@ export const THEMES: readonly Theme[] = [
     note: "Warm paper, teal accent. The light theme.",
     scheme: "light",
     ground: "#eef4f4",
+    accent: "#007372",
+    foreground: "#182727",
     selectable: true,
   },
   {
@@ -83,6 +97,8 @@ export const THEMES: readonly Theme[] = [
     note: "For a phone in sunlight. Every colour clears 7.5:1.",
     scheme: "dark",
     ground: "#030303",
+    accent: "#ed82bf",
+    foreground: "#fdfdfd",
     selectable: true,
   },
   {
@@ -92,6 +108,8 @@ export const THEMES: readonly Theme[] = [
     note: "Experimental. Hueless near-black, cyan accent.",
     scheme: "dark",
     ground: "#0e0e0e",
+    accent: "#00aeb6",
+    foreground: "#f6f6f6",
     selectable: true,
   },
   {
@@ -101,6 +119,8 @@ export const THEMES: readonly Theme[] = [
     note: "Experimental. Cool paper, steel accent.",
     scheme: "light",
     ground: "#f2f5f8",
+    accent: "#3b6998",
+    foreground: "#1e262e",
     selectable: true,
   },
 ] as const;
