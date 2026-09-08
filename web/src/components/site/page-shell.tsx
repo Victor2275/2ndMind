@@ -25,7 +25,7 @@ export function PageHeader({
     <header className="border-b border-border pb-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-mono text-[0.6rem] tracking-[0.18em] text-highlight uppercase">
+          <p className="font-mono text-[0.6rem] tracking-[0.18em] text-primary uppercase">
             {eyebrow}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">{title}</h1>

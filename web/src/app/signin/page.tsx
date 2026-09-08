@@ -31,9 +31,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
           when the session has expired, and it already carries the highest TTFB on the site.
           A 600ms fade on top of that read as the app hanging, not loading (2026-09-04). */}
       <div className="w-full max-w-sm rounded-lg border border-border bg-card/70 p-7">
-        <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
-          Private
-        </p>
+        <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">Private</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">Second brain</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           One passkey, one person. There is no password to phish and no account to create.

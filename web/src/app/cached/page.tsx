@@ -34,7 +34,7 @@ export default function CachedPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 pt-8 pb-24 sm:px-6">
       <header className="border-b border-border pb-6">
-        <p className="font-mono text-[0.6rem] tracking-[0.18em] text-highlight uppercase">
+        <p className="font-mono text-[0.6rem] tracking-[0.18em] text-primary uppercase">
           No signal
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">

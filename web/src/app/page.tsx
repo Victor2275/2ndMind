@@ -80,7 +80,7 @@ export default function AboutPage() {
         </div>
 
         <div className="min-w-0">
-          <p className="font-mono text-xs tracking-[0.18em] text-highlight uppercase">
+          <p className="font-mono text-xs tracking-[0.18em] text-primary uppercase">
             {profile.persona}
           </p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
@@ -240,7 +240,7 @@ export default function AboutPage() {
           className="group card-scan rise rounded-lg border border-border bg-card/70 p-6"
           style={{ animationDelay: "320ms" }}
         >
-          <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
+          <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">
             Most recent build
           </p>
           <h2 className="mt-2 text-base font-semibold transition-colors group-hover:text-primary">
@@ -262,7 +262,7 @@ export default function AboutPage() {
               style={{ animationDelay: `${240 + i * 70}ms` }}
               className="group card-scan flex rise flex-col rounded-lg border border-border bg-card/70 p-4"
             >
-              <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
+              <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">
                 {p.kicker}
               </p>
               <h3 className="mt-1.5 text-base font-semibold tracking-tight transition-colors group-hover:text-primary">

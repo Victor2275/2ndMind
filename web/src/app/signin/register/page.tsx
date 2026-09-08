@@ -18,7 +18,7 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-24">
       <div className="w-full max-w-md rounded-lg border border-border bg-card/70 p-7">
-        <p className="font-mono text-[0.62rem] tracking-[0.16em] text-highlight uppercase">
+        <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">
           One-time setup
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">Enrol a passkey</h1>
