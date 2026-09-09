@@ -105,6 +105,13 @@ const PRIVATE_PAGES = [
   // you came to do" for the fold check to measure — gating it would mean picking one control
   // arbitrarily and then defending the number. Swept for the screenshots and the overflow read.
   { name: "private-settings", url: "/private/settings", gated: false },
+  // Ungated (V4 §1.11). A component gallery has no "first action" — it is the one private page
+  // you are not trying to do anything on. It is swept anyway, and for a reason the other rows do
+  // not have: it renders all five themes, every component and every state on one page, so it is
+  // the single screenshot where a token regression is visible without knowing where to look.
+  // The overflow check earns its keep here too, since nothing else in the app puts a five-theme
+  // stack of galleries into a 360px viewport.
+  { name: "private-kitchen-sink", url: "/private/kitchen-sink", gated: false },
 ];
 
 /**
