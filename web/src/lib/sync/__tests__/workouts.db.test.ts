@@ -370,3 +370,79 @@ describe("what the phone pulls back", () => {
     }
   });
 });
+
+describe("on a driver with no transactions (neon-http)", () => {
+  /**
+   * **The bug this file did not catch, and now does.**
+   *
+   * Production runs `drizzle-orm/neon-http`, a stateless HTTP driver with **no transaction
+   * support** — Drizzle's `db.transaction()` throws on it outright. PGlite, which every test
+   * above uses, supports transactions perfectly well. So the aggregate op passed sixteen
+   * database tests and then 500'd on the first real session: `npm run e2e` logged one offline,
+   * reconnected, and the outbox came back with `server returned 500`.
+   *
+   * That mattered more than an ordinary bug. The entire argument for §4a's aggregate op is that
+   * **no partial session can exist**, and on the driver that actually runs it there was no
+   * atomic primitive at all.
+   *
+   * `atomically` now prefers `batch` — Neon's HTTP transaction API, one request wrapped in
+   * BEGIN/COMMIT server-side — and falls back to `transaction`. This stages the first branch by
+   * handing `applyOps` a database that behaves the way neon-http does: it has `batch`, and its
+   * `transaction` throws.
+   */
+  function withoutTransactions(real: Db): Db {
+    return new Proxy(real as object, {
+      get(target, property, receiver) {
+        if (property === "transaction") {
+          return () => {
+            throw new Error("No transactions support in neon-http driver");
+          };
+        }
+        if (property === "batch") {
+          // PGlite has no batch, so this stands in for one: the same statements, in the same
+          // order. What is under test is that the code takes this path at all, not that PGlite
+          // can be made atomic.
+          return async (statements: PromiseLike<unknown>[]) => {
+            for (const statement of statements) await statement;
+          };
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    }) as Db;
+  }
+
+  it("writes the session and its sets without ever opening a transaction", async () => {
+    const handle = withoutTransactions(db);
+
+    const [result] = await applyOps(handle, [op(session())]);
+
+    expect(result.status).toBe("applied");
+    const [parent] = await db.select().from(workouts);
+    const sets = await db.select().from(workoutSets);
+    expect(sets).toHaveLength(2);
+    for (const set of sets) expect(set.workoutId).toBe(parent.id);
+  });
+
+  it("resolves the foreign key inside the statement, not from a returned id", async () => {
+    // The reason the FK is a sub-select. A batch cannot depend on an earlier statement's
+    // *result*, only on its *effect* — so reading the parent's id back with `RETURNING` would
+    // have made the whole aggregate impossible to send as one atomic unit on this driver.
+    const handle = withoutTransactions(db);
+    await applyOps(handle, [op(session())]);
+
+    const [parent] = await db.select().from(workouts);
+    const sets = await db.select().from(workoutSets);
+    expect(parent.clientId).toBe(SESSION);
+    expect(new Set(sets.map((s) => s.workoutId))).toEqual(new Set([parent.id]));
+  });
+
+  it("still upserts on a re-send", async () => {
+    const handle = withoutTransactions(db);
+    const first = op(session());
+    await applyOps(handle, [first]);
+    await applyOps(handle, [{ ...first, opId: uuid(800), hlc: clock.tick() }]);
+
+    expect(await db.select().from(workouts)).toHaveLength(1);
+    expect(await db.select().from(workoutSets)).toHaveLength(2);
+  });
+});

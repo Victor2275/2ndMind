@@ -1,4 +1,4 @@
-import { eq, gt, inArray } from "drizzle-orm";
+import { eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import type * as schema from "@/lib/db/schema";
@@ -419,33 +419,41 @@ async function writeRow(
     case "workout": {
       const columns = WRITERS.workout.columns(payload);
       const sets = (payload.sets ?? []) as Record<string, unknown>[];
+      const parentClientId = columns.clientId;
 
-      await db.transaction(async (tx) => {
-        const [parent] = await tx
+      await atomically(db, (handle) => [
+        handle
           .insert(workouts)
           .values({ ...columns, ...stamp })
-          .onConflictDoUpdate({ target: workouts.clientId, set: { ...columns, ...stamp } })
-          .returning({ id: workouts.id });
+          .onConflictDoUpdate({ target: workouts.clientId, set: { ...columns, ...stamp } }),
 
-        if (sets.length === 0) return;
+        ...sets.map((set) => {
+          // Deleting the session tombstones its sets too. Reads already filter children by the
+          // parent's `deleted_at`, so this is belt and braces — but a set left live under a
+          // deleted session still reaches `allEfforts()` on a device that only ever pulled the
+          // child row.
+          const row = {
+            ...WRITERS.workout_set.columns(set),
+            /**
+             * The foreign key as a sub-select, not as a value read back from the insert above.
+             *
+             * `RETURNING` would mean this statement depends on the *result* of the previous
+             * one, which rules out sending them as one batch — and one batch is the only
+             * atomic primitive the production driver has (see `atomically`). Resolved inside
+             * the statement, the dependency becomes one the database handles: the sub-select
+             * runs after the insert, inside the same transaction, and sees the row it just
+             * wrote.
+             */
+            workoutId: sql<number>`(select id from ${workouts} where ${workouts.clientId} = ${parentClientId})`,
+            ...stamp,
+          };
 
-        // Deleting the session tombstones its sets too. Reads already filter children by the
-        // parent's `deleted_at`, so this is belt and braces — but a set left live under a
-        // deleted session is a set that still reaches `allEfforts()` on a device that only
-        // ever pulled the child row.
-        const rows = sets.map((set) => ({
-          ...WRITERS.workout_set.columns(set),
-          workoutId: parent.id,
-          ...stamp,
-        }));
-
-        for (const row of rows) {
-          await tx
+          return handle
             .insert(workoutSets)
             .values(row)
             .onConflictDoUpdate({ target: workoutSets.clientId, set: row });
-        }
-      });
+        }),
+      ]);
       return;
     }
 
@@ -485,6 +493,50 @@ async function writeRow(
  * than a 500 that takes the whole batch down. Permanent, not transient: the op will never
  * succeed on a later attempt, and retrying it forever is how an outbox stops draining.
  */
+/**
+ * Run several statements as one all-or-nothing unit, on whichever driver is underneath.
+ *
+ * ## Why this is not just `db.transaction`
+ *
+ * **`neon-http` has no transactions.** It is a stateless HTTP driver, and Drizzle's
+ * `db.transaction()` throws on it outright. PGlite — what the tests run — supports them fine, so
+ * the aggregate op passed every database test and **500'd against production on the first real
+ * session**, which is how this was found: `npm run e2e` logged a session offline, reconnected,
+ * and the outbox came back with `server returned 500`.
+ *
+ * That is worth stating plainly, because the whole argument for §4a's aggregate op is that no
+ * partial session can exist. Without an atomic primitive it was a session write that *usually*
+ * completed, which is a different and much worse thing.
+ *
+ * ## What each driver gets
+ *
+ * - **`batch`** (neon-http): Neon's HTTP transaction API — every statement in one request,
+ *   wrapped in `BEGIN`/`COMMIT` server-side. Genuinely atomic, and the reason the foreign key
+ *   above is a sub-select rather than a value read back: a batch cannot depend on an earlier
+ *   statement's *result*, only on its *effect*.
+ * - **`transaction`** (PGlite, and any pooled driver): the ordinary thing. Statements are built
+ *   against the transaction handle, not the outer one — building them against `db` inside a
+ *   `transaction` callback is the classic way to run them outside the transaction and get no
+ *   atomicity while appearing to.
+ *
+ * Both paths execute the same statements in the same order, so the tests exercise the same SQL
+ * production runs even though they take the other branch.
+ */
+async function atomically(db: Db, build: (handle: Db) => PromiseLike<unknown>[]): Promise<void> {
+  const runner = db as unknown as { batch?: (statements: unknown[]) => Promise<unknown> };
+
+  if (typeof runner.batch === "function") {
+    const statements = build(db);
+    if (statements.length === 0) return;
+    await runner.batch(statements);
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    for (const statement of build(tx as unknown as Db)) await statement;
+  });
+}
+
 export class UnknownParentError extends Error {
   constructor(readonly parentClientId: string) {
     super(`no workout with clientId ${parentClientId}`);

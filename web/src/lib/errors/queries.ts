@@ -54,12 +54,18 @@ export async function recordError(db: Db, report: CleanReport): Promise<ErrorRep
 
 /** Unresolved problems, loudest first — most recent, then most frequent. */
 export async function openErrors(db: Db, limit = 20): Promise<ErrorReport[]> {
-  return db
-    .select()
-    .from(errorReports)
-    .where(isNull(errorReports.resolvedAt))
-    .orderBy(desc(errorReports.lastSeenAt))
-    .limit(limit);
+  return (
+    db
+      .select()
+      .from(errorReports)
+      .where(isNull(errorReports.resolvedAt))
+      // `id` breaks the tie. Two reports recorded in the same millisecond — which happens
+      // whenever something fails in a loop, and happened in this suite — otherwise come back in
+      // whatever order Postgres feels like, so "most recent first" was true most of the time and
+      // the test that checked it failed about one run in twenty.
+      .orderBy(desc(errorReports.lastSeenAt), desc(errorReports.id))
+      .limit(limit)
+  );
 }
 
 /**

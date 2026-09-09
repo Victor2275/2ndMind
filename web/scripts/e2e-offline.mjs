@@ -179,25 +179,32 @@ async function main() {
               open.onerror = () => reject(open.error);
               open.onsuccess = () => {
                 const db = open.result;
-                const tx = db.transaction(["log_entries", "meta"], "readonly");
+                const tx = db.transaction(["log_entries", "exercises", "meta"], "readonly");
                 const rows = tx.objectStore("log_entries").count();
+                // The catalogue has to be on the phone before the radio goes off, or the
+                // session screen offline is a search box over nothing (V4 Phase 2).
+                const catalogue = tx.objectStore("exercises").count();
                 const synced = tx.objectStore("meta").get("lastSyncAt");
                 tx.oncomplete = () => {
-                  resolve({ rows: rows.result, syncedAt: synced.result ?? null });
+                  resolve({
+                    rows: rows.result,
+                    catalogue: catalogue.result,
+                    syncedAt: synced.result ?? null,
+                  });
                   db.close();
                 };
                 tx.onerror = () => reject(tx.error);
               };
             }),
         );
-        return seen.syncedAt && seen.rows > 0 ? seen : false;
+        return seen.syncedAt && seen.catalogue > 0 ? seen : false;
       },
       { timeout: 60_000 },
     );
     check(
-      mirrored.rows > 0,
+      mirrored.catalogue > 0,
       "the phone has a local copy to work from",
-      `${mirrored.rows} log rows`,
+      `${mirrored.rows} log rows, ${mirrored.catalogue} exercises`,
     );
 
     /* -- 2. offline ---------------------------------------------------------------- */
@@ -212,7 +219,7 @@ async function main() {
     );
     check(
       (await page.locator('[aria-current="page"]').first().getAttribute("href")) ===
-        "/private/athletics",
+        "/private/athletics/log",
       "the shell knows which screen was asked for",
     );
     check(
@@ -266,10 +273,17 @@ async function main() {
       "the log is searchable with no network",
     );
 
-    /* -- 3. write a training entry with two sets, with no network ------------------- */
+    /* -- 3. log a training session with two sets, with no network ------------------- */
+    //
+    // **Milestone B** (V4 Phase 2): *you log a gym session on the phone, offline, and it syncs.*
+    //
+    // This step used to drive the quick log's Training tab, which Phase 2.7 retired — training
+    // is a session now, written through the aggregate op (`SYNC_DESIGN.md` §4a). The change is
+    // not cosmetic: what leaves the phone is **one op carrying the session and all its sets**,
+    // and what arrives is a `workouts` row whose `workout_sets` point at a foreign key the phone
+    // never saw.
     console.log("\nwriting with no network");
-    await page.goto(`${BASE}/private/log`);
-    await page.waitForSelector("#f-exercise");
+    await page.goto(`${BASE}/private/athletics/log`);
 
     // Watch for the connectivity events, rather than assuming the harness fires them. Installed
     // after the last navigation, since a document load throws the listener away.
@@ -279,28 +293,45 @@ async function main() {
       addEventListener("offline", () => window.__connectivity.push("offline"));
     });
 
-    await page.fill("#f-exercise", `Bench Press (${STAMP})`);
-    await page.fill('[id="f-sets.0.weightLbs"]', "185");
-    await page.fill('[id="f-sets.0.reps"]', "5");
-    await page.getByRole("button", { name: /add set/i }).click();
-    await page.waitForSelector('[id="f-sets.1.weightLbs"]');
-    await page.fill('[id="f-sets.1.weightLbs"]', "175");
-    await page.fill('[id="f-sets.1.reps"]', "8");
-    await page.getByRole("button", { name: /log training/i }).click();
+    await page.getByLabel("Session").fill(`Push A (${STAMP})`);
+
+    // Searched on the phone, over the mirrored catalogue — the whole reason it is a synced table
+    // rather than an API call. `bnch` rather than `bench`, so the fuzzy matcher is exercised
+    // here too and not only in its unit tests.
+    await page.getByRole("button", { name: /add exercise/i }).click();
+    await page.getByLabel("Search exercises").fill("bnch");
+    await page
+      .getByRole("button", { name: /^Bench Press/ })
+      .first()
+      .click();
+
+    await page.locator('[id$="-0-weightLbs"]').first().fill("185");
+    await page.locator('[id$="-0-reps"]').first().fill("5");
+    await page.getByRole("button", { name: /same again/i }).click();
+    await page.locator('[id$="-1-weightLbs"]').first().fill("175");
+    await page.locator('[id$="-1-reps"]').first().fill("8");
+
+    await page.getByRole("button", { name: /save session/i }).click();
 
     check(
       await page
-        .getByText(/saved to training on this phone/i)
+        .getByText(/session saved/i)
         .waitFor({ timeout: 10_000 })
         .then(() => true)
         .catch(() => false),
-      "the entry saves with the radio off",
+      "the session saves with the radio off",
     );
 
     const queued = await readOutbox(page);
-    const logOps = queued.filter((op) => op.entity === "log_entry" && op.op === "create");
-    check(logOps.length === 1, "exactly one entry is queued", `queued ${queued.length}`);
-    created = logOps.map((op) => op.clientId);
+    const sessionOps = queued.filter((op) => op.entity === "workout" && op.op === "create");
+    // **One** op, not one per set. That is the aggregate, and it is what lets the server apply
+    // the session in a single transaction and assign the foreign key itself.
+    check(sessionOps.length === 1, "the whole session is one queued op", `queued ${queued.length}`);
+    check(
+      queued.every((op) => op.entity !== "workout_set"),
+      "no set is queued separately",
+    );
+    created = sessionOps.map((op) => op.clientId);
 
     /* -- 4. back online, and do nothing ------------------------------------------- */
     console.log("\nback online, without going anywhere");
@@ -394,29 +425,52 @@ async function main() {
     }
 
     /* -- 5. and it is in the database, once ---------------------------------------- */
+    //
+    // What arrives is the half the phone could not do for itself: a `workouts` row, and
+    // `workout_sets` pointing at a `serial` this device has never seen. The foreign key is the
+    // thing being checked — it is the whole reason §4a made a session one atomic op rather than
+    // a parent write followed by child writes.
     console.log("\nin the database");
     const rows = await sql`
-      select client_id, category, data, deleted_at
-      from log_entries where client_id = ANY(${created})`;
+      select id, client_id, title, source, external_id, deleted_at
+      from workouts where client_id = ANY(${created})`;
     check(
       rows.length === created.length,
-      "every entry arrived",
+      "every session arrived",
       `${rows.length}/${created.length}`,
     );
     check(
       new Set(rows.map((r) => r.client_id)).size === rows.length,
-      "no entry arrived twice",
+      "no session arrived twice",
       `${rows.length} rows, ${new Set(rows.map((r) => r.client_id)).size} distinct`,
     );
     check(
       rows.every((r) => r.deleted_at === null),
-      "the entries are live, not tombstoned",
+      "the sessions are live, not tombstoned",
     );
-    const sets = rows[0]?.data?.sets;
+    // Null on purpose: the unique index on `external_id` treats each null as distinct, which is
+    // what stops a hand-logged session colliding with a Hevy import (D-026).
     check(
-      Array.isArray(sets) && sets.length === 2,
-      "both sets survived the trip",
-      JSON.stringify(sets),
+      rows.every((r) => r.external_id === null && r.source === "phone"),
+      "it is recorded as a phone session, not an import",
+      rows.map((r) => r.source).join(", "),
+    );
+
+    const setRows = await sql`
+      select s.exercise, s.set_index, s.weight_lbs, s.reps, s.workout_id
+      from workout_sets s
+      join workouts w on w.id = s.workout_id
+      where w.client_id = ANY(${created})
+      order by s.set_index`;
+    check(setRows.length === 2, "both sets survived the trip", `${setRows.length} sets`);
+    check(
+      setRows.every((r) => r.workout_id === rows[0]?.id),
+      "the server resolved the foreign key the phone never had",
+    );
+    check(
+      setRows.map((r) => Number(r.weight_lbs)).join(",") === "185,175",
+      "the numbers are the ones that were typed",
+      setRows.map((r) => `${r.weight_lbs}x${r.reps}`).join(" "),
     );
   } finally {
     /* -- teardown ----------------------------------------------------------------- */
@@ -427,11 +481,13 @@ async function main() {
       // Deleting by SQL, which the app itself cannot do since §1.2 made every delete a
       // tombstone. Guarded twice: the list must be non-empty and every id must look like the
       // uuid this run generated, so a bug here can only ever remove rows this script created.
+      //
+      // The sets go with the parent through `ON DELETE CASCADE`, which exists for exactly this —
+      // genuine hard deletes, of which there are none in normal operation (§4a).
       const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (created.every((id) => uuid.test(id))) {
-        const gone =
-          await sql`delete from log_entries where client_id = ANY(${created}) returning id`;
-        console.log(`\ncleaned up ${gone.length} row(s) this run created.`);
+        const gone = await sql`delete from workouts where client_id = ANY(${created}) returning id`;
+        console.log(`\ncleaned up ${gone.length} session(s) this run created.`);
       } else {
         console.error(`\nREFUSED to clean up: ids do not look generated — ${created.join(", ")}`);
         failures.push("teardown refused to delete unrecognised ids");
