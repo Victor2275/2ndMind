@@ -32,12 +32,19 @@ describe("the service worker's caching policy", () => {
 
   it("precaches only the two public static pages", () => {
     // The offline apology and the app shell (§2.1). Both are static and hold no data — every
-    // value the shell shows is read from IndexedDB in the browser. A third `cache.add` here
+    // value the shell shows is read from IndexedDB in the browser. A third `store()` call here
     // is the thing to look at hard.
-    const added = [...code.matchAll(/cache\.add\w*\(/g)];
+    //
+    // It reads `store(` rather than `cache.add(` since Phase N: `add` fetches internally and
+    // gives no way to pass a deadline, so an install that stalled sat in `installing` forever.
+    // `await`, so the helper's own declaration is not counted as a third page.
+    const added = [...code.matchAll(/await store\(cache, /g)];
     expect(added).toHaveLength(2);
     expect(code).toContain('const OFFLINE_URL = "/offline"');
     expect(code).toContain('const SHELL_URL = "/cached"');
+    // And the reason the count above is trustworthy: nothing reaches the cache through the
+    // one API that cannot carry a deadline.
+    expect(code).not.toMatch(/cache\.add\w*\(/);
   });
 
   it("warms only content-hashed build assets, never a page", () => {
@@ -88,12 +95,13 @@ describe("the service worker's caching policy", () => {
   });
 
   it("restricts runtime caching to content-hashed assets and icons", () => {
-    const paths = [...code.matchAll(/url\.pathname\.startsWith\("([^"]+)"\)/g)].map(
-      (match) => match[1],
-    );
+    // Any `pathname`, however it is spelled: Phase N moved the private-route check into
+    // `isAppPath(pathname)`, and a pattern that only read `url.pathname` stopped seeing it —
+    // which would have quietly shrunk this policy to two entries and still passed.
+    const paths = [...code.matchAll(/pathname\.startsWith\("([^"]+)"\)/g)].map((match) => match[1]);
     // `/private/` appears among these because the navigation branch reads it to choose a
-    // fallback page; it is a routing decision and never a `cache.put`, which the test above
-    // pins separately.
+    // fallback page, and to keep the private app out of the stale-while-revalidate path; it is
+    // a routing decision and never a `cache.put`, which the test above pins separately.
     expect(new Set(paths)).toEqual(new Set(["/_next/static/", "/icons/", "/private/"]));
   });
 

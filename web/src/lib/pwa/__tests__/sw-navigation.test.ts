@@ -1,8 +1,7 @@
 // @vitest-environment node
-import fs from "node:fs";
-import path from "node:path";
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { loadWorker, ORIGIN, type Handler } from "@/test/worker";
 
 /**
  * The navigation fallback, actually executed (D-157).
@@ -17,16 +16,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * retry is one line and is invisible in every other kind of test.
  */
 
-const SOURCE = fs
-  .readFileSync(path.join(process.cwd(), "src/lib/pwa/sw-template.js"), "utf8")
-  .replace("__BUILD_ID__", "test");
-
-const ORIGIN = "https://victorgusev.com";
-
-type Handler = (event: FetchEventLike) => void;
 type FetchEventLike = {
-  request: { method: string; mode: string; url: string };
+  request: { method: string; mode: string; url: string; headers?: Headers };
   respondWith: (response: Promise<Response>) => void;
+  waitUntil?: (promise: Promise<unknown>) => void;
 };
 
 /** Loads the worker with its globals replaced, and hands back the handlers it registered. */
@@ -38,21 +31,24 @@ function load(options: {
   /** Public pages precached by §2.2, keyed by path. */
   pages?: Record<string, string>;
   onLine?: boolean;
-}) {
-  const handlers = new Map<string, Handler>();
-
-  const self = {
-    addEventListener: (type: string, handler: Handler) => handlers.set(type, handler),
-    location: { origin: ORIGIN },
-    navigator: { onLine: options.onLine ?? true },
-    clients: { claim: async () => {} },
-    skipWaiting: () => {},
-  };
-
+}): Map<string, Handler> {
   const page = (html: string) => new Response(html, { headers: { "content-type": "text/html" } });
 
+  // Keyed by path, so it does not matter whether the worker looks something up with a string
+  // or with a `Request` — which changed in Phase N and is not a policy this file is about.
+  const key = (request: unknown) => {
+    const raw =
+      typeof request === "string"
+        ? request
+        : request instanceof Request
+          ? request.url
+          : String(request);
+    return new URL(raw, ORIGIN).pathname;
+  };
+
   const cache = {
-    match: async (url: string) => {
+    match: async (request: unknown) => {
+      const url = key(request);
       if (url === "/offline") {
         return options.offlineHtml === null
           ? undefined
@@ -67,16 +63,9 @@ function load(options: {
       return precached ? page(precached) : undefined;
     },
     put: async () => {},
-    add: async () => {},
   };
 
-  const caches = { open: async () => cache, keys: async () => [], delete: async () => true };
-
-  // The worker is a script, not a module — this is how it gets loaded with its globals
-  // replaced by fakes.
-  new Function("self", "caches", "fetch", SOURCE)(self, caches, options.fetch);
-
-  return handlers;
+  return loadWorker({ fetch: options.fetch, cache, onLine: options.onLine });
 }
 
 function navigateTo(pathname: string): {
@@ -86,10 +75,20 @@ function navigateTo(pathname: string): {
   let promise: Promise<Response> | null = null;
   return {
     event: {
-      request: { method: "GET", mode: "navigate", url: `${ORIGIN}${pathname}` },
+      request: {
+        method: "GET",
+        mode: "navigate",
+        url: `${ORIGIN}${pathname}`,
+        // Phase N reads this to spot an RSC payload. A real navigation carries no `RSC`
+        // header, and `Headers` answers `null` for one it does not have.
+        headers: new Headers(),
+      },
       respondWith: (value) => {
         promise = value;
       },
+      // Present but inert: the worker uses it to keep itself alive while a precached page is
+      // refreshed behind the response, and nothing here waits on that.
+      waitUntil: () => {},
     },
     response: async () => {
       if (!promise) throw new Error("the worker never responded to the navigation");
@@ -311,18 +310,57 @@ describe("what it leaves alone", () => {
     expect(responded).toBe(false);
   });
 
-  it("leaves an RSC fetch to the network — it is not a navigation", () => {
-    // The Log tab is a `<Link>`, so tapping it fetches an RSC payload rather than navigating.
-    // If the worker started answering these, a stale payload would render as a stale page.
-    const handlers = load({ fetch: flaky(99) });
+  it("never answers an RSC fetch from the cache — a stale payload is a stale page", async () => {
+    // **This reverses the previous version of this test, deliberately** (Phase N3).
+    //
+    // It used to assert the worker ignored RSC fetches entirely, on the reasoning that a stale
+    // payload would render as a stale page. That reasoning still holds and is still enforced
+    // below: the worker adds a deadline and nothing else, and no cached response can ever come
+    // back from this branch.
+    //
+    // What it got wrong was concluding that ignoring the request was therefore safe. Tapping a
+    // tab in the installed app *is* an RSC fetch, and an ignored request is one with no
+    // deadline — so on a stalled connection it never settled and the screen sat on a skeleton
+    // forever. That was the tab-tap freeze, and it was invisible here because the test asked
+    // whether the worker responded, not what happened when the network did not.
+    const handlers = load({
+      fetch: flaky(0),
+      pages: { "/private/log": "<html><body>a stale page</body></html>" },
+    });
+    let responded: Promise<Response> | null = null;
+    handlers.get("fetch")!({
+      request: {
+        method: "GET",
+        mode: "same-origin",
+        url: `${ORIGIN}/private/log?_rsc=abc`,
+        headers: new Headers(),
+      },
+      respondWith: (value) => {
+        responded = value;
+      },
+    });
+
+    expect(responded).not.toBeNull();
+    expect(await (await responded!).text()).toBe("the page");
+  });
+
+  it("spots an RSC fetch by its header as well as its query parameter", () => {
+    // Next sends the header on every RSC request and the `_rsc` parameter only on some, so
+    // matching the parameter alone would leave most of them without a deadline.
+    const handlers = load({ fetch: flaky(0) });
     let responded = false;
     handlers.get("fetch")!({
-      request: { method: "GET", mode: "same-origin", url: `${ORIGIN}/private/log?_rsc=abc` },
+      request: {
+        method: "GET",
+        mode: "same-origin",
+        url: `${ORIGIN}/private/log`,
+        headers: new Headers({ RSC: "1" }),
+      },
       respondWith: () => {
         responded = true;
       },
     });
 
-    expect(responded).toBe(false);
+    expect(responded).toBe(true);
   });
 });

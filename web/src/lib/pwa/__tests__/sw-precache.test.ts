@@ -1,8 +1,7 @@
 // @vitest-environment node
-import fs from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it, vi } from "vitest";
+
+import { loadWorker, ORIGIN, pathOf } from "@/test/worker";
 
 /**
  * The public precache, executed (V3 §2.2).
@@ -15,12 +14,6 @@ import { describe, expect, it, vi } from "vitest";
  * response would survive sign-out.
  */
 
-const SOURCE = fs
-  .readFileSync(path.join(process.cwd(), "src/lib/pwa/sw-template.js"), "utf8")
-  .replace("__BUILD_ID__", "test");
-
-const ORIGIN = "https://victorgusev.com";
-
 function sitemap(paths: string[]): string {
   return `<?xml version="1.0"?><urlset>${paths
     .map((p) => `<loc>${ORIGIN}${p}</loc>`)
@@ -29,33 +22,23 @@ function sitemap(paths: string[]): string {
 
 /** Loads the worker and runs its `activate` handler, returning what reached the cache. */
 async function activate(options: { sitemap: string | null; html?: string }) {
-  const handlers = new Map<string, (event: { waitUntil: (p: Promise<unknown>) => void }) => void>();
   const written = new Map<string, string>();
 
-  const self = {
-    addEventListener: (type: string, handler: never) => handlers.set(type, handler),
-    location: { origin: ORIGIN },
-    navigator: { onLine: true },
-    clients: { claim: async () => {} },
-    skipWaiting: () => {},
-  };
-
   const cache = {
-    match: async (url: string) => (written.has(url) ? new Response(written.get(url)) : undefined),
-    put: async (url: string, response: Response) => {
-      written.set(String(url), await response.text());
+    match: async (request: unknown) => {
+      const key = pathOf(request as RequestInfo);
+      return written.has(key) ? new Response(written.get(key)) : undefined;
     },
-    add: async () => {},
+    put: async (request: unknown, response: Response) => {
+      written.set(pathOf(request as RequestInfo), await response.text());
+    },
   };
 
-  const caches = {
-    open: async () => cache,
-    keys: async () => [],
-    delete: async () => true,
-  };
-
-  const fetch = vi.fn(async (url: string) => {
-    if (url === "/sitemap.xml") {
+  // Keyed by path rather than by identity: since Phase N the worker asks for these with a
+  // `Request` carrying `cache: "reload"` instead of a bare string, which is the same request
+  // by every measure this test cares about.
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    if (pathOf(input) === "/sitemap.xml") {
       return options.sitemap === null
         ? new Response("", { status: 404 })
         : new Response(options.sitemap);
@@ -63,10 +46,12 @@ async function activate(options: { sitemap: string | null; html?: string }) {
     return new Response(options.html ?? "<html><head></head><body>page</body></html>");
   }) as unknown as typeof globalThis.fetch;
 
-  new Function("self", "caches", "fetch", SOURCE)(self, caches, fetch);
+  const handlers = loadWorker({ fetch, cache });
 
   let pending: Promise<unknown> = Promise.resolve();
-  handlers.get("activate")!({ waitUntil: (p) => (pending = p) });
+  (
+    handlers.get("activate") as unknown as (e: { waitUntil: (p: Promise<unknown>) => void }) => void
+  )({ waitUntil: (p) => (pending = p) });
   await pending;
 
   return { written, fetch };
@@ -115,7 +100,7 @@ describe("what gets precached", () => {
     expect(written.has("/_next/static/chunks/shared.js")).toBe(true);
     const assetFetches = vi
       .mocked(fetch)
-      .mock.calls.filter(([url]) => String(url).includes("shared.js"));
+      .mock.calls.filter(([input]) => pathOf(input).includes("shared.js"));
     expect(assetFetches).toHaveLength(1);
   });
 });

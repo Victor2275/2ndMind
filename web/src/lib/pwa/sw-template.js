@@ -26,6 +26,57 @@ const BUILD_ID = "__BUILD_ID__";
 const CACHE = `2ndmind-shell-${BUILD_ID}`;
 
 /**
+ * Deadlines (V4 Phase N, `docs/DEGRADED_NETWORK.md`).
+ *
+ * `fetch()` has no default timeout, so a request that connects and then stalls — plane wifi,
+ * a congested cell — never rejects. Every fallback in this file is a `catch`, which means
+ * **before this, none of them could run in the one condition they were written for.** The
+ * worker did not fall back; it hung, and so did the tab that was waiting on it.
+ *
+ * These numbers duplicate `src/lib/net/deadline.ts` because a service worker is a standalone
+ * script and cannot import it. That is the one place they can silently drift apart, so
+ * `sw-deadline.test.ts` reads both and fails if they stop matching.
+ */
+const BUDGET = {
+  navigation: 3000,
+  rsc: 3000,
+  report: 5000,
+  asset: 10000,
+};
+
+/**
+ * `fetch` that gives up rather than waiting forever.
+ *
+ * `AbortSignal.timeout` rejects with a `TimeoutError`, which is what lets everything below
+ * tell a stall from an ordinary refusal — a distinction that decides whether retrying is
+ * sensible or actively harmful. See `retryable`.
+ */
+function fetchWithDeadline(request, ms) {
+  return fetch(request, { signal: AbortSignal.timeout(ms) });
+}
+
+/**
+ * Is this failure worth one more try?
+ *
+ * **Only a fast rejection.** This is the retry from D-157, now with the case it was never meant
+ * to cover carved out of it: that retry exists for a single dropped request — a radio handing
+ * between cells, wifi associated but not yet authenticated — which fails in milliseconds and
+ * usually succeeds immediately afterwards.
+ *
+ * A *stall* is the opposite situation and retrying it is backwards. The budget has already been
+ * spent waiting; spending it a second time means the screen sits blank for six seconds instead
+ * of three and then shows the same fallback. Until Phase N a stall was the one case that did
+ * get retried, because it was the one case that never rejected at all.
+ *
+ * `onLine === false` is still conclusive and still worth checking. `true` proves nothing —
+ * it is the value plane wifi reports — which is why it can only veto a retry, never justify one.
+ */
+function retryable(error) {
+  if (error && error.name === "TimeoutError") return false;
+  return self.navigator.onLine !== false;
+}
+
+/**
  * The page shown when a *public* navigation fails with no network. Static, so caching it
  * carries nothing sensitive.
  */
@@ -87,8 +138,14 @@ async function report(error, where) {
   if (reporting) return;
   reporting = true;
   try {
+    // The deadline matters more here than anywhere else in this file. `reporting` is a guard
+    // against a report of a report, and it is only released in `finally` — so before Phase N a
+    // single stalled POST left it `true` for the **whole life of the worker**, silently
+    // disabling every error report after it. The one condition worth reporting from is the one
+    // that broke reporting.
     await fetch("/api/errors", {
       method: "POST",
+      signal: AbortSignal.timeout(BUDGET.report),
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         source: "worker",
@@ -107,6 +164,19 @@ async function report(error, where) {
   }
 }
 
+/**
+ * Fetch one URL past the HTTP cache and keep it, or throw.
+ *
+ * The `reload` half is why this exists at all: it bypasses the browser's own cache, so a fresh
+ * install cannot pick up a stale copy of a page it is about to promise is current.
+ */
+async function store(cache, url) {
+  const request = new Request(url, { cache: "reload" });
+  const response = await fetchWithDeadline(request, BUDGET.asset);
+  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+  await cache.put(request, response);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -117,9 +187,14 @@ self.addEventListener("install", (event) => {
       // Added one at a time rather than with `addAll`, which is atomic: if the shell 404s on
       // an older deploy, `addAll` would fail the whole install and leave the worker without
       // even the offline page. A degraded install beats no install.
-      await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+      //
+      // `store` rather than `cache.add`, because `add` fetches internally and there is no way
+      // to hand it a deadline. An install that stalls on the shell used to sit in `installing`
+      // forever, which is the worst place for this worker to hang: the previous one keeps
+      // serving, so nothing looks wrong and the update simply never arrives.
+      await store(cache, OFFLINE_URL);
       try {
-        await cache.add(new Request(SHELL_URL, { cache: "reload" }));
+        await store(cache, SHELL_URL);
         await warmShell(cache);
       } catch (error) {
         // Falls back to the offline page for private navigations too — which is a silent
@@ -168,7 +243,10 @@ async function warmAssets(cache, html) {
         // Skip anything already held: on a public precache of a dozen pages, the shared chunks
         // would otherwise be fetched a dozen times each.
         if (await cache.match(url)) return;
-        const response = await fetch(url, { cache: "reload" });
+        const response = await fetchWithDeadline(
+          new Request(url, { cache: "reload" }),
+          BUDGET.asset,
+        );
         if (response.ok) await cache.put(url, response);
       } catch {
         // One missing chunk is not worth failing over.
@@ -208,7 +286,7 @@ async function warmImages(cache, html) {
       try {
         if (await cache.match(url, { ignoreVary: true })) return;
         const request = new Request(url, { headers: { Accept: ACCEPT } });
-        const response = await fetch(request);
+        const response = await fetchWithDeadline(request, BUDGET.asset);
         if (response.ok) await cache.put(request, response);
       } catch {
         // One image is not worth failing the precache over.
@@ -231,7 +309,10 @@ async function warmImages(cache, html) {
 async function precachePublic(cache) {
   let paths = [];
   try {
-    const response = await fetch(SITEMAP_URL, { cache: "reload" });
+    const response = await fetchWithDeadline(
+      new Request(SITEMAP_URL, { cache: "reload" }),
+      BUDGET.asset,
+    );
     if (!response.ok) return;
     const xml = await response.text();
     paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
@@ -255,7 +336,10 @@ async function precachePublic(cache) {
 
   for (const path of paths) {
     try {
-      const response = await fetch(path, { cache: "reload" });
+      const response = await fetchWithDeadline(
+        new Request(path, { cache: "reload" }),
+        BUDGET.asset,
+      );
       if (!response.ok) continue;
       const html = await response.clone().text();
       await cache.put(path, response);
@@ -323,8 +407,11 @@ self.addEventListener("push", (event) => {
       await self.registration.showNotification(title, {
         body: typeof payload.body === "string" ? payload.body : "",
         tag: typeof payload.tag === "string" ? payload.tag : "2ndmind",
+        // `icon` is a picture; `badge` is a stencil. Android keeps only the badge's alpha and
+        // paints it in the system accent, so pointing both at the tile put a solid white
+        // square in the status bar — the tile is opaque, and opaque is all it reads (D-203).
         icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
         data: { url: typeof payload.url === "string" ? payload.url : "/private" },
       });
     })(),
@@ -365,6 +452,127 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+/** Is this a path the private app owns? Nothing under it is ever cached. */
+function isAppPath(pathname) {
+  return pathname === "/private" || pathname.startsWith("/private/");
+}
+
+/**
+ * What to show when the network could not answer. Two destinations, and which one matters
+ * more than it looks.
+ *
+ * A private navigation goes to the cached shell, which renders today's tasks, the log and
+ * recent training out of IndexedDB (§2.1). The offline page can only apologise; the shell is
+ * the app, minus the network.
+ *
+ * A public navigation goes to the offline page. The portfolio is not mirrored anywhere — that
+ * is §2.2 — so there would be nothing for the shell to show.
+ */
+async function serveFromCache(request, url) {
+  const cache = await caches.open(CACHE);
+
+  // A public page precached by §2.2 — the portfolio, a project, a resume. Served as itself,
+  // with no rewriting: it is the real page, only from disk.
+  //
+  // Guarded on `isAppPath` even though nothing can write a private response to this cache —
+  // `precachePublic` filters the sitemap and the runtime branch only takes hashed assets. That
+  // makes the invariant true by construction rather than by argument, which is the right
+  // trade for one condition on the path that would leak private HTML if the argument ever
+  // stopped holding.
+  const precached = isAppPath(url.pathname) ? undefined : await cache.match(url.pathname);
+  if (precached) return precached;
+
+  // `/cached` itself is included: its own view links are plain navigations, so without this,
+  // moving from the offline Today to the offline Training screen would land on the offline
+  // page — the app working until you touched it.
+  const isShell = url.pathname === SHELL_URL;
+  const shell = isShell || isAppPath(url.pathname) ? await cache.match(SHELL_URL) : null;
+  const offline = shell ?? (await cache.match(OFFLINE_URL));
+  if (!offline) return new Response("Offline", { status: 503, statusText: "Offline" });
+  const destination = shell ? SHELL_URL : OFFLINE_URL;
+
+  // Rebuilt rather than returned as-is: a cached Response's `url` is the cache key, and the
+  // page needs the failed path. A redirect would lose the SPA history and a header would not
+  // survive into the document, so it goes in the body's own URL via a fresh Response — the
+  // page reads it from `location.search`.
+  const path = url.pathname + url.search;
+  // A request already aimed at the shell keeps its own query — rewriting it would turn
+  // `?from=/private/athletics` into `?from=/cached?from=...` and every offline screen would
+  // render Today.
+  const target = isShell ? path : `${destination}?from=${encodeURIComponent(path)}`;
+  const html = await offline.text();
+  return new Response(
+    html.replace("</head>", `<script>history.replaceState(null,"","${target}")</script></head>`),
+    { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
+  );
+}
+
+/**
+ * Refresh a precached page behind a response that has already been served. Never throws, and
+ * nothing waits on it — being allowed to fail quietly is the entire point of answering from
+ * the cache first.
+ */
+async function revalidate(cache, path) {
+  try {
+    const request = new Request(path, { cache: "reload" });
+    const response = await fetchWithDeadline(request, BUDGET.asset);
+    if (response.ok) await cache.put(path, response);
+  } catch {
+    // Offline, stalled, or redeployed mid-flight. The copy already on disk stands.
+  }
+}
+
+/**
+ * A navigation (Phase N2).
+ *
+ * Two changes from the network-first version this replaces, and they solve different halves of
+ * the same report.
+ *
+ * **Stale-while-revalidate for anything precached.** A precached page is *this build's* copy —
+ * the cache name carries `BUILD_ID`, so a deploy empties it and `precachePublic` refills it from
+ * the network. Every public route is statically rendered, so within one build the cached copy
+ * and the network copy are the same bytes. Waiting on the network to be told that is a round
+ * trip spent to learn nothing, and on a stalled connection it is three seconds of blank screen
+ * before an identical page appears. Nothing under `/private` is eligible, because nothing under
+ * `/private` is ever cached (§2.1).
+ *
+ * **A deadline on everything else.** Private navigations must hit the network — they are real,
+ * current, per-request data — so they cannot be served from disk. What they can do is stop
+ * waiting: three seconds, then the cached shell, which renders the same day's tasks out of
+ * IndexedDB. That is the tab-tap freeze, ended.
+ */
+async function handleNavigation(event, request, url) {
+  const cache = await caches.open(CACHE);
+
+  if (!isAppPath(url.pathname)) {
+    const precached = await cache.match(url.pathname);
+    if (precached) {
+      try {
+        event.waitUntil(revalidate(cache, url.pathname));
+      } catch {
+        // The event is no longer active. `revalidate` has already started either way; all
+        // that is lost is the promise to keep the worker alive until it finishes.
+      }
+      return precached;
+    }
+  }
+
+  try {
+    return await fetchWithDeadline(request, BUDGET.navigation);
+  } catch (error) {
+    // One retry, and only for a fast rejection — see `retryable`. A 401 or a 500 never
+    // arrives here at all: that is the server talking, and it should be shown.
+    if (retryable(error)) {
+      try {
+        return await fetchWithDeadline(request, BUDGET.navigation);
+      } catch {
+        // Fall through.
+      }
+    }
+    return serveFromCache(request, url);
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -372,87 +580,34 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navigations: always try the network first, because a stale HTML document is how a PWA
-  // ends up showing yesterday's dashboard. Fall back to the offline page, and only for a
-  // genuine network failure — a 401 or a 500 is the server talking and should be shown.
   if (request.mode === "navigate") {
-    event.respondWith(
-      (async () => {
-        try {
-          return await fetch(request);
-        } catch {
-          // One retry before giving up — but only when the device thinks it has a network.
-          //
-          // The retry exists because a navigation that fails on a phone is very often a single
-          // dropped request: a radio handing between cells, wifi associated but not yet
-          // authenticated. Landing on a dead-end page for one of those was reported on
-          // 2026-09-03.
-          //
-          // Retrying with the radio off is the opposite mistake, and was reported the day
-          // after: it buys nothing and doubles how long the screen sits blank before the
-          // offline page appears. `onLine` is weak evidence in general — it cannot tell you
-          // anything answers — but `false` is conclusive, and conclusive is all this needs.
-          if (self.navigator.onLine !== false) {
-            try {
-              return await fetch(request);
-            } catch {
-              // Fall through to the offline page.
-            }
-          }
+    event.respondWith(handleNavigation(event, request, url));
+    return;
+  }
 
-          {
-            // Still nothing. Two destinations, and which one matters more than it looks.
-            //
-            // A private navigation goes to the cached shell, which renders today's tasks, the
-            // log and recent training out of IndexedDB (§2.1). The offline page can only
-            // apologise; the shell is the app, minus the network.
-            //
-            // A public navigation goes to the offline page. The portfolio is not mirrored
-            // anywhere — that is §2.2 — so there would be nothing for the shell to show.
-            const cache = await caches.open(CACHE);
-
-            // A public page precached by §2.2 — the portfolio, a project, a resume. Served as
-            // itself, with no rewriting: it is the real page, only from disk.
-            const precached = await cache.match(url.pathname);
-            if (precached) return precached;
-
-            // `/cached` itself is included: its own view links are plain navigations, so
-            // without this, moving from the offline Today to the offline Training screen would
-            // land on the offline page — the app working until you touched it.
-            const isShell = url.pathname === SHELL_URL;
-            const wantsApp =
-              isShell || url.pathname === "/private" || url.pathname.startsWith("/private/");
-            const shell = wantsApp ? await cache.match(SHELL_URL) : null;
-            const offline = shell ?? (await cache.match(OFFLINE_URL));
-            if (!offline) {
-              return new Response("Offline", { status: 503, statusText: "Offline" });
-            }
-            const destination = shell ? SHELL_URL : OFFLINE_URL;
-
-            // Rebuilt rather than returned as-is: a cached Response's `url` is the cache key,
-            // and the page needs the failed path. A redirect would lose the SPA history and a
-            // header would not survive into the document, so it goes in the body's own URL via
-            // a fresh Response — the page reads it from `location.search`.
-            const path = new URL(request.url).pathname + new URL(request.url).search;
-            // A request already aimed at the shell keeps its own query — rewriting it would
-            // turn `?from=/private/athletics` into `?from=/cached?from=...` and every offline
-            // screen would render Today.
-            const target = isShell ? path : `${destination}?from=${encodeURIComponent(path)}`;
-            const html = await offline.text();
-            return new Response(
-              html.replace(
-                "</head>",
-                `<script>history.replaceState(null,"","${target}")</script></head>`,
-              ),
-              {
-                status: 200,
-                headers: { "content-type": "text/html; charset=utf-8" },
-              },
-            );
-          }
-        }
-      })(),
-    );
+  /**
+   * React Server Component payloads (Phase N3) — **the tab-tap freeze**.
+   *
+   * Tapping a tab in the installed app is not a navigation. The App Router intercepts it and
+   * fetches an RSC payload instead, which has `mode: "cors"` and so fell through every branch
+   * of this handler untouched. On a stalled connection that fetch never settled, the router
+   * never got its payload, and the screen sat on a skeleton with no timeout, no error and no
+   * way out. It was the single most visible symptom of the whole report and the one thing this
+   * worker was doing nothing about.
+   *
+   * **On timeout, let it reject.** Deliberately no cached fallback: an RSC payload is a private,
+   * per-request render and there is nothing on disk that could stand in for one. A rejected RSC
+   * fetch makes the App Router give up on the client transition and perform a hard navigation
+   * instead — which arrives back here as `mode: "navigate"`, misses the network again, and
+   * lands on the cached shell. An infinite skeleton becomes a three-second one followed by a
+   * working screen.
+   *
+   * That last step is framework behaviour rather than a documented API, so it is verified
+   * rather than trusted: `scripts/e2e-offline.mjs` drives a real build through a stalled
+   * connection and asserts the app reaches a usable screen.
+   */
+  if (request.headers.get("RSC") !== null || url.searchParams.has("_rsc")) {
+    event.respondWith(fetchWithDeadline(request, BUDGET.rsc));
     return;
   }
 
@@ -474,7 +629,10 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(request, { ignoreVary: true });
         if (hit) return hit;
 
-        const response = await fetch(request);
+        // A miss has to go to the network, and on a stalled connection that is a script the
+        // page is blocked on. The deadline turns "the page never finishes loading" into "the
+        // page fails to load", which the browser and the app can both do something about.
+        const response = await fetchWithDeadline(request, BUDGET.asset);
         // Opaque and error responses are not worth keeping; caching a 404 for a hashed asset
         // would pin the failure for the life of the build.
         if (response.ok) cache.put(request, response.clone());
