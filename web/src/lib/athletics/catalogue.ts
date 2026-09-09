@@ -23,11 +23,14 @@
  * distance, duration and a stroke rate; water work wants distance and duration. Asking for all
  * five every time is exactly what made the old form slow, and Q392 asks for three taps per set.
  *
- * ## What is deliberately not here yet
+ * ## What `muscles` turned into
  *
- * Muscle diagrams and short demonstration clips, the way Hevy shows them. Victor asked for them
- * and asked that they wait — they are a content and asset-pipeline job, not a data-model one.
- * `muscles` below is the hook they will hang off. See `docs/V4_PLAN.md` Phase 2+ (§2.9).
+ * It was a grouping key with a diagram pencilled in against it. Phase 2.9 built that diagram —
+ * `components/site/muscle-map.tsx` — and it reads this array directly, which is why the closed
+ * vocabulary below matters more than it did: a typo here is now a body region that never lights
+ * up rather than a group with one member. The demonstration clips 2.10 asked for are **not**
+ * here and will not be: there is no lawfully reusable set of them, so Victor's call was a written
+ * description instead, which lives in `how-to.ts`.
  */
 
 /** What the session form should ask for. */
@@ -76,24 +79,39 @@ const lift = (name: string, equipment: string, ...muscles: Muscle[]): CatalogueE
   equipment,
 });
 
-const erg = (name: string): CatalogueEntry => ({
+/**
+ * Erg, water and conditioning entries carry muscles too, as of Phase 2.9.
+ *
+ * They used to be empty, with the note "empty for erg and conditioning, where it means little".
+ * That was true while `muscles` was only a grouping key. It stopped being true the moment the
+ * body map read the same field: an empty array renders a figure with nothing lit, which does not
+ * say "this is a whole-body piece", it says "we do not know" — and for a 2k, which is the single
+ * most demanding thing in this catalogue, that is the wrong answer on the screen.
+ *
+ * The three genuinely empty ones are mobility, stretching and foam rolling, where nothing is
+ * being loaded and the blank figure is the honest picture.
+ */
+const ROWING: Muscle[] = ["quads", "glutes", "back", "lats", "core"];
+const PADDLING: Muscle[] = ["lats", "back", "core", "shoulders"];
+
+const erg = (name: string, ...muscles: Muscle[]): CatalogueEntry => ({
   name,
   modality: "erg",
-  muscles: [],
+  muscles: muscles.length > 0 ? muscles : ROWING,
   equipment: "machine-erg",
 });
 
-const water = (name: string): CatalogueEntry => ({
+const water = (name: string, ...muscles: Muscle[]): CatalogueEntry => ({
   name,
   modality: "water",
-  muscles: [],
+  muscles: muscles.length > 0 ? muscles : PADDLING,
   equipment: "boat",
 });
 
-const conditioning = (name: string, equipment = ""): CatalogueEntry => ({
+const conditioning = (name: string, equipment = "", ...muscles: Muscle[]): CatalogueEntry => ({
   name,
   modality: "conditioning",
-  muscles: [],
+  muscles,
   equipment,
 });
 
@@ -253,10 +271,11 @@ export const CATALOGUE: CatalogueEntry[] = [
   erg("Erg Intervals 1000m"),
   erg("Erg Steady State"),
   erg("Erg Warmup"),
-  erg("SkiErg 500m"),
-  erg("SkiErg 1000m"),
-  erg("BikeErg 2000m"),
-  erg("BikeErg 5000m"),
+  // The two that are not a rowing stroke, and so do not take the default.
+  erg("SkiErg 500m", "lats", "triceps", "core", "shoulders"),
+  erg("SkiErg 1000m", "lats", "triceps", "core", "shoulders"),
+  erg("BikeErg 2000m", "quads", "glutes", "calves"),
+  erg("BikeErg 5000m", "quads", "glutes", "calves"),
 
   // ---------------------------------------------------------------- on the water
   water("Paddle 250m"),
@@ -270,17 +289,18 @@ export const CATALOGUE: CatalogueEntry[] = [
   water("Technical Paddle"),
 
   // ---------------------------------------------------------------- conditioning
-  conditioning("Run", "outdoor"),
-  conditioning("Treadmill Run", "machine"),
-  conditioning("Sprint Intervals", "outdoor"),
-  conditioning("Hill Sprints", "outdoor"),
-  conditioning("Stair Climb", "machine"),
-  conditioning("Cycling", "outdoor"),
-  conditioning("Swim", "pool"),
-  conditioning("Jump Rope"),
-  conditioning("Sled Push", "sled"),
-  conditioning("Sled Drag", "sled"),
-  conditioning("Battle Ropes"),
+  conditioning("Run", "outdoor", "quads", "hamstrings", "calves"),
+  conditioning("Treadmill Run", "machine", "quads", "hamstrings", "calves"),
+  conditioning("Sprint Intervals", "outdoor", "hamstrings", "quads", "glutes"),
+  conditioning("Hill Sprints", "outdoor", "quads", "glutes", "calves"),
+  conditioning("Stair Climb", "machine", "quads", "glutes", "calves"),
+  conditioning("Cycling", "outdoor", "quads", "glutes", "calves"),
+  conditioning("Swim", "pool", "lats", "shoulders", "back", "core"),
+  conditioning("Jump Rope", "", "calves"),
+  conditioning("Sled Push", "sled", "quads", "glutes", "calves"),
+  conditioning("Sled Drag", "sled", "quads", "glutes", "hamstrings"),
+  conditioning("Battle Ropes", "", "shoulders", "forearms", "core"),
+  // Nothing is being loaded, so the figure stays blank rather than guessing.
   conditioning("Mobility"),
   conditioning("Stretching"),
   conditioning("Foam Rolling"),

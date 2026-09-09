@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { ArrowRightIcon, CheckIcon, TriangleAlertIcon } from "lucide-react";
 
+import { MuscleMap } from "@/components/site/muscle-map";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { SheetDemo } from "@/components/site/sheet-demo";
 import { Badge } from "@/components/ui/badge";
@@ -354,6 +355,16 @@ function Gallery() {
   );
 }
 
+/** Label, muscle tags, rendered width. Chosen for the cases the drawing can get wrong. */
+const MAP_CASES: Array<[string, string[], number]> = [
+  ["Bench Press · chest, triceps", ["chest", "triceps"], 200],
+  ["Deadlift · hamstrings, glutes, lower back", ["hamstrings", "glutes", "lower back"], 200],
+  ["Pull Up · lats, biceps", ["lats", "biceps"], 200],
+  ["Power Clean · full body", ["full body"], 132],
+  ["Erg 2000m", ["quads", "glutes", "back", "lats", "core"], 132],
+  ["Stretching · nothing marked", [], 96],
+];
+
 export default function KitchenSinkPage() {
   return (
     <div className="flex flex-col gap-8" id="top">
@@ -385,6 +396,23 @@ export default function KitchenSinkPage() {
               <span className="h-3 bg-primary" style={{ width: `var(--spacing-${name})` }} />
               <Spec>--spacing-{name}</Spec>
             </div>
+          ))}
+        </div>
+      </Panel>
+
+      {/* The body map, once, at the three sizes it is actually used at, with the highlight cases
+          that are easy to get wrong: a region that exists on one figure only, one that exists on
+          both, `full body`, and nothing at all. It is drawn from the same `muscles` array the
+          catalogue carries, so a wrong diagram here means wrong data rather than wrong art. */}
+      <Panel title="Muscle map" meta="V4 §2.9 · one drawing, highlighted from the catalogue">
+        <div className="flex flex-wrap items-start gap-6">
+          {MAP_CASES.map(([label, muscles, size]) => (
+            <figure key={label} className="flex flex-col items-center gap-2">
+              <MuscleMap muscles={muscles} size={size} />
+              <figcaption className="text-center">
+                <Spec>{label}</Spec>
+              </figcaption>
+            </figure>
           ))}
         </div>
       </Panel>
