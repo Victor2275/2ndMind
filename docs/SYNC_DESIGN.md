@@ -178,22 +178,24 @@ operation).
 
 ---
 
-## 4a. Workouts as one aggregate — **designed, not built**
+## 4a. Workouts as one aggregate — **BUILT 2026-09-09 (V4 Phase 2)**
 
-> **Not in V3.** §11.1 was answered "workouts too" and reversed to log-only the same day, so
-> the phone never creates a workout and this problem does not arise. The section stays because
-> the design is correct and cost real thought: if phone-side workout logging is ever wanted,
-> this is the answer, and reverting §11.1 is the only other change needed.
+> **Built on 2026-09-09**, V4 Phase 2, after being deferred twice — 2026-08-30 on cost, and
+> again on 2026-09-03 (D-159), which solved the symptom instead by having `allEfforts()` read
+> sets out of `log_entries`. Q391 asked for real session logging, so the cause finally had to be
+> addressed. §11.1 is reversed, the `athletics` log category is retired, and `allEfforts()` is
+> back to one reader.
 >
-> **Re-examined 2026-09-03 and still not built (D-159).** The quick log grew repeated set rows
-> and Victor asked that those sets count toward the PR board. Doing it properly meant this
-> section — roughly 10h, a migration and new conflict rules. Instead `allEfforts()` merges
-> `workout_sets` with the sets stored inside `log_entries`, on read. Cheaper, and it left the
-> sync surface untouched, so a set logged offline reaches the records by the path §1.3 already
-> tested. What is still missing without this section: a quick-logged exercise is not a
-> *session*, so it never appears under "Recent sessions".
-
-*Everything below applies only if the phone creates workouts.*
+> **The design below is what was built, with one correction.** `writeRow` does not open a
+> transaction directly: production runs `neon-http`, which has none, and the aggregate 500'd on
+> the first real session while passing every PGlite test. `atomically()` prefers `db.batch` —
+> Neon's HTTP transaction API — and the foreign key became a sub-select rather than a value read
+> back with `RETURNING`, because a batch can depend on an earlier statement's *effect* but not
+> its *result*. See D-212; the atomicity guarantee is intact, the mechanism is not the obvious
+> one.
+>
+> Proven end to end by `npm run e2e`: a session logged with no network, queued as one op, synced
+> unprompted, and landing in Neon with its sets pointing at a foreign key the phone never saw.
 
 `workout_sets.workout_id` is an `integer` foreign key to `workouts.id`, which is a `serial`.
 Offline, that number **does not exist yet** — the phone creates a workout with a `client_id` and
@@ -208,7 +210,7 @@ Three ways out, and only one is good:
 | **Send the workout and its sets as one operation** | ✅ |
 
 **Decision: a workout create is an aggregate op.** One outbox entry carries the session and all
-its sets; the server applies them in a single transaction and assigns the FK itself. There is no
+its sets; the server applies them as a single atomic unit and assigns the FK itself. There is no
 ordering to get wrong, no orphan to guard against, and no partial workout can exist.
 
 This matches how the data is actually produced — you finish a session and save it once. It is
@@ -429,6 +431,16 @@ workout logging is ever revived, they come back with it.*
 ## 11. Open questions — decide before §1.2, not during
 
 1. ~~Does the phone create workouts at all?~~ **Closed 2026-08-30: log entries only.**
+   **Reopened and reversed 2026-09-09 — the phone creates workouts (V4 Phase 2, D-211).**
+
+   The note below ends *"if this is ever reversed again, §4a is the design — it does not need
+   rediscovering."* That is exactly how it went: Q391 asked for real session logging, §4a was
+   built as written, and the only other change needed was this answer. The design held; the one
+   thing it did not anticipate was that the production driver has no transactions (D-212).
+
+   Everything from here down is the 2026-08-30 reasoning, kept because the reversal is the
+   useful part.
+
 
    Answered "workouts too" first, then reversed the same day. Both answers are recorded because
    the reversal is the useful part: choosing workouts surfaced the parent-child foreign-key

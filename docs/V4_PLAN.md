@@ -1,8 +1,8 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-09
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 299 points. Phases 0, 1 and N done (Milestone A); 4.4 done; Phase 2 is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 311 points. Phases 0, 1, N and 2 done (Milestones A and B); 4.4 done; Phase 3 is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,14 +30,14 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **299 points** (241 + Phase N's 45 + N9's 13, which was always a parenthetical in N5 and is now a row of its own). You said 120–140. The gap is real and is §7 R2, not a rounding error. **93 done.**                                                                                                                                                                                                                                       |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — colour on 09-07, the rest of the system on 09-08: **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured; N9 parked.<br>Next: **Phase 2**, training end to end — **Milestone B**. |
+| **Budget**       | **311 points** (241 + Phase N's 45 + N9's 13 + Phase 2+'s 12, the last two both deferred work made visible rather than new scope). You said 120–140. The gap is real and is §7 R2, not a rounding error. **138 done.**                                                                                                                                            |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. N9 and Phase 2+ parked.<br>Next: **Phase 3**, tags. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
 | **Milestone D**  | End of Phase 6 — the portfolio is finished.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **Done when**    | You open the app on a term morning and the first thing you see is the thing you have to do. And a stranger opens victorgusev.com and does not think "student project".                                                                                                                                                                                                                                                                                           |
-| **Biggest risk** | Phase 2 is a feature, not a redesign, and it reverses a decision that has been declined twice. §7 R3.                                                                                                                                                                                                                                                                                                                                                            |
+| **Biggest risk** | ~~Phase 2 is a feature, not a redesign, and it reverses a decision declined twice.~~ **Spent, and it held** — see §7 R3. The largest remaining risk is R1: the portfolio is untouched through peak application season. |
 
 **Points are difficulty, not schedule** (Q28). One point ≈ one hour of focused work, used to
 compare items against each other. Do not plan a calendar from them.
@@ -424,7 +424,7 @@ variants over one page, every private page 200. Sub-12px elements went **68 → 
 
 ---
 
-### Phase 2 · Training, end to end — **45 pts** **[FEATURE]**
+### Phase 2 · Training, end to end — **45 pts** **[FEATURE]** — ✅ **DONE 2026-09-09** · **Milestone B**
 
 Its own phase because it is a feature, not a redesign. §2.2 has the reversal; `SYNC_DESIGN.md`
 §4a has the design.
@@ -440,7 +440,44 @@ Its own phase because it is a feature, not a redesign. §2.2 has the reversal; `
 | 2.7 | **Reconcile with D-159.** `allEfforts()` currently unions two sources. With sessions writable, decide whether quick-log training stays or folds in. **Do not add a third reader** — that is D-159's whole design |   3 |
 | 2.8 | **Tests:** PGlite against the committed migrations, sync round-trip, offline e2e. The 1,240 count may not drop (Q470)                                                                                            |   4 |
 
-**Ends with (Milestone B):** you log a gym session on the phone, offline, and it syncs.
+**Ends with (Milestone B):** you log a gym session on the phone, offline, and it syncs. ✅
+**Proven, not argued:** `npm run e2e` logs a session with no network, finds "Bench Press" by
+typing `bnch` into the mirrored catalogue, queues it as **one op with no separate set ops**,
+reconnects, and watches it land in real Neon with both sets pointing at a foreign key the phone
+never saw — 185×5 and 175×8.
+
+**Two things were found by running it rather than reading it:**
+
+1. **The aggregate op had no atomicity on the driver that actually runs it** (D-212). Production
+   uses `neon-http`, which has no transactions; PGlite, which every database test uses, does. The
+   op passed sixteen tests and 500'd on the first real session. The whole argument for §4a is
+   that no partial session can exist, and there was no atomic primitive at all.
+2. **Retiring the log category silently removed the only way to record a weigh-in from the
+   phone** (D-215). `bodyweightLbs` was a field on it. Two tests caught it by suddenly having no
+   field to read; the field followed the feature onto the session screen.
+
+---
+
+### Phase 2+ · The catalogue gets pictures — **12 pts** — ⏸ **parked, by Victor's call**
+
+Asked for on 2026-09-09 alongside 2.1, and deliberately deferred: *"the visuals do not need to be
+added now."* It is a content and asset-pipeline job, not a data-model one, and Phase 2 shipped the
+hook it hangs off — `exercises.muscles`, a closed vocabulary of fifteen regions
+(`lib/athletics/catalogue.ts`).
+
+| #    | Item                                                                                                                                                                                     | Pts |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
+| 2.9  | **A muscle diagram**, front and back, as one inline SVG with a `<path>` per region named for the `MUSCLES` vocabulary. Highlighted from an exercise's `muscles` array — no per-exercise art | 5 |
+| 2.10 | **A short demonstration clip per movement**, the way Hevy shows them. 164 of them is the problem, not the player: sourcing, licensing and ~164 files to host and mirror                    | 5 |
+| 2.11 | **Offline behaviour for both.** The session screen's promise is that it works in a gym basement, so a diagram that needs a network breaks the one screen that must not                    | 2 |
+
+**The hard part is 2.10, and it is not technical.** A clip per movement is either licensed, filmed,
+or scraped, and only the first two are options. Worth deciding *what* the clips are before any
+code: a licensed set, a handful filmed for the movements actually used, or none — with the diagram
+alone carrying it.
+
+**The diagram is cheap and independent**, so it can ship on its own. One SVG, fifteen regions, and
+the data is already there.
 
 ---
 
@@ -544,18 +581,20 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 0     | Say what is true — docs, and the 8.8px gate mystery |       8 | ✅ done                |
 | 1     | Tokens, themes, type, space, motion, primitives     |      40 | ✅ done · Milestone A  |
 | **N** | **Degraded network — the plane-wifi freeze**        |  **45** | ✅ done                |
-| 2     | Training, end to end                                |      45 | **[FEATURE]** · next   |
+| 2     | Training, end to end                                |      45 | ✅ done · Milestone B  |
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
-| 3     | Tags                                                |      12 | **[FEATURE]**          |
+| 2+    | The catalogue gets pictures — diagrams, clips        |      12 | ⏸ parked               |
+| 3     | Tags                                                |      12 | **[FEATURE]** · next   |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
 | 5     | The private screens                                 |      50 |                        |
 | 6     | Brand and the public site                           |      36 |                        |
 | 7     | Gates, performance, review                          |      22 |                        |
-|       | **Total**                                           | **299** |                        |
+|       | **Total**                                           | **311** |                        |
 
-**299, not 286.** N9 is the 13-point half of N5 that was always in the plan as a parenthetical
-("3 (+13)") and was never in the total. Promoting it to a row is bookkeeping, not new scope —
-it is the same work, now visible. **93 points are done** (0, 1, N, and 4.4).
+**311, not 286.** Two rows were promoted out of footnotes rather than invented: N9 is the
+13-point half of N5 the plan always carried as "3 (+13)", and Phase 2+ is the muscle diagrams and
+demonstration clips Victor asked for alongside 2.1 and asked to defer. Same work, now visible.
+**138 points are done** (0, 1, N, 2, and 4.4).
 
 Pure design work, with both feature phases, the settings screen and the whole of Phase N removed:
 **~178 pts.**

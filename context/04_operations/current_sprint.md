@@ -16,10 +16,11 @@ read_when: Always — anything about current priorities or scheduling.
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
   **V4 is under way** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  299 points, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every colour, size,
+  311 points, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every colour, size,
   space and motion value comes from one place and a test fails if it does not — the settings
-  screen pulled forward, and **Phase N**, the plane-wifi freeze. **Phase 2 (training, end to
-  end) is next; it is Milestone B.**
+  screen pulled forward, **Phase N** (the plane-wifi freeze), and **Phase 2 — Milestone B**:
+  training is logged as sessions on the phone, offline, and syncs. Proven end to end against the
+  real database rather than argued. **Phase 3 (tags) is next.**
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 

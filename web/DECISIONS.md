@@ -17,6 +17,227 @@ useful part.
 
 ---
 
+## 2026-09-09 · V4 Phase 2 — training, end to end
+
+**Milestone B.** You log a gym session on the phone, offline, and it syncs — proven end to end
+against real Neon by `npm run e2e`, not argued for. This is the phase that reverses
+`SYNC_DESIGN.md` §11.1, a decision that had been declined twice on cost (2026-08-30, and again
+on 2026-09-03 as D-159).
+
+Two of the entries below record things found by **running** it: the aggregate op had no atomicity
+on the driver that actually runs it (D-212), and retiring the log category silently removed the
+only way to record a weigh-in from the phone (D-215).
+
+### D-218 · "AI add" proposes a catalogue entry, and prefers matching to creating
+
+**Decision.** `POST /api/exercises/suggest` takes a description and returns either an existing
+catalogue name or a proposed new entry. It never writes. Adding is a separate tap, through
+`addExercise`, which is the only writer.
+
+**Why it cannot save.** The same rule D-186 set for voice: a model that can write to a training
+log is a model that can quietly invent a personal record. Every number a model produces here is
+looked at by a person before it becomes a row.
+
+**Why matching comes first.** The most common true answer is that the movement is already there
+under a name you did not think of — "incline press" is "Incline Bench Press". A model that only
+ever created would fill the catalogue with near-duplicates, and a near-duplicate is worse than a
+missing entry: it splits a lift's history in two, so the record board shows a lower best for
+both halves. The existing names are given to the model, and a `match` naming something not in
+that list is discarded as a hallucination — the failure it is most prone to, having just been
+shown a list and asked to pick from it.
+
+**Visible offline, and honest.** Victor's call. Hiding the button when the connection drops would
+make the one screen designed for a gym basement change shape depending on the signal, which is a
+worse surprise than a message.
+
+**How to reverse.** Delete the route and the button; fuzzy search and typing a name by hand are
+the whole workflow without it.
+
+### D-217 · Log entries are editable, with a guard that is deliberately not `fileEntry`'s
+
+**Decision.** `editEntry` changes an entry's note and fields. It **cannot change its category** —
+the category is read from the stored row and the signature has no room for one.
+
+**Why.** Q402 sat at "no default" until 2026-09-08 and was answered yes: you will mistype a
+weight. But `fileEntry` is deliberately one-way — it can only move a note *out* of the unsorted
+pile, so a mistyped id cannot recategorise a real entry — and an edit path that accepted a
+category would be a second, much wider door to exactly what the first door carefully restricts.
+Reusing that guard was the tempting move and the wrong one; the two operations protect different
+things.
+
+**A retired category is still editable.** An old training entry has to stay correctable even
+though no new one can be created (D-215). Retirement closes the *create* door, not the record.
+
+**`search_text` is recomputed.** Leaving it would make an edited entry findable by the words it
+used to contain and not by the ones on screen — which reads as search being broken.
+
+**How to reverse.** Delete `editEntry` and `updateLogEntry`.
+
+### D-216 · A session is written to the outbox, never through a Server Action
+
+**Decision.** `saveSession` enqueues and returns. There is no server-action path for training,
+online or off.
+
+**Why this is possible here and nowhere else.** The aggregate op carries its own identity, the
+server assigns the foreign key, and a re-send is an upsert — so writing locally and letting the
+ordinary flush deliver it is not a degraded mode, it is the same result a moment later. Every
+other write in the app needs two paths and `lib/offline/write.ts` to keep them in step.
+
+**Three things it buys.** The screen behaves identically in a gym basement and at a desk. It has
+no honesty problem — unlike D-206's case, this one *can* promise the entry is on the device,
+because it is. And one path cannot drift from the other, which is the lesson of D-159's union
+applied a level up.
+
+**The cost, stated.** A session is not in Postgres the instant you tap save. Nothing reads it
+from there in that instant: the screen renders from the local store, which already has it.
+
+**How to reverse.** Add a Server Action that calls `logWorkout` and branch on connectivity —
+and inherit the two-paths problem that argument was avoiding.
+
+### D-215 · Training folds into sessions; the `athletics` log category is retired
+
+**Decision.** The quick log's Training tab is gone. Training is logged at
+`/private/athletics/log`, where a set belongs to a workout rather than sitting inside a log
+entry's JSON. `allEfforts()` drops from two readers to one. The launcher shortcut and the tab
+bar's Train action point at the logger.
+
+**Why fold rather than keep both.** Victor's call, and it closes D-159. That union existed for
+exactly one reason — the phone could not create a `workout` row — and Phase 2 removed the
+reason. Item 2.7 said *do not add a third reader*; the answer turned out to be one.
+
+**Retired, not deleted.** `summarise` and `searchTextFor` are given a category key and a blob of
+JSON, and with no definition to match they fall back to the bare note — so deleting it would
+silently strip every old training entry of its exercise and sets in the timeline and in search.
+Retirement also shuts the create door: `writableCategoryByKey` will not return it, so the two
+ways of recording a lift cannot start diverging again.
+
+**What it quietly broke, and how that was found.** `bodyweightLbs` was a field on that category,
+so retiring it **removed the only way to log a weigh-in from the phone**. Nothing said so; two
+tests in `offline/write.test.ts` failed because they suddenly had no field to read. The field
+followed the feature onto the session screen, and a weight can still be recorded on its own
+without a session. Worth remembering as the shape of the risk in any fold: the capability that
+disappears is the one that was riding along.
+
+**The tab bar gained `section`.** Train points at the logger and stands for everything under
+`/private/athletics`, so standing on the records page still lights it. Without that, a tab goes
+dark on a page inside its own section, which reads as being lost.
+
+**How to reverse.** Move the definition back into `CATEGORIES` and restore `loggedEfforts` in
+`athletics/queries.ts`.
+
+### D-214 · Two search implementations, on purpose
+
+**Decision.** `lib/athletics/exercise-search.ts` is fuzzy and ranked. `lib/offline/search.ts`
+stays prefix-matching. They are not merged.
+
+**Why.** They want opposite things. The log search is over prose you wrote and are recalling, so
+`run` finds `running` and `ran` does not — fuzzy matching there turns every query into a hundred
+weak hits. The catalogue is a closed list of ~164 names you are trying to *reach*, one-handed,
+mid-set: you type `bnch` and the right row has to be first.
+
+**Ranking is what makes fuzzy usable.** A fuzzy matcher without it is worse than a prefix one,
+because `press` matching thirty movements in arbitrary order is thirty rows to read.
+
+**The contiguous-substring bonus was added after a real miss.** `row` ranked "Rope Pushdown"
+above "Barbell Row" — r, o and w do appear in that order and the `r` even starts a word, so every
+other signal pointed the wrong way. Subsequence matching is what makes typos recoverable and also
+what makes coincidences score; the fix is not to stop matching them but to rank them below the
+case where the letters are together.
+
+**How to reverse.** Delete the module and use `matches()` from the log search; typing `bnch`
+stops working.
+
+### D-213 · The exercise catalogue is a seeded, synced table
+
+**Decision.** `exercises`, ~164 rows, written by `npm run db:seed-exercises` from
+`lib/athletics/catalogue.ts`. Mirrored to the phone like every other table.
+
+**Why a table and not a constant.** The phone can add to it — that is what "AI add" and typing a
+new movement do — so it has to be a row that syncs. Seeding it from a file rather than a
+migration keeps one copy of the list, readable from both the seed script and the client bundle.
+
+**Why curated rather than derived.** The obvious move was to seed from the exercise names already
+in the database. Measured on 2026-09-08: **one distinct name**, because training had been logged
+as free text. Deriving would have produced a catalogue with one row in it.
+
+**`modality` is the load-bearing column.** It decides what the session form asks for — weight and
+reps for a lift, distance, time and stroke rate for an erg piece. Asking for all six every time
+is what made the old form slow, and Q392 asks for three taps per set.
+
+**A set stores the exercise *name*, not a foreign key.** Deliberate: `workout_sets.exercise` is
+free text and every Hevy import writes names this table has never seen, so a foreign key would
+make importing a CSV fail on a movement nobody had catalogued. The catalogue assists entry; it
+does not police history.
+
+**The seed never touches what you added.** Rows whose `source` is not `seed` are left alone, and
+a name gone from the seed is not deleted — by then `workout_sets` rows point at it as free text.
+
+**How to reverse.** Drop the table and the script; the picker becomes a plain text field.
+
+### D-212 · The aggregate op needs an atomic primitive the production driver actually has
+
+**Decision.** `atomically()` in `lib/sync/apply.ts` prefers `db.batch` and falls back to
+`db.transaction`. The session's foreign key is a **sub-select**, not a value read back with
+`RETURNING`.
+
+**Why — and this is the one worth reading.** Production runs `drizzle-orm/neon-http`, a stateless
+HTTP driver with **no transaction support**: `db.transaction()` throws on it outright. PGlite,
+which every database test uses, supports transactions perfectly well. So the aggregate op passed
+sixteen database tests and **500'd on the first real session**. Found by `npm run e2e`: a session
+logged offline, reconnected, and the outbox came back with `server returned 500`.
+
+That mattered more than an ordinary bug. The entire argument for §4a's aggregate op is that **no
+partial session can exist**, and on the driver that actually runs it there was no atomic
+primitive at all — it was a session write that usually completed, which is a different and much
+worse thing than the one the design promised.
+
+**Why the foreign key changed shape.** `batch` sends every statement in one request wrapped in
+`BEGIN`/`COMMIT` server-side, which is genuinely atomic — but a batch can depend on an earlier
+statement's *effect*, not its *result*. Reading the parent's id back with `RETURNING` would have
+made the aggregate impossible to send as one unit. As a sub-select, the dependency becomes one
+the database resolves inside the same transaction.
+
+**How it is guarded.** Three tests hand `applyOps` a handle shaped like neon-http — it has
+`batch`, and its `transaction` throws — so the branch production takes is the branch that gets
+exercised. The lesson generalises: **a test database that is more capable than the production one
+will pass things production cannot do.**
+
+**How to reverse.** Use `db.transaction` unconditionally and move to `drizzle-orm/neon-serverless`,
+which pools over WebSockets and does support transactions.
+
+### D-211 · Workouts are writable, and a session travels as one aggregate op
+
+**Decision.** `workouts`, `workout_sets` and `exercises` gain `client_id` and join `WRITABLE`. A
+session and all its sets are **one outbox op**, applied in one atomic unit, with the server
+assigning the foreign key. `SYNC_DESIGN.md` §4a is built; §11.1 is reversed.
+
+**Why it was deferred twice, and why it is not any more.** `workout_sets.workout_id` is an integer
+foreign key to a `serial`, and offline that number does not exist — so a set created on the phone
+has nothing to point at. That cost was declined on 2026-08-30, and again on 2026-09-03 (D-159),
+which solved the symptom instead by reading sets out of log entries. Q391 asked for real session
+logging, so the cause finally had to be addressed.
+
+**Why an aggregate and not the alternatives.** §4a lists three ways out. Sets carrying a
+`parent_client_id` resolved at apply time works, but makes the child op ordering-dependent on the
+parent and §5's per-`clientId` block does not cover that — a failed parent would let orphaned
+children through. Extending the block rule to cover parent ids fixes the orphan and adds a
+dependency graph to the outbox for one relationship. Sending them as one operation has no
+ordering to get wrong, no orphan to guard against, and matches how the data is produced: you
+finish a session and save it once.
+
+**Identity moved first.** `identityOf` addressed workouts by the server's `id`, which was safe
+only because they were pull-only, and said so: *"if they ever become writable, this case has to
+move to a client-generated key first."* This is that move.
+
+**After creation, sets are independent.** Editing one set is its own op keyed by that set's
+client id, so fixing a typo in set three does not resend the session — and cannot overwrite an
+edit made on the laptop in between with whatever the screen happened to hold.
+
+**How to reverse.** Remove the three entities from `WRITABLE`; the phone goes back to pull-only
+and the session screen has nowhere to write.
+
+---
+
 ## 2026-09-08 · V4 Phase N — the degraded network, and the notification badge
 
 The plane-wifi freeze, diagnosed in `docs/DEGRADED_NETWORK.md` and built here — **Phase N

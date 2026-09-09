@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-09
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -223,11 +223,11 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,452 tests across 97 files** as of
-2026-09-08, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,502 tests across 100 files** as of
+2026-09-09, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
-"1,375 across 90" until V4 Phase N. The suite more than doubled during V3 and the floor was never
+"1,375 across 90", then "1,452 across 97" until V4 Phase 2. The suite more than doubled during V3 and the floor was never
 re-stated, so for a week the number that is supposed to catch a regression would have accepted
 losing half the suite. Re-state it whenever it moves.)
 
@@ -301,7 +301,10 @@ build"* rather than printing the query (D-156).
 Everything not listed here is markdown. Four tables live in Neon via Drizzle, with migrations
 committed under `drizzle/` and applied with `npm run db:migrate`:
 
-- `workouts` / `workout_sets` — training data, tabular and queried across rows.
+- `workouts` / `workout_sets` — training data, tabular and queried across rows. **Writable from
+  the phone since V4 Phase 2**: a session and all its sets travel as one aggregate op and the
+  server assigns the foreign key (`SYNC_DESIGN.md` §4a, D-211).
+- `exercises` — the movement catalogue behind the session form (D-213).
 - `tasks` — one model for everything actionable (D-037).
 - `log_entries` — structured daily logging, per-category fields in JSONB. The form's
   shortcuts are declared per field in `lib/log/categories.ts` and nowhere else: `sticky`,
@@ -312,9 +315,17 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
   nothing happened.
-- `workouts` / `workout_sets` — pull-only, and mirrored by the server's `id` rather than a
-  client key (D-169), which is safe *only* while the phone cannot create one. Making them
-  writable means giving them a client key first.
+- `workouts` / `workout_sets` — **writable from the phone since V4 Phase 2**, and addressed by a
+  client key. The note that stood here said they were pull-only and mirrored by the server's
+  `id` (D-169), which was safe *only* while the phone could not create one, and that "making
+  them writable means giving them a client key first" — which is exactly what D-211 did. A
+  session and all its sets travel as **one aggregate op** applied atomically, with the server
+  assigning the foreign key (`SYNC_DESIGN.md` §4a). After creation, sets are independent ops.
+- `exercises` — the movement catalogue: ~164 seeded rows (`npm run db:seed-exercises`) plus
+  anything added on the phone. Mirrored so fuzzy search works with no signal, which is why it is
+  a synced table rather than an API call. `modality` decides which fields the session form asks
+  for (D-213). A set stores the exercise **name**, not a foreign key — Hevy imports write names
+  the catalogue has never seen, so the catalogue assists entry and does not police history.
 - `error_reports` — crash reports from this app's own code (D-165). **Not syncable** and not in
   `ENTITIES`: diagnostics are one-directional and disposable. Rows are **counted, not
   accumulated** — one per fingerprint, upserted — because a render loop otherwise makes this the
