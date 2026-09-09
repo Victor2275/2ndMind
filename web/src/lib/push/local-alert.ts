@@ -70,8 +70,9 @@ export async function alertIfStuck(summary: OutboxSummary): Promise<boolean> {
       {
         body: "They are still on this phone. Open Not sent to see why.",
         tag: TAG,
+        // The stencil, not the tile — see D-203 and the note in `sw-template.js`.
         icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
         data: { url: "/private/sync" },
       },
     );

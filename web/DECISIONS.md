@@ -17,6 +17,46 @@ useful part.
 
 ---
 
+## 2026-09-08 · V4 Phase N — the degraded network, and the notification badge
+
+The plane-wifi freeze, diagnosed in `docs/DEGRADED_NETWORK.md` and built here. The badge is not
+part of that and is only in this section because it was reported the same day.
+
+### D-203 · The notification badge is an alpha stencil, drawn from the same mark
+
+**Decision.** A fourth icon variant, `public/icons/badge-96.png`: the brain in solid white on
+transparent, with the grooves **knocked out of the alpha** rather than painted. Both places that
+raise a notification — the worker's `push` listener and `local-alert.ts` — now pass it as
+`badge` and keep `icon-192.png` as `icon`.
+
+**Why.** Reported symptom: a white box in the status bar. The cause is not a broken file.
+Android discards every colour in a `badge` and paints whatever is left opaque in the system
+accent, so it reads the image as a stencil — and `icon-192.png` is a magenta mark on an
+**opaque** near-black tile. The tile is the shape it saw. The file was always correct as a
+picture and always solid as a mask.
+
+**Why the grooves had to change, not just the colours.** `brain.svg` cuts its folds by stroking
+them in the ground colour, which is invisible against the tile and completely opaque. Recolouring
+the mark white while leaving that alone would have produced a white blob with no features. The
+badge therefore renders through an SVG luminance mask, where the groove strokes are black and
+drop out of the alpha entirely. `src/test/png.ts` reads the result: a row across the middle of
+the mark must break into more than two separate opaque runs, which is the assertion that would
+have failed on every version of this before today.
+
+**Why it is tested by pixels.** This bug is invisible to every other check — the file opens,
+decodes, is the right size, and looks like a brain in any viewer. Only the alpha channel tells
+the fix from the bug, so the test decodes the PNG (`node:zlib` and ~60 lines, rather than adding
+`sharp`) and asserts on it. `icon-192.png` is the positive control: it must still be magenta and
+opaque, because the reverse mistake — pointing `icon` at the stencil — would "fix" the status bar
+by turning the large icon into a white smear.
+
+**Not simplified for the small size,** deliberately. At 24dp the silhouette is what identifies it
+and the grooves are texture; widening them would make the badge a different mark from the
+launcher icon, which is the opposite of what was asked for.
+
+**How to reverse.** Point `badge` back at `/icons/icon-192.png` in both files and drop the
+`badge-96.png` entry from `scripts/render-icons.mjs`. The white box comes back with it.
+
 ## 2026-09-08 · V4 §1.5–§1.12 — the rest of the system
 
 Colour was finished on 2026-09-07 (D-194). This is everything else that is a number: type,
