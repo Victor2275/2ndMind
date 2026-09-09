@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { reportError } from "@/lib/errors/client";
 import { alertIfStuck } from "@/lib/push/local-alert";
 import { buzzFailed } from "@/lib/haptics";
+import { BUDGET } from "@/lib/net/deadline";
+import { reachabilityStore, startWatching } from "@/lib/net/reachability";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
 import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
 import { allOps, openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/lib/sync/store";
@@ -67,8 +69,46 @@ export function requestSync() {
 /** How many times to go round when the server says there is more waiting. */
 const MAX_PAGES = 20;
 
+/**
+ * When to conclude a run has wedged and release the mutex anyway (Phase N4).
+ *
+ * `runningRef` is what stops two flushes overlapping, and it is only cleared in `finally`. So
+ * anything that never settles inside `run` disables syncing **for the life of the page** — and
+ * the symptom is the worst kind: no error, no badge change, "Send now" simply does nothing, and
+ * the outbox quietly grows until the app is reloaded. That is what a stalled POST used to do.
+ *
+ * The deadline on `httpPoster` fixes the network case at its source, so this is belt and braces
+ * for the rest — IndexedDB blocking on an upgrade, or a bug in a future branch of `flush`.
+ *
+ * Derived rather than picked, so it cannot start firing during legitimate work when a budget is
+ * tuned: the longest honest run is every page taking its full sync budget, plus room for the
+ * database work between them. Releasing the mutex early is safe even if this is wrong — every op
+ * carries an idempotency key and the outbox dedupes, so the cost of two overlapping flushes is
+ * one wasted request, against a sync that is otherwise dead until reload.
+ */
+const MAX_RUN_MS = MAX_PAGES * BUDGET.sync + 30_000;
+
 export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
   const [outbox, setOutbox] = useState<OutboxSummary | null>(null);
+
+  /**
+   * What the connection is actually doing (Phase N7).
+   *
+   * Read here rather than in a component of its own because this is already the one place in
+   * the app that talks about the network, and two fixed pills competing for the same corner is
+   * how a quiet signal becomes clutter. `useSyncExternalStore` rather than an effect: the store
+   * has no server value, and the neutral server snapshot is what keeps this from being a
+   * hydration mismatch on every private page.
+   */
+  const reachability = useSyncExternalStore(
+    reachabilityStore.subscribe,
+    reachabilityStore.getSnapshot,
+    reachabilityStore.getServerSnapshot,
+  );
+
+  // Watching is started here and nowhere else. It is reference-counted, so mounting the runner
+  // on both the live app and the cached shell is safe.
+  useEffect(() => startWatching(), []);
 
   // Refs, not state: none of this should cause a render, and a re-render mid-flush would
   // restart the effect and run a second one.
@@ -88,6 +128,9 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
       if (!manual && pausedForAuthRef.current) return;
 
       runningRef.current = true;
+      const watchdog = setTimeout(() => {
+        runningRef.current = false;
+      }, MAX_RUN_MS);
       try {
         dbRef.current ??= await openSyncDb();
         const db = dbRef.current;
@@ -146,6 +189,7 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
         // changes, and the outbox quietly grows for a week.
         void reportError(error);
       } finally {
+        clearTimeout(watchdog);
         runningRef.current = false;
         window.dispatchEvent(new Event(SYNC_DONE_EVENT));
       }
@@ -171,8 +215,31 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
     };
   }, [offline]);
 
-  // Nothing to say when the outbox is empty, which is almost always.
-  if (!outbox || outbox.urgency === "none") return null;
+  const queued = outbox && outbox.urgency !== "none";
+
+  /**
+   * What the connection is doing, when it is worth saying (Phase N7).
+   *
+   * The app is genuinely fine on a stalled connection — screens render from IndexedDB and
+   * entries queue — it just *looks* broken, because everything that would normally be instant
+   * takes three seconds and then comes from disk. One quiet line is the difference between
+   * "this is slow" and "this is broken", and it costs nothing when the connection is fine.
+   *
+   * The wording claims only what is true. It is tempting to say everything is saved on the
+   * device, and on the cached shell that is exactly right — but a form under `/private` posts
+   * to a Server Action, and until every write goes through the outbox there is no local copy to
+   * promise. So it describes reading, which holds in both places, and says nothing about
+   * writing. See D-206.
+   */
+  const connection =
+    reachability.state === "unreachable"
+      ? "No connection — showing this phone's copy"
+      : reachability.state === "degraded"
+        ? "Connection is poor — showing this phone's copy"
+        : null;
+
+  // Nothing to say when the outbox is empty and the connection is fine, which is almost always.
+  if (!queued && !connection) return null;
 
   /**
    * The badge (§1.7). It escalates, and it never fades.
@@ -185,28 +252,37 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
    * Colour carries the difference as well as the words, because this is read at a glance in a
    * gym. Failed is the only state that uses the destructive colour, and it is the only state
    * that will still be here tomorrow without a person.
+   *
+   * **A poor connection is never one of the loud states.** It is not a fault and there is
+   * nothing to do about it, so it takes the quiet tone even when it is the only thing being
+   * said — the noisy colours are reserved for something that needs a person.
    */
   const tone =
-    outbox.urgency === "failed"
+    outbox?.urgency === "failed"
       ? "border-destructive/60 text-destructive"
-      : outbox.urgency === "stale"
+      : outbox?.urgency === "stale"
         ? "border-highlight/60 text-highlight"
         : "border-border text-muted-foreground hover:text-foreground";
 
   const dot =
-    outbox.urgency === "failed"
+    outbox?.urgency === "failed"
       ? "bg-destructive"
-      : outbox.urgency === "stale"
+      : outbox?.urgency === "stale"
         ? "bg-highlight"
         : "bg-primary";
 
   // Above the phone tab bar, below the update prompt, and never over the centre of the
   // screen: a log entry in progress must survive anything the app says about itself.
-  const className = `fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 items-center gap-2 rounded-full border bg-card/95 px-3 font-mono text-xs shadow-lg backdrop-blur-md transition-colors sm:bottom-6 print:hidden ${tone}`;
+  const className = `fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex min-h-10 max-w-[min(20rem,calc(100vw-2rem))] items-center gap-2 rounded-full border bg-card/95 px-3 text-left font-mono text-xs shadow-lg backdrop-blur-md transition-colors sm:bottom-6 print:hidden ${tone}`;
   const body = (
     <>
-      <span aria-hidden className={`size-1.5 rounded-full ${dot}`} />
-      {outbox.label}
+      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+      {/* The queue is the more specific thing to say, so it leads. The connection line is
+          context for it, and on its own when there is nothing waiting. */}
+      <span className="min-w-0">
+        {queued ? outbox.label : connection}
+        {queued && connection && <span className="block text-muted-foreground">{connection}</span>}
+      </span>
     </>
   );
 

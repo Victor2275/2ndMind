@@ -1,3 +1,4 @@
+import { fetchWithDeadline } from "@/lib/net/deadline";
 import { HlcClock, HlcDriftError } from "@/lib/sync/hlc";
 import { isEntity, MAX_OPS, type ChangeRow, type SyncResponse } from "@/lib/sync/protocol";
 import {
@@ -200,13 +201,29 @@ async function holdAll(
   for (const op of ops) await retryLater(db, op.opId, { at, status, message });
 }
 
-/** The default `post`, used everywhere except tests. */
+/**
+ * The default `post`, used everywhere except tests.
+ *
+ * The deadline is Phase N4, and it is what makes every failure path above reachable. A stalled
+ * POST used to hang here forever: `flush` never returned, so `SyncRunner`'s `runningRef` stayed
+ * `true` and **"Send now" did nothing until the app was reloaded** — the one button whose whole
+ * job is to work when syncing is not.
+ *
+ * Nothing below this line needed changing to fix that. `flush` already classifies a rejection
+ * from `post` as `transient`, so the deadline alone starts the backoff, the badge and the retry
+ * screen working. The budget is ten seconds rather than a navigation's three because a batch of
+ * a hundred ops is legitimately slow to apply, and nobody is watching a flush.
+ */
 export const httpPoster: Poster = async (body) =>
-  fetch("/api/sync", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    // The session cookie is same-origin and httpOnly; this is the default, stated because a
-    // background fetch losing its credentials is a silent 401 loop.
-    credentials: "same-origin",
-  });
+  fetchWithDeadline(
+    "/api/sync",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      // The session cookie is same-origin and httpOnly; this is the default, stated because a
+      // background fetch losing its credentials is a silent 401 loop.
+      credentials: "same-origin",
+    },
+    "sync",
+  );

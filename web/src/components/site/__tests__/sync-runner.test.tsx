@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * When the runner is allowed to talk to the server (V3 §1.3, D-175).
@@ -41,6 +41,8 @@ vi.mock("@/lib/sync/store", () => ({
   allOps: () => allOps(),
 }));
 
+import { record, resetReachability } from "@/lib/net/reachability";
+
 const { SyncRunner } = await import("../sync-runner");
 
 beforeEach(() => {
@@ -75,22 +77,23 @@ describe("the shell's runner stays quiet unless it has something to send", () =>
   });
 });
 
-describe("the badge", () => {
-  const QUEUED = [
-    {
-      opId: "a",
-      entity: "log_entry",
-      op: "create",
-      clientId: "c1",
-      payload: {},
-      hlc: "1",
-      state: "pending",
-      attempts: 0,
-      lastError: null,
-      createdAt: Date.now(),
-    },
-  ];
+/** One pending op, which is all any of these need to make the badge render. */
+const QUEUED = [
+  {
+    opId: "a",
+    entity: "log_entry",
+    op: "create",
+    clientId: "c1",
+    payload: {},
+    hlc: "1",
+    state: "pending",
+    attempts: 0,
+    lastError: null,
+    createdAt: Date.now(),
+  },
+];
 
+describe("the badge", () => {
   it("navigates by document on the shell, where there is no server to ask", async () => {
     pendingCount.mockResolvedValue(1);
     allOps.mockResolvedValue(QUEUED);
@@ -110,5 +113,145 @@ describe("the badge", () => {
 
     const link = await screen.findByRole("link");
     expect(link.hasAttribute("data-next-link")).toBe(true);
+  });
+});
+
+describe("a run that wedges (Phase N4)", () => {
+  /**
+   * `runningRef` is the mutex that stops two flushes overlapping, and it is only cleared in
+   * `finally`. So anything inside `run` that never settles disables syncing **for the life of
+   * the page**, and the symptom is the worst kind available: no error, no change to the badge,
+   * "Send now" simply does nothing, and the outbox grows quietly until the app is reloaded.
+   *
+   * A stalled POST used to do exactly that. The deadline on `httpPoster` fixes it at the source
+   * — this covers everything else, which is why it is staged with a `flush` that never returns
+   * rather than with a network condition.
+   */
+  const SYNC_EVENT = "2ndmind:sync";
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("releases the mutex, so Send now is not dead until reload", async () => {
+    vi.useFakeTimers();
+    flush.mockImplementation(() => new Promise(() => {}));
+
+    render(<SyncRunner />);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(flush).toHaveBeenCalledTimes(1);
+
+    // While the run is held, a manual trigger is correctly ignored — the mutex is doing its job.
+    window.dispatchEvent(new Event(SYNC_EVENT));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(flush).toHaveBeenCalledTimes(1);
+
+    // Ten minutes is well past any watchdog worth having, and deliberately not the constant
+    // itself: a value that needed importing here could be raised to infinity and this would
+    // still pass.
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+    window.dispatchEvent(new Event(SYNC_EVENT));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(flush).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not release it while a run is merely slow", async () => {
+    // The other half. A watchdog that fired early would let two flushes overlap on every large
+    // batch, which is a request wasted on every sync rather than a bug that needs one.
+    vi.useFakeTimers();
+    flush.mockImplementation(() => new Promise(() => {}));
+
+    render(<SyncRunner />);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    window.dispatchEvent(new Event(SYNC_EVENT));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("what the badge says about the connection (Phase N7)", () => {
+  /**
+   * The app is genuinely fine on a stalled connection — screens render from IndexedDB and
+   * entries queue — it just *looks* broken, because everything that would be instant takes
+   * three seconds and then comes from disk. One quiet line is the whole feature.
+   *
+   * The wording is under test as much as the visibility. It deliberately claims nothing about
+   * writes: a form under /private posts to a Server Action and has no local copy, so "saved on
+   * this device" would be a lie in the one place someone would rely on it (D-206).
+   */
+  beforeEach(() => {
+    resetReachability();
+  });
+
+  afterEach(() => {
+    resetReachability();
+  });
+
+  it("says nothing at all when the connection is fine and nothing is queued", async () => {
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("speaks up once requests start stalling, even with an empty outbox", async () => {
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+
+    act(() => record("stalled"));
+
+    const link = await screen.findByRole("link");
+    expect(link.textContent).toContain("Connection is poor");
+  });
+
+  it("does not promise the entry is saved on the device, because it is not", async () => {
+    // The plan's original wording. It is true on the cached shell and false in the live app,
+    // and the live app is where someone would act on it.
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+
+    act(() => record("stalled"));
+
+    const link = await screen.findByRole("link");
+    expect(link.textContent).not.toMatch(/saved/i);
+  });
+
+  it("is blunter when the device says there is no network at all", async () => {
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+
+    const link = await screen.findByRole("link");
+    expect(link.textContent).toContain("No connection");
+  });
+
+  it("lets the queue lead when there is one, and keeps the connection as context", async () => {
+    // The queue is the more specific thing to say. A poor connection explains it rather than
+    // replacing it.
+    allOps.mockResolvedValue(QUEUED);
+    render(<SyncRunner />);
+    const link = await screen.findByRole("link");
+
+    act(() => record("stalled"));
+
+    await waitFor(() => expect(link.textContent).toContain("Connection is poor"));
+    expect(link.textContent).toContain("1 waiting");
+  });
+
+  it("goes quiet again as soon as something answers", async () => {
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+    act(() => record("stalled"));
+    await screen.findByRole("link");
+
+    act(() => record("ok"));
+
+    await waitFor(() => expect(screen.queryByRole("link")).toBeNull());
   });
 });

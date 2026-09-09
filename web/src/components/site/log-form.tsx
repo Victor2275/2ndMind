@@ -13,6 +13,7 @@ import { useFormStatus } from "react-dom";
 
 import { createLogEntry } from "@/app/private/log/actions";
 import { DictateButton } from "@/components/site/dictate-button";
+import { SlowSaveNotice } from "@/components/site/slow-save";
 import {
   keypadFor,
   rowFieldsFor,
@@ -622,6 +623,11 @@ export function LogForm({
           className={`${INPUT} mt-1 resize-y`}
         />
       </div>
+
+      {/* Phase N5. Silent until a save has been running for six seconds, at which point the
+          difference between "slow" and "crashed" is the difference between waiting and closing
+          the app on an entry that has not landed. */}
+      <SlowSaveNotice />
 
       <div className="flex flex-wrap items-center gap-3">
         <SaveButton label={category.label} />

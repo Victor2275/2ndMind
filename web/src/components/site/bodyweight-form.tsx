@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { recordBodyweightAction } from "@/app/private/athletics/actions";
+import { SlowSaveNotice } from "@/components/site/slow-save";
 import type { ActionState } from "@/lib/athletics/forms";
 
 /**
@@ -84,6 +85,11 @@ export function BodyweightForm() {
           <input id="bw-note" name="note" className={`${FIELD} mt-1`} placeholder="post-practice" />
         </div>
       </div>
+
+      {/* Phase N5. Silent until a save has been running for six seconds, at which point the
+          difference between "slow" and "crashed" is the difference between waiting and closing
+          the app on an entry that has not landed. */}
+      <SlowSaveNotice />
 
       <div className="flex flex-wrap items-center gap-4">
         <SaveButton />

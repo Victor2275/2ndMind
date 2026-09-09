@@ -3,7 +3,8 @@ import "fake-indexeddb/auto";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { backoffMs, flush, oldestPendingAgeMs, type Poster } from "@/lib/sync/engine";
+import { BUDGET } from "@/lib/net/deadline";
+import { backoffMs, flush, httpPoster, oldestPendingAgeMs, type Poster } from "@/lib/sync/engine";
 import { HlcClock } from "@/lib/sync/hlc";
 import type { SyncResponse } from "@/lib/sync/protocol";
 import {
@@ -284,5 +285,77 @@ describe("staleness", () => {
     const op = await queueOne();
     const age = await oldestPendingAgeMs(db, op.createdAt + 25 * 60 * 60 * 1000);
     expect(age).toBeGreaterThan(24 * 60 * 60 * 1000);
+  });
+});
+
+describe("httpPoster on a connection that stalls (Phase N4)", () => {
+  /**
+   * The one failure `flush` could never see.
+   *
+   * Everything in "the failure taxonomy" above stages a `post` that rejects, and each of those
+   * paths worked. What none of them could reach was a POST that connects and then says nothing:
+   * `fetch()` has no default timeout, so it never rejected, `flush` never returned, and
+   * `SyncRunner`'s mutex stayed locked — which made **"Send now" do nothing until the app was
+   * reloaded**, silently, with the outbox growing behind it.
+   *
+   * The budget is shrunk rather than waited out. Ten seconds is the real value and it is right;
+   * a test that spent it would be the kind nobody runs.
+   */
+  const stall = () =>
+    vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+      });
+    });
+
+  let restore: () => void;
+
+  beforeEach(() => {
+    const original = BUDGET.sync;
+    (BUDGET as Record<string, number>).sync = 25;
+    restore = () => {
+      (BUDGET as Record<string, number>).sync = original;
+    };
+  });
+
+  afterEach(() => {
+    restore();
+    vi.unstubAllGlobals();
+  });
+
+  it("gives up rather than hanging", async () => {
+    vi.stubGlobal("fetch", stall());
+    await expect(httpPoster({ ops: [], since: 0 })).rejects.toThrow();
+  });
+
+  it("turns the stall into a transient outcome, so backoff and the badge start working", async () => {
+    // The point of N4: nothing in `flush` needed changing. It already classifies a rejection
+    // from `post` as transient, so a deadline is the entire fix — the op is held, the attempt is
+    // counted, and the retry screen has something to show.
+    vi.stubGlobal("fetch", stall());
+    const op = await queueOne();
+
+    const outcome = await flush(db, httpPoster);
+
+    expect(outcome.status).toBe("transient");
+    expect(await pendingCount(db)).toBe(1);
+    const [held] = await pendingBatch(db, 1);
+    expect(held.opId).toBe(op.opId);
+    expect(held.attempts).toBeGreaterThan(0);
+  });
+
+  it("sends the session cookie, which a background fetch losing is a silent 401 loop", async () => {
+    const fetchSpy = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ results: [], changes: [] })),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await httpPoster({ ops: [], since: 0 });
+
+    const init = fetchSpy.mock.calls[0][1]!;
+    expect(init.credentials).toBe("same-origin");
+    expect(init.method).toBe("POST");
+    expect(init.signal).toBeDefined();
   });
 });

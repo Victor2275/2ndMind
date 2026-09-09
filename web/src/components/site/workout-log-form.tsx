@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { logWorkoutAction } from "@/app/private/athletics/actions";
+import { SlowSaveNotice } from "@/components/site/slow-save";
 import type { ActionState } from "@/lib/athletics/forms";
 
 /**
@@ -141,6 +142,12 @@ export function WorkoutLogForm() {
         </label>
         <textarea id="notes" name="notes" rows={2} className={`${FIELD} mt-1 resize-y`} />
       </div>
+
+      {/* Phase N5, and reachable only if this form is ever remounted — see D-159 above. It is
+          here so that remounting restores a form that behaves like the rest of the app, rather
+          than one that goes silent on a bad connection. Training is logged through the quick
+          log today, and that path carries its own notice. */}
+      <SlowSaveNotice />
 
       <div className="flex flex-wrap items-center gap-4">
         <SaveButton />

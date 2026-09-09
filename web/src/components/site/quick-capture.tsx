@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-
-import { buzzSaved } from "@/lib/haptics";
 import { useFormStatus } from "react-dom";
 
 import { captureQuick } from "@/app/private/log/actions";
+import { SlowSaveNotice } from "@/components/site/slow-save";
+import { buzzSaved } from "@/lib/haptics";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -134,6 +134,10 @@ export function QuickCapture({
             </button>
           ))}
         </div>
+
+        {/* Phase N5, and it sits above the result line rather than replacing it: one is what
+            happened, the other is that nothing has yet. */}
+        <SlowSaveNotice />
 
         {state && (
           <p

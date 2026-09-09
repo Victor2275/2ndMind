@@ -10,10 +10,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { InstallButton } from "@/components/site/install-button";
 import { ThemeToggle } from "@/components/site/theme-toggle";
+import { reachabilityStore } from "@/lib/net/reachability";
 
 /**
  * The private app's bottom navigation, phone only (V3 §0.5, D-132).
@@ -66,6 +67,17 @@ const ITEM =
  * guaranteed to fail in the situation this bar exists to serve. A plain anchor is a document
  * navigation, which the service worker intercepts and answers from the cache. `Elsewhere` in
  * `cached-app.tsx` is a plain anchor for the same reason and says so.
+ *
+ * **Prefetching stops once the connection is known to be degraded** (V4 Phase N6). Every link
+ * here prefetches an RSC payload on render, so this bar alone puts eight speculative requests
+ * on the wire. Over HTTP/2 they share one TCP connection with the request the user is actually
+ * waiting for, so on a stalled connection the prefetches are not free background work — they
+ * are competing with the navigation, and they lose it nothing but time.
+ *
+ * It is gated on evidence rather than turned off outright, because prefetching is exactly what
+ * makes a tab tap instant on a connection that works. `lib/net/reachability.ts` only reports
+ * `degraded` once requests have actually stalled or failed twice, so a good connection keeps
+ * the behaviour it has today and never sees this branch.
  */
 function NavLink({
   href,
@@ -78,7 +90,17 @@ function NavLink({
   className?: string;
   "aria-current"?: "page" | undefined;
 }) {
-  return hard ? <a href={href} {...rest} /> : <Link href={href} {...rest} />;
+  const { state } = useSyncExternalStore(
+    reachabilityStore.subscribe,
+    reachabilityStore.getSnapshot,
+    reachabilityStore.getServerSnapshot,
+  );
+
+  // `undefined` rather than `true`: the default is Next's own policy, and forcing it on would
+  // be a second decision this file has no reason to make.
+  const prefetch = state === "healthy" ? undefined : false;
+
+  return hard ? <a href={href} {...rest} /> : <Link href={href} prefetch={prefetch} {...rest} />;
 }
 
 /**
