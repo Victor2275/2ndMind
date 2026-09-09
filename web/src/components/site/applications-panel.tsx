@@ -20,9 +20,7 @@ function Row({ application }: { application: Application }) {
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="text-sm font-medium text-foreground">{application.company}</span>
         {application.status !== "" && (
-          <span className="font-mono text-[0.6rem] tracking-[0.14em] text-muted-foreground uppercase">
-            {application.status}
-          </span>
+          <span className="eyebrow text-muted-foreground">{application.status}</span>
         )}
       </div>
       {/* The role is the long field and wraps; giving it its own line keeps the company
@@ -56,7 +54,7 @@ function Section({
 
   return (
     <section className="mt-6">
-      <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
+      <h3 className="eyebrow text-muted-foreground">
         {title}
         {applications.length > 0 && ` · ${applications.length}`}
       </h3>
@@ -125,9 +123,7 @@ export function ApplicationsPanel({ sheet }: { sheet: SheetResult }) {
       />
 
       <section className="mt-6">
-        <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-          By status
-        </h3>
+        <h3 className="eyebrow text-muted-foreground">By status</h3>
         <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           {pipeline.byStatus.map((s) => (
             <li key={s.status} className="font-mono text-xs text-muted-foreground">

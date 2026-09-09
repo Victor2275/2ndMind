@@ -36,10 +36,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
     <div className="space-y-6">
       <form action={action} className="space-y-3">
         <div>
-          <label
-            htmlFor="posting"
-            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <label htmlFor="posting" className="eyebrow text-muted-foreground">
             Job posting
           </label>
           <textarea
@@ -54,7 +51,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
         <div className="flex flex-wrap items-center gap-3">
           <SuggestButton />
           {state && !state.ok && (
-            <p role="status" className="text-destructive-foreground text-xs">
+            <p role="status" className="text-xs text-destructive-foreground">
               {state.message}
             </p>
           )}
@@ -64,9 +61,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
       {advice && (
         <div className="space-y-6">
           <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
-            <p className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-              Send this variant
-            </p>
+            <p className="eyebrow text-muted-foreground">Send this variant</p>
             <p className="mt-1 text-lg font-bold tracking-tight text-foreground">
               {variantLabels[advice.variant] ?? advice.variant}
             </p>
@@ -82,9 +77,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
           </div>
 
           <section>
-            <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-              Lead with
-            </h3>
+            <h3 className="eyebrow text-muted-foreground">Lead with</h3>
             <ol className="mt-2 space-y-2">
               {advice.emphasise.map((id, i) => {
                 const bullet = byId.get(id);
@@ -108,9 +101,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
 
           {advice.deprioritise.length > 0 && (
             <section>
-              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-                Carries less weight here
-              </h3>
+              <h3 className="eyebrow text-muted-foreground">Carries less weight here</h3>
               <ul className="mt-2 space-y-1.5">
                 {advice.deprioritise.map((id) => {
                   const bullet = byId.get(id);
@@ -127,9 +118,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
 
           {advice.notes && (
             <section>
-              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-                Rationale
-              </h3>
+              <h3 className="eyebrow text-muted-foreground">Rationale</h3>
               {/* Displayed as rationale, never as resume content. It is the one part of this
                   screen the model wrote in its own words. */}
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{advice.notes}</p>

@@ -25,9 +25,7 @@ export function PageHeader({
     <header className="border-b border-border pb-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-mono text-[0.6rem] tracking-[0.18em] text-primary uppercase">
-            {eyebrow}
-          </p>
+          <p className="eyebrow text-primary">{eyebrow}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">{title}</h1>
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -60,9 +58,7 @@ export function Panel({
   const heading = (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
-      {meta && (
-        <span className="tabular font-mono text-[0.65rem] text-muted-foreground">{meta}</span>
-      )}
+      {meta && <span className="tabular text-xs text-muted-foreground">{meta}</span>}
     </div>
   );
 
@@ -113,12 +109,13 @@ export function Stat({
     tone === "accent" ? "text-primary" : tone === "warn" ? "text-destructive" : "text-foreground";
 
   return (
-    // `px-3 sm:px-4` and the tighter tracking below are what let three of these sit across a
-    // 390px screen instead of stacking into ~290px of vertical space for three numbers.
+    // `px-3 sm:px-4` is what lets three of these sit across a 390px screen instead of stacking
+    // into ~290px of vertical space for three numbers. The label used to carry a second, tighter
+    // tracking below `sm` for the same reason; V4 §1.6 replaced it with the one `eyebrow`
+    // value, which is looser (0.12em) but on a face that is narrower than the mono it replaced.
+    // Net width is close to unchanged and `npm run shots` gates the overflow either way.
     <div className="rounded-lg border border-border bg-card/60 px-3 py-3 sm:px-4">
-      <p className="font-mono text-[0.55rem] tracking-[0.1em] text-muted-foreground uppercase sm:tracking-[0.16em]">
-        {label}
-      </p>
+      <p className="eyebrow text-muted-foreground">{label}</p>
       <p className={`tabular mt-1.5 text-xl font-semibold ${valueTone}`}>{value}</p>
       {/* The hint is the first thing to go when the card is one of three on a phone: it is a
           gloss on the number, and the number is already there. */}

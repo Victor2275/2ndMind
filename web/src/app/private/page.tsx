@@ -519,9 +519,7 @@ async function SummaryArchive() {
       <ol className="space-y-4">
         {earlier.map((row) => (
           <li key={row.id} className="border-l border-border pl-4">
-            <p className="tabular font-mono text-[0.62rem] tracking-[0.14em] text-muted-foreground uppercase">
-              {row.periodStart}
-            </p>
+            <p className="tabular eyebrow text-muted-foreground">{row.periodStart}</p>
             <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
               {row.summary}
             </p>

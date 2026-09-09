@@ -90,9 +90,7 @@ export function ProposalReview() {
                       defaultChecked={false}
                       className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]"
                     />
-                    <span className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-                      {item.label}
-                    </span>
+                    <span className="eyebrow text-muted-foreground">{item.label}</span>
                   </label>
 
                   {changed && item.before && (
@@ -111,7 +109,7 @@ export function ProposalReview() {
                   {item.note && (
                     // The model's reasoning, marked as such. It is not a fact about the week.
                     <p className="mt-1.5 text-[0.7rem] text-muted-foreground">
-                      <span className="font-mono tracking-[0.14em] uppercase">why</span> {item.note}
+                      <span className="eyebrow">why</span> {item.note}
                     </p>
                   )}
 
@@ -131,7 +129,7 @@ export function ProposalReview() {
               <p
                 role="status"
                 className={
-                  saved.ok ? "text-xs text-muted-foreground" : "text-destructive-foreground text-xs"
+                  saved.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive-foreground"
                 }
               >
                 {saved.message}

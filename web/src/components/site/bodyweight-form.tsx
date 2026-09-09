@@ -27,7 +27,7 @@ function todayLocal(): string {
 const FIELD =
   "w-full rounded-md border border-border bg-card/70 px-2.5 py-1.5 font-mono text-xs text-foreground transition-colors focus:border-primary/60 focus:outline-none";
 
-const LABEL = "font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted-foreground";
+const LABEL = "eyebrow text-muted-foreground";
 
 function SaveButton() {
   const { pending } = useFormStatus();

@@ -541,11 +541,7 @@ function TaskList({ tasks, empty }: { tasks: CachedTask[]; empty: string }) {
       {tasks.map((task) => (
         <li key={task.id} className="flex items-baseline justify-between gap-3 text-sm">
           <span className="text-foreground">{task.title}</span>
-          {task.overdue && (
-            <span className="shrink-0 font-mono text-[0.6rem] tracking-wide text-destructive uppercase">
-              overdue
-            </span>
-          )}
+          {task.overdue && <span className="shrink-0 eyebrow text-destructive">overdue</span>}
         </li>
       ))}
     </ul>

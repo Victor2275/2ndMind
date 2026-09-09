@@ -210,9 +210,7 @@ function Field({
 }) {
   return (
     <label className="mt-2 block">
-      <span className="font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-        {label}
-      </span>
+      <span className="eyebrow text-muted-foreground">{label}</span>
       <input
         name={name}
         type={type}

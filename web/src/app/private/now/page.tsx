@@ -43,9 +43,7 @@ export default async function PrivateNowPage() {
       </header>
 
       <section>
-        <h2 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-          New update
-        </h2>
+        <h2 className="eyebrow text-muted-foreground">New update</h2>
         <div className="mt-3">
           <UpdateComposer
             today={todayInLosAngeles()}
@@ -63,9 +61,7 @@ export default async function PrivateNowPage() {
           where; §7.3's pipeline already serves them once they are in `context/assets/`. */}
       {needPhotos.length > 0 && (
         <section>
-          <h2 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-            Photos wanted
-          </h2>
+          <h2 className="eyebrow text-muted-foreground">Photos wanted</h2>
           <p className="mt-2 max-w-[60ch] text-sm text-muted-foreground">
             These are active and have no image, so they render a generated placeholder. Drop a file
             into <code className="font-mono text-xs">context/assets/</code>, then set{" "}
@@ -88,9 +84,7 @@ export default async function PrivateNowPage() {
       )}
 
       <section>
-        <h2 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-          Published
-        </h2>
+        <h2 className="eyebrow text-muted-foreground">Published</h2>
         {active.every((p) => p.updates.length === 0) ? (
           <p className="mt-3 text-sm text-muted-foreground">Nothing written yet.</p>
         ) : (

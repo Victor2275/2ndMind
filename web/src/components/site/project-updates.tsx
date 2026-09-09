@@ -33,10 +33,7 @@ export function ProjectUpdates({ updates, limit }: { updates: ProjectUpdate[]; l
     <ol className="space-y-6">
       {shown.map((update) => (
         <li key={`${update.date}-${update.body.slice(0, 24)}`}>
-          <time
-            dateTime={update.date}
-            className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <time dateTime={update.date} className="eyebrow text-muted-foreground">
             {formatUpdateDate(update.date)}
           </time>
           <div className="mt-2">

@@ -205,11 +205,7 @@ export function WeekReview({ days, planFound }: { days: PlanDay[]; planFound: bo
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-sm font-medium text-foreground">{day.name}</span>
-                {day.isToday && (
-                  <span className="font-mono text-[0.55rem] tracking-[0.14em] text-primary uppercase">
-                    today
-                  </span>
-                )}
+                {day.isToday && <span className="eyebrow text-primary">today</span>}
                 <span className="tabular font-mono text-[0.6rem] text-muted-foreground">
                   {day.logged > 0
                     ? `${day.logged} logged`

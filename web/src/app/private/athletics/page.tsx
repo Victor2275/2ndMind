@@ -93,17 +93,13 @@ function StrengthCard({ record }: { record: StrengthRecord }) {
 
       <dl className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <dt className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
-            Heaviest
-          </dt>
+          <dt className="eyebrow text-muted-foreground">Heaviest</dt>
           <dd className="tabular mt-1 font-mono text-sm text-primary">
             {record.heaviest ? `${record.heaviest.weightLbs} × ${record.heaviest.reps}` : "—"}
           </dd>
         </div>
         <div>
-          <dt className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
-            Est. 1RM
-          </dt>
+          <dt className="eyebrow text-muted-foreground">Est. 1RM</dt>
           <dd className="tabular mt-1 font-mono text-sm text-foreground">
             {record.bestE1rm ? `${record.bestE1rm.e1rm}` : "—"}
           </dd>
@@ -137,10 +133,7 @@ function ErgTable({ records, readings }: { records: ErgRecord[]; readings: Bodyw
         <thead>
           <tr className="border-b border-border">
             {["Piece", "Distance", "Time", "Split /500m", "Adjusted", "Date"].map((h) => (
-              <th
-                key={h}
-                className="px-4 py-2 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase"
-              >
+              <th key={h} className="px-4 py-2 eyebrow text-muted-foreground">
                 {h}
               </th>
             ))}

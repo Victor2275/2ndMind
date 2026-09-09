@@ -190,7 +190,7 @@ function OpRow({
       data-state={view.state}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
+        <span className="eyebrow text-muted-foreground">
           {view.verb} · {view.kind}
         </span>
         <span className="font-mono text-[0.65rem] text-muted-foreground tabular-nums">

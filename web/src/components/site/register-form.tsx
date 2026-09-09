@@ -76,10 +76,7 @@ export function RegisterForm() {
   return (
     <form onSubmit={enrol} className="space-y-4">
       <div>
-        <label
-          htmlFor="secret"
-          className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
-        >
+        <label htmlFor="secret" className="eyebrow text-muted-foreground">
           Registration secret
         </label>
         <input
@@ -94,10 +91,7 @@ export function RegisterForm() {
       </div>
 
       <div>
-        <label
-          htmlFor="label"
-          className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase"
-        >
+        <label htmlFor="label" className="eyebrow text-muted-foreground">
           Device name
         </label>
         <input

@@ -35,9 +35,7 @@ export const metadata: Metadata = {
 export default function OfflinePage() {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-5 py-16 sm:px-6">
-      <p className="font-mono text-[0.6rem] tracking-[0.18em] text-primary uppercase">
-        Could not load
-      </p>
+      <p className="eyebrow text-primary">Could not load</p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground">
         That page did not arrive.
       </h1>

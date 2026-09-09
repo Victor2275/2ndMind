@@ -124,7 +124,7 @@ export function QuickCapture({
               type="button"
               onClick={() => setAs(mode)}
               aria-pressed={as === mode}
-              className={`min-h-8 rounded-md px-2.5 font-mono text-[0.6rem] tracking-[0.1em] uppercase transition-colors ${
+              className={`min-h-8 rounded-md px-2.5 eyebrow transition-colors ${
                 as === mode
                   ? "bg-primary/12 text-primary"
                   : "text-muted-foreground hover:text-foreground"

@@ -115,9 +115,7 @@ function PrinterForm({ printer, onDone }: { printer?: Printer; onDone: () => voi
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="block">
-          <span className="font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-            Name
-          </span>
+          <span className="eyebrow text-muted-foreground">Name</span>
           <input
             name="name"
             required
@@ -127,9 +125,7 @@ function PrinterForm({ printer, onDone }: { printer?: Printer; onDone: () => voi
         </label>
 
         <label className="block">
-          <span className="font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-            Status
-          </span>
+          <span className="eyebrow text-muted-foreground">Status</span>
           {/* A select, not free text: the four states are the vocabulary, and a typo'd fifth
               would be a state nothing renders a colour for and nothing counts. */}
           <select
@@ -147,9 +143,7 @@ function PrinterForm({ printer, onDone }: { printer?: Printer; onDone: () => voi
       </div>
 
       <label className="mt-2 block">
-        <span className="font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-          Notes
-        </span>
+        <span className="eyebrow text-muted-foreground">Notes</span>
         <input
           name="notes"
           defaultValue={printer?.notes ?? ""}

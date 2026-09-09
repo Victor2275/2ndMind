@@ -164,9 +164,7 @@ export function CoursePlanner({
                   </span>
                 </div>
 
-                <p className="mt-1 font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-                  {entry.requirement.group}
-                </p>
+                <p className="mt-1 eyebrow text-muted-foreground">{entry.requirement.group}</p>
 
                 {(entry.matched.length > 0 || entry.unverifiable.length > 0) && (
                   <p className="mt-2 text-xs text-muted-foreground">

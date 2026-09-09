@@ -57,10 +57,7 @@ export function UpdateComposer({ projects, today }: { projects: ActiveProject[];
     <form action={action} className="space-y-3">
       <div className="flex flex-wrap gap-3">
         <div className="min-w-[12rem] flex-1">
-          <label
-            htmlFor="update-slug"
-            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <label htmlFor="update-slug" className="eyebrow text-muted-foreground">
             Project
           </label>
           <select
@@ -80,10 +77,7 @@ export function UpdateComposer({ projects, today }: { projects: ActiveProject[];
         </div>
 
         <div>
-          <label
-            htmlFor="update-date"
-            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <label htmlFor="update-date" className="eyebrow text-muted-foreground">
             Date
           </label>
           {/* Editable, because updates get written up on a Sunday for something that happened
@@ -99,10 +93,7 @@ export function UpdateComposer({ projects, today }: { projects: ActiveProject[];
       </div>
 
       <div>
-        <label
-          htmlFor="update-body"
-          className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-        >
+        <label htmlFor="update-body" className="eyebrow text-muted-foreground">
           What happened
         </label>
         <textarea
@@ -122,7 +113,7 @@ export function UpdateComposer({ projects, today }: { projects: ActiveProject[];
           <p
             role="status"
             className={
-              state.ok ? "text-xs text-muted-foreground" : "text-destructive-foreground text-xs"
+              state.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive-foreground"
             }
           >
             {state.message}

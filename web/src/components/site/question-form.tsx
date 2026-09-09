@@ -41,10 +41,7 @@ export function QuestionForm() {
     <div className="space-y-6">
       <form action={action} className="space-y-3">
         <div>
-          <label
-            htmlFor="question"
-            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <label htmlFor="question" className="eyebrow text-muted-foreground">
             Application question
           </label>
           <textarea
@@ -59,7 +56,7 @@ export function QuestionForm() {
         <div className="flex flex-wrap items-center gap-3">
           <AskButton />
           {state && !state.ok && (
-            <p role="status" className="text-destructive-foreground text-xs">
+            <p role="status" className="text-xs text-destructive-foreground">
               {state.message}
             </p>
           )}
@@ -69,9 +66,7 @@ export function QuestionForm() {
       {answer && (
         <div className="space-y-6">
           <section>
-            <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-              Build it from
-            </h3>
+            <h3 className="eyebrow text-muted-foreground">Build it from</h3>
             <ol className="mt-2 space-y-2">
               {answer.points.map((id, i) => {
                 const bullet = byId.get(id);
@@ -95,18 +90,14 @@ export function QuestionForm() {
 
           {answer.angle && (
             <section>
-              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-                Angle
-              </h3>
+              <h3 className="eyebrow text-muted-foreground">Angle</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{answer.angle}</p>
             </section>
           )}
 
           {answer.avoid && (
             <section className="rounded-lg border border-highlight/40 bg-highlight/10 p-4">
-              <h3 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-                Do not claim
-              </h3>
+              <h3 className="eyebrow text-muted-foreground">Do not claim</h3>
               <p className="mt-2 text-sm leading-relaxed text-foreground">{answer.avoid}</p>
             </section>
           )}

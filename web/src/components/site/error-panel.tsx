@@ -46,7 +46,7 @@ function Row({ error }: { error: ErrorView }) {
   return (
     <li className="px-4 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
+        <span className="eyebrow text-muted-foreground">
           {error.source}
           {error.route && ` · ${error.route}`}
           {error.agent && ` · ${error.agent}`}

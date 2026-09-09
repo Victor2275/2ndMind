@@ -43,7 +43,7 @@ import type { SpokenEntry } from "@/lib/voice/parse";
 
 const INPUT =
   "w-full rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
-const LABEL = "font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted-foreground";
+const LABEL = "eyebrow text-muted-foreground";
 
 /** Local date as YYYY-MM-DD. `toISOString` would shift to UTC and, in the evening in
  *  California, default the form to tomorrow. */

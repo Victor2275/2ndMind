@@ -48,9 +48,7 @@ export function AgendaDayBlock({ day }: { day: AgendaDay }) {
 
   return (
     <div>
-      <h3 className="mb-2 font-mono text-[0.6rem] tracking-[0.14em] text-muted-foreground uppercase">
-        {HEADING.format(date)}
-      </h3>
+      <h3 className="mb-2 eyebrow text-muted-foreground">{HEADING.format(date)}</h3>
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
         {day.events.map((event) => (
           <EventRow key={`${event.uid}-${event.start.toISOString()}`} event={event} />

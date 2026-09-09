@@ -44,9 +44,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
       {/* Controls — screen only. */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-            Variant
-          </span>
+          <span className="eyebrow text-muted-foreground">Variant</span>
           {variants.map((v) =>
             v.current ? (
               <span

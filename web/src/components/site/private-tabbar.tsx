@@ -139,16 +139,14 @@ export function PrivateTabBar({
             className="absolute inset-x-0 bottom-0 rounded-t-xl border-t border-border bg-card px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground uppercase">
-                More
-              </span>
+              <span className="eyebrow text-muted-foreground">More</span>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
                 aria-label="Close menu"
                 className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
-                <XIcon className="size-4" />
+                <XIcon className="icon-sm" />
               </button>
             </div>
 
@@ -183,9 +181,7 @@ export function PrivateTabBar({
                 absent offline for that reason. */}
             {offline && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                <span className="font-mono text-[0.6rem] tracking-[0.12em] text-faint-foreground uppercase">
-                  Offline
-                </span>
+                <span className="eyebrow text-faint-foreground">Offline</span>
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
                   <InstallButton />
@@ -222,8 +218,8 @@ export function PrivateTabBar({
             aria-current={isActive(pathname, "/private/log") ? "page" : undefined}
             className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
           >
-            <PlusIcon className="size-5" aria-hidden />
-            <span className="font-mono text-[0.55rem] tracking-wide">Log</span>
+            <PlusIcon className="icon-md" aria-hidden />
+            <span className="text-xs">Log</span>
           </NavLink>
 
           {TABS.slice(2).map(({ href, label, Icon }) => (
@@ -246,8 +242,8 @@ export function PrivateTabBar({
               moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <EllipsisIcon className="size-5" aria-hidden />
-            <span className="font-mono text-[0.55rem] tracking-wide">More</span>
+            <EllipsisIcon className="icon-md" aria-hidden />
+            <span className="text-xs">More</span>
           </button>
         </div>
       </nav>
@@ -278,8 +274,8 @@ function TabLink({
         active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      <Icon className="size-5" aria-hidden />
-      <span className="font-mono text-[0.55rem] tracking-wide">{label}</span>
+      <Icon className="icon-md" aria-hidden />
+      <span className="text-xs">{label}</span>
     </NavLink>
   );
 }

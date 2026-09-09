@@ -39,7 +39,7 @@ export function PrivateNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`relative shrink-0 rounded-md px-3 py-1.5 font-mono text-xs transition-colors duration-200 ${
+            className={`relative shrink-0 rounded-md px-3 py-1.5 text-xs transition-colors duration-200 ${
               active
                 ? "bg-primary/12 text-primary"
                 : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"

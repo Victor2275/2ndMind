@@ -76,18 +76,14 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
             {/* 0.62rem, matching the identical fact cards on the About page. They were
                 0.6rem here for no reason anyone recorded, which made this the only public
                 page carrying a fourth label size and the smallest text on the site. */}
-            <dt className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-              {m.label}
-            </dt>
+            <dt className="eyebrow text-muted-foreground">{m.label}</dt>
             <dd className="mt-1 text-sm text-foreground">{m.value}</dd>
           </div>
         ))}
       </dl>
 
       <section className="mt-8">
-        <h2 className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-          Stack
-        </h2>
+        <h2 className="eyebrow text-muted-foreground">Stack</h2>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {project.stack.map((s) => (
             <Badge key={s} variant="secondary" className="text-[0.7rem]">

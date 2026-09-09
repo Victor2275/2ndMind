@@ -35,10 +35,7 @@ export function GoalsEditor({ values }: { values: Record<string, string> }) {
     <form action={action} className="space-y-3">
       {GOAL_DOMAINS.map((domain) => (
         <div key={domain.key}>
-          <label
-            htmlFor={`goal-${domain.key}`}
-            className="font-mono text-[0.55rem] tracking-[0.16em] text-muted-foreground uppercase"
-          >
+          <label htmlFor={`goal-${domain.key}`} className="eyebrow text-muted-foreground">
             {domain.label}
           </label>
           <input
