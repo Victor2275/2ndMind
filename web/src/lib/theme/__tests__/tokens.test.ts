@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { contrast, oklchToHex, parseOklch } from "@/lib/theme/color";
-import { THEMES, THEME_IDS, DEFAULT_THEME } from "@/lib/theme/registry";
+import { THEMES, THEME_IDS, DEFAULT_THEME, schemeFor } from "@/lib/theme/registry";
 
 /**
  * The tests that make a generated palette trustworthy (V4 §1.12, D-194).
@@ -114,13 +114,91 @@ describe("every theme is complete", () => {
   });
 });
 
+/**
+ * Tokens in a theme block that are deliberately not colours.
+ *
+ * Kept as an explicit list rather than a pattern. The test below asserts every *other* token
+ * parses as `oklch()`, and that assertion is only as good as this list is short — a wildcard
+ * here ("anything ending in -opacity", "anything starting with elevation") would let a
+ * mistyped colour token slip through by being named to match.
+ */
+const NON_COLOUR = new Set([
+  "ambient-opacity",
+  "grain-opacity",
+  "elevation-rest",
+  "elevation-raised",
+  "elevation-floating",
+  "elevation-overlay",
+  "scrim",
+]);
+
 describe("every colour is a real colour", () => {
   it.each(THEME_IDS)("%s uses only parseable oklch()", (id) => {
     const bad = Object.entries(BLOCKS[id])
-      .filter(([name]) => !name.endsWith("-opacity"))
+      .filter(([name]) => !NON_COLOUR.has(name))
       .filter(([, value]) => parseOklch(value) === null)
       .map(([name]) => name);
     expect(bad).toEqual([]);
+  });
+});
+
+/**
+ * Elevation (V4 §1.7, Q156, D-199).
+ *
+ * Four levels, and they live in `tokens.css` rather than `scale.css` because they are the one
+ * non-colour scale that differs per theme: DESIGN.md §6 says elevation is a ground-shift plus a
+ * border in dark and a shadow in light. These tests are what stop that sentence and the code
+ * from drifting apart — it has happened before, with the `:root`/`.dark` palettes.
+ */
+describe("elevation", () => {
+  const LEVELS = ["rest", "raised", "floating", "overlay"] as const;
+
+  it.each(THEME_IDS)("%s defines all four levels", (id) => {
+    for (const level of LEVELS) {
+      expect(BLOCKS[id][`elevation-${level}`], `${id} is missing elevation-${level}`).toBeDefined();
+    }
+  });
+
+  it.each(THEME_IDS)("%s expresses rest as flat", (id) => {
+    // Not an oversight. A card at rest is separated by its ground and its own border; the token
+    // exists so a component can say "explicitly flat" instead of leaving box-shadow unset.
+    expect(BLOCKS[id]["elevation-rest"]).toBe("none");
+  });
+
+  it.each(THEME_IDS)("%s builds elevation only out of its own tokens", (id) => {
+    // The "no raw hex" rule (§1.12), applied where it is easiest to break: a shadow written as
+    // `rgba(0,0,0,.4)` looks fine on the four dark themes and reads as soot on the two light
+    // ones. Every value has to come through `var(--…)`.
+    for (const level of LEVELS.slice(1)) {
+      const value = BLOCKS[id][`elevation-${level}`];
+      expect(value, `${id}/${level} should derive from tokens`).toContain("var(--");
+      expect(value, `${id}/${level} contains a raw colour`).not.toMatch(
+        /#[0-9a-f]{3,8}\b|rgba?\(/i,
+      );
+    }
+  });
+
+  it.each(THEME_IDS)("%s darkens with its scrim rather than lightening", (id) => {
+    // A scrim that does not darken is the failure mode that survives review, because it looks
+    // correct in whichever scheme it was written in. Dark themes deepen toward their own
+    // background; light themes toward their own foreground. Either way the value has to be a
+    // mix of a theme token, never a literal black.
+    const scrim = BLOCKS[id]["scrim"];
+    expect(scrim, `${id} is missing --scrim`).toBeDefined();
+    expect(scrim).toContain("var(--");
+    expect(scrim).toContain(schemeFor(id) === "dark" ? "var(--background)" : "var(--foreground)");
+  });
+
+  it.each(THEME_IDS)("%s uses the mechanism its scheme calls for", (id) => {
+    const scheme = schemeFor(id);
+    const raised = BLOCKS[id]["elevation-raised"];
+    if (scheme === "dark") {
+      // Ground-shift plus border: a 1px ring, no offset, no blur.
+      expect(raised, `${id} is dark and should elevate with a ring`).toMatch(/^0 0 0 1px /);
+    } else {
+      // A real shadow: something has to be offset downward.
+      expect(raised, `${id} is light and should elevate with a shadow`).toMatch(/0 \d+px/);
+    }
   });
 });
 
