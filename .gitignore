@@ -26,3 +26,11 @@ graphify-out/
 /private/
 DARS*.html
 *Audit Results Tab_files/
+
+# Reference art dropped in the root to describe what something should look like. It is other
+# people's work — the muscle chart is stock anatomical art and the exercise loop belongs to a
+# commercial training app — so it is looked at and not shipped. `muscle-map.tsx` is drawn from
+# scratch and `how-to.ts` is written rather than sourced, precisely so nothing here has to be
+# (D-222, D-223).
+/Muscles-worked-in-*.png
+/*-Bench-Press.gif

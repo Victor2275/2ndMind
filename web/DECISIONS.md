@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-09
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,200 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-09 (later) · Four things Victor found, and one of them was not about training
+
+Reported after using Phase 2 on the phone for the first time: training was invisible on a
+computer, the session form asked for a bodyweight every session, adding a set was unusable on a
+phone, and searching the catalogue found nothing. Three had a single cause each. The third turned
+out to have **two** causes stacked on top of each other, and the deeper one had nothing to do with
+the session screen — it had been quietly breaking six unrelated screens since the design system
+landed.
+
+Every one of them was invisible to the 1,522-test suite, and for the same structural reason:
+**jsdom does not lay out.** Every element there is zero pixels wide, so a row where five controls
+fit and a row where two of them have collapsed to nothing are the same DOM.
+`scripts/diag-widths.mjs` is the answer — a real browser, at 390 pixels, reporting anything wider
+than the box holding it.
+
+Also here: the muscle diagram (2.9) and, in place of the demonstration clips 2.10 asked for, a
+written description of every movement.
+
+### D-225 · Two navigations over one set of routes, and only one of them knew about Train
+
+**Decision.** `private-nav.tsx` gains a **Train** entry pointing at `/private/athletics/log`, and
+Athletics gains an `except` so it does not light up on the logger's route. The stale card on
+`/private/athletics` now points there too, and the logger is capped at `max-w-2xl` so it is a
+form on a laptop rather than a stretched phone screen.
+
+**Why it was missing.** D-132 made the phone tab bar and the desktop nav two components over one
+set of routes, "deliberate duplication". Phase 2 added the session logger to the tab bar and not
+to the other one — so above 40rem the single most-used write screen in the app was reachable
+only by typing the URL. The card that should have pointed at it still said training was logged
+from `/private/log`, which had been true until 2.7 retired that tab.
+
+**The general lesson, which is D-132's cost coming due.** Duplicated navigation does not fail
+loudly; it fails by one copy quietly not mentioning a feature. Unifying them is still not worth
+doing three weeks before term, but a route added to one and not the other is now a known failure
+mode rather than a surprise.
+
+**How to reverse.** Remove the entry. The tab bar is unaffected.
+
+### D-224 · The catalogue comes from the bundle first and the device second
+
+**Decision.** The session logger seeds its exercise list from `CATALOGUE`, the module the seed
+script inserts from, and merges the synced `exercises` mirror over the top by name — with the
+**bundle winning** any name they share. It also re-reads the mirror on `SYNC_DONE_EVENT` rather
+than only at mount.
+
+**The bug.** Searching `bnch` on the phone found nothing. The screen read the mirror and only the
+mirror, so the whole feature depended on a completed sync pull — and the catalogue is 165 rows
+while the pull is paged at 100. A device that had synced once held three quarters of it, and
+Bench Press happened to be in the quarter that had not arrived. There was no error state: the
+search box simply came up empty, and the only way forward was to type the name in by hand, which
+is what Victor did.
+
+**Why the bundle is the right floor.** `CATALOGUE` is already in the client chunk and is the file
+the seed inserts from, so the two cannot disagree. That makes all 164 movements available on
+first paint, before any network, on a device that has never synced. The mirror then carries the
+only rows the seed does not know: one you added, or one AI-add proposed.
+
+**Why the bundle wins a collision.** The opposite of the obvious ordering, and it matters as soon
+as the seed changes: after D-222 reseeded 42 entries with muscle tags, a device that synced
+earlier still holds those rows with an empty array, and mirror-wins would let the stale copy
+blank the diagram on the newest build. Nothing in the app edits a seeded entry, so the bundle is
+its only writer.
+
+**The second half.** Reading once at mount was its own bug even with a complete mirror: a page
+opened while the first pull was in flight held the store's contents *at that instant* for the
+whole visit — and on a phone, opening the screen and the first sync are the same second.
+
+**How to reverse.** Drop the `CATALOGUE` import and read `localCatalogue` alone; the search works
+identically on a device that has fully synced.
+
+### D-223 · A written how-to per movement, instead of the demonstration clips
+
+**Decision.** 2.10 asked for a short looping clip per exercise, the way Hevy shows them. There
+will be none. `lib/athletics/how-to.ts` carries two sentences for each of the 164 seeded
+movements instead — setup, execution, and the mistake people usually make.
+
+**Why not clips.** There is no lawfully reusable set of 164 of them. The ones that exist belong
+to the apps that made them, including the reference file in the repo root; the openly-licensed
+collections are stills, and their naming does not match this catalogue. Victor's call, given
+that: drop the clips and take text.
+
+**Why the text is better than a consolation prize.** It costs no request and no storage, so the
+gym-basement screen still works with nothing in the cache — which retires 2.11 outright, since
+there is now nothing to make offline. It is searchable. And it can say the thing a loop cannot:
+*what usually goes wrong*, which is the half of a demonstration that changes the next set.
+
+**Why a static map and not a column.** `exercises` is a synced table; this is keyed by the same
+name. A description you add is a diff rather than a migration plus a reseed plus a pull on every
+device, and a movement Victor types in himself simply has none — which is correct, because
+nobody has written one. `how-to.test.ts` fails if a catalogue name has no entry, so the two
+cannot drift.
+
+**How to reverse.** Delete the module and the panel in `session-logger.tsx`; the diagram stands
+on its own.
+
+### D-222 · One drawing, highlighted from the catalogue — not one image per exercise
+
+**Decision.** `components/site/muscle-map.tsx` is a single inline SVG of a front and back figure
+with a path group per muscle region. An exercise's `muscles` array decides what is lit.
+
+**Why not an image per exercise.** Licensing is the smaller half. **164 images drift.** Generated
+or commissioned per movement, each is a chance for the picture to disagree with the data beside
+it, and no test can read a picture. Here the highlight is computed from the same array the search
+chips and the record grouping use, so the diagram cannot say something the catalogue does not.
+It also costs no request, needs no cache, scales to any size, and themes with the app.
+
+**Original geometry, not a trace.** The reference Victor supplied is stock anatomical art. A
+trace of it would have been a derivative of it — the same licensing problem in a different file
+format — so every path here is drawn from scratch. Regions are several shapes each rather than
+one, which is what makes the figure read as muscle rather than as a body divided into boxes.
+
+**What it cost.** `muscles` was previously empty for erg, water and conditioning entries, with a
+note saying it "means little" there — true while it was only a grouping key, false the moment a
+figure was drawn from it, because an empty array renders as *we do not know* rather than as
+*whole body*. Those 45 entries were given real tags and reseeded. Mobility, stretching and foam
+rolling stay blank, because nothing is being loaded and the blank figure is honest.
+
+**How to reverse.** Delete the component and the two call sites. The muscle names stay useful as
+text either way.
+
+### D-221 · The weigh-in is a quick-log category — its third home, and the reason for each move
+
+**Decision.** `bodyweightLbs` is gone from `SessionInput` and from the session form. It is a
+category in the quick log now, key `weight`, with the number and a sticky "when" — morning,
+post-training, evening. `/private/log` also gains a link into the session logger, so the centre
+button still leads to training in two taps.
+
+**Why it moved off the session.** Victor's objection, and it is about behaviour rather than
+schema: **a session form with a bodyweight field asks for a bodyweight every session.** A
+measurement requested when there is nothing to measure is either skipped or typed carelessly —
+and this number is the second input to every weight-adjusted erg split, so a careless value is
+worse than a missing one, because it reads as real.
+
+**Why it was there at all.** It rode along on the quick log's Training tab, and D-215 caught its
+disappearance when Phase 2.7 retired that tab. Moving it to the session screen kept it reachable,
+which was the right fix to the wrong shape of the problem.
+
+**What did not change.** `takeBodyweight` still lifts the number out into a `bodyweight_entries`
+row before the entry is stored — one copy of the figure the charts and the adjusted table read,
+exactly as D-159 required. The *context* stays on the entry, because the weight table is one row
+per day and has nowhere to put "fasted, before training".
+
+**How to reverse.** Delete the `weight` category and put the field back on `SessionInput`; the
+writer path is unchanged either way.
+
+### D-220 · A set is a card with its controls stacked, not a row of five
+
+**Decision.** The session logger's set row is a small card: a numbered header with a delete, the
+value fields in a two-column grid at full width, and the set type as a row of chips underneath.
+
+**Why.** The previous version put the index, every value field, a four-option `<select>` and a
+delete button on one flex line. Even with D-219 fixed that is five controls in 324 pixels, and an
+erg piece asks for three value fields rather than two — it was never going to fit. Measured
+after: every control is at least 40 pixels wide and nothing leaves the row.
+
+**Chips rather than a select.** Four options is few enough to show, and a native `<select>` on
+Android is a full-screen modal for a choice that is "normal" nineteen times in twenty. One tap
+instead of three.
+
+**How to reverse.** The old single-row markup is in this file's git history at `0eb0443`.
+
+### D-219 · The space scale leaves `@theme`, because it was silently redefining `max-w-*`
+
+**Decision.** `scripts/build-scale.mts` emits the eight space tokens into a `:root` block instead
+of the `@theme` block. Values unchanged; `var(--spacing-md)` still resolves everywhere.
+
+**What was happening.** `--spacing-*` is one of Tailwind's namespaces, and it is the one
+`max-w-*`, `w-*` and `min-w-*` consult **before** `--container-*`. So `--spacing-2xl: 4rem` did
+not merely name the 64-pixel step — it redefined `max-w-2xl` for the entire app, from 42rem to
+4rem. Same for `sm`, `md`, `xl` and the rest.
+
+**What it broke.** `/private/settings` rendered its whole content inside a **64-pixel column**,
+one word per line. So did both error screens, the offline screen, the sign-in card, the register
+card, and the "update available" notice. Six screens, with every class name reading correctly,
+nothing thrown, and no failing test — because jsdom reports every element as zero-width and
+cannot tell a 64-pixel column from a 672-pixel one.
+
+**Why this direction and not renaming.** The named steps were meant to produce `p-sm` / `gap-md`
+utilities. Those had **zero call sites** in the app. The trade is a naming convenience nobody had
+used against six screens, which is not a close call.
+
+**Two guards.** `scale.test.ts` fails if any `--spacing-*` reappears inside `@theme` — written
+as "none at all" rather than as a list of colliding names, because that list is Tailwind's and
+can grow in a minor release. And `width-conflicts.test.ts` catches the related pattern that broke
+the set row: a shared class constant carrying `w-full` composed with a call site adding `w-24`,
+where the winner is decided by Tailwind's emit order rather than by the class attribute. That one
+appeared three times — in the session logger, the quick log's distance field, and the old
+workout form — and the fix in each was the same: take the width out of the shared constant.
+
+**How to reverse.** Move the loop back inside the `@theme` block in the generator — and rename
+the steps first, to anything that is not also a container size, or the six screens break again.
 
 ---
 

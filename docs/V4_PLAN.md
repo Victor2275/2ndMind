@@ -2,7 +2,7 @@
 updated: 2026-09-09
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 311 points. Phases 0, 1, N and 2 done (Milestones A and B); 4.4 done; Phase 3 is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2 and 2+ done (Milestones A and B); 4.4 done; Phase 3 is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -31,7 +31,7 @@ read-only text defeats the point"** (Q130).
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
 | **Budget**       | **311 points** (241 + Phase N's 45 + N9's 13 + Phase 2+'s 12, the last two both deferred work made visible rather than new scope). You said 120–140. The gap is real and is §7 R2, not a rounding error. **138 done.**                                                                                                                                            |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. N9 and Phase 2+ parked.<br>Next: **Phase 3**, tags. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens.<br>Next: **Phase 3**, tags. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -458,26 +458,70 @@ never saw — 185×5 and 175×8.
 
 ---
 
-### Phase 2+ · The catalogue gets pictures — **12 pts** — ⏸ **parked, by Victor's call**
+### Phase 2+ · The catalogue gets pictures — **12 pts** — ✅ **done 2026-09-09**
 
-Asked for on 2026-09-09 alongside 2.1, and deliberately deferred: *"the visuals do not need to be
-added now."* It is a content and asset-pipeline job, not a data-model one, and Phase 2 shipped the
-hook it hangs off — `exercises.muscles`, a closed vocabulary of fifteen regions
-(`lib/athletics/catalogue.ts`).
+Parked on 2026-09-09 in the morning, unparked the same afternoon: Victor sent the reference art
+and asked for it while reporting the Phase 2 bugs below. The shape changed on the way through, and
+the change is the interesting part.
 
-| #    | Item                                                                                                                                                                                     | Pts |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
-| 2.9  | **A muscle diagram**, front and back, as one inline SVG with a `<path>` per region named for the `MUSCLES` vocabulary. Highlighted from an exercise's `muscles` array — no per-exercise art | 5 |
-| 2.10 | **A short demonstration clip per movement**, the way Hevy shows them. 164 of them is the problem, not the player: sourcing, licensing and ~164 files to host and mirror                    | 5 |
-| 2.11 | **Offline behaviour for both.** The session screen's promise is that it works in a gym basement, so a diagram that needs a network breaks the one screen that must not                    | 2 |
+| #    | Item                                                                                                                                                   | Pts | Status |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --: | ------ |
+| 2.9  | **A muscle diagram**, front and back, one inline SVG with a path group per region, highlighted from the exercise's own `muscles` array                   |   5 | ✅ done |
+| 2.10 | **A written how-to per movement** — two sentences: setup, execution, the usual mistake. *Replaces* the demonstration clips                              |   5 | ✅ done |
+| 2.11 | **Offline behaviour for both** — nothing to do. Both are in the bundle, so there is no request to make and no asset to cache                             |   2 | ✅ n/a  |
 
-**The hard part is 2.10, and it is not technical.** A clip per movement is either licensed, filmed,
-or scraped, and only the first two are options. Worth deciding *what* the clips are before any
-code: a licensed set, a handful filmed for the movements actually used, or none — with the diagram
-alone carrying it.
+**2.10 changed, and the reason was not technical.** There is no lawfully reusable set of 164
+demonstration clips: the ones that exist belong to the apps that made them — including the
+reference file — and the openly-licensed collections are stills whose naming does not match this
+catalogue. Victor's call was to drop the clips and take a written description instead (D-223).
+That is not a consolation prize. Text costs no request and no storage, so it retires 2.11
+outright; it is searchable; and it can say the thing a loop cannot — **what usually goes wrong**,
+which is the half of a demonstration that changes the next set.
 
-**The diagram is cheap and independent**, so it can ship on its own. One SVG, fifteen regions, and
-the data is already there.
+**2.9 is one drawing, not 164.** Licensing was the smaller half of the argument. Per-exercise art
+— generated or commissioned — is 164 chances for the picture to disagree with the data beside it,
+and no test can read a picture. One SVG highlighted from the `muscles` array cannot say something
+the catalogue does not (D-222). The paths are original: the reference is stock art, and a trace of
+it would have been a derivative of it.
+
+**What it cost.** `muscles` was empty on all 45 erg, water and conditioning entries, with a note
+saying it "means little" there. True while it was a grouping key; false the moment a figure is
+drawn from it, because an empty array renders as *we do not know* rather than *whole body*. Those
+were tagged and reseeded. Mobility, stretching and foam rolling stay blank on purpose.
+
+---
+
+### §2.12 · Four things Victor found in Phase 2 — **13 pts** — ✅ **done 2026-09-09**
+
+Reported after the first real use of the session screen on the phone. Not a phase in the original
+plan; it is here because three of the four were shipped defects and the fourth was older and
+worse than the feature that surfaced it.
+
+| #     | What he reported                          | What it actually was                                                                                              | Pts |
+| ----- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | --: |
+| 2.12a | "Training does not appear on computer"    | The desktop nav never got a Train entry, and the athletics page still pointed at the retired quick-log tab (D-225)  |   2 |
+| 2.12b | "Bodyweight should not be every workout"  | Correct. It moved to its own quick-log category, and the session form stopped asking (D-221)                        |   3 |
+| 2.12c | "Adding sets is messed up on the phone"   | **Two bugs stacked.** A width collision in the set row (D-220), on top of a token collision breaking six unrelated screens (D-219) |   5 |
+| 2.12d | "There is no database of exercises"       | There was — 165 rows. The screen read only the synced mirror, and the pull is paged at 100 (D-224)                  |   3 |
+
+**2.12c is the one worth reading twice.** The set row's own bug was a shared class constant
+carrying `w-full` composed with a call site adding `w-24` — same specificity, so the winner is
+Tailwind's emit order, not the class attribute. `w-full` won: the select took the whole row, both
+number inputs computed to **zero pixels**, and the delete button sat 92px off the edge.
+
+Underneath it was something older. `--spacing-*` is the namespace `max-w-*` consults **before**
+`--container-*`, so the named space scale added in §1.7 had silently redefined `max-w-sm`,
+`max-w-md`, `max-w-xl` and `max-w-2xl` for the whole app. `/private/settings` had been rendering
+its entire content inside a **64-pixel column**, one word per line — and so had both error
+screens, the offline screen, the sign-in card, the register card and the update notice.
+
+**Why no test saw any of it.** jsdom does not lay out. Every element there is zero pixels wide, so
+a row where five controls fit and a row where two have collapsed to nothing are the same DOM, and
+a 64-pixel column is indistinguishable from a 672-pixel one. `scripts/diag-widths.mjs` is the
+answer — a real browser at 390px, reporting anything wider than the box holding it — and
+`width-conflicts.test.ts` and `scale.test.ts` are the two guards that keep each cause from coming
+back.
+
 
 ---
 
@@ -582,19 +626,21 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 1     | Tokens, themes, type, space, motion, primitives     |      40 | ✅ done · Milestone A  |
 | **N** | **Degraded network — the plane-wifi freeze**        |  **45** | ✅ done                |
 | 2     | Training, end to end                                |      45 | ✅ done · Milestone B  |
+| 2+    | The catalogue gets pictures — diagram, written how-to |      12 | ✅ done                |
+| 2.12  | Four bugs Victor found — one older than Phase 2      |      13 | ✅ done                |
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
-| 2+    | The catalogue gets pictures — diagrams, clips        |      12 | ⏸ parked               |
 | 3     | Tags                                                |      12 | **[FEATURE]** · next   |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
 | 5     | The private screens                                 |      50 |                        |
 | 6     | Brand and the public site                           |      36 |                        |
 | 7     | Gates, performance, review                          |      22 |                        |
-|       | **Total**                                           | **311** |                        |
+|       | **Total**                                           | **324** |                        |
 
-**311, not 286.** Two rows were promoted out of footnotes rather than invented: N9 is the
-13-point half of N5 the plan always carried as "3 (+13)", and Phase 2+ is the muscle diagrams and
-demonstration clips Victor asked for alongside 2.1 and asked to defer. Same work, now visible.
-**138 points are done** (0, 1, N, 2, and 4.4).
+**324, not 286.** Three rows were promoted out of footnotes rather than invented: N9 is the
+13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the diagram and the
+descriptions Victor asked for alongside 2.1, and §2.12 is the four defects he found on first
+use — which is not scope creep, it is the cost of shipping Phase 2 becoming visible.
+**163 points are done** (0, 1, N, 2, 2+, §2.12, and 4.4).
 
 Pure design work, with both feature phases, the settings screen and the whole of Phase N removed:
 **~178 pts.**

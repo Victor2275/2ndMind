@@ -394,16 +394,26 @@ silently recategorising a real entry.
 
 Rules that hold the athletics side together, each with a decision entry:
 
-- **Training is logged in one place, and read from two** (D-159). Sets are entered in the
-  quick log — one exercise per entry, a row per set — because the phone cannot create a
-  `workouts` row (`docs/SYNC_DESIGN.md` §11.1). `allEfforts()` unions `workout_sets` with the
-  sets inside `log_entries`, so every PR function, chart and the adjusted-split table reads
-  one `Effort[]` and none of them knows where a set came from. **Do not add a second reader
-  of one source** — that is the whole design. Quick-logged exercises are deliberately absent
-  from "Recent sessions", which lists `workouts` rows.
-- **Bodyweight has one home** (D-159). The Training category offers the field, but it is
-  lifted out by `takeBodyweight` and written to `bodyweight_entries` — never stored on the
-  entry. It is the second input to every adjusted split, and two copies would drift.
+- **Training is logged in one place, and read from one** (V4 Phase 2.7, D-215). Sessions are
+  written at `/private/athletics/log`: a set belongs to a `workouts` row, and the phone creates
+  that row itself — a session and all its sets travel as **one aggregate op**
+  (`docs/SYNC_DESIGN.md` §4a), which is the reversal §11.1 deferred twice. The quick log's
+  `athletics` category is **retired, not deleted**: old entries keep their sets and stay
+  searchable, and no new one can take the old path. `allEfforts()` used to union two sources and
+  now reads sessions only. **Do not add a second reader** — getting down to one was the point.
+- **Bodyweight has one home, and its own tab** (D-159, D-221). The `weight` quick-log category
+  offers the field; `takeBodyweight` lifts it out into `bodyweight_entries` and it is never
+  stored on the entry. It is the second input to every adjusted split, and two copies would
+  drift. It is deliberately **not** on the session form — a form that asks every session gets a
+  number typed carelessly, which is worse than a missing one.
+- **The exercise catalogue ships in the bundle** (D-224). `lib/athletics/catalogue.ts` is what
+  the seed script inserts *and* what the session screen searches, with the synced mirror merged
+  over the top for movements you added yourself. Reading only the mirror made the feature depend
+  on a completed sync pull, and the pull is paged — a half-synced device found nothing.
+- **One muscle diagram, not 164 pictures** (D-222). `muscle-map.tsx` highlights regions from the
+  same `muscles` array everything else groups by, so the drawing cannot contradict the data.
+  `how-to.ts` carries the written description; there are no demonstration clips and there will
+  not be (D-223).
 - **Records are derived on read, never stored** (D-025). A stored PR has no invalidation
   story and reads high forever after a correction.
 - **Imports are idempotent** (D-026). Hevy exports are cumulative, so re-importing is the
