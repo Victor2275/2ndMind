@@ -373,6 +373,58 @@ for (const { spec, tokens } of built) {
   lines.push(`  --ambient-opacity: ${scheme === "dark" ? "1" : "0.45"};`);
   lines.push(`  --grain-opacity: ${scheme === "dark" ? "0.04" : "0"};`);
 
+  /* Elevation, four levels (V4 §1.7, Q156). Here rather than in `build-scale.mts` because it is
+     the one non-colour scale that is not the same in every theme: DESIGN.md §6 says elevation
+     is a ground-shift plus a border in dark and a shadow in light, and that is the main
+     structural difference between the two schemes.
+
+     Every value is `color-mix`ed from this theme's own tokens rather than written as a literal,
+     so a shadow carries the theme's hue and a new theme gets a correct elevation scale for
+     free. `scale.css` publishes the names (`shadow-rest` … `shadow-overlay`); these are what
+     the names point at.
+
+     `rest` is `none` in both schemes on purpose, and it is not a gap. A card at rest is
+     separated by its ground (`--surface` against `--background`) and its own border — that is
+     what "ground-shift" means. The token exists so the scale has four names and so a component
+     can say `shadow-rest` to mean "explicitly flat" rather than leaving the property unset. */
+  const shade = (pct: number) =>
+    scheme === "dark"
+      ? `color-mix(in oklab, var(--background) ${pct}%, transparent)`
+      : `color-mix(in oklab, var(--foreground) ${pct}%, transparent)`;
+  const ring = (pct: number) =>
+    `0 0 0 1px color-mix(in oklab, var(--foreground) ${pct}%, var(--border))`;
+  const elevation: Record<string, string> =
+    scheme === "dark"
+      ? {
+          rest: "none",
+          raised: ring(10),
+          floating: `${ring(16)}, 0 10px 28px -14px ${shade(70)}`,
+          overlay: `${ring(22)}, 0 22px 54px -22px ${shade(85)}`,
+        }
+      : {
+          rest: "none",
+          raised: `0 1px 2px ${shade(6)}`,
+          floating: `0 1px 2px ${shade(5)}, 0 8px 24px -16px ${shade(28)}`,
+          overlay: `0 2px 4px ${shade(6)}, 0 24px 48px -24px ${shade(35)}`,
+        };
+  for (const [level, value] of Object.entries(elevation)) {
+    lines.push(`  --elevation-${level}: ${value};`);
+  }
+
+  /* The scrim behind a sheet or a modal. Per theme for the same reason elevation is, and it is
+     the one token where getting the scheme wrong is *invisible in review*: a scrim has to
+     darken, and `bg-black/10` — which is what the vendored sheet shipped with — does darken on
+     paper and does nothing at all on a near-black ground, where the thing it is supposed to be
+     dimming is already darker than the scrim. So dark themes deepen toward their own background
+     and light themes toward their own foreground. */
+  lines.push(
+    `  --scrim: ${
+      scheme === "dark"
+        ? "color-mix(in oklab, var(--background) 72%, transparent)"
+        : "color-mix(in oklab, var(--foreground) 22%, transparent)"
+    };`,
+  );
+
   const bgHex = oklchToHex(tokens.background);
   const surfaceHex = oklchToHex(tokens.surface);
   for (const [name, value] of Object.entries(tokens)) {

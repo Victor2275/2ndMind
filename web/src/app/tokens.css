@@ -5,7 +5,7 @@
  * the two rules that produce them. `npm run tokens:check` fails if this file is stale, and
  * the test suite runs that check.
  *
- * Written 2026-09-08.
+ * Written 2026-09-09.
  */
 
 /* Generated: every dark-family theme. Adding one updates this automatically. */
@@ -17,6 +17,11 @@
   color-scheme: dark;
   --ambient-opacity: 1;
   --grain-opacity: 0.04;
+  --elevation-rest: none;
+  --elevation-raised: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, var(--border));
+  --elevation-floating: 0 0 0 1px color-mix(in oklab, var(--foreground) 16%, var(--border)), 0 10px 28px -14px color-mix(in oklab, var(--background) 70%, transparent);
+  --elevation-overlay: 0 0 0 1px color-mix(in oklab, var(--foreground) 22%, var(--border)), 0 22px 54px -22px color-mix(in oklab, var(--background) 85%, transparent);
+  --scrim: color-mix(in oklab, var(--background) 72%, transparent);
   --background: oklch(0.155 0.016 350);  /* #12090d */
   --surface: oklch(0.235 0.021 350);  /* #261a1f */
   --raised: oklch(0.285 0.026 350);  /* #34252c */
@@ -76,6 +81,11 @@
   color-scheme: light;
   --ambient-opacity: 0.45;
   --grain-opacity: 0;
+  --elevation-rest: none;
+  --elevation-raised: 0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+  --elevation-floating: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent), 0 8px 24px -16px color-mix(in oklab, var(--foreground) 28%, transparent);
+  --elevation-overlay: 0 2px 4px color-mix(in oklab, var(--foreground) 6%, transparent), 0 24px 48px -24px color-mix(in oklab, var(--foreground) 35%, transparent);
+  --scrim: color-mix(in oklab, var(--foreground) 22%, transparent);
   --background: oklch(0.963 0.007 194);  /* #eef4f4 */
   --surface: oklch(0.992 0.003 194);  /* #fafdfd */
   --raised: oklch(1 0 194);  /* #ffffff */
@@ -135,6 +145,11 @@
   color-scheme: dark;
   --ambient-opacity: 1;
   --grain-opacity: 0.04;
+  --elevation-rest: none;
+  --elevation-raised: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, var(--border));
+  --elevation-floating: 0 0 0 1px color-mix(in oklab, var(--foreground) 16%, var(--border)), 0 10px 28px -14px color-mix(in oklab, var(--background) 70%, transparent);
+  --elevation-overlay: 0 0 0 1px color-mix(in oklab, var(--foreground) 22%, var(--border)), 0 22px 54px -22px color-mix(in oklab, var(--background) 85%, transparent);
+  --scrim: color-mix(in oklab, var(--background) 72%, transparent);
   --background: oklch(0.1 0 0);  /* #030303 */
   --surface: oklch(0.19 0 0);  /* #141414 */
   --raised: oklch(0.27 0 0);  /* #262626 */
@@ -195,6 +210,11 @@
   color-scheme: dark;
   --ambient-opacity: 1;
   --grain-opacity: 0.04;
+  --elevation-rest: none;
+  --elevation-raised: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, var(--border));
+  --elevation-floating: 0 0 0 1px color-mix(in oklab, var(--foreground) 16%, var(--border)), 0 10px 28px -14px color-mix(in oklab, var(--background) 70%, transparent);
+  --elevation-overlay: 0 0 0 1px color-mix(in oklab, var(--foreground) 22%, var(--border)), 0 22px 54px -22px color-mix(in oklab, var(--background) 85%, transparent);
+  --scrim: color-mix(in oklab, var(--background) 72%, transparent);
   --background: oklch(0.165 0 0);  /* #0e0e0e */
   --surface: oklch(0.245 0 0);  /* #202020 */
   --raised: oklch(0.295 0 0);  /* #2c2c2c */
@@ -254,6 +274,11 @@
   color-scheme: light;
   --ambient-opacity: 0.45;
   --grain-opacity: 0;
+  --elevation-rest: none;
+  --elevation-raised: 0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+  --elevation-floating: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent), 0 8px 24px -16px color-mix(in oklab, var(--foreground) 28%, transparent);
+  --elevation-overlay: 0 2px 4px color-mix(in oklab, var(--foreground) 6%, transparent), 0 24px 48px -24px color-mix(in oklab, var(--foreground) 35%, transparent);
+  --scrim: color-mix(in oklab, var(--foreground) 22%, transparent);
   --background: oklch(0.968 0.005 250);  /* #f2f5f8 */
   --surface: oklch(0.994 0.002 250);  /* #fcfdfe */
   --raised: oklch(1 0 250);  /* #ffffff */
