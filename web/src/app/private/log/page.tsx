@@ -1,4 +1,5 @@
 import { describeDbError } from "@/lib/db/describe";
+import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -161,7 +162,7 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
         lede={
           query
             ? undefined
-            : "Six categories, each with its own fields. Saves immediately — no commit, no deploy."
+            : "One tab per kind of thing, each with its own fields. Saves immediately — no commit, no deploy."
         }
         actions={
           // A plain GET form: search survives a reload and a shared link, and needs no
@@ -197,11 +198,35 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
           </Link>
         </>
       ) : (
-        <div className="mt-8">
-          <Suspense fallback={<SkeletonPanel rows={5} />}>
-            <Console initialCategory={initialCategory} />
-          </Suspense>
-        </div>
+        <>
+          {/*
+           * The way into training, from the screen the centre button lands on (Victor's call).
+           *
+           * Training is not a tab here and should not be — Phase 2.7 moved it to sessions, where
+           * a set belongs to a workout rather than to an entry's JSON. But the centre button is
+           * the one control that is under the thumb from every screen, and after the fold it led
+           * to a log with no way to reach the thing most likely to be logged in a gym. A link
+           * rather than a tab keeps the two models separate and the route two taps long.
+           */}
+          <Link
+            href="/private/athletics/log"
+            className="mt-6 flex min-h-12 items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3 transition-colors hover:border-primary hover:bg-primary/10"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm text-primary">Log a training session</span>
+              <span className="block text-xs text-muted-foreground">
+                Exercises, sets and records — saved on this phone, synced when there is signal.
+              </span>
+            </span>
+            <ArrowRightIcon className="icon-sm shrink-0 text-primary" aria-hidden />
+          </Link>
+
+          <div className="mt-6">
+            <Suspense fallback={<SkeletonPanel rows={5} />}>
+              <Console initialCategory={initialCategory} />
+            </Suspense>
+          </div>
+        </>
       )}
     </main>
   );

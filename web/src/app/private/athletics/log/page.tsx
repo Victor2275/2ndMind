@@ -31,7 +31,10 @@ export const dynamic = "force-dynamic";
 
 export default function LogSessionPage() {
   return (
-    <main className="pb-16">
+    // Capped rather than filling the layout's 64rem. This is a form, and a 976-pixel-wide row of
+    // two inputs on a laptop reads as a mistake — Victor's report was that sessions were missing
+    // on a computer, and arriving to a stretched version of the phone screen is only half a fix.
+    <main className="max-w-2xl pb-16">
       <PageHeader eyebrow="Athletics" title="Log a session" />
 
       {/* The overview is one tap away rather than the default. The tab bar's Train action lands
@@ -51,10 +54,12 @@ export default function LogSessionPage() {
       {/* Q402. Correcting a set is a per-set op, so fixing a typo in set three does not resend
           the session — see `SYNC_DESIGN.md` §4a and `recent-sessions.tsx`. */}
       <section className="mt-10">
-        <h2 className="text-lg font-bold tracking-tight">On this phone</h2>
+        {/* "This device", not "this phone". The screen reads from local storage wherever it is
+            opened, and on a laptop the old wording described somewhere else. */}
+        <h2 className="text-lg font-bold tracking-tight">On this device</h2>
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
-          The last few sessions, as this device has them. Numbers are editable in place; a delete is
-          a tombstone, so it syncs rather than merely disappearing here.
+          The last few sessions, as this browser has them. Numbers are editable in place; a delete
+          is a tombstone, so it syncs rather than merely disappearing here.
         </p>
         <RecentSessions />
       </section>

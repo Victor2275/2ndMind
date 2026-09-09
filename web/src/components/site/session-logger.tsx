@@ -1,10 +1,13 @@
 "use client";
 
-import { PlusIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ChevronDownIcon, PlusIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CatalogueEntry, Modality } from "@/lib/athletics/catalogue";
+import { MuscleMap } from "@/components/site/muscle-map";
+import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
+import { CATALOGUE, type CatalogueEntry, type Modality } from "@/lib/athletics/catalogue";
 import { searchExercises } from "@/lib/athletics/exercise-search";
+import { howTo } from "@/lib/athletics/how-to";
 import { localCatalogue, localEfforts, withLocal } from "@/lib/athletics/local";
 import { estimateOneRepMax, strengthRecords, type Effort } from "@/lib/athletics/prs";
 import {
@@ -16,7 +19,6 @@ import {
 } from "@/lib/athletics/session";
 import { buzzSaved } from "@/lib/haptics";
 import { fetchWithDeadline } from "@/lib/net/deadline";
-import { requestSync } from "@/components/site/sync-runner";
 
 /**
  * Logging a training session (V4 Phase 2.5, Q391–Q400).
@@ -44,8 +46,23 @@ import { requestSync } from "@/components/site/sync-runner";
  * Nothing sensitive may appear in this file — it compiles into `/_next/static/chunks/`.
  */
 
-const FIELD =
-  "w-full rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+/**
+ * A control's look, with **no width in it** (D-219).
+ *
+ * `w-full` used to be part of this string, and the set-type select below wrote `${FIELD} w-24`
+ * to be narrower. Both utilities have the same specificity, so which one wins is decided by the
+ * order Tailwind emits them, not by the order they appear in the attribute — and `w-full` won.
+ * The select took the entire row, both number inputs computed to **zero pixels wide**, their
+ * labels overprinted each other into "LBSPS", and the delete button sat 92px off the right edge
+ * of the phone. Every class name read correctly and no test could see it, because jsdom gives
+ * every element a width of zero.
+ *
+ * `scripts/diag-widths.mjs` is what does see it, and the rule that prevents it is here: the base
+ * carries no width, so a call site states its width exactly once.
+ */
+const CONTROL =
+  "rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+const FIELD = `${CONTROL} w-full`;
 const LABEL = "eyebrow text-muted-foreground";
 
 /** Which columns a modality asks for. The whole point of the catalogue carrying one. */
@@ -64,11 +81,14 @@ const COLUMN_LABEL: Partial<Record<keyof SetInput, string>> = {
   spm: "spm",
 };
 
+const SET_TYPES: SetInput["setType"][] = ["normal", "warmup", "drop", "failure"];
+
 /** One exercise's worth of sets, as the screen holds it before saving. */
 type Block = {
   id: string;
   exercise: string;
   modality: Modality;
+  muscles: string[];
   sets: SetInput[];
 };
 
@@ -77,17 +97,53 @@ function todayLocal(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
+/**
+ * The catalogue, from the bundle first and the device second (D-224).
+ *
+ * This screen used to read the mirrored `exercises` store and nothing else, which made the whole
+ * feature depend on a completed sync pull. That failed in the most ordinary way there is: the
+ * catalogue is 165 rows and the pull is paged at 100, so a device that had synced **once** held
+ * three quarters of it — and searching `bnch` on a phone in a gym found nothing at all, because
+ * Bench Press happened to be in the half that had not arrived. It was not an error state; the
+ * search box simply came up empty and the only way forward was to type the name in by hand.
+ *
+ * The seed is already in this bundle — `CATALOGUE` is the file `scripts/seed-exercises.mts`
+ * inserts from, so the two cannot disagree — which means the 164 seeded movements are available
+ * on first paint, before any network, on a device that has never synced. The mirror is then
+ * merged over the top by name, and that is what carries the ones the seed does not know: an
+ * exercise added on the phone, or one the AI-add path proposed.
+ *
+ * Merged rather than concatenated, because a name present in both is the same movement, and two
+ * rows for one lift split its history in half and show a lower best for each — which is exactly
+ * what D-186 keeps the AI-add path from doing.
+ *
+ * **The bundle wins a collision, not the mirror**, which is the opposite of the obvious ordering
+ * and matters as soon as the seed changes. Phase 2.9 gave every erg piece a set of muscles so the
+ * body map has something to draw; a device that synced before the reseed still holds those rows
+ * with an empty `muscles` array, and mirror-wins would let that stale copy blank the diagram on
+ * the newest build. Nothing in the app can edit a seeded entry, so the bundle is the only writer
+ * of those rows and is by definition the fresher of the two. A name the bundle does not know —
+ * yours, or one AI-add proposed — is only in the mirror and comes through untouched.
+ */
+function mergeCatalogue(mirrored: CatalogueEntry[]): CatalogueEntry[] {
+  const byName = new Map<string, CatalogueEntry>();
+  for (const entry of mirrored) byName.set(entry.name, entry);
+  for (const entry of CATALOGUE) byName.set(entry.name, entry);
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function SessionLogger() {
-  const [catalogue, setCatalogue] = useState<CatalogueEntry[]>([]);
+  const [mirrored, setMirrored] = useState<CatalogueEntry[]>([]);
   const [efforts, setEfforts] = useState<Effort[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [performedAt, setPerformedAt] = useState(todayLocal);
-  const [bodyweight, setBodyweight] = useState("");
   const [picking, setPicking] = useState(false);
   const [state, setState] = useState<{ ok: boolean; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const catalogue = useMemo(() => mergeCatalogue(mirrored), [mirrored]);
 
   /**
    * One identity for the whole session, minted once.
@@ -103,18 +159,35 @@ export function SessionLogger() {
    */
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
+  /**
+   * Re-read the device whenever a sync finishes, not only on mount.
+   *
+   * Reading once was the second half of the empty-search bug. Even with the whole catalogue on
+   * the device, a page opened while the first pull was still in flight held the store's contents
+   * *at that instant* for the rest of the visit — and on a phone, opening the screen and the
+   * first sync are the same second. `SYNC_DONE_EVENT` already exists for exactly this (§3.3), so
+   * this is a listener rather than a polling loop.
+   */
+  const [generation, setGeneration] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setGeneration((n) => n + 1);
+    window.addEventListener(SYNC_DONE_EVENT, bump);
+    return () => window.removeEventListener(SYNC_DONE_EVENT, bump);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     void withLocal(async (db) => {
       const [list, history] = await Promise.all([localCatalogue(db), localEfforts(db)]);
       if (cancelled) return;
-      setCatalogue(list);
+      setMirrored(list);
       setEfforts(history);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [generation]);
 
   const records = useMemo(() => strengthRecords(efforts), [efforts]);
 
@@ -125,6 +198,7 @@ export function SessionLogger() {
         id: crypto.randomUUID(),
         exercise: entry.name,
         modality: entry.modality,
+        muscles: entry.muscles,
         sets: [emptySet(entry.name, 0)],
       },
     ]);
@@ -154,7 +228,6 @@ export function SessionLogger() {
         sets: blocks.flatMap((block) =>
           block.sets.map((set) => ({ ...set, exercise: block.exercise })),
         ),
-        bodyweightLbs: bodyweight.trim() === "" ? null : Number(bodyweight),
       },
       sessionId,
     );
@@ -171,14 +244,23 @@ export function SessionLogger() {
       setBlocks([]);
       setTitle("");
       setNotes("");
-      setBodyweight("");
     }
   }
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 flex-1">
+      {/*
+       * Two fields, and they wrap rather than compete.
+       *
+       * The weigh-in used to be a third field here. It is gone: a bodyweight is not a property of
+       * a workout, it is a daily measurement that happens to be taken near one, and putting it on
+       * this form asked for it every single session — which makes it either noise or a number
+       * typed carelessly, and a carelessly typed number is worse than a missing one because every
+       * weight-adjusted split is computed from it. It now has its own quick-log category, which
+       * is one tap from anywhere and required by nothing. See D-221.
+       */}
+      <header className="grid gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
           <label className={LABEL} htmlFor="session-title">
             Session
           </label>
@@ -191,7 +273,7 @@ export function SessionLogger() {
             className={`${FIELD} mt-1`}
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className={LABEL} htmlFor="session-when">
             When
           </label>
@@ -201,25 +283,6 @@ export function SessionLogger() {
             value={performedAt}
             onChange={(event) => setPerformedAt(event.target.value)}
             className={`${FIELD} mt-1 font-mono text-xs`}
-          />
-        </div>
-
-        {/* The weigh-in, logged where you already are. It moved here from the quick log's
-            Training category when Phase 2.7 retired it — otherwise the fast path to recording a
-            weight would have disappeared with the tab. It writes a `bodyweight_entries` row
-            rather than sitting on the session: one copy of the number every adjusted split is
-            computed from. */}
-        <div className="w-28">
-          <label className={LABEL} htmlFor="session-bw">
-            Bodyweight
-          </label>
-          <input
-            id="session-bw"
-            inputMode="decimal"
-            value={bodyweight}
-            onChange={(event) => setBodyweight(event.target.value)}
-            placeholder="lbs"
-            className={`${FIELD} mt-1 font-mono`}
           />
         </div>
       </header>
@@ -255,7 +318,7 @@ export function SessionLogger() {
           catalogue={catalogue}
           onPick={addBlock}
           onAdded={(entry) => {
-            setCatalogue((current) =>
+            setMirrored((current) =>
               [...current, entry].sort((a, b) => a.name.localeCompare(b.name)),
             );
             addBlock(entry);
@@ -321,6 +384,8 @@ function ExerciseBlock({
   onRemove: () => void;
 }) {
   const columns = FIELDS_FOR[block.modality];
+  const [showing, setShowing] = useState(false);
+  const description = howTo(block.exercise);
 
   const setField = (index: number, field: keyof SetInput, raw: string) => {
     const value = raw.trim() === "" ? null : Number(raw);
@@ -361,66 +426,126 @@ function ExerciseBlock({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove ${block.exercise}`}
-          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
-        >
-          <XIcon className="icon-sm" aria-hidden />
-        </button>
-      </div>
 
-      <ol className="mt-2 space-y-2">
-        {block.sets.map((set, index) => (
-          <li key={index} className="flex items-end gap-2">
-            {/* Q399. Numbered, so "add ten pounds on set three" has something to point at. */}
-            <span className="w-5 shrink-0 pb-2 text-center font-mono text-xs text-muted-foreground">
-              {index + 1}
-            </span>
-
-            {columns.map((column) => (
-              <div key={String(column)} className="min-w-0 flex-1">
-                <label className={LABEL} htmlFor={`s-${block.id}-${index}-${String(column)}`}>
-                  {COLUMN_LABEL[column]}
-                </label>
-                <input
-                  id={`s-${block.id}-${index}-${String(column)}`}
-                  inputMode="decimal"
-                  value={set[column] === null ? "" : String(set[column])}
-                  onChange={(event) => setField(index, column, event.target.value)}
-                  className={`${FIELD} mt-1 font-mono`}
-                />
-              </div>
-            ))}
-
-            <select
-              aria-label={`Set ${index + 1} type`}
-              value={set.setType}
-              onChange={(event) =>
-                onChange({
-                  ...block,
-                  sets: block.sets.map((s, i) =>
-                    i === index ? { ...s, setType: event.target.value as SetInput["setType"] } : s,
-                  ),
-                })
-              }
-              className={`${FIELD} w-24 shrink-0 text-xs`}
-            >
-              <option value="normal">normal</option>
-              <option value="warmup">warmup</option>
-              <option value="drop">drop</option>
-              <option value="failure">failure</option>
-            </select>
-
+        <div className="flex shrink-0 items-center gap-1">
+          {/* Collapsed by default. The diagram and the cues are reference — useful the first few
+              times you program a movement and pure clutter on the four hundredth bench press, so
+              they are one tap away rather than occupying the screen you are typing into. */}
+          {(block.muscles.length > 0 || description) && (
             <button
               type="button"
-              onClick={() => onChange({ ...block, sets: block.sets.filter((_, i) => i !== index) })}
-              aria-label={`Delete set ${index + 1}`}
-              className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+              onClick={() => setShowing((open) => !open)}
+              aria-expanded={showing}
+              aria-label={`${showing ? "Hide" : "Show"} how to do ${block.exercise}`}
+              className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
             >
-              <Trash2Icon className="icon-sm" aria-hidden />
+              <ChevronDownIcon
+                className={`icon-sm transition-transform duration-fast ${showing ? "rotate-180" : ""}`}
+                aria-hidden
+              />
             </button>
+          )}
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Remove ${block.exercise}`}
+            className="flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+          >
+            <XIcon className="icon-sm" aria-hidden />
+          </button>
+        </div>
+      </div>
+
+      {showing && (
+        <div className="mt-3 flex flex-wrap items-start gap-4 rounded-md border border-border/70 bg-background/40 p-3">
+          <MuscleMap muscles={block.muscles} size={124} />
+          <div className="min-w-[12rem] flex-1">
+            {block.muscles.length > 0 && (
+              <p className="font-mono text-[0.6rem] text-muted-foreground">
+                {block.muscles.join(" · ")}
+              </p>
+            )}
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              {description ?? "No description for this one — it is not in the seeded catalogue."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/*
+       * One set per row on a phone, two columns of controls inside it (D-220).
+       *
+       * The previous version put the number, every value field, a four-option select and a delete
+       * button on one flex line. Even with the width bug fixed that is five controls in 324
+       * pixels, and an erg piece has three value fields rather than two, so it was never going to
+       * fit. Here the values get the full width and the set type is a row of chips underneath,
+       * which is also fewer taps than a select: one, rather than open-scroll-choose.
+       */}
+      <ol className="mt-3 space-y-3">
+        {block.sets.map((set, index) => (
+          <li key={index} className="rounded-md border border-border/60 bg-background/30 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              {/* Q399. Numbered, so "add ten pounds on set three" has something to point at. */}
+              <span className="font-mono text-xs text-muted-foreground">Set {index + 1}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({ ...block, sets: block.sets.filter((_, i) => i !== index) })
+                }
+                aria-label={`Delete set ${index + 1}`}
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+              >
+                <Trash2Icon className="icon-sm" aria-hidden />
+              </button>
+            </div>
+
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {columns.map((column) => (
+                <div key={String(column)} className="min-w-0">
+                  <label className={LABEL} htmlFor={`s-${block.id}-${index}-${String(column)}`}>
+                    {COLUMN_LABEL[column]}
+                  </label>
+                  <input
+                    id={`s-${block.id}-${index}-${String(column)}`}
+                    inputMode="decimal"
+                    value={set[column] === null ? "" : String(set[column])}
+                    onChange={(event) => setField(index, column, event.target.value)}
+                    className={`${FIELD} mt-1 font-mono`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* A radiogroup rather than a `<select>`: four options is few enough to show, and a
+                native select on Android is a full-screen modal for a choice that is "normal"
+                ninety-five percent of the time. */}
+            <div
+              role="radiogroup"
+              aria-label={`Set ${index + 1} type`}
+              className="mt-2 flex flex-wrap gap-1"
+            >
+              {SET_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="radio"
+                  aria-checked={set.setType === type}
+                  onClick={() =>
+                    onChange({
+                      ...block,
+                      sets: block.sets.map((s, i) => (i === index ? { ...s, setType: type } : s)),
+                    })
+                  }
+                  className={`min-h-9 rounded-md border px-2.5 font-mono text-[0.65rem] transition-colors ${
+                    set.setType === type
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </li>
         ))}
       </ol>
@@ -428,7 +553,7 @@ function ExerciseBlock({
       <button
         type="button"
         onClick={addSet}
-        className="mt-2 min-h-10 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        className="mt-3 min-h-10 w-full rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
       >
         + same again
       </button>
@@ -439,7 +564,7 @@ function ExerciseBlock({
 /**
  * Choosing what to log (Q391).
  *
- * Fuzzy search over the mirrored catalogue, so it works with no signal — see
+ * Fuzzy search over the catalogue, so it works with no signal — see
  * `lib/athletics/exercise-search.ts` for why it is fuzzy rather than the prefix match the log
  * search uses.
  */
@@ -549,9 +674,13 @@ function ExercisePicker({
             <button
               type="button"
               onClick={() => onPick(entry)}
-              className="flex min-h-11 w-full items-baseline justify-between gap-3 rounded-md px-2 text-left text-sm text-foreground transition-colors hover:bg-primary/10"
+              className="flex min-h-11 w-full items-center gap-3 rounded-md px-2 text-left text-sm text-foreground transition-colors hover:bg-primary/10"
             >
-              <span className="truncate">{entry.name}</span>
+              {/* Small enough to be a glyph rather than a picture: at 40px the question it answers
+                  is "is this the push or the pull one", which is exactly the question you have
+                  while scanning a list of similar names. */}
+              <MuscleMap muscles={entry.muscles} size={40} />
+              <span className="min-w-0 flex-1 truncate">{entry.name}</span>
               <span className="shrink-0 font-mono text-[0.6rem] text-muted-foreground">
                 {entry.muscles.slice(0, 2).join(" · ") || entry.modality}
               </span>

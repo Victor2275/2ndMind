@@ -65,7 +65,7 @@ export function RecentSessions() {
 
   if (sessions === null) return null;
   if (sessions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No sessions on this phone yet.</p>;
+    return <p className="text-sm text-muted-foreground">No sessions on this device yet.</p>;
   }
 
   return (

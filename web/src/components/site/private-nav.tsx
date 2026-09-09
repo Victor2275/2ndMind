@@ -11,11 +11,21 @@ import { usePathname } from "next/navigation";
  * private data may ever be hard-coded in it — page titles and hrefs only.
  */
 
+/**
+ * `except` keeps a section from lighting up on a page that has its own entry.
+ *
+ * Added with **Train** (V4 §2.12, D-225). The session logger lives at `/private/athletics/log`, and the
+ * phone reaches it from the tab bar — but this bar is the *only* navigation above 40rem, and it
+ * had no entry for it at all. The single most-used write screen in the app was unreachable on a
+ * laptop except by typing the URL, which is what Victor found. Without `except`, Athletics would
+ * also light on the logger, because its href is a prefix of the logger's.
+ */
 const NAV = [
   { href: "/private", label: "Today" },
   { href: "/private/now", label: "Now" },
   { href: "/private/log", label: "Log" },
-  { href: "/private/athletics", label: "Athletics" },
+  { href: "/private/athletics/log", label: "Train" },
+  { href: "/private/athletics", label: "Athletics", except: ["/private/athletics/log"] },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },
   { href: "/private/calendar", label: "Calendar" },
@@ -32,7 +42,10 @@ export function PrivateNav() {
         // Exact match for the index, prefix match for the rest — otherwise "/private" would
         // light up on every page underneath it.
         const active =
-          item.href === "/private" ? pathname === "/private" : pathname.startsWith(item.href);
+          item.href === "/private"
+            ? pathname === "/private"
+            : pathname.startsWith(item.href) &&
+              !item.except?.some((path) => pathname.startsWith(path));
 
         return (
           <Link

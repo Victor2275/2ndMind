@@ -521,21 +521,25 @@ async function Training() {
           <HevyImportForm />
         </div>
         {/*
-         * Training is logged in one place now (D-159). This tab used to carry its own
-         * multi-row workout form; the quick log grew the same rows and reads better on a
-         * phone, and two forms writing the same thing meant two places to keep in step. The
-         * link rather than nothing, because the laptop is still where a session gets entered
-         * after the fact — and `/private/log` is a normal page that works on both.
+         * Where training is logged, said correctly (V4 §2.12).
+         *
+         * This card used to point at `/private/log`, which was right under D-159 and became wrong
+         * on 2026-09-09 when Phase 2.7 retired the quick log's Training tab. It then sent you to
+         * a page that could no longer log a session, and it was the *only* pointer to sessions
+         * anywhere above 40rem — so on a laptop the feature looked like it had been removed.
          */}
         <div className="rounded-xl border border-border bg-card/60 p-6 lg:col-span-2">
           <h2 className="text-base font-semibold">Log a session</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Training is logged from the{" "}
-            <Link href="/private/log" className="text-primary underline-offset-4 hover:underline">
-              log
+            Sessions are written at{" "}
+            <Link
+              href="/private/athletics/log"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Train
             </Link>
-            , on a phone or here — one exercise per entry, a row per set. Those sets count toward
-            the records and charts on this page.
+            , on a phone or here — an exercise, a row per set, saved on the device and synced when
+            there is signal. Those sets are what the records and charts above are computed from.
           </p>
         </div>
       </section>
