@@ -184,6 +184,51 @@ export const CATEGORIES: readonly Category[] = [
     ],
   },
   {
+    /**
+     * The weigh-in, as its own thing (V4 §2.12, D-221).
+     *
+     * It has been homeless twice. It was a field on the quick log's Training tab; Phase 2.7
+     * retired that tab and it moved onto the session form, which is where Victor found the real
+     * problem with it: **a session form that asks for a bodyweight asks every session.** A number
+     * that is requested when there is nothing to report gets left blank, which is fine, or gets
+     * typed carelessly, which is not — every bodyweight-adjusted erg split is computed from this
+     * one figure, so a careless entry is worse than a missing one.
+     *
+     * As a category it is the opposite: nothing asks for it, it is one tap from the centre button
+     * on any screen, and it is only ever written when there is a number to write.
+     *
+     * `bodyweightLbs` never lands on the entry. `takeBodyweight` lifts it out into a
+     * `bodyweight_entries` row before the entry is stored, exactly as it did on the retired
+     * Training tab — one copy of the number the charts and the adjusted table both read.
+     */
+    key: "weight",
+    label: "Weigh in",
+    hint: "A number and when it was taken. Nothing else asks for this.",
+    fields: [
+      {
+        name: "bodyweightLbs",
+        label: "Bodyweight",
+        type: "number",
+        placeholder: "lbs",
+        keypad: "decimal",
+      },
+      /**
+       * The one field that stays on the entry, and the reason the entry is worth writing at all.
+       *
+       * A weight means something different fasted at 7am than after a session, and the entry is
+       * where that lives — the `bodyweight_entries` row is one number per day and has nowhere to
+       * put it. Sticky, because it is nearly always the same and this has to be a two-tap log.
+       */
+      {
+        name: "context",
+        label: "When",
+        type: "select",
+        options: ["morning", "post-training", "evening"],
+        sticky: true,
+      },
+    ],
+  },
+  {
     key: "reading",
     label: "Reading",
     hint: "Books, papers, videos — anything worth remembering you read.",

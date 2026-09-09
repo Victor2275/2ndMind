@@ -1,4 +1,3 @@
-import { localDay } from "@/lib/offline/panels";
 import { HlcClock } from "@/lib/sync/hlc";
 import { deviceId, enqueue, loadClock, openSyncDb, saveClock } from "@/lib/sync/store";
 
@@ -41,20 +40,23 @@ export type SessionInput = {
   title: string;
   notes: string;
   sets: SetInput[];
-  /**
-   * The morning weigh-in, logged where you already are.
-   *
-   * It moved here from the quick log's Training category when Phase 2.7 retired that category —
-   * without this the fast path to recording a weight would simply have disappeared, which is
-   * the kind of thing a fold quietly loses. Caught by two tests in `offline/write.test.ts`
-   * that suddenly had no field to read.
-   *
-   * It is **not** stored on the session. It writes a `bodyweight_entries` row, which is what
-   * the weight chart and the bodyweight-adjusted erg table read — two copies of the second
-   * input to every adjusted split is how they drift apart (D-159).
-   */
-  bodyweightLbs?: number | null;
 };
+
+/**
+ * The weigh-in is deliberately not on this type (D-221).
+ *
+ * It was, briefly. Phase 2.7 retired the quick log's Training tab and the bodyweight field came
+ * here with it, because otherwise the fast path to recording a weight would have vanished with
+ * the tab. Victor's objection was the right one and it is about behaviour rather than schema:
+ * **a session form with a bodyweight field asks for a bodyweight every session.** A measurement
+ * requested when there is nothing to measure is either skipped or typed carelessly, and every
+ * weight-adjusted erg split in the app is computed from that one number — a careless value is
+ * worse than a missing one, because it reads as real.
+ *
+ * It has its own quick-log category now (`categories.ts`, key `weight`), where nothing asks for
+ * it and it is one tap from any screen. `takeBodyweight` still routes it to `bodyweight_entries`
+ * and nowhere else, so the "one copy of the number" rule D-159 set is unchanged.
+ */
 
 /** A blank set, so the form and the writer agree on what "empty" means. */
 export function emptySet(exercise: string, setIndex: number): SetInput {
@@ -99,10 +101,8 @@ export type SaveResult = { ok: boolean; message: string; clientId?: string };
  */
 export async function saveSession(input: SessionInput, clientId: string): Promise<SaveResult> {
   const sets = input.sets.filter(hasContent);
-  const weight =
-    typeof input.bodyweightLbs === "number" && input.bodyweightLbs > 0 ? input.bodyweightLbs : null;
 
-  if (sets.length === 0 && input.title.trim() === "" && weight === null) {
+  if (sets.length === 0 && input.title.trim() === "") {
     return { ok: false, message: "Nothing to save — log a set, or give the session a name." };
   }
 
@@ -113,48 +113,31 @@ export async function saveSession(input: SessionInput, clientId: string): Promis
       // otherwise each hold their own copy of a per-device clock and issue colliding stamps.
       const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
 
-      // A weigh-in on its own is a legitimate submit — you stepped on the scale and did not
-      // train — so the session op is only written when there is a session to write.
-      if (sets.length > 0 || input.title.trim() !== "") {
-        await enqueue(db, {
-          entity: "workout",
-          op: "create",
-          row: {
-            clientId,
-            performedAt: input.performedAt.toISOString(),
-            title: input.title.trim(),
-            notes: input.notes.trim(),
-            // Renumbered on the way out, so deleting the second of four sets leaves 0,1,2
-            // rather than a gap. The index is what "Set 3" on screen counts from.
-            sets: sets.map((set, index) => ({
-              clientId: crypto.randomUUID(),
-              ...set,
-              setIndex: index,
-            })),
-          },
-          hlc: clock.tick(),
-        });
-      }
-
-      if (weight !== null) {
-        await enqueue(db, {
-          entity: "bodyweight",
-          op: "create",
-          // `measuredOn` is the natural key, so a second weigh-in on the same day replaces the
-          // first rather than creating a duplicate — offline and online alike.
-          row: { measuredOn: localDay(input.performedAt), weightLbs: weight, note: "" },
-          hlc: clock.tick(),
-        });
-      }
+      await enqueue(db, {
+        entity: "workout",
+        op: "create",
+        row: {
+          clientId,
+          performedAt: input.performedAt.toISOString(),
+          title: input.title.trim(),
+          notes: input.notes.trim(),
+          // Renumbered on the way out, so deleting the second of four sets leaves 0,1,2
+          // rather than a gap. The index is what "Set 3" on screen counts from.
+          sets: sets.map((set, index) => ({
+            clientId: crypto.randomUUID(),
+            ...set,
+            setIndex: index,
+          })),
+        },
+        hlc: clock.tick(),
+      });
 
       await saveClock(db, clock.state);
 
+      // A named session with no sets is legitimate — "Technical paddle", logged and filled in
+      // later — so the count is only mentioned when there is one worth mentioning.
       const saved =
-        sets.length === 0
-          ? "Weighed in."
-          : sets.length === 1
-            ? "Session saved on this phone."
-            : `Session saved — ${sets.length} sets.`;
+        sets.length > 1 ? `Session saved — ${sets.length} sets.` : "Session saved on this phone.";
 
       return { ok: true, clientId, message: saved };
     } finally {

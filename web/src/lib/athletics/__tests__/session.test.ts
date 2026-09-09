@@ -130,52 +130,36 @@ describe("saving a session", () => {
   });
 });
 
-describe("the weigh-in", () => {
-  /**
-   * These moved here from `lib/offline/__tests__/write.test.ts` in Phase 2.7.
-   *
-   * `bodyweightLbs` was a field on the quick log's `athletics` category, and retiring that
-   * category removed the only way to record a weight from the phone. The two tests that used to
-   * live there are what caught it — they suddenly had no field to read — so the field followed
-   * the feature onto the session screen and its tests followed it here.
-   */
-  it("goes to its own table, never onto the session", async () => {
-    // Bodyweight is the second input to every adjusted split, so there is one copy of it and a
-    // training row is not where it lives (D-159).
-    await saveSession(input({ bodyweightLbs: 178.3 }), SESSION);
+/**
+ * The weigh-in is not here, and that is the third home it has had.
+ *
+ * It was a field on the quick log's `athletics` category. Phase 2.7 retired that category and it
+ * moved onto the session form, and these tests moved with it. Victor's report on 2026-09-09 named
+ * the problem with that home: a session form with a bodyweight field asks for a bodyweight every
+ * session, and a measurement asked for when there is nothing to measure gets typed carelessly —
+ * which matters more here than elsewhere, because every weight-adjusted erg split is derived from
+ * this one number.
+ *
+ * It is a quick-log category of its own now (`weight`), so `saveSession` no longer takes a
+ * bodyweight at all and the tests are back on the log path in
+ * `lib/offline/__tests__/write.test.ts`. See D-221.
+ */
+describe("a session with nothing in it", () => {
+  it("is refused rather than queued", async () => {
+    const result = await saveSession(input({ sets: [], title: "" }), SESSION);
 
-    const ops = await allOps(db);
-    const session = ops.find((op) => op.entity === "workout");
-    const weight = ops.find((op) => op.entity === "bodyweight");
-
-    expect(session?.payload).not.toHaveProperty("bodyweightLbs");
-    expect(weight?.payload).toMatchObject({ weightLbs: 178.3 });
+    expect(result.ok).toBe(false);
+    expect(await allOps(db)).toHaveLength(0);
   });
 
-  it("gives each op a distinct, increasing stamp", async () => {
-    // Both ops come from one submit. Sharing a stamp would leave last-write-wins with a tie to
-    // break on a device id it cannot tell apart from itself.
-    await saveSession(input({ bodyweightLbs: 178 }), SESSION);
-
-    const stamps = (await allOps(db)).map((op) => op.hlc);
-    expect(new Set(stamps).size).toBe(2);
-    expect([...stamps].sort()).toEqual(stamps.slice().sort());
-  });
-
-  it("can be recorded on its own, without a session", async () => {
-    // You stepped on the scale and did not train. Requiring a session to log a weight is how a
-    // fold like this quietly loses a daily habit.
-    const result = await saveSession(input({ sets: [], title: "", bodyweightLbs: 176 }), SESSION);
+  it("is accepted when it has a name but no sets yet", async () => {
+    // "Technical paddle", written down at the dock and filled in afterwards.
+    const result = await saveSession(input({ sets: [], title: "Technical paddle" }), SESSION);
 
     expect(result.ok).toBe(true);
     const ops = await allOps(db);
     expect(ops).toHaveLength(1);
-    expect(ops[0].entity).toBe("bodyweight");
-  });
-
-  it("ignores a blank or nonsense weight rather than queueing one", async () => {
-    await saveSession(input({ bodyweightLbs: 0 }), SESSION);
-    expect((await allOps(db)).some((op) => op.entity === "bodyweight")).toBe(false);
+    expect(ops[0].entity).toBe("workout");
   });
 });
 

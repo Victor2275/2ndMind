@@ -52,6 +52,16 @@ const study = (over: Record<string, string> = {}) =>
     ...over,
   });
 
+/** A weigh-in, which is the one live category that still splits a field off the entry. */
+const weighIn = (over: Record<string, string> = {}) =>
+  form({
+    category: "weight",
+    bodyweightLbs: "178.3",
+    context: "morning",
+    note: "",
+    ...over,
+  });
+
 beforeEach(async () => {
   db = await openSyncDb(DB_NAME);
   const tx = db.transaction(["outbox", "log_entries", "bodyweight_entries", "tasks"], "readwrite");
@@ -103,18 +113,54 @@ describe("an entry written with no signal", () => {
   });
 
   /**
-   * The weigh-in split used to be tested here, and has moved.
+   * The weigh-in, back on this path — its third home, and the reason each move happened.
    *
-   * `bodyweightLbs` was a field on the `athletics` category, and V4 Phase 2.7 retired that
-   * category — so no live category declares the field and `takeBodyweight` has nothing to find
-   * on this path any more. The behaviour did not go away, it followed the feature: a weigh-in is
-   * now entered on the session screen and written by `saveSession`, which is where the
-   * equivalent tests live (`lib/athletics/__tests__/session.test.ts`).
+   * It was a field on the `athletics` category until Phase 2.7 retired that category, and these
+   * two tests are what caught the gap: they suddenly had no field to read, which is how anyone
+   * found out that retiring the tab had removed the only way to log a weight from the phone. It
+   * then lived on the session form, and Victor's objection to *that* was about behaviour rather
+   * than storage — a session form with a bodyweight field asks for one every session, and a
+   * measurement asked for when there is nothing to measure gets typed carelessly. Every
+   * weight-adjusted split is derived from this number, so a careless value is worse than a
+   * missing one.
    *
-   * Worth recording that this is how the gap was found. Retiring the category quietly removed
-   * the only way to log a weight from the phone, and it was these two failing tests that said
-   * so rather than anyone noticing the field was gone.
+   * It is now a quick-log category of its own (`weight`), where nothing asks for it. See D-221.
    */
+  it("splits the weigh-in out to its own table, never onto the entry", async () => {
+    // Bodyweight is the second input to every adjusted split, so there is one copy of it and a
+    // log entry's JSON is not where it lives (D-159).
+    await localLogWriter()(null, weighIn());
+
+    const ops = await allOps(db);
+    const entry = ops.find((op) => op.entity === "log_entry");
+    const weight = ops.find((op) => op.entity === "bodyweight");
+
+    expect(entry?.payload.data).not.toHaveProperty("bodyweightLbs");
+    expect(weight?.payload).toMatchObject({ weightLbs: 178.3 });
+  });
+
+  it("keeps the context on the entry, where the number cannot carry it", async () => {
+    // `bodyweight_entries` is one row per day and has nowhere to put "fasted, before training".
+    // The entry is what makes two readings on different days comparable.
+    await localLogWriter()(null, weighIn());
+    const entry = (await allOps(db)).find((op) => op.entity === "log_entry");
+    expect(entry?.payload.data).toMatchObject({ context: "morning" });
+  });
+
+  it("gives each op a distinct, increasing stamp", async () => {
+    // Both ops come from one submit. Sharing a stamp would leave last-write-wins with a tie to
+    // break on a device id it cannot tell apart from itself.
+    await localLogWriter()(null, weighIn());
+
+    const stamps = (await allOps(db)).map((op) => op.hlc);
+    expect(new Set(stamps).size).toBe(2);
+    expect([...stamps].sort()).toEqual(stamps.slice().sort());
+  });
+
+  it("ignores a nonsense weight rather than queueing one", async () => {
+    await localLogWriter()(null, weighIn({ bodyweightLbs: "0" }));
+    expect((await allOps(db)).some((op) => op.entity === "bodyweight")).toBe(false);
+  });
 
   it("refuses an empty submit rather than queueing nothing", async () => {
     const result = await localLogWriter()(null, form({ category: "academics" }));

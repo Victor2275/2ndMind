@@ -40,21 +40,49 @@ beforeEach(async () => {
 const at = (iso: string) => new Date(iso);
 
 describe("category definitions", () => {
-  it("covers the four things Victor still logs here, plus the capture pile", () => {
-    // Was six, then five. `work` was retired on 2026-09-03 (D-159) because applications are
-    // tracked in a Google Sheet. **`athletics` was retired on 2026-09-08** by V4 Phase 2.7 —
-    // training did not stop being logged, it moved to sessions at `/private/athletics/log`,
-    // where a set belongs to a workout rather than sitting inside an entry's JSON. `note`
-    // arrived on 2026-09-05 (D-164) and is not one of the four: it is where a thought lands
-    // before anyone has decided what it is.
-    expect(CATEGORIES.map((c) => c.key)).toEqual(["academics", "reading", "people", "note", "day"]);
+  it("covers the five things Victor still logs here, plus the capture pile", () => {
+    // Was six, then five, then four, now five again. `work` was retired on 2026-09-03 (D-159)
+    // because applications are tracked in a Google Sheet. **`athletics` was retired on
+    // 2026-09-08** by V4 Phase 2.7 — training did not stop being logged, it moved to sessions at
+    // `/private/athletics/log`, where a set belongs to a workout rather than sitting inside an
+    // entry's JSON. **`weight` arrived on 2026-09-09** (D-221): the weigh-in that rode along on
+    // the retired training tab spent a day on the session form, where it asked for a bodyweight
+    // every session, and now has a home that asks for nothing. `note` arrived on 2026-09-05
+    // (D-164) and is not one of the five: it is where a thought lands before anyone has decided
+    // what it is.
+    expect(CATEGORIES.map((c) => c.key)).toEqual([
+      "academics",
+      "weight",
+      "reading",
+      "people",
+      "note",
+      "day",
+    ]);
   });
 
   it("keeps the capture category out of the tab row", () => {
-    // The whole point of a quick note is not choosing a category. A sixth tab for it would put
-    // the choice back, on the one screen where it is meant to be absent.
-    expect(TAB_CATEGORIES.map((c) => c.key)).toEqual(["academics", "reading", "people", "day"]);
+    // The whole point of a quick note is not choosing a category. A tab for it would put the
+    // choice back, on the one screen where it is meant to be absent.
+    expect(TAB_CATEGORIES.map((c) => c.key)).toEqual([
+      "academics",
+      "weight",
+      "reading",
+      "people",
+      "day",
+    ]);
     expect(TAB_CATEGORIES.some((c) => c.key === UNSORTED_CATEGORY)).toBe(false);
+  });
+
+  it("puts the weigh-in's number in `bodyweight_entries` and its context on the entry", () => {
+    // The rule D-159 set and D-221 kept: one copy of the number every adjusted split reads. The
+    // category declares the field so the form renders it; `takeBodyweight` lifts it out before
+    // the entry is stored, which is what makes "declares it" and "stores it" different things.
+    const weight = CATEGORIES.find((c) => c.key === "weight")!;
+    expect(weight.fields.map((f) => f.name)).toEqual(["bodyweightLbs", "context"]);
+
+    const data: Record<string, unknown> = { bodyweightLbs: 178.3, context: "morning" };
+    expect(takeBodyweight(data).weight).toBe(178.3);
+    expect(data).toEqual({ context: "morning" });
   });
 
   it("still lets the capture category be written and read", () => {
