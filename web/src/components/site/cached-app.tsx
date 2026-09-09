@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { LogForm } from "@/components/site/log-form";
+import { SessionLogger } from "@/components/site/session-logger";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
@@ -37,7 +38,7 @@ const HEAD = "text-base font-semibold tracking-tight text-foreground";
 const META = "font-mono text-[0.65rem] text-muted-foreground";
 
 /** Which of the cached views to show, from the path the navigation was trying to reach. */
-type ViewKey = "today" | "athletics" | "academics" | "log" | "sync";
+type ViewKey = "today" | "athletics" | "session" | "academics" | "log" | "sync";
 
 /**
  * The private screens this page has no copy of, and what to call them on screen.
@@ -64,6 +65,10 @@ const NOT_KEPT: ReadonlyArray<readonly [string, string]> = [
 type Target = { kind: "view"; key: ViewKey } | { kind: "absent"; name: string };
 
 function viewFor(path: string): Target {
+  // Longest prefix first: the session logger lives under the athletics path and has to be
+  // recognised before it, or logging offline would land on the read-only overview — the one
+  // screen in this app that most needs to work with no signal.
+  if (path.startsWith("/private/athletics/log")) return { kind: "view", key: "session" };
   if (path.startsWith("/private/athletics")) return { kind: "view", key: "athletics" };
   if (path.startsWith("/private/academics")) return { kind: "view", key: "academics" };
   if (path.startsWith("/private/log")) return { kind: "view", key: "log" };
@@ -87,6 +92,7 @@ function viewFor(path: string): Target {
 
 const TITLE: Record<ViewKey, string> = {
   today: "Today",
+  session: "Log a session",
   athletics: "Training",
   academics: "Academics",
   log: "The log",
@@ -219,6 +225,10 @@ export function CachedApp() {
         <>
           {key === "today" && <TodayView view={view} />}
           {key === "athletics" && <AthleticsView view={view} />}
+          {/* The same component the live route mounts, not a cut-down copy. It reads IndexedDB
+              and writes the outbox either way, so there is nothing for an offline variant to do
+              differently — which is the point of `lib/athletics/session.ts` having one path. */}
+          {key === "session" && <SessionLogger />}
           {key === "academics" && <AcademicsView view={view} />}
           {key === "log" && <LogView view={view} query={queryFrom(path)} />}
           {key === "sync" && <OutboxConsole />}
@@ -589,7 +599,7 @@ function Missing({ what }: { what: string }) {
 }
 
 function Elsewhere({ current }: { current: ViewKey | null }) {
-  const others = (["today", "athletics", "academics", "log", "sync"] as const).filter(
+  const others = (["today", "session", "athletics", "academics", "log", "sync"] as const).filter(
     (key) => key !== current,
   );
 
@@ -623,7 +633,11 @@ function Elsewhere({ current }: { current: ViewKey | null }) {
 }
 
 function pathFor(key: ViewKey): string {
-  return key === "today" ? "/private" : `/private/${key}`;
+  if (key === "today") return "/private";
+  // The one view whose key is not its path. It could have been called `athletics/log`, but the
+  // key is also a React branch and a title lookup, and a slash in it reads as a typo.
+  if (key === "session") return "/private/athletics/log";
+  return `/private/${key}`;
 }
 
 /** "185 × 5" for a lift, "2000m 7:12" for a piece — never a multiplication of the two. */

@@ -203,7 +203,10 @@ describe("what it admits it cannot show", () => {
     at("/private/log");
     render(<CachedApp />);
 
-    expect(await screen.findByRole("button", { name: /log training/i })).toBeInTheDocument();
+    // "Study" since Phase 2.7 retired the athletics category — training is logged as sessions
+    // now, and the first tab moved. What §2.2 is about is that the shell *writes*, not which
+    // category happens to be first.
+    expect(await screen.findByRole("button", { name: /log study/i })).toBeInTheDocument();
     expect(screen.queryByText(/cannot write a new entry/i)).toBeNull();
   });
 
@@ -280,7 +283,10 @@ describe("it looks like the app, not like the public site", () => {
     const current = screen
       .getByRole("navigation", { name: /private sections/i })
       .querySelector('[aria-current="page"]');
-    expect(current?.getAttribute("href")).toBe("/private/athletics");
+    // The Train tab points at the logger since Phase 2.7 and stands for the whole athletics
+    // section — so standing on the records page lights it, even though the href is deeper than
+    // the path. A tab that goes dark on a page inside its own section reads as being lost.
+    expect(current?.getAttribute("href")).toBe("/private/athletics/log");
   });
 
   it("does not offer sign-out, which cannot work with no network", async () => {

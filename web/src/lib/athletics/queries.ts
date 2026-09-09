@@ -1,10 +1,8 @@
 import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
-import { categoryByKey, rowsIn } from "@/lib/log/categories";
 import {
   bodyweightEntries,
-  logEntries,
   rehabCompletions,
   workoutSets,
   workouts,
@@ -122,17 +120,26 @@ export async function logWorkout(
 /**
  * Every set, flattened with its date — the input shape the PR functions want.
  *
- * **Two sources, one list (D-159).** `workout_sets` holds Hevy imports and sessions entered on
- * the laptop; `log_entries` holds everything logged from the phone, which is now the usual
- * way. Merging here rather than at each call site is the whole point: `strengthRecords`,
- * `ergRecords`, `e1rmSeries`, `weeklyVolume`, `flagSpm` and the adjusted-split table all read
- * `Effort[]` and none of them has to know where a set came from. It also means the phone did
- * not need permission to create a `workout` row, which it does not have and which
- * `SYNC_DESIGN.md` §11.1 explains at length.
+ * **One source, since V4 Phase 2.7.** This used to union two: `workout_sets` for Hevy imports
+ * and laptop entries, plus the sets stored inside `athletics` log entries for anything logged
+ * from the phone. That union was D-159, and it existed for one reason — the phone could not
+ * create a `workout` row, so a set logged at the gym had nowhere else to live.
+ *
+ * Phase 2 gave it one. Sessions are writable from the phone now (`SYNC_DESIGN.md` §4a), the
+ * `athletics` log category is retired, and every set reaches `workout_sets` by the same path
+ * whether it was typed at a rack, imported from Hevy, or entered on the laptop.
+ *
+ * Item 2.7 said **do not add a third reader**. The answer turned out to be better than that:
+ * there is one. `strengthRecords`, `ergRecords`, `e1rmSeries`, `weeklyVolume`, `flagSpm` and the
+ * adjusted-split table all read `Effort[]` and none of them ever had to know where a set came
+ * from — which is why removing a source cost nothing at the call sites.
+ *
+ * Old `athletics` log entries keep their data and stay readable in the timeline and in search;
+ * they simply no longer feed the record board. Retiring the category rather than deleting it is
+ * what preserves that (`lib/log/categories.ts`).
  */
 export async function allEfforts(db: Db): Promise<Effort[]> {
-  const [sets, logged] = await Promise.all([workoutSetEfforts(db), loggedEfforts(db)]);
-  return [...sets, ...logged];
+  return workoutSetEfforts(db);
 }
 
 async function workoutSetEfforts(db: Db): Promise<Effort[]> {
@@ -154,58 +161,6 @@ async function workoutSetEfforts(db: Db): Promise<Effort[]> {
     .where(and(isNull(workouts.deletedAt), isNull(workoutSets.deletedAt)));
 
   return rows;
-}
-
-/**
- * Quick-logged training, read as efforts.
- *
- * One log entry is one exercise with a list of sets, so this fans out: an entry with three
- * rows becomes three efforts sharing the entry's exercise name and date. Rows missing the
- * numbers a record is computed from are kept rather than filtered — `isStrength` and `isErg`
- * in `prs.ts` already decide what counts, and filtering twice in two places is how the two
- * definitions drift apart.
- */
-async function loggedEfforts(db: Db): Promise<Effort[]> {
-  const rows = await db
-    .select({ occurredAt: logEntries.occurredAt, data: logEntries.data })
-    .from(logEntries)
-    .where(and(eq(logEntries.category, "athletics"), isNull(logEntries.deletedAt)));
-
-  const efforts: Effort[] = [];
-  for (const row of rows) {
-    const exercise = typeof row.data.exercise === "string" ? row.data.exercise.trim() : "";
-    // Without a name there is nothing to group by, and an unnamed set would land in a record
-    // labelled with the empty string.
-    if (exercise === "") continue;
-
-    for (const set of rowsIn(TRAINING_ROWS, row.data)) {
-      efforts.push({
-        exercise,
-        performedAt: row.occurredAt,
-        // The column is `notNull` on the workout side, so the shape stays the same here.
-        setType: typeof set.setType === "string" ? set.setType : "normal",
-        weightLbs: number(set.weightLbs),
-        reps: integer(set.reps),
-        distanceM: number(set.distance),
-        durationS: integer(set.duration),
-        spm: integer(set.spm),
-      });
-    }
-  }
-
-  return efforts;
-}
-
-/** The set fields, as the category declares them. */
-const TRAINING_ROWS = categoryByKey("athletics")?.rows;
-
-function number(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function integer(value: unknown): number | null {
-  const parsed = number(value);
-  return parsed === null ? null : Math.round(parsed);
 }
 
 export type WorkoutSummary = {

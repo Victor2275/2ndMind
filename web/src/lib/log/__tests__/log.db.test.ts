@@ -39,30 +39,20 @@ beforeEach(async () => {
 const at = (iso: string) => new Date(iso);
 
 describe("category definitions", () => {
-  it("covers the five things Victor still logs here, plus the capture pile", () => {
-    // Was six. `work` was retired on 2026-09-03 (D-159) because applications are tracked in a
-    // Google Sheet. `note` arrived on 2026-09-05 (D-164) and is not one of the five: it is
-    // where a thought lands before anyone has decided what it is.
-    expect(CATEGORIES.map((c) => c.key)).toEqual([
-      "athletics",
-      "academics",
-      "reading",
-      "people",
-      "note",
-      "day",
-    ]);
+  it("covers the four things Victor still logs here, plus the capture pile", () => {
+    // Was six, then five. `work` was retired on 2026-09-03 (D-159) because applications are
+    // tracked in a Google Sheet. **`athletics` was retired on 2026-09-08** by V4 Phase 2.7 —
+    // training did not stop being logged, it moved to sessions at `/private/athletics/log`,
+    // where a set belongs to a workout rather than sitting inside an entry's JSON. `note`
+    // arrived on 2026-09-05 (D-164) and is not one of the four: it is where a thought lands
+    // before anyone has decided what it is.
+    expect(CATEGORIES.map((c) => c.key)).toEqual(["academics", "reading", "people", "note", "day"]);
   });
 
   it("keeps the capture category out of the tab row", () => {
     // The whole point of a quick note is not choosing a category. A sixth tab for it would put
     // the choice back, on the one screen where it is meant to be absent.
-    expect(TAB_CATEGORIES.map((c) => c.key)).toEqual([
-      "athletics",
-      "academics",
-      "reading",
-      "people",
-      "day",
-    ]);
+    expect(TAB_CATEGORIES.map((c) => c.key)).toEqual(["academics", "reading", "people", "day"]);
     expect(TAB_CATEGORIES.some((c) => c.key === UNSORTED_CATEGORY)).toBe(false);
   });
 
@@ -88,7 +78,13 @@ describe("category definitions", () => {
     // A Server Action is a POST endpoint with a guessable id, so this is the door the category
     // would come back through.
     expect(writableCategoryByKey("work")).toBeUndefined();
-    expect(writableCategoryByKey("athletics")?.label).toBe("Training");
+    // Retired by Phase 2.7, and this is the assertion that keeps the fold real: if `athletics`
+    // could still be written, the two ways of recording a lift would start diverging again,
+    // which is the whole thing D-159's union was a workaround for.
+    expect(writableCategoryByKey("athletics")).toBeUndefined();
+    // Still *readable*, so an old training entry keeps its exercise, sets and search text in
+    // the timeline rather than degrading to a bare note.
+    expect(categoryByKey("athletics")?.label).toBe("Training");
   });
 
   it("gives every field a unique name within its category", () => {

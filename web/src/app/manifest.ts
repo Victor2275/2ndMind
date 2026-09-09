@@ -60,7 +60,10 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Log training",
         short_name: "Training",
-        url: "/private/log?category=athletics",
+        // Repointed by V4 Phase 2.7. It used to open the quick log's Training tab, which was
+        // retired when sessions became writable — the fast path still has to exist, it just
+        // arrives somewhere better: a session screen that opens ready for the first exercise.
+        url: "/private/athletics/log",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {

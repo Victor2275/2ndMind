@@ -130,22 +130,29 @@ describe("the unsorted pile", () => {
   it("files the note it was tapped on, into the category that was tapped", async () => {
     render(<LogConsole entries={[]} unsorted={[note(7, "a thought")]} loggedToday={[]} />);
 
-    const training = screen
-      .getAllByRole("button", { name: "Training" })
+    // "Study" rather than "Training": Phase 2.7 retired the athletics category, so it is no
+    // longer one of the destinations an unsorted note can be filed into. What is under test is
+    // the filing, not which categories exist.
+    const study = screen
+      .getAllByRole("button", { name: "Study" })
       .find((button) => button.getAttribute("type") === "submit");
-    await userEvent.click(training!);
+    await userEvent.click(study!);
 
     await waitFor(() => expect(file).toHaveBeenCalled());
     expect(filed?.get("id")).toBe("7");
-    expect(filed?.get("category")).toBe("athletics");
+    expect(filed?.get("category")).toBe("academics");
   });
 });
 
 describe("opening on a category, from the icon's shortcut", () => {
   /**
-   * §3.5. The long-press shortcut arrives at `/private/log?category=athletics`; the page
-   * validates the key and hands it down. Arriving on the wrong tab costs exactly the tap the
-   * shortcut exists to save.
+   * §3.5. The long-press shortcut arrives at `/private/log?category=…`; the page validates the
+   * key and hands it down. Arriving on the wrong tab costs exactly the tap the shortcut exists
+   * to save.
+   *
+   * The training shortcut no longer comes here at all — Phase 2.7 pointed it at
+   * `/private/athletics/log` — but the mechanism still serves "End of day" and anything added
+   * later, so it is still worth pinning.
    */
   it("starts on the category it was asked for", () => {
     render(<LogConsole entries={[]} loggedToday={[]} initialCategory="day" />);
@@ -153,7 +160,8 @@ describe("opening on a category, from the icon's shortcut", () => {
   });
 
   it("starts on the first tab when nothing was asked for", () => {
+    // Training was the first tab until Phase 2.7 retired it; Study is now.
     render(<LogConsole entries={[]} loggedToday={[]} />);
-    expect(screen.getByRole("button", { name: /log training/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /log study/i })).toBeInTheDocument();
   });
 });

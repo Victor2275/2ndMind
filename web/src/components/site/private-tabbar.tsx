@@ -35,12 +35,28 @@ import { reachabilityStore } from "@/lib/net/reachability";
 
 const TABS = [
   { href: "/private", label: "Today", Icon: HouseIcon },
-  { href: "/private/athletics", label: "Train", Icon: DumbbellIcon },
+  /**
+   * The **action**, not the overview (V4 Phase 2.7). Victor's call: tapping Train should put you
+   * in front of an exercise search, because that is what you are doing when you reach for the
+   * phone in a gym. The records page is one tap from the top of that screen and is still linked
+   * from More, so nothing became unreachable — it stopped being the default.
+   *
+   * `section` is where it *points* versus what it *represents*. Without it, standing on
+   * `/private/athletics` would light no tab at all, because the href is a longer path than the
+   * page — a tab that goes dark on a page inside its own section reads as being lost.
+   */
+  {
+    href: "/private/athletics/log",
+    section: "/private/athletics",
+    label: "Train",
+    Icon: DumbbellIcon,
+  },
   { href: "/private/calendar", label: "Next", Icon: CalendarDaysIcon },
 ] as const;
 
 /** Everything that did not earn a tab. Order is by how often it is opened. */
 const MORE = [
+  { href: "/private/athletics", label: "Training records" },
   { href: "/private/now", label: "Now" },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },
@@ -50,9 +66,15 @@ const MORE = [
   { href: "/private/settings", label: "Settings" },
 ] as const;
 
-/** Exact match for the index, prefix for the rest — otherwise "/private" lights up everywhere. */
-function isActive(pathname: string, href: string): boolean {
-  return href === "/private" ? pathname === "/private" : pathname.startsWith(href);
+/**
+ * Exact match for the index, prefix for the rest — otherwise "/private" lights up everywhere.
+ *
+ * `section` lets a tab point somewhere deeper than the area it stands for, which Train needs
+ * since Phase 2.7: it opens the logger and represents everything under `/private/athletics`.
+ */
+function isActive(pathname: string, href: string, section?: string): boolean {
+  const prefix = section ?? href;
+  return prefix === "/private" ? pathname === "/private" : pathname.startsWith(prefix);
 }
 
 const ITEM =
@@ -221,12 +243,13 @@ export function PrivateTabBar({
         className="nav-mobile fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md print:hidden"
       >
         <div className="flex items-stretch gap-1 px-2 py-1">
-          {TABS.slice(0, 2).map(({ href, label, Icon }) => (
+          {TABS.slice(0, 2).map((tab) => (
             <TabLink
-              key={href}
-              href={href}
-              label={label}
-              Icon={Icon}
+              key={tab.href}
+              href={tab.href}
+              section={"section" in tab ? tab.section : undefined}
+              label={tab.label}
+              Icon={tab.Icon}
               pathname={pathname}
               hard={offline}
             />
@@ -244,12 +267,13 @@ export function PrivateTabBar({
             <span className="text-xs">Log</span>
           </NavLink>
 
-          {TABS.slice(2).map(({ href, label, Icon }) => (
+          {TABS.slice(2).map((tab) => (
             <TabLink
-              key={href}
-              href={href}
-              label={label}
-              Icon={Icon}
+              key={tab.href}
+              href={tab.href}
+              section={"section" in tab ? tab.section : undefined}
+              label={tab.label}
+              Icon={tab.Icon}
               pathname={pathname}
               hard={offline}
             />
@@ -279,14 +303,17 @@ function TabLink({
   Icon,
   pathname,
   hard,
+  section,
 }: {
   href: string;
   label: string;
   Icon: typeof HouseIcon;
   pathname: string;
   hard: boolean;
+  /** The area this tab stands for, when that is broader than where it points. */
+  section?: string;
 }) {
-  const active = isActive(pathname, href);
+  const active = isActive(pathname, href, section);
   return (
     <NavLink
       href={href}

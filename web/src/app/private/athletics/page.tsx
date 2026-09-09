@@ -6,6 +6,7 @@ import { BodyweightForm } from "@/components/site/bodyweight-form";
 import { BarChart, TrendChart, type ChartSeries } from "@/components/site/chart";
 import { HevyImportForm } from "@/components/site/hevy-import-form";
 import { Empty, PageHeader, Panel } from "@/components/site/page-shell";
+import { PrTable } from "@/components/site/pr-table";
 import { RehabChecklist } from "@/components/site/rehab-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { GoalCard, SpmPanel, WeekReview } from "@/components/site/training-panels";
@@ -486,6 +487,11 @@ async function Training() {
           </div>
         </section>
       )}
+
+      {/* Q409. The cards above answer "what have I been doing"; this answers "what did I do
+          last time", which is a lookup you make standing at a rack and which has to work when
+          the movement is the fortieth most recent rather than the third. */}
+      <PrTable records={strength} />
 
       {erg.length > 0 && (
         <section className="mt-10">

@@ -164,102 +164,6 @@ export type Category = {
 
 export const CATEGORIES: readonly Category[] = [
   {
-    key: "athletics",
-    label: "Training",
-    hint: "Logged at the gym or off the water, before you forget the numbers.",
-    fields: [
-      {
-        name: "kind",
-        label: "Kind",
-        type: "select",
-        options: ["lift", "erg", "water", "conditioning"],
-        sticky: true,
-      },
-      {
-        name: "exercise",
-        label: "Exercise / piece",
-        type: "text",
-        placeholder: "Bench Press",
-        wide: true,
-        capitalise: "words",
-        chips: true,
-        // The whole point of the chip: "Bench Press · 185 × 5" fills the name and the first
-        // set's numbers. Resolved against the first row of the entry it came from.
-        carries: ["weightLbs", "reps", "distance", "duration", "spm"],
-      },
-      { name: "rpe", label: "RPE", type: "number", placeholder: "1-10", keypad: "numeric" },
-      /**
-       * The morning weigh-in, logged where you already are rather than in another tab.
-       *
-       * It is **not** stored on the entry. It writes a `bodyweight_entries` row, which is
-       * what the weight chart and the bodyweight-adjusted erg table read — two copies of a
-       * number that is the second input to every adjusted split is how they drift apart.
-       */
-      {
-        name: "bodyweightLbs",
-        label: "Bodyweight",
-        type: "number",
-        placeholder: "lbs",
-        keypad: "decimal",
-      },
-    ],
-    rows: {
-      name: "sets",
-      label: "Set",
-      addLabel: "add set",
-      initial: 1,
-      max: 12,
-      /**
-       * Which numbers a set has depends on what kind of session it is (D-162). `kind` already
-       * sits at the top of the form and is already sticky, so it is the thing to key off —
-       * one decision he was making anyway, rather than a second control.
-       *
-       * `lift` is the default because it is the common case and because opening on weight ×
-       * reps means the usual entry needs no setup at all.
-       */
-      shapeBy: "kind",
-      defaultShape: "lift",
-      always: ["setType"],
-      shapes: {
-        lift: ["weightLbs", "reps"],
-        erg: ["distance", "duration", "spm"],
-        water: ["distance", "duration", "spm"],
-        // Runs, rucks, bikes, and circuits — 20 burpees, 400m, repeat.
-        conditioning: ["duration", "distance", "reps"],
-      },
-      fields: [
-        {
-          name: "weightLbs",
-          label: "Weight",
-          type: "number",
-          placeholder: "lbs",
-          keypad: "decimal",
-        },
-        { name: "reps", label: "Reps", type: "number", placeholder: "5", keypad: "numeric" },
-        {
-          name: "distance",
-          label: "Distance",
-          type: "distance",
-          placeholder: "500",
-          keypad: "decimal",
-        },
-        // Accepts 2:17 as an erg monitor shows it, not just seconds. `text`, because no
-        // numeric keypad on Android offers a colon and the field is unusable without one.
-        { name: "duration", label: "Time", type: "duration", placeholder: "m:ss", keypad: "text" },
-        { name: "spm", label: "SPM", type: "number", placeholder: "72", keypad: "numeric" },
-        // Per row, because it is a property of the set and not of the exercise: the first two
-        // are warmups and the last is a drop set. `isWorkingSet` in `athletics/prs.ts` reads
-        // this to keep warmups off the PR board, so a session-wide value would rank them.
-        {
-          name: "setType",
-          label: "Type",
-          type: "select",
-          options: ["normal", "warmup", "drop"],
-        },
-      ],
-    },
-  },
-  {
     key: "academics",
     label: "Study",
     // Deliberately thin (D-159). It used to ask for what kind of work it was, a status and a
@@ -387,8 +291,116 @@ export const CATEGORIES: readonly Category[] = [
  * of JSON, and with no definition to match they fall back to the bare note — so every
  * application ever logged would silently lose its company, role and status from the timeline
  * and from search. A retired category costs one array entry and keeps the record intact.
+ *
+ * **`athletics` joined it in V4 Phase 2.7**, and for a different reason: training did not stop
+ * being logged, it moved. Sessions are now written at `/private/athletics/log`, where a set
+ * belongs to a workout rather than sitting inside a log entry's JSON — which is what lets
+ * "Recent sessions" show everything and what let `allEfforts()` drop from two readers to one.
+ *
+ * The same argument for retiring rather than deleting applies twice over here. `summarise` and
+ * `searchTextFor` still need the field definitions to render an old entry, and the sets stored
+ * in `data.sets` are real training that has to stay readable in the timeline. What retirement
+ * buys is that no *new* entry can be created down the old path — `writableCategoryByKey` will
+ * not return it — so the two ways of recording a lift cannot start diverging again.
  */
 export const RETIRED_CATEGORIES: readonly Category[] = [
+  {
+    key: "athletics",
+    label: "Training",
+    hint: "Retired — training is logged as sessions at /private/athletics/log.",
+    retired: true,
+    fields: [
+      {
+        name: "kind",
+        label: "Kind",
+        type: "select",
+        options: ["lift", "erg", "water", "conditioning"],
+        sticky: true,
+      },
+      {
+        name: "exercise",
+        label: "Exercise / piece",
+        type: "text",
+        placeholder: "Bench Press",
+        wide: true,
+        capitalise: "words",
+        chips: true,
+        // The whole point of the chip: "Bench Press · 185 × 5" fills the name and the first
+        // set's numbers. Resolved against the first row of the entry it came from.
+        carries: ["weightLbs", "reps", "distance", "duration", "spm"],
+      },
+      { name: "rpe", label: "RPE", type: "number", placeholder: "1-10", keypad: "numeric" },
+      /**
+       * The morning weigh-in, logged where you already are rather than in another tab.
+       *
+       * It is **not** stored on the entry. It writes a `bodyweight_entries` row, which is
+       * what the weight chart and the bodyweight-adjusted erg table read — two copies of a
+       * number that is the second input to every adjusted split is how they drift apart.
+       */
+      {
+        name: "bodyweightLbs",
+        label: "Bodyweight",
+        type: "number",
+        placeholder: "lbs",
+        keypad: "decimal",
+      },
+    ],
+    rows: {
+      name: "sets",
+      label: "Set",
+      addLabel: "add set",
+      initial: 1,
+      max: 12,
+      /**
+       * Which numbers a set has depends on what kind of session it is (D-162). `kind` already
+       * sits at the top of the form and is already sticky, so it is the thing to key off —
+       * one decision he was making anyway, rather than a second control.
+       *
+       * `lift` is the default because it is the common case and because opening on weight ×
+       * reps means the usual entry needs no setup at all.
+       */
+      shapeBy: "kind",
+      defaultShape: "lift",
+      always: ["setType"],
+      shapes: {
+        lift: ["weightLbs", "reps"],
+        erg: ["distance", "duration", "spm"],
+        water: ["distance", "duration", "spm"],
+        // Runs, rucks, bikes, and circuits — 20 burpees, 400m, repeat.
+        conditioning: ["duration", "distance", "reps"],
+      },
+      fields: [
+        {
+          name: "weightLbs",
+          label: "Weight",
+          type: "number",
+          placeholder: "lbs",
+          keypad: "decimal",
+        },
+        { name: "reps", label: "Reps", type: "number", placeholder: "5", keypad: "numeric" },
+        {
+          name: "distance",
+          label: "Distance",
+          type: "distance",
+          placeholder: "500",
+          keypad: "decimal",
+        },
+        // Accepts 2:17 as an erg monitor shows it, not just seconds. `text`, because no
+        // numeric keypad on Android offers a colon and the field is unusable without one.
+        { name: "duration", label: "Time", type: "duration", placeholder: "m:ss", keypad: "text" },
+        { name: "spm", label: "SPM", type: "number", placeholder: "72", keypad: "numeric" },
+        // Per row, because it is a property of the set and not of the exercise: the first two
+        // are warmups and the last is a drop set. `isWorkingSet` in `athletics/prs.ts` reads
+        // this to keep warmups off the PR board, so a session-wide value would rank them.
+        {
+          name: "setType",
+          label: "Type",
+          type: "select",
+          options: ["normal", "warmup", "drop"],
+        },
+      ],
+    },
+  },
   {
     key: "work",
     label: "Applications",
