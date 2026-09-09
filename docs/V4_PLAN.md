@@ -2,7 +2,7 @@
 updated: 2026-09-08
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Nine phases, 286 points. Phase 0 done; 1.1–1.4 and 4.4 done; Phase N inserted ahead of the queue.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Nine phases, 286 points. Phases 0 and 1 done (Milestone A); 4.4 done; Phase N is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -31,7 +31,7 @@ read-only text defeats the point"** (Q130).
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
 | **Budget**       | **286 points** (241 + Phase N's 45). You said 120–140. The gap is real and is §7 R2, not a rounding error.                                                                                                                                                                                                                                                                                                                                                       |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1.1–1.4 done** (2026-09-07): colour is finished. **Settings (4.4) done** (2026-09-08), pulled forward. **Carbon is the default and amber stopped being decoration** (2026-09-08, D-196/D-197).<br>Recommended next: **Phase N** — or 1.5 (type scale) if you would rather keep going in order. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — colour on 09-07, the rest of the system on 09-08: **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Carbon is the default and amber stopped being decoration** (2026-09-08, D-196/D-197).<br>Recommended next: **Phase N**, which is now the only thing between here and the screens. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -373,7 +373,7 @@ once (Q162). That reason needs no measurement.
 
 ---
 
-### Phase 1 · Tokens and primitives — **40 pts** — ◐ **1.1–1.4 done 2026-09-07**
+### Phase 1 · Tokens and primitives — **40 pts** — ✅ **DONE 2026-09-08** · **Milestone A**
 
 The system. Every screen depends on it, which is why it is first (Q471), and why a period of
 half-migrated screens is acceptable (Q472).
@@ -384,17 +384,35 @@ half-migrated screens is acceptable (Q472).
 | 1.2  | ✅ **Done.** Five themes: dark-magenta, light-teal, hc-dark, and two experimental — `carbon` (hueless near-black) and `steel-light` (steel as accent, a deliberate test of the "steel is never interactive" rule). `data-theme` only; the `dark:` variant is a **generated** selector list, verified in the production bundle. _2026-09-08: `carbon` was promoted to the default (D-197) — the experiment worked. The generator now reads the default from the registry instead of hard-coding it twice_ |   5 |
 | 1.3  | ✅ **Done.** Chroma 0.17 → 0.145, hue 356 → 346, primary `#d36da8` at 5.22:1. Three grounds with a wider step than the old pair                                                                                                                                                                                                                                                                                                                                                                          |   3 |
 | 1.4  | ✅ **Done.** Teal on warm paper, primary `#007777` at 5.26:1. Grain off and pools at 0.45 — as **tokens**, not scheme selectors, so they are right on the first painted frame. _Shadow-based elevation is component work and lands with §4/§5_                                                                                                                                                                                                                                                           |   5 |
-| 1.5  | **Type scale** — nine steps, modular 1.2, fluid display / stepped body, optical tracking per step (Q101–Q106)                                                                                                                                                                                                                                                                                                                                                                                            |   4 |
-| 1.6  | **Mono eviction** — mono leaves nav, eyebrows, tab bar, panel meta. Body face, tracked, replaces it (Q96–Q98, Q111). _The eyebrow's **colour** was already fixed separately (D-196: amber → accent); this item is the **face**, and the two are independent_                                                                                                                                                                                                                                             |   3 |
-| 1.7  | **Space, radius, elevation, breakpoints** — eight-value spacing vocabulary on 4pt, radius scaling with size, four elevation levels, one named breakpoint set reconciling the two "phone" definitions (Q127, Q137, Q143, Q144, Q152, Q156)                                                                                                                                                                                                                                                                |   4 |
-| 1.8  | **Motion tokens** — three durations, three easings, `card-scan` loses its lift, stagger moves to CSS, two new utilities (Q174–Q189)                                                                                                                                                                                                                                                                                                                                                                      |   3 |
-| 1.9  | **Icon tokens** — sizes 16/20/24, stroke 1.75 (Q213, Q214)                                                                                                                                                                                                                                                                                                                                                                                                                                               |   1 |
-| 1.10 | **Rework `components/ui/` by hand** at the new tokens — **two files, not nineteen** (D-192): only `badge` and `button` are imported anywhere. Decide the other seventeen file by file: keep as the base for a V4 form control, or delete. **`form.tsx` is hand-authored and must survive** (Q473, Q474). Drop `tw-animate-css` if unused after (Q475)                                                                                                                                                    |   2 |
-| 1.11 | **`/private/kitchen-sink`** — every component, every state, every theme, one page (Q24)                                                                                                                                                                                                                                                                                                                                                                                                                  |   2 |
-| 1.12 | ◐ **Mostly done.** 57 tests: completeness (including the asymmetric case), contrast on every ground, registry/stylesheet agreement, staleness. **The "no raw hex" lint is still to write** — it has to land with the pass that removes the literals                                                                                                                                                                                                                                                      |   2 |
+| 1.5  | ✅ **Done.** Nine steps, modular 1.2, anchored at `base = 1rem`, **generated** by `scripts/build-scale.mts` into `src/app/scale.css` — same generated-and-checked pattern as the palettes. It redefines **Tailwind's own nine names**, which are exactly the nine in use across 466 call sites, so every existing `text-sm` became scale-correct with no migration. Two hand-adjustments, both at the ends (Q101): `5xl` → 48px, and `xs` lifted from 11.11px to **12px** so the app's smallest text stopped shrinking — measured, that moved `npm run shots` from 157 sub-12px elements per width to **53**, against a 68 baseline |   4 |
+| 1.6  | ✅ **Done.** Mono left nav, eyebrows, the tab bar and panel meta. **246 occurrences → 186**, and **53 eyebrow call sites across 30 files** collapsed onto one `@utility eyebrow` — they had drifted to six sizes and six trackings for one idea. The tab bar's 8.8px labels (D-190) are 12px. The remaining 186 are an **audit** in `DESIGN.md` §4, judged screen by screen in Phases 4–6, because most of them are dates and splits and are correct |   3 |
+| 1.7  | ✅ **Done.** Eight spacing values, all multiples of 4px. Four named radii scaling with the size of the thing. Four elevation levels — **per theme**, because DESIGN.md §6 makes elevation a ground-shift plus a border in dark and a shadow in light, so `scale.css` publishes the names and `build-tokens.mts` writes the values. One breakpoint set under two spellings with a test pinning each pair; `min-[380px]` is gone. A `--scrim` token came out of it (see 1.10) |   4 |
+| 1.8  | ✅ **Done.** Three durations, three easings, `card-scan` lost its 3px lift, the stagger moved from six inline `animationDelay` styles to a container `rise-stagger` utility. The two new utilities are **`press`** (the sub-100ms tap feedback DESIGN.md §9 calls the app's biggest gap on a phone) and **`shimmer`** (the loading sweep Phase 5.1's skeletons need); both are named by later phases, so neither is speculative |   3 |
+| 1.9  | ✅ **Done.** `icon-sm`/`md`/`lg` at 16/20/24, in `rem` so they scale with OS text size. Stroke 1.75 set **once**, on the class lucide already emits — it renders `stroke-width` as an SVG presentation attribute and CSS outranks one, so it reached every icon without a call site passing a prop |   1 |
+| 1.10 | ✅ **Done.** Ten unused components deleted, nine kept (the two in use plus seven named by Phase 3/4/5 items), all hand-reworked at the V4 tokens, and `ui/*.tsx` removed from `.prettierignore` — the directory is ours now. `tw-animate-css` dropped; its only four call sites were in the delete set. **One real bug fell out:** `sheet.tsx` scrimmed with `bg-black/10`, which does nothing over a near-black ground, so the sheet opened undimmed on three of five themes — now a per-theme `--scrim`. **And `form.tsx` never existed** — no commit in this repo's history contains it; the three documents claiming otherwise were corrected (D-200) |   2 |
+| 1.11 | ✅ **Done.** All **five** themes side by side in one browser, not two — `tokens.css` scopes palettes with a bare `[data-theme]` attribute selector, so the attribute on a `<section>` re-declares the palette for its subtree. Not in the nav (C11 is still open); swept by `npm run shots` |   2 |
+| 1.12 | ✅ **Done.** **126 tests** across three files: `tokens.test.ts` (82 — colour, elevation, the scrim), `scale.test.ts` (39 — asserts *properties*, not pixel values, so changing `RATIO` moves every number and every test still passes), and the **no-raw-hex lint** that was `PENDING` (5, with a positive control, because a scanner that reports nothing looks identical to a broken one) |   2 |
 
-**Ends with (Milestone A):** every colour, size, space and motion value comes from one place,
-and a test fails if it does not.
+**Milestone A reached 2026-09-08.** Every colour, size, space and motion value comes from one
+place, and a test fails if it does not. Two generators, two checked stylesheets, 126 tests.
+
+**Three things this phase found that the plan did not predict**, all from running the code:
+
+1. **`form.tsx` has never existed** in this repo or its history, while three documents said it
+   did and one of them told a future editor to protect it. `src/lib/log/form.ts` is a different
+   module in a different directory. D-200.
+2. **The vendored `sheet.tsx` opened with no scrim on three of the five themes.** `bg-black/10`
+   darkens paper and does nothing over a near-black ground. It had no callers, so nobody would
+   have seen it until Phase 4.3 shipped the tab-bar sheet. D-200.
+3. **Two Tailwind failure modes that produce no error.** An interpolated class name
+   (`` `text-${step}` ``) generates nothing because Tailwind scans text rather than evaluating
+   code; and `--duration-*` is not a namespace, so `duration-fast` was no CSS at all until three
+   `@utility` blocks were generated for it. In both cases the element renders and the style is
+   simply absent. Check a new utility in `.next/static/chunks/*.css` before trusting it.
+
+**Measured after, with `npm run shots` (exit 0):** 0 horizontal overflow at any width, 0 resume
+variants over one page, every private page 200. Sub-12px elements went **68 → 53** per width and
+`/private/athletics`, the screen closest to the fold limit, improved from 342px to **335px**.
 
 ---
 
@@ -516,7 +534,7 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | Phase | What                                                |     Pts | Feature?               |
 | ----- | --------------------------------------------------- | ------: | ---------------------- |
 | 0     | Say what is true — docs, and the 8.8px gate mystery |       8 | ✅ done                |
-| 1     | Tokens, themes, type, space, motion, primitives     |      40 | ◐ 1.1–1.4 done         |
+| 1     | Tokens, themes, type, space, motion, primitives     |      40 | ✅ done · Milestone A  |
 | **N** | **Degraded network — the plane-wifi freeze**        |  **45** | ⚠ **recommended next** |
 | 2     | Training, end to end                                |      45 | **[FEATURE]**          |
 | 3     | Tags                                                |      12 | **[FEATURE]**          |
@@ -604,8 +622,14 @@ PGlite and offline e2e before any of it is styled.
 **R4 · Five themes is five times the surface.** Every contrast test, theme sweep and screenshot
 multiplies. Cap the swept pages, or cap the themes at three plus two unswept experimental slots.
 
-**R5 · A half-migrated app for the length of Phase 1.** Accepted (Q472), private-only (Q26).
-It is longer than it sounds: 42 points before any screen looks finished.
+**R5 · A half-migrated app for the length of Phase 1.** ✅ **Spent, and it cost less than
+budgeted.** Redefining Tailwind's own nine type names rather than inventing a tenth vocabulary
+meant 466 call sites became scale-correct on the day the scale landed, so the half-migrated
+window closed immediately for type. What genuinely remains half-migrated is narrower and is
+written down rather than implied: the ~300 opacity utilities (§3.1), 186 `font-mono` call sites
+(`DESIGN.md` §4), the `size-4`/`size-5` icon call sites, and the app's own `p-6`/`p-5`/`p-4`
+padding. All four migrate screen by screen in Phases 4–6, and none of them renders incorrectly
+in the meantime.
 
 **R6 · The 8.8px gate (C7) may be a real hole.** If `npm run shots` has not been checking text
 size the way the docs claim, other rules in the same sweep deserve the same suspicion before

@@ -110,7 +110,50 @@ this section is the orientation.
   teal `#09A1A1` is **2.94:1 on paper** and cannot carry text, so the token is that hue
   darkened — the same problem the magenta had on white, with the same answer.
 
-### This section was rewritten on 2026-09-08. V4 §1.1–1.4 landed.
+### V4 Phase 1 is complete as of 2026-09-08. Milestone A.
+
+**Two stylesheets are generated, and which one a value belongs in is decided by one question:
+does it vary per theme?** `src/app/tokens.css` comes from `scripts/build-tokens.mts` and holds
+colour, elevation and the scrim. `src/app/scale.css` comes from `scripts/build-scale.mts`
+(D-199) and holds the nine-step type scale, the eight-value spacing vocabulary, the named radii,
+the breakpoint set, three durations, three easings and the icon sizes. `npm run tokens` and
+`npm run scale` write them; `tokens:check` and `scale:check` fail when either is stale and the
+test suite runs both. **Edit a generator, never its output.**
+
+Elevation looks like it belongs in the scale and does not: DESIGN.md §6 makes it a ground-shift
+plus a border in dark schemes and a real shadow in light ones, so the four *names* are published
+by `scale.css` and the values are written per theme by `build-tokens.mts`.
+
+**The type scale redefines Tailwind's own nine size names**, which are exactly the nine in use
+across 466 call sites — so every existing `text-sm` became scale-correct with no migration.
+`base` is anchored at exactly 1rem, and there are two hand-adjustments, both at the ends:
+`5xl` rounds to 48px, and `xs` is lifted to 12px so the app's smallest text stopped shrinking.
+`scale.test.ts` asserts adjustments only ever happen at the extremes.
+
+**Mono is real data only, and it is now true of the four surfaces §1.6 names** — nav, eyebrows,
+the tab bar, panel meta (D-198). 246 `font-mono` occurrences became 186, and 53 eyebrow call
+sites collapsed onto `@utility eyebrow`. The remaining 186 are an audit in `DESIGN.md` §4, to be
+judged screen by screen in Phases 4–6, not a backlog to clear blindly — most of them are dates
+and splits and are correct.
+
+**`components/ui/` is nine files and is no longer upstream's** (D-200). Ten unused components
+were deleted, `tw-animate-css` went with them, the nine that remain were hand-reworked at the V4
+tokens, and `src/components/ui/*.tsx` was removed from `.prettierignore`. A `shadcn add` would
+now overwrite our work rather than merge with it.
+
+**`/private/kitchen-sink` renders all five themes at once** (D-201). It is not in the navigation
+and is reachable by URL; `npm run shots` sweeps it. It works because `tokens.css` scopes palettes
+with a bare `[data-theme="…"]` attribute selector, so putting that attribute on a `<section>`
+re-declares the whole palette for its subtree.
+
+**Two traps this phase hit, both found in the built bundle rather than by reasoning.** Tailwind
+finds classes by scanning source text and does not evaluate code, so an interpolated
+`` `text-${step}` `` generates nothing, renders at the inherited size, and reports no error. And
+`--duration-*` is not a Tailwind namespace — `duration-fast` needed three explicit `@utility`
+blocks before it meant anything. Both fail the same way: the element renders, nothing errors, the
+style is simply absent. **Check a new utility in `.next/static/chunks/*.css` before trusting it.**
+
+### The section below was rewritten on 2026-09-08. V4 §1.1–1.4 landed.
 
 **Themes are a registry, and the palettes are generated.** Five ship, listed in
 `src/lib/theme/registry.ts`: `carbon` (**the default**), `dark-magenta`, `light-teal`,
@@ -170,12 +213,13 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,240 tests across 86 files** as of
-2026-09-06, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,375 tests across 90 files** as of
+2026-09-08, all passing. A drop from that count is a regression, not noise.
 
-(It read "582 across 36 files as of 2026-08-30" until 2026-09-06. The suite more than doubled
-during V3 and the floor was never re-stated, so for a week the number that is supposed to catch
-a regression would have accepted losing half the suite. Re-state it whenever it moves.)
+(It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86" until
+2026-09-08. The suite more than doubled during V3 and the floor was never re-stated, so for a
+week the number that is supposed to catch a regression would have accepted losing half the suite.
+Re-state it whenever it moves.)
 
 ### Layout is checked by measurement, not by looking
 

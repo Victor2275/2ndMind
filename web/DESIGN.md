@@ -8,10 +8,16 @@ read_when: Changing anything visual, or adding a component.
 
 # 2ndMind — Design System
 
-**Status: colour is done; type, space, surface and motion are not.** Created in V4 Phase 0
-(2026-09-06); §3 filled by Phase 1.1–1.4 (2026-09-07). Sections still marked **`PENDING §1.x`**
-are empty on purpose — an invented value here would be worse than a gap, because the gap is
-honest and a wrong number gets copied.
+**Status: the system is complete. Milestone A.** Created in V4 Phase 0 (2026-09-06); §3 filled
+by Phase 1.1–1.4 (2026-09-07); type, space, surface, motion, icons, the component set and the
+gates filled by Phase 1.5–1.12 (2026-09-08). No section is `PENDING` any more except the two
+that belong to a later phase and say so.
+
+**Two files are generated and must not be hand-edited.** `src/app/tokens.css` comes from
+`scripts/build-tokens.mts` (colour, per theme) and `src/app/scale.css` from
+`scripts/build-scale.mts` (everything else that is a number). `npm run tokens` and
+`npm run scale` write them; `tokens:check` and `scale:check` fail when they are stale, and the
+test suite runs both. Edit a generator, never its output.
 
 Three documents, three jobs:
 
@@ -21,9 +27,18 @@ Three documents, three jobs:
 | **`web/DESIGN.md`** (this) | *What* — the tokens and the rules for using them |
 | `web/DECISIONS.md` | *When and how to undo* — dated log, one entry per choice |
 
-`src/app/tokens.css` (generated) holds the colour values and `src/app/globals.css` everything
-else. Where they and this file disagree, **the CSS is right and this file needs a commit** — and
-for colour, the generator is right and the CSS needs a `npm run tokens`.
+Three stylesheets, and which one a value lives in is decided by one question — *does it vary per
+theme?*
+
+| File | Holds | Written by |
+|---|---|---|
+| `src/app/tokens.css` | Colour, elevation, the scrim — everything per theme | `build-tokens.mts` |
+| `src/app/scale.css` | Type, space, radius, breakpoints, motion, icons | `build-scale.mts` |
+| `src/app/globals.css` | Base layer, the ambient ground, the utilities, print | by hand |
+
+Where a generated file and this document disagree, **the generator is right** and the CSS needs a
+`npm run tokens` or `npm run scale`. Where `globals.css` and this document disagree, the CSS is
+right and this file needs a commit.
 
 ---
 
@@ -158,10 +173,83 @@ Three faces, self-hosted in `src/app/fonts/`. **Do not add a fourth.**
 
 No italics — the files are deliberately not loaded.
 
-`PENDING §1.5` — the nine-step scale (modular 1.2, fluid for display, stepped for body) and
-the optical tracking per step.
+### The scale — **done (V4 §1.5, D-199)**
 
-`PENDING §1.6` — the mono eviction list: every call site where mono is currently decoration.
+Nine steps, modular **1.2**, anchored at `base = 1rem`. **Generated** by
+`scripts/build-scale.mts` into `src/app/scale.css` — edit the generator, never the CSS;
+`npm run scale` writes it and `npm run scale:check` fails when it is stale.
+
+It redefines Tailwind's own nine size names rather than adding a tenth vocabulary. Those nine
+are exactly the nine in use across 466 call sites, so every existing `text-sm` became
+scale-correct with no migration. Each step carries its own leading and tracking, which is what
+makes `text-lg` a complete typographic decision rather than a size that still needs two more
+classes.
+
+| Step | Size | Leading | Tracking | |
+|---|---|---|---|---|
+| `text-5xl` | 48.00px | 1.05 | −0.030em | fluid · hand-adjusted from 47.77px |
+| `text-4xl` | 39.81px | 1.10 | −0.025em | fluid |
+| `text-3xl` | 33.18px | 1.15 | −0.020em | fluid |
+| `text-2xl` | 27.65px | 1.22 | −0.015em | fluid |
+| `text-xl` | 23.04px | 1.30 | −0.010em | stepped |
+| `text-lg` | 19.20px | 1.40 | −0.005em | stepped |
+| `text-base` | 16.00px | 1.55 | 0 | stepped · **the anchor** |
+| `text-sm` | 13.33px | 1.50 | +0.005em | stepped · 228 call sites |
+| `text-xs` | 12.00px | 1.45 | +0.010em | stepped · hand-adjusted from 11.11px |
+
+Five things that are load-bearing:
+
+- **`base` is exactly 1rem.** Not a typographic argument — `rem` arithmetic everywhere else
+  assumes the root size, and anchoring at the bottom of the scale gave `0.99rem`, putting every
+  hand-checked "16px" measurement permanently off by a sixth of a pixel.
+- **Two hand-adjustments, one at each end** (Q101 permits exactly that). `5xl` rounds up to a
+  flat 48px. `xs` is lifted from the geometric 11.11px to **12px** — it cleared §7.1's coming
+  11px gate either way, but only by 0.11px, while taking the app's smallest text *down* from
+  Tailwind's default across 161 call sites, in a codebase whose measured problem is that too
+  much of its text is small. Measured with `npm run shots`: **157** sub-12px elements per width
+  at 11.11px against a 68 baseline, **53** at 12px.
+- **The cost of that is the one number the generator cannot hide:** `xs → sm` is 1.111, not 1.2.
+  `scale.test.ts` excludes exactly the pairs touching an adjusted step and separately asserts
+  that adjustments only ever happen at the two ends.
+- **`2xl` and up are fluid**, floored at *the step below*, so the scale still reads as the scale
+  at 360px. The floor reads the previous step's shipped size, not `size ÷ ratio` — above the
+  adjusted `5xl` those differ, and dividing produced a value belonging to no step at all.
+- **Leading is a table, not a formula.** Every curve tried had at least one visibly wrong step,
+  and the generator says so rather than fitting one to hide it. These are the **UI** defaults;
+  prose overrides with `leading-*`, because the same `text-sm` is a form label on one screen and
+  a paragraph on another.
+
+### Mono — **evicted from four surfaces (V4 §1.6, D-198)**
+
+Mono has left nav labels, eyebrows, the tab bar and panel meta. **246 occurrences → 186**, and
+53 eyebrow call sites across 30 files collapsed onto one utility.
+
+Use **`eyebrow`** for the small tracked uppercase label. It sets the body face, `--text-xs`,
+weight 500 and `--tracking-caps`. It deliberately sets **no colour**: the same shape is
+`--primary` above a page title (D-196) and `--muted-foreground` on a stat label, so baking one
+in would either re-break D-196 or force every stat label to override it.
+
+It replaced six sizes and six trackings for one idea — `text-[0.55rem]` through `text-[0.65rem]`,
+tracked anywhere from `0.1em` to `0.18em`. The tab bar's 8.8px labels, which D-190 found were
+never measured by anything, are part of that and are now 12px.
+
+**The remaining 186 are an audit, not a backlog to clear blindly.** Most are correct: dates,
+splits, PRs, counts and paths *are* data. Judge them screen by screen in Phases 4–6, the way §3.1
+handles the ~300 opacity utilities. Heaviest first:
+
+| Count | File | Likely verdict |
+|---|---|---|
+| 14 | `app/private/athletics/page.tsx` | mostly splits and dates — keep |
+| 10 | `components/site/log-form.tsx` | field labels — **evict in §5.2** |
+| 9 | `components/site/training-panels.tsx` | sets and weights — keep |
+| 8 | `components/site/course-planner.tsx` | unit counts and grades — mixed |
+| 7 | `task-list`, `log-console`, `filament-panel`, `resume/[variant]` | mixed |
+| 6 | `printer-panel`, `chart` | axes and printer state — keep |
+| ≤5 | 49 further files | judge in place |
+
+The 53 sub-12px elements `npm run shots` still reports are the *other* half of the same job —
+arbitrary sizes at 9.9px, 10.4px and 11.2px on `/projects`, `/projects/[slug]` and the resume
+screen that are not eyebrows and were left for §6.5, §6.6 and §6.8.
 
 Settled now:
 - Line length: **58ch** for prose.
@@ -175,17 +263,60 @@ Settled now:
 
 ## 5. Space and layout
 
-`PENDING §1.7` — the eight-value spacing vocabulary on a 4-point grid.
+### The spacing vocabulary — **done (V4 §1.7, D-199)**
+
+Eight values, every one a multiple of 4px (Q127, Q137). Generated into `scale.css`.
+
+| Token | | Use |
+|---|---|---|
+| `--spacing-3xs` | 4px | hairline gap — an icon to its own label |
+| `--spacing-2xs` | 8px | inside a control |
+| `--spacing-xs` | 12px | between rows of a list |
+| `--spacing-sm` | 16px | inside a card — the padding of the `md` card size |
+| `--spacing-md` | 24px | between cards in a grid |
+| `--spacing-lg` | 32px | inside a large card, and heading to content |
+| `--spacing-xl` | 48px | between sections on a private screen |
+| `--spacing-2xl` | 64px | between sections on the public site, which breathes more |
+
+The jumps from 16→24 and 32→48 are deliberate. An even 4-8-12-16-20-24-28-32 ramp has eight
+values and no opinion; the gaps that actually recur here are "inside a control", "inside a card",
+"between cards" and "between sections".
+
+**Tailwind's numeric utilities still work.** `p-3` and `gap-5` cannot be removed without editing
+every layout in the app, and doing that is not what §1.7 is worth. What the vocabulary buys is
+that new code and every reworked component say *why* a gap is the size it is. §7.1 is where a
+gate could be added.
+
+### Breakpoints — **done (V4 §1.7, D-199)**
+
+One set, under two spellings, with a test pinning each pair.
+
+| Name | | Tailwind alias |
+|---|---|---|
+| `phone` | 40rem / 640px | `sm` |
+| `tablet` | 48rem / 768px | `md` |
+| `laptop` | 64rem / 1024px | `lg` |
+| `desktop` | 80rem / 1280px | `xl` |
+| `wide` | 96rem / 1536px | `2xl` |
+
+Q143's complaint was four spellings of the same idea. Two are gone: `min-[380px]` had two call
+sites and both are now `phone:`. The letters are redeclared in the generator at identical values
+rather than removed, because removing them is a 400-call-site edit for no behaviour change —
+both spellings are therefore defined in one file, and `scale.test.ts` asserts each pair agrees.
+
+**The one thing that cannot be a token.** CSS does not allow a custom property in a media
+condition, so `globals.css` spells `40rem` out by hand for the nav switch and the ambient drift.
+`scale.test.ts` reads every `@media (width …)` in that file and asserts it equals
+`--breakpoint-phone`. Do not "tidy" that test away — it is the only thing that notices when one
+of the two literals is changed and the other is not.
 
 Settled now:
 
 - **Three content widths**, named: prose / content / wide. The private app is narrower than
-  the public site; a form at 64rem is unreadable.
-- **One breakpoint set.** `40rem` is the line that defines "phone" and it gets a token name —
-  the app currently mixes `sm:`, `min-[380px]:`, a raw `@media (width < 40rem)` and `lg:`.
-  Tablet (768–1024) gets its own treatment rather than falling to desktop.
-- **Card size vocabulary** (sm / md / lg) rather than per-instance padding. `p-6`, `p-5` and
-  `p-4` are all in use today with no rule behind the choice.
+  the public site; a form at 64rem is unreadable. *(Still to build.)*
+- **Card size vocabulary** — `sm` / `md` / `lg`, done in `ui/card.tsx` (§1.10). `md` is the
+  default and its padding is `--spacing-sm`. The app's own `p-6` / `p-5` / `p-4` call sites
+  migrate in Phases 4–6.
 - **Grids use `auto-fit` / `minmax`**, not fixed breakpoint column counts.
 - Safe-area insets on the bottom bar, and left/right in landscape.
 
@@ -193,15 +324,55 @@ Settled now:
 
 ## 6. Surface and depth
 
-`PENDING §1.7` — the four-level elevation scale.
+### Elevation — **done (V4 §1.7, D-199)**
 
-Settled now:
+Four levels (Q156), used as `shadow-rest` / `shadow-raised` / `shadow-floating` /
+`shadow-overlay`.
 
-- Elevation is **ground-shift plus border in dark, shadow in light.** That is the main
-  structural difference between the two themes.
-- Radius base is `0.625rem` and **scales with the size of the thing** — small controls tighter,
-  large surfaces looser. Tables and the resume sheet are square. Pills are for chips and
-  badges only.
+| Level | Dark schemes | Light schemes | Use |
+|---|---|---|---|
+| `rest` | `none` | `none` | A card at rest. Separated by its ground, not by a shadow. |
+| `raised` | 1px ring | `0 1px 2px` | A card, a panel, anything above the page. |
+| `floating` | ring + soft drop | two-layer shadow | A toast, a popover, a menu. |
+| `overlay` | ring + deep drop | two-layer shadow | A sheet or a modal. |
+
+**The names are in `scale.css` and the values are in `tokens.css`, per theme.** This is the one
+non-colour scale that is not the same in every theme, because elevation is a ground-shift plus a
+border in dark and a real shadow in light — the main structural difference between the two
+schemes. Do not flatten the indirection: `shadow-raised` would become one shadow for five themes.
+
+Every value is `color-mix`ed from the theme's own tokens, never written as a literal, so a new
+theme gets a correct elevation scale for nothing. `tokens.test.ts` asserts that per theme, and
+asserts that dark themes elevate with a ring and light themes with an offset.
+
+**`rest` is `none` on purpose and is not a gap.** The token exists so a component can say
+"explicitly flat" rather than leaving `box-shadow` unset.
+
+### The scrim — **new (V4 §1.10, D-200)**
+
+`--scrim`, per theme, used as `bg-scrim`. Behind a sheet or a modal.
+
+It is here because it is the one token where getting the scheme wrong is invisible in review. A
+scrim has to *darken*. `bg-black/10` — which is what the vendored `sheet.tsx` shipped with —
+darkens paper and does nothing at all over a near-black ground, where the thing it is dimming is
+already darker than the scrim. Dark themes deepen toward their own background; light themes
+toward their own foreground; a test per theme asserts the direction.
+
+### Radius — **done (V4 §1.7, D-199)**
+
+Base is `0.625rem` and it **scales with the size of the thing** (Q152), which the multipliers
+always allowed and nothing used until these names existed.
+
+| Token | | Use |
+|---|---|---|
+| `rounded-control` | ×0.6 | buttons, inputs, chips that are not pills |
+| `rounded-card` | ×1.0 | a card, a panel, a menu |
+| `rounded-panel` | ×1.4 | large surfaces: a sheet body, a modal |
+| `rounded-sheet` | ×1.8 | a bottom sheet's top corners, where the radius reads as a handle |
+| `rounded-pill` | 9999px | chips and badges only |
+
+Tables and the resume sheet are square, and there is deliberately no token for that —
+`rounded-none` says it better than `--radius-flat` would.
 - **Cards carry a ground-shift at rest, a border on hover and focus.**
 - Translucency over the ambient layer stays, at one standardised opacity.
 - `backdrop-blur` on the header, tab bar and sheet overlay — **and nowhere else.** It is the
@@ -212,15 +383,43 @@ Settled now:
 
 ## 7. Motion
 
-`PENDING §1.8` — the two new utilities.
+**Done (V4 §1.8, D-199).** Three durations, three easings, five utilities.
 
-Settled now:
-
-| Scale | Duration | Used for |
+| Utility | Class | What it is |
 |---|---|---|
-| Small | 150ms | Hover, focus, toggle |
-| Medium | 250ms | Panel, sheet |
-| Large | 350ms | Route, overlay |
+| `card-scan` | existing | The sweep, **without the 3px lift** (Q176, Q177). |
+| `link-wipe` | existing | Underline growing from the leading edge. Navigation and footer only. |
+| `rise` | existing | The reveal. No delay of its own any more. |
+| `rise-stagger` | **new** | On a *container*: its children arrive in sequence, from CSS. |
+| `press` | **new** | A 0.97 scale on `:active`, at `fast`, with no delay. |
+| `shimmer` | **new** | The loading sweep. Reuses `card-scan`'s `sweep` keyframe. |
+
+**`press` is the one that matters.** §9 calls the missing pressed state the single biggest gap
+in the app on a phone, and the requirement — visible feedback inside 100ms — is why it is driven
+by `:active` rather than React state: a state round-trip through a server action is exactly the
+slow path it compensates for. §5.3 is what puts it on every control.
+
+**The stagger moved out of inline styles** (Q180). Six call sites set `style={{ animationDelay }}`
+by hand, four computing it from a map index. Now the container declares the sequence and the
+children say nothing. It is ten `nth-child` rules rather than a formula because CSS has no
+arithmetic there; the tenth child and beyond share a delay, which is correct rather than a
+limitation — past ~600ms a reveal stops reading as a sequence and starts reading as a slow page.
+The two bespoke 200ms/240ms delays on below-the-fold sections were dropped rather than ported:
+they staggered two things that are never on screen together.
+
+Durations and easings are tokens, so `duration-fast` and `ease-standard` are the spelling —
+not `duration-150`.
+
+| Scale | Token | Duration | Used for |
+|---|---|---|---|
+| Small | `duration-fast` | 150ms | Hover, focus, toggle, the press |
+| Medium | `duration-medium` | 250ms | Panel, sheet |
+| Large | `duration-slow` | 350ms | Route, overlay |
+
+⚠️ **`--duration-*` is not a Tailwind namespace.** Three explicit `@utility` blocks in
+`scale.css` are what make `duration-fast` mean anything; without them it compiles to no CSS and
+the element renders untransitioned, looking like a design choice. `--ease-*` *is* a namespace and
+needs no such help.
 
 Three easings — standard, entrance, exit. Standard stays
 `cubic-bezier(0.22, 0.72, 0.28, 1)`.
@@ -238,11 +437,33 @@ collapse to 0.01ms. The ambient drift stops under it, and below 40rem for batter
 
 ## 8. Icons
 
-lucide-react. Stroke **1.75** — the default 2 is heavy against this type.
+lucide-react. **Done (V4 §1.9, D-199).**
 
-Sizes are tokenised at 16 / 20 / 24. Icons appear without labels **only in the tab bar**, and
-only with an `aria-label`. Three custom icons are drawn to lucide's grid: dragon boat,
-filament spool, erg.
+| Utility | | Use |
+|---|---|---|
+| `icon-sm` | 16px | inline with `xs` / `sm` text |
+| `icon-md` | 20px | the default, and what the tab bar uses |
+| `icon-lg` | 24px | a lone icon carrying a whole control |
+
+Sizes are `rem`, not `px`, so they grow with OS text size — §7.4 audits the app for exactly
+that, and an icon set frozen in pixels beside text that scales is what that audit would find.
+They are `@utility` blocks rather than theme values because `--icon-*` is not a Tailwind
+namespace, and each sets `flex-shrink: 0` — an icon in a flex row beside a long label is the one
+place SVGs squash.
+
+**Stroke 1.75, set once** (Q213 — lucide ships 2, which is heavy against Instrument Sans).
+`.lucide { stroke-width: var(--icon-stroke) }` in `scale.css` is the whole of it: lucide renders
+`stroke-width` as an SVG *presentation attribute*, and CSS outranks one in the cascade, so this
+reaches every icon in the app without a single call site passing a prop.
+
+**One deliberate exception to the scale:** the 12px glyph inside `Badge`. A badge is 20px tall
+and a 16px icon inside it leaves 2px of air and reads as a button.
+
+Icons appear without labels **only in the tab bar**, and only with an `aria-label`. Three custom
+icons are drawn to lucide's grid: dragon boat, filament spool, erg.
+
+Migration of the app's own `size-4` / `size-5` call sites happens screen by screen in Phases
+4–6, the same way the mono audit and the opacity utilities do. The tab bar is done.
 
 ---
 
@@ -272,7 +493,15 @@ and a signed-in header that does not fit.
 read a passing run as a statement about either, or about layout on a private screen. V4 §7.1
 fixes this.
 
-**Mostly done (V4 §1.12, D-194)** — `src/lib/theme/__tests__/tokens.test.ts`, 57 tests:
+**Done (V4 §1.12, D-194 and D-199/D-202).** Three test files, **126 tests**:
+
+- `tokens.test.ts` — **82**, colour and elevation (below).
+- `scale.test.ts` — **39**, the type/space/radius/breakpoint/motion/icon scales. It asserts
+  *properties* rather than pixel values: changing `RATIO` in the generator moves every number
+  and every test still passes, while a typo in one step does not.
+- `no-raw-hex.test.ts` — **5**, the lint described below.
+
+`tokens.test.ts` covers:
 
 - **completeness** — every theme defines every token, plus the whole ramp. Also the asymmetric
   case: a token defined in *some* themes and not others silently inherits the default theme's
@@ -286,8 +515,27 @@ fixes this.
   `dark:` variant covers exactly the dark themes.
 - **freshness** — the committed CSS is what the generator produces now.
 
-`PENDING` — the "no raw hex outside the token file" lint. Not yet written: there are still raw
-hex literals in components, and the rule has to land with the pass that removes them.
+- **elevation** — all four levels in every theme, `rest` flat, every value built from `var(--…)`
+  and not a literal, and dark themes elevating with a ring while light ones use an offset. Plus
+  the scrim, asserted to darken in the direction its scheme needs.
+
+**The "no raw hex" lint — done (D-202).** `no-raw-hex.test.ts` walks `src/`, strips comments and
+`url(…)`, and fails on any hex literal outside a short allowlist. Comments are exempt because
+half the hex in this repo is *evidence* — `brand.ts` recording that the status bar sat at
+`#0a161b` for two versions is the reasoning D-194 rests on. Four files and one region are
+exempt, each with a written reason naming a mechanism that cannot accept `var()`:
+`tokens.css` and `scale.css` (generated), `registry.ts` (`<meta name="theme-color">` is markup),
+`filament-panel.tsx` (`<input type="color">` takes a hex string and nothing else), and the print
+block of `globals.css` (frozen — those are ink on paper).
+
+**It has a positive control, and that is the part that matters.** A scanner reporting nothing
+looks identical to a broken one, and this has three ways to silently match nothing: the walk,
+the comment-stripping and the regex. Three tests hand it input it must catch — including
+`url(#fade-a1b2)`, where an SVG fragment id is four hex characters followed by a hyphen and a
+naive `\b` pattern matches it.
+
+If it fails: take the colour from a token. Add to `ALLOWED` only when the mechanism genuinely
+rejects `var()` — "it would be annoying to change" is explicitly not a reason.
 
 `PENDING §7.1` — the extended sweep: 44px targets, an 11px text floor with a data-attribute
 allowlist, a contrast sweep, a theme sweep, and the 1440 / 1920 widths.

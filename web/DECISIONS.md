@@ -17,6 +17,191 @@ useful part.
 
 ---
 
+## 2026-09-08 · V4 §1.5–§1.12 — the rest of the system
+
+Colour was finished on 2026-09-07 (D-194). This is everything else that is a number: type,
+space, radius, elevation, breakpoints, motion, icons, the component set, a gallery to review it
+all in, and the lint that was left `PENDING`. **Milestone A.**
+
+### D-202 · "No raw hex" is a test, and it has a positive control
+
+**Decision.** `src/lib/theme/__tests__/no-raw-hex.test.ts` walks `src/`, strips comments and
+`url(…)`, and fails on any 3/4/6/8-digit hex literal outside a short allowlist. Four files are
+exempt and the print block of `globals.css` is exempt as a region; each exemption carries a
+written reason, and a test asserts every reason is longer than 40 characters.
+
+**Why.** DESIGN.md §2 rule 6 has said "no raw hex outside the token file" since Phase 0, and
+until now nothing checked it. The rule is what makes five themes possible at all — a component
+that names a colour is a component that is wrong in four of them, and reading the line does not
+tell you that. §1.12 was left `PENDING` deliberately: a lint written before §1.6 and §1.10
+removed the literals would have failed on the day it was written, and a failing test that
+everyone learns to ignore is worse than no test.
+
+**Why comments are exempt.** Half the hex in this repo is evidence. `brand.ts` records that the
+status bar sat at `#0a161b` for two versions; `build-tokens.mts` records that `#09A1A1` is
+2.94:1 on paper. Deleting those to satisfy a regex would delete the reasoning D-194 exists on.
+
+**The positive control matters more than the rule.** D-003's lesson applied to a lint: a scanner
+that reports nothing looks identical to a scanner that is broken, and this one has three
+independent ways to silently match nothing — the directory walk, the comment-stripping, and the
+regex. So three tests hand it input it *must* catch, including the `url(#fade-a1b2)` case, where
+an SVG fragment id is four hex characters followed by a hyphen and a naive `\b` pattern matches
+it. Verified by injecting `#1e1018` into a real component: it failed, naming the file and line.
+
+**How to reverse.** Delete the file. To exempt something instead, add it to `ALLOWED` with a
+reason that names a mechanism which cannot accept `var()` — "it would be annoying to change" is
+explicitly not one.
+
+### D-201 · `/private/kitchen-sink` renders all five themes at once, in one browser
+
+**Decision.** A component gallery at `/private/kitchen-sink` (Q24). Every component, every
+state, every theme. It is **not** in `PrivateNav`, and it is swept by `npm run shots` as an
+ungated page.
+
+**The mechanism, because it is not obvious.** `tokens.css` scopes each palette with
+`[data-theme="…"]` — an attribute selector, not `html[data-theme="…"]`. Custom properties
+inherit, so putting that attribute on a `<section>` re-declares the entire palette for its
+subtree. Five themes therefore render stacked on one page with no iframes, which is a stronger
+answer than Q24's "both themes at once" asked for.
+
+Two things a future edit will get wrong. A themed block **must** paint `bg-background
+text-foreground` itself — `globals.css` keeps `body` transparent so the ambient layer can sit
+between `<html>` and the content, so a nested theme that does not paint its own ground shows the
+outer one's. And Tailwind's `dark:` variant is a generated *descendant* selector over the
+dark-family themes, so it resolves correctly inside a nested block — this page is the only place
+in the app where two schemes are on screen together, so it is where that stays honest.
+
+**Every class name in it is written out in full.** Tailwind finds classes by scanning source
+text; it does not evaluate code. `` className={`text-${step}`} `` generates nothing, renders at
+the inherited size, and reports no error — the page looks plausible and every caption lies. That
+is disqualifying for the one page whose job is to be what you check the scale against, so the
+tables carry the literal class as data and accept the duplication.
+
+**Why it is not in the navigation.** `PrivateNav` is already eight items and a scrolling row at
+1440px (§4.1), and whether nine private routes is the right number is still open (V4_PLAN §8,
+C11). A review tool used a few times per phase does not get to be the ninth.
+
+**How to reverse.** Delete `src/app/private/kitchen-sink/`, `components/site/sheet-demo.tsx`, and
+the row in `shots.mjs`.
+
+### D-200 · Ten of nineteen `ui/` components deleted; the nine that stay are ours now
+
+**Decision.** D-192 found that only `badge` and `button` were imported anywhere. Ten components
+with no named future caller are deleted: `alert`, `checkbox`, `dialog`, `dropdown-menu`,
+`scroll-area`, `select`, `separator`, `table`, `tabs`, `tooltip`. Nine stay — the two in use,
+plus `card`, `input`, `label`, `textarea`, `sheet`, `skeleton` and `sonner`, each named by a
+Phase 3, 4 or 5 item (the tag input, the forms pass, the tab-bar sheet, exact-shape skeletons,
+the toast system). All nine were hand-reworked at the V4 tokens, and `src/components/ui/*.tsx`
+was **removed from `.prettierignore`**: the directory is no longer upstream's, so a future
+`shadcn add` would overwrite our work rather than merge with it (Q473).
+
+**`tw-animate-css` is gone with them.** Its only four call sites were `dialog`,
+`dropdown-menu`, `select` and `tooltip` — all in the delete set. That coupling is worth knowing:
+keeping any one of those four would have kept the dependency (Q475).
+
+**One real bug fell out of the rework.** `sheet.tsx` scrimmed with `bg-black/10`. A 10% black
+scrim darkens paper and does *nothing* over a near-black ground, so on the three dark themes the
+sheet would have opened with no dimming at all. `--scrim` is now a per-theme token, deepening
+toward the theme's own background on a dark scheme and its own foreground on a light one, with a
+test per theme asserting the direction.
+
+**Also on the record: `form.tsx` never existed.** `.prettierignore` carried
+`!src/components/ui/form.tsx`, `context.md` called it "the one file in `ui/` that *is*
+formatted", and V4_PLAN §1.10 said it "must survive". Git history has no such file, in any
+commit. `src/lib/log/form.ts` is a different thing — form-value coercion for log entries, in
+`lib/log/`, never covered by the `src/components/ui/*.tsx` pattern and so already Prettier's.
+All three references are deleted. `react-hook-form` and `@hookform/resolvers` stay installed for
+the forms pass (§5.2).
+
+**How to reverse.** `npx shadcn@latest add <name>` re-vendors any deleted component, and
+re-adding `src/components/ui/*.tsx` to `.prettierignore` restores the old arrangement. The
+rework itself is one commit and each file carries a header block listing what changed and why.
+
+### D-199 · The rest of the scale is generated too, from `scripts/build-scale.mts`
+
+**Decision.** `src/app/scale.css` is **generated** and committed, the way `tokens.css` is:
+`npm run scale` writes it, `npm run scale:check` fails when it is stale, the test suite runs that
+check, and `predev`/`prebuild` run the generator. It holds the nine-step type scale, the eight
+spacing values, the named radii, the breakpoint set, the three durations and three easings, and
+the icon sizes. **Edit the generator, never the CSS.**
+
+**Why generated rather than hand-written.** The argument is D-194's, applied past colour: *a
+value nobody can compute is a value nobody can check.* A nine-step scale at ratio 1.2 is nine
+multiplications and nine chances to fat-finger a digit, with nothing afterwards able to tell you
+that you did. It also makes the deviations legible — Q101 asked for "modular, hand-adjusted at
+the extremes", and the generator prints the size it *would* have produced beside the one it was
+told to use. A hand-written stylesheet cannot show which of its numbers are the system and which
+are the exceptions.
+
+**The type scale redefines Tailwind's own nine names**, rather than introducing a tenth
+vocabulary. `text-xs` … `text-5xl` appear 466 times across `src/` and exactly nine distinct names
+are in use — nine steps, nine names already in the codebase. So every existing call site became
+scale-correct with no migration, and Milestone A is true on the day it lands rather than after a
+466-site sweep. The cost is that every one of those names now produces a different size; that is
+the point, since they were another design system's defaults chosen for another typeface.
+
+`base` is the anchor at exactly 1rem. Anchoring at the bottom of the scale was tried first and
+gave `base: 0.99rem`, which is worse for a reason that has nothing to do with typography: `rem`
+arithmetic across the app assumes the root size, and a 15.84px `base` puts every hand-checked
+"16px" measurement permanently off. The bottom step lands at **11.11px**, clearing the 11px floor
+§7.1 turns into a gate — clearance, not coincidence, and the generator says so in a comment.
+
+**Elevation and the scrim are the exception and live in `build-tokens.mts` instead.** They look
+like they belong here and do not: DESIGN.md §6 makes elevation a ground-shift plus a border in
+dark schemes and a real shadow in light ones. `scale.css` publishes the four *names* so Tailwind
+emits `shadow-rest` … `shadow-overlay`; the values those names point at are per-theme and every
+one is `color-mix`ed from the theme's own tokens, so a new theme gets a correct elevation scale
+for nothing.
+
+**Two Tailwind traps, both found by checking the built bundle rather than by reasoning.**
+`--duration-*` is not a Tailwind namespace — `duration-fast` compiled to no CSS at all until
+three explicit `@utility` blocks were generated for it, and an untransitioned element looks like
+a design choice. And `--scrim` needed a `--color-scrim` alias in `@theme inline` before
+`bg-scrim` existed. Both are the same failure mode as an interpolated class name: the element
+renders, nothing errors, and the style is simply absent.
+
+**One bug the tests caught in the generator itself.** A fluid step's floor is documented as "the
+step below". It was computed as `size / RATIO`, which is the same number everywhere *except*
+above a hand-adjusted step — `5xl` rounds up to 3rem, so `3 / 1.2` is 2.5rem while `4xl` actually
+ships at 2.4883rem. The phone-width hero would have sat 0.5% above a step that exists, belonging
+to nothing. It now reads the previous step's shipped size, and `scale.test.ts` pins it.
+
+**How to reverse.** Delete `scripts/build-scale.mts`, `src/app/scale.css`, its two npm scripts
+and the `@import` in `globals.css`; every `text-*`, `rounded-*` and `shadow-*` falls back to
+Tailwind's defaults. To change the feel instead, edit one constant: `RATIO`, `OVERRIDES`,
+`FLUID_FROM`, `SPACE`, `DURATIONS` or `EASINGS`, then `npm run scale`.
+
+### D-198 · Mono is evicted from the four surfaces that are not data, and `eyebrow` is a primitive
+
+**Decision.** DESIGN.md §2 rule 2 — mono is real data only — is enforced on the four surfaces
+§1.6 names: nav labels, eyebrows, the tab bar, and panel meta. **246 `font-mono` occurrences
+became 185**, and 53 eyebrow call sites across 30 files collapsed onto one `@utility eyebrow`.
+
+**Why it needed a primitive rather than a find-and-replace.** The eyebrow was a copied class
+chain and every copy had drifted: `font-mono` at `text-[0.55rem]`, `[0.58rem]`, `[0.6rem]`,
+`[0.62rem]` or `[0.65rem]`, tracked at `0.1em`, `0.12em`, `0.14em`, `0.16em`, `0.18em` or
+`tracking-wide`. Six sizes and six trackings for one idea. The utility sets the face, the step,
+the weight and `--tracking-caps`, and deliberately sets **no colour**: D-196 moved the
+page-title eyebrow to `--primary`, and the same shape is a stat label in `--muted-foreground`,
+so baking a colour in would either re-break D-196 or force every stat label to override it.
+
+**The size deviates from Q111 by 0.09px, on purpose.** Q111 asked to raise the eyebrow from
+0.62rem to 0.7rem. It lands on `--text-xs` — 0.6944rem, 11.11px — which is the raise that was
+asked for, landing on a step of the scale instead of becoming a seventh arbitrary value, and
+clearing the 11px floor §7.1 gates. **The tab bar's 8.8px labels** — the ones D-190 found were
+never measured by anything — go the same way and are now 11.11px.
+
+**The remaining 185 are the audit, not a backlog to clear blindly.** Most are correct: dates,
+splits, PRs, counts and file paths *are* mono. DESIGN.md §4 carries the list of files by count so
+Phases 4–6 can judge them screen by screen, exactly as §3.1 does for the ~300 opacity utilities.
+`npm run shots` covers the risk that a wider face overflows: 0 page/width combinations scroll
+sideways after the change, and `/private/athletics` improved from 342px to 335px.
+
+**How to reverse.** `@utility eyebrow` is one block in `globals.css`; adding `font-family:
+var(--font-mono)` to it puts mono back on 53 call sites at once.
+
+---
+
 ## 2026-09-08 · Carbon is the default, and amber stops being decoration
 
 ### D-197 · The default theme is `carbon`, everywhere
