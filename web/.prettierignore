@@ -24,17 +24,23 @@ package-lock.json
 # compares the two byte for byte. Formatting it means the next generate reverts the formatting
 # and the staleness check fails on a clean tree — the same trap as drizzle/ above.
 src/app/tokens.css
+# Same arrangement for src/app/scale.css: `npm run scale` rewrites it and `scale:check`
+# compares byte for byte (V4 §1.5–§1.9, D-199).
+src/app/scale.css
 
-# ── Vendored from the shadcn registry ─────────────────────────────────────────
-# These arrive with 500–1200 character class strings on one line, which is why they are every
-# long-line outlier in the repo. Reformatting them makes every future `shadcn add` produce a
-# diff against our formatting instead of a clean re-vendor. Same principle as not formatting
-# node_modules. `context.md` already treats this directory as upstream's.
+# ── Formerly vendored from the shadcn registry ────────────────────────────────
+# Nothing is excluded here any more, and that is V4 §1.10 (D-200, Q473).
 #
-# Note: form.tsx is hand-authored (the registry did not emit it) and is deliberately NOT
-# excluded — it is ours, so Prettier owns it.
-src/components/ui/*.tsx
-!src/components/ui/form.tsx
+# This block used to exclude `src/components/ui/*.tsx` because those files arrived from the
+# registry with 500–1200 character class strings on one line, and reformatting them would make
+# every future `shadcn add` produce a diff against our formatting instead of a clean re-vendor.
+# That argument depended on the directory still being upstream's. It is not: ten unused files
+# were deleted and the nine that remain were hand-reworked at the V4 tokens, so a future
+# `shadcn add` would overwrite our work rather than merge with it. They are ours now, and
+# Prettier owns them like everything else in `src/`.
+#
+# The block also carried `!src/components/ui/form.tsx`, a negation protecting a file that has
+# never existed in this repo or its history — see D-200. Removed with it.
 
 # ── Prose ─────────────────────────────────────────────────────────────────────
 # Markdown here is hand-wrapped documentation, not code. Prettier's default
