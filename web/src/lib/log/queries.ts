@@ -90,6 +90,50 @@ export async function fileEntry(db: Db, id: number, category: string): Promise<L
   return row ?? null;
 }
 
+/**
+ * Edit an entry that has already been saved (Q402, V4 Phase 2).
+ *
+ * ## Its own guard, deliberately not `fileEntry`'s
+ *
+ * `fileEntry` above is one-way on purpose: it can only move a note *out* of the unsorted pile,
+ * so a mistyped id cannot recategorise a real entry. Reusing that guard here would have been
+ * tempting and wrong — the two operations protect different things.
+ *
+ * **This one cannot change an entry's category at all.** The category is read from the stored
+ * row and never from the caller. That keeps filing a one-way door even though editing now
+ * exists: an entry can be filed once, out of the pile, and after that its category is settled.
+ * Without the rule, `editEntry` would be a second and much wider way to do what `fileEntry`
+ * carefully restricts.
+ *
+ * `search_text` is recomputed from the stored category and the new content, because it carries
+ * both — leaving it would make an edited entry findable by the words it used to contain.
+ *
+ * Returns `null` for an entry that is missing or already deleted, rather than resurrecting one.
+ */
+export async function editEntry(
+  db: Db,
+  id: number,
+  changes: { note: string; data: Record<string, unknown> },
+): Promise<LogEntry | null> {
+  const [existing] = await db
+    .select()
+    .from(logEntries)
+    .where(and(eq(logEntries.id, id), alive));
+  if (!existing) return null;
+
+  const [row] = await db
+    .update(logEntries)
+    .set({
+      note: changes.note,
+      data: changes.data,
+      searchText: searchTextFor(existing.category, changes.data, changes.note),
+    })
+    .where(eq(logEntries.id, id))
+    .returning();
+
+  return row ?? null;
+}
+
 export async function listEntries(
   db: Db,
   options: { category?: string; limit?: number } = {},

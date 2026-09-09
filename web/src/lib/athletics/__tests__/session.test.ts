@@ -3,7 +3,16 @@ import "fake-indexeddb/auto";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { emptySet, hasContent, saveSession, addExercise } from "@/lib/athletics/session";
+import {
+  addExercise,
+  deleteSession,
+  deleteSet,
+  emptySet,
+  hasContent,
+  saveSession,
+  updateSession,
+  updateSet,
+} from "@/lib/athletics/session";
 import { allOps, DB_NAME, openSyncDb, type SyncDb } from "@/lib/sync/store";
 
 /**
@@ -38,10 +47,14 @@ const input = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(async () => {
   db = await openSyncDb(DB_NAME);
-  const tx = db.transaction(["outbox", "workouts", "bodyweight_entries", "exercises"], "readwrite");
+  const tx = db.transaction(
+    ["outbox", "workouts", "workout_sets", "bodyweight_entries", "exercises"],
+    "readwrite",
+  );
   await Promise.all([
     tx.objectStore("outbox").clear(),
     tx.objectStore("workouts").clear(),
+    tx.objectStore("workout_sets").clear(),
     tx.objectStore("bodyweight_entries").clear(),
     tx.objectStore("exercises").clear(),
   ]);
@@ -204,5 +217,87 @@ describe("hasContent", () => {
     expect(hasContent({ ...emptySet("Bench Press", 0), reps: 5 })).toBe(true);
     // A set type on its own is not content — it is the default the row was created with.
     expect(hasContent({ ...emptySet("Bench Press", 0), setType: "warmup" })).toBe(false);
+  });
+});
+
+describe("changing a session after it is saved (Q402)", () => {
+  /**
+   * §4a: *"after creation, sets are independent"*. The property under test is that a correction
+   * is **one op keyed by the set's own client id** — not a re-send of the session.
+   *
+   * That distinction is not an optimisation. A session re-sent as a create would carry whatever
+   * the screen happened to hold for every other set, and would overwrite an edit made on the
+   * laptop in between with stale values, silently.
+   */
+  const SET = "bbbbbbbb-0000-4000-8000-000000000001";
+
+  const storedSet = {
+    clientId: SET,
+    exercise: "Bench Press",
+    setIndex: 0,
+    setType: "normal",
+    weightLbs: 185,
+    reps: 5,
+    distanceM: null,
+    durationS: null,
+    spm: null,
+    rpe: null,
+  };
+
+  it("edits one set without touching the session", async () => {
+    const result = await updateSet(SESSION, { ...storedSet, weightLbs: 190 });
+
+    expect(result.ok).toBe(true);
+    const ops = await allOps(db);
+    expect(ops).toHaveLength(1);
+    expect(ops[0].entity).toBe("workout_set");
+    expect(ops[0].op).toBe("update");
+    expect(ops[0].clientId).toBe(SET);
+    expect(ops[0].payload).toMatchObject({ weightLbs: 190, parentClientId: SESSION });
+  });
+
+  it("names the parent by client id, because the phone has never seen the serial", async () => {
+    // The server refuses a set whose parent it does not know, and the client id is the only name
+    // both sides share — which is the whole reason §4a exists.
+    await updateSet(SESSION, storedSet);
+    const [op] = await allOps(db);
+    expect(op.payload.parentClientId).toBe(SESSION);
+  });
+
+  it("deletes one set as a tombstone", async () => {
+    const result = await deleteSet(SESSION, storedSet);
+
+    expect(result.ok).toBe(true);
+    const [op] = await allOps(db);
+    expect(op.op).toBe("delete");
+    expect(op.entity).toBe("workout_set");
+  });
+
+  it("edits the session itself without resending its sets", async () => {
+    // `sets: []` is deliberate. An update carries no sets — they are independent rows now, and
+    // sending the ones this screen holds would overwrite an edit made elsewhere in between.
+    const result = await updateSession({
+      clientId: SESSION,
+      performedAt: new Date("2026-09-08T18:00:00.000Z"),
+      title: "Push B",
+      notes: "felt heavy",
+    });
+
+    expect(result.ok).toBe(true);
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("workout");
+    expect(op.op).toBe("update");
+    expect(op.payload).toMatchObject({ title: "Push B", notes: "felt heavy" });
+    expect(op.payload.sets).toEqual([]);
+  });
+
+  it("deletes a whole session", async () => {
+    const result = await deleteSession(SESSION);
+
+    expect(result.ok).toBe(true);
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("workout");
+    expect(op.op).toBe("delete");
+    expect(op.clientId).toBe(SESSION);
   });
 });

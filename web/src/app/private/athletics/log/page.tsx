@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/site/page-shell";
+import { RecentSessions } from "@/components/site/recent-sessions";
 import { SessionLogger } from "@/components/site/session-logger";
 
 /**
@@ -46,6 +47,17 @@ export default function LogSessionPage() {
       <div className="mt-6">
         <SessionLogger />
       </div>
+
+      {/* Q402. Correcting a set is a per-set op, so fixing a typo in set three does not resend
+          the session — see `SYNC_DESIGN.md` §4a and `recent-sessions.tsx`. */}
+      <section className="mt-10">
+        <h2 className="text-lg font-bold tracking-tight">On this phone</h2>
+        <p className="mt-1 mb-4 text-sm text-muted-foreground">
+          The last few sessions, as this device has them. Numbers are editable in place; a delete is
+          a tombstone, so it syncs rather than merely disappearing here.
+        </p>
+        <RecentSessions />
+      </section>
     </main>
   );
 }

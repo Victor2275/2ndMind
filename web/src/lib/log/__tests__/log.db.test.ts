@@ -19,6 +19,7 @@ import {
   countUnsorted,
   createEntry,
   deleteEntry,
+  editEntry,
   fileEntry,
   entriesBetween,
   listEntries,
@@ -768,5 +769,88 @@ describe("recent values for the chips (§1.6)", () => {
     }
 
     expect(await recentForChips(db, 5)).toHaveLength(5);
+  });
+});
+
+describe("editing an entry after it is saved (Q402)", () => {
+  /**
+   * Q402 sat at "no default" until 2026-09-08. The answer was **yes, with its own guard**, and
+   * the guard is the interesting half: `editEntry` cannot change an entry's category.
+   *
+   * That is not an arbitrary restriction. `fileEntry` is deliberately one-way — it can only move
+   * a note *out* of the unsorted pile, so a mistyped id cannot recategorise a real entry. An
+   * edit path that accepted a category would be a second, much wider door to the same thing, and
+   * the careful rule on the first door would stop meaning anything.
+   */
+  it("changes the note and the fields", async () => {
+    const entry = await createEntry(db, {
+      category: "academics",
+      note: "started the set",
+      data: { course: "M51A", hours: 1 },
+    });
+
+    const edited = await editEntry(db, entry.id, {
+      note: "finished the set",
+      data: { course: "M51A", hours: 2.5 },
+    });
+
+    expect(edited?.note).toBe("finished the set");
+    expect(edited?.data).toEqual({ course: "M51A", hours: 2.5 });
+  });
+
+  it("cannot move an entry to another category, which is fileEntry's job alone", async () => {
+    const entry = await createEntry(db, { category: "academics", data: { course: "M51A" } });
+
+    // Even if a caller tried, there is nowhere to put a category — the signature has no room
+    // for one and the stored value is what `searchTextFor` is given.
+    const edited = await editEntry(db, entry.id, { note: "x", data: {} });
+
+    expect(edited?.category).toBe("academics");
+  });
+
+  it("recomputes the search text, so an edit is findable by what it says now", async () => {
+    // Leaving it would make an edited entry findable by the words it used to contain, and not
+    // by the ones on screen — which is the kind of wrong that looks like search being broken.
+    const entry = await createEntry(db, {
+      category: "reading",
+      note: "a paper about kalman filters",
+      data: {},
+    });
+
+    const edited = await editEntry(db, entry.id, {
+      note: "a paper about particle filters",
+      data: {},
+    });
+
+    expect(edited?.searchText).toContain("particle");
+    expect(edited?.searchText).not.toContain("kalman");
+  });
+
+  it("refuses a deleted entry rather than resurrecting it", async () => {
+    const entry = await createEntry(db, { category: "academics", data: { course: "M51A" } });
+    await deleteEntry(db, entry.id);
+
+    expect(await editEntry(db, entry.id, { note: "back", data: {} })).toBeNull();
+  });
+
+  it("refuses an id that is not there", async () => {
+    expect(await editEntry(db, 999_999, { note: "x", data: {} })).toBeNull();
+  });
+
+  it("still edits an entry whose category was retired", async () => {
+    // An old training entry has to stay correctable even though no new one can be created
+    // (Phase 2.7). Retirement closes the *create* door, not the record.
+    const entry = await createEntry(db, {
+      category: "athletics",
+      data: { exercise: "Bench Press", sets: [{ weightLbs: 185, reps: 5 }] },
+    });
+
+    const edited = await editEntry(db, entry.id, {
+      note: "typo fixed",
+      data: { exercise: "Bench Press", sets: [{ weightLbs: 195, reps: 5 }] },
+    });
+
+    expect(edited?.note).toBe("typo fixed");
+    expect(edited?.category).toBe("athletics");
   });
 });

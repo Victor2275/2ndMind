@@ -208,3 +208,104 @@ export async function addExercise(entry: {
     return { ok: false, message: "This device will not open its local store." };
   }
 }
+
+/**
+ * Changing a session after it is saved (Q402, `SYNC_DESIGN.md` §4a).
+ *
+ * ## Why these are separate ops rather than a re-send
+ *
+ * §4a: *"after creation, sets are independent"*. Only the initial create is atomic — fixing a
+ * mistyped weight in set three is one op keyed by that set's own client id, so it does not
+ * re-upload the whole gym session. That is not an optimisation; a session re-sent as a create
+ * would carry whatever the screen happened to hold for every other set, and quietly overwrite
+ * an edit made on the laptop in between.
+ *
+ * ## Every set edit names its parent
+ *
+ * `parentClientId` is required, and the server refuses a set whose parent it has never seen.
+ * The phone has never seen the parent's `serial`, so the client id is the only name both sides
+ * share.
+ */
+
+/** Fix one set. The mistyped-weight case, which is why Q402 was answered `yes`. */
+export async function updateSet(
+  sessionClientId: string,
+  set: LocalSetPayload,
+): Promise<SaveResult> {
+  return oneOp("workout_set", "update", {
+    ...set,
+    parentClientId: sessionClientId,
+  });
+}
+
+/** Remove one set. A tombstone, like every delete in this app. */
+export async function deleteSet(
+  sessionClientId: string,
+  set: LocalSetPayload,
+): Promise<SaveResult> {
+  return oneOp("workout_set", "delete", { ...set, parentClientId: sessionClientId });
+}
+
+/** Rename a session, move its date, or change its notes. */
+export async function updateSession(session: {
+  clientId: string;
+  performedAt: Date;
+  title: string;
+  notes: string;
+}): Promise<SaveResult> {
+  return oneOp("workout", "update", {
+    clientId: session.clientId,
+    performedAt: session.performedAt.toISOString(),
+    title: session.title.trim(),
+    notes: session.notes.trim(),
+    // Deliberately empty. An update carries no sets: they are independent rows now, and sending
+    // the ones the screen happens to hold would overwrite an edit made elsewhere in between.
+    sets: [],
+  });
+}
+
+/**
+ * Delete a whole session.
+ *
+ * Soft, and the server tombstones its sets with it. Reads already filter children by the
+ * parent's `deleted_at`, so that is belt and braces — but a set left live under a deleted
+ * session still reaches `allEfforts()` on a device that only ever pulled the child row.
+ */
+export async function deleteSession(clientId: string): Promise<SaveResult> {
+  return oneOp("workout", "delete", { clientId, performedAt: new Date().toISOString(), sets: [] });
+}
+
+/** The fields a set edit has to carry. Narrower than `LocalSet`: no server id, no parent. */
+export type LocalSetPayload = {
+  clientId: string;
+  exercise: string;
+  setIndex: number;
+  setType: string;
+  weightLbs: number | null;
+  reps: number | null;
+  distanceM: number | null;
+  durationS: number | null;
+  spm: number | null;
+  rpe: number | null;
+};
+
+/** One op, one clock tick, one store open. Shared by every mutation above. */
+async function oneOp(
+  entity: "workout" | "workout_set",
+  op: "update" | "delete",
+  row: Record<string, unknown>,
+): Promise<SaveResult> {
+  try {
+    const db = await openSyncDb();
+    try {
+      const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+      await enqueue(db, { entity, op, row, hlc: clock.tick() });
+      await saveClock(db, clock.state);
+      return { ok: true, message: op === "delete" ? "Deleted." : "Saved." };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return { ok: false, message: "This device will not open its local store." };
+  }
+}

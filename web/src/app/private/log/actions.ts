@@ -6,9 +6,9 @@ import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { describeDbError } from "@/lib/db/describe";
 import { recordBodyweight } from "@/lib/athletics/queries";
-import { UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
+import { categoryByKey, UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
 import { readField, readRows, takeBodyweight } from "@/lib/log/form";
-import { createEntry, deleteEntry, fileEntry, restoreEntry } from "@/lib/log/queries";
+import { createEntry, deleteEntry, editEntry, fileEntry, restoreEntry } from "@/lib/log/queries";
 import { createTask } from "@/lib/tasks/queries";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -163,6 +163,62 @@ export async function fileLogEntry(
     revalidatePath("/private/log");
     revalidatePath("/private");
     return { ok: true, message: `Filed under ${category.label}.` };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/**
+ * Edit an entry that has already been saved (Q402, V4 Phase 2).
+ *
+ * Q402 sat unanswered as "no default" until 2026-09-08, and the answer was yes — you will
+ * mistype a weight. Sets inside a session are edited through their own ops
+ * (`lib/athletics/session.ts`); this is the general case for everything else in the log.
+ *
+ * The fields are re-read through `readField`/`readRows` rather than trusted, exactly as a create
+ * is: a Server Action is a POST endpoint with a guessable id, and an edit that took `data`
+ * straight off the wire would let anything be written into a category's JSON.
+ *
+ * **The category is not editable and is not read from the form.** `editEntry` takes it from the
+ * stored row, which keeps `fileEntry`'s one-way door shut — see the note there.
+ */
+export async function updateLogEntry(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+  if (!isDatabaseConfigured()) return { ok: false, message: "DATABASE_URL is not set." };
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown entry." };
+
+  // The category is only used to know which fields to read; it is never written. A retired
+  // category is accepted here on purpose — an old training entry has to stay editable even
+  // though no new one can be created (Phase 2.7).
+  const key = String(formData.get("category") ?? "");
+  const category = categoryByKey(key);
+  if (!category) return { ok: false, message: "Unknown category." };
+
+  const note = String(formData.get("note") ?? "").trim();
+
+  const data: Record<string, unknown> = {};
+  for (const field of category.fields) {
+    const value = readField(formData, field);
+    if (value !== null && value !== false) data[field.name] = value;
+  }
+  const rows = category.rows ? readRows(formData, category.rows) : [];
+  if (category.rows && rows.length > 0) data[category.rows.name] = rows;
+
+  if (Object.keys(data).length === 0 && note === "") {
+    return { ok: false, message: "Nothing left — delete it instead." };
+  }
+
+  try {
+    const row = await editEntry(db(), id, { note, data });
+    if (!row) return { ok: false, message: "That entry is gone." };
+    revalidatePath("/private/log");
+    revalidatePath("/private");
+    return { ok: true, message: "Saved." };
   } catch (error) {
     return { ok: false, message: describe(error) };
   }
