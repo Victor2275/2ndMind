@@ -198,7 +198,26 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
     const onVisible = () => {
       if (document.visibilityState === "visible") void run(false);
     };
-    const onOnline = () => void run(false);
+    /**
+     * The radio came back (Phase N4).
+     *
+     * The backoff is cleared first, deliberately. Backoff exists to stop the app hammering a
+     * network that is not working — and `online` is the one event that says *that has changed*,
+     * which makes the remaining delay stale evidence about a connection that no longer exists.
+     *
+     * Without this the reconnect trigger is swallowed whenever the last attempt failed within
+     * the backoff window, and the queue then waits for the next foreground or a manual tap. It
+     * is a narrow race and it was reproducible: `npm run e2e` reached "back online" with one op
+     * held, dispatched `online`, and watched nothing happen — while a manual "Send now" a
+     * moment later emptied the outbox at once.
+     *
+     * Only `online` gets this. Foregrounding the app is not evidence about the network, so
+     * `visibilitychange` still respects the delay.
+     */
+    const onOnline = () => {
+      nextAttemptRef.current = 0;
+      void run(false);
+    };
     const onManual = () => void run(true);
 
     document.addEventListener("visibilitychange", onVisible);

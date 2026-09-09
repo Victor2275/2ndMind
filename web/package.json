@@ -25,6 +25,7 @@
     "shots": "node --env-file-if-exists=.env.local scripts/shots.mjs",
     "paint": "node --env-file-if-exists=.env.local scripts/paint-cost.mjs",
     "e2e": "npm run build && node --env-file-if-exists=.env.local scripts/e2e-offline.mjs",
+    "e2e:degraded": "npm run build && node --env-file-if-exists=.env.local scripts/e2e-degraded.mjs",
     "push:keys": "node scripts/push-keys.mjs",
     "freeze": "node scripts/freeze.mjs"
   },

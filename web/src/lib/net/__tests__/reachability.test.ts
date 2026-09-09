@@ -172,3 +172,39 @@ describe("wiring", () => {
     second();
   });
 });
+
+describe("what the service worker left behind", () => {
+  /**
+   * The gap this closes was found by `npm run e2e:degraded`, not by reasoning: every unit test
+   * passed, the fallback worked, and the app still said nothing once it landed on the shell —
+   * because the hard navigation had thrown away every observation this module had made.
+   */
+  afterEach(() => {
+    delete (window as Window & { __2ndmindNet?: string }).__2ndmindNet;
+  });
+
+  it("believes the worker when it says the navigation stalled", () => {
+    (window as Window & { __2ndmindNet?: string }).__2ndmindNet = "degraded";
+
+    const stop = startWatching();
+    expect(state()).toBe("degraded");
+    stop();
+  });
+
+  it("assumes nothing when the worker left no verdict", () => {
+    const stop = startWatching();
+    expect(state()).toBe("healthy");
+    stop();
+  });
+
+  it("still clears on the next real success", () => {
+    // The flag is a starting point, not a latch. One request that answers settles it.
+    (window as Window & { __2ndmindNet?: string }).__2ndmindNet = "degraded";
+    const stop = startWatching();
+
+    record("ok");
+
+    expect(state()).toBe("healthy");
+    stop();
+  });
+});

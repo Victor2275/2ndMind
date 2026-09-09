@@ -135,6 +135,7 @@ export function startWatching(): () => void {
 
   if (started === 1) {
     stopObserving = observeNetwork(record);
+    adoptWorkerVerdict();
 
     if (typeof window !== "undefined") {
       // `offline` is conclusive and worth acting on immediately; `online` only means an
@@ -155,6 +156,26 @@ export function startWatching(): () => void {
       window.removeEventListener("online", handleOnline);
     }
   };
+}
+
+/**
+ * Believe the service worker, once, about why this page is the page it is.
+ *
+ * Falling back to the cached shell is a **hard navigation**: the document is replaced and every
+ * bit of state the app had built up goes with it, including everything this module had learned.
+ * So the app arrives on the fallback screen knowing nothing — `navigator.onLine` says `true`,
+ * no request has been made yet, and it would sit there looking broken and saying nothing. That
+ * is precisely the plane case.
+ *
+ * The worker sets `window.__2ndmindNet` when, and only when, it served the shell because a
+ * request **stalled** rather than because there was no network at all — it is the one component
+ * still in a position to tell those apart, and the flag is the only thing that survives the
+ * reload. A real success from any later request clears it in the ordinary way.
+ */
+function adoptWorkerVerdict(): void {
+  if (typeof window === "undefined") return;
+  const verdict = (window as Window & { __2ndmindNet?: string }).__2ndmindNet;
+  if (verdict === "degraded") set("degraded");
 }
 
 function handleOffline() {

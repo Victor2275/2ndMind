@@ -468,7 +468,7 @@ function isAppPath(pathname) {
  * A public navigation goes to the offline page. The portfolio is not mirrored anywhere — that
  * is §2.2 — so there would be nothing for the shell to show.
  */
-async function serveFromCache(request, url) {
+async function serveFromCache(request, url, stalled) {
   const cache = await caches.open(CACHE);
 
   // A public page precached by §2.2 — the portfolio, a project, a resume. Served as itself,
@@ -500,9 +500,26 @@ async function serveFromCache(request, url) {
   // `?from=/private/athletics` into `?from=/cached?from=...` and every offline screen would
   // render Today.
   const target = isShell ? path : `${destination}?from=${encodeURIComponent(path)}`;
+
+  /**
+   * Tell the page *why* it is the page (Phase N7).
+   *
+   * The shell is served for two quite different reasons — no network at all, or a network that
+   * accepted the request and never answered — and only the worker can still tell them apart by
+   * the time this document loads. A hard navigation throws away every bit of state the app had
+   * built up, including everything `lib/net/reachability.ts` had learned, so without this the
+   * app arrives on the fallback screen with no evidence that anything is wrong and says nothing.
+   *
+   * That is the exact case the plane report was about. `navigator.onLine` is `true`, so the app
+   * cannot work it out for itself; this one flag is the only thing that survives the reload.
+   */
+  const marker = stalled ? `;window.__2ndmindNet="degraded"` : "";
   const html = await offline.text();
   return new Response(
-    html.replace("</head>", `<script>history.replaceState(null,"","${target}")</script></head>`),
+    html.replace(
+      "</head>",
+      `<script>history.replaceState(null,"","${target}")${marker}</script></head>`,
+    ),
     { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
   );
 }
@@ -565,11 +582,11 @@ async function handleNavigation(event, request, url) {
     if (retryable(error)) {
       try {
         return await fetchWithDeadline(request, BUDGET.navigation);
-      } catch {
-        // Fall through.
+      } catch (retried) {
+        return serveFromCache(request, url, retried && retried.name === "TimeoutError");
       }
     }
-    return serveFromCache(request, url);
+    return serveFromCache(request, url, error && error.name === "TimeoutError");
   }
 }
 

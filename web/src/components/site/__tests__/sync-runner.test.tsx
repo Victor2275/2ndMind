@@ -255,3 +255,53 @@ describe("what the badge says about the connection (Phase N7)", () => {
     await waitFor(() => expect(screen.queryByRole("link")).toBeNull());
   });
 });
+
+describe("reconnecting (Phase N4)", () => {
+  /**
+   * Backoff exists to stop the app hammering a network that is not working. `online` is the one
+   * event that says that has changed — so the delay it is still counting down is about a
+   * connection that no longer exists.
+   *
+   * Found by `npm run e2e`: the suite reached "back online" with one op held from a failure a
+   * moment earlier, dispatched `online`, and watched nothing happen — while a manual "Send now"
+   * immediately afterwards emptied the outbox. The queue was waiting for a foreground that, on
+   * a phone in a pocket, might not come for hours.
+   */
+  it("ignores the backoff when the radio comes back", async () => {
+    flush.mockResolvedValue({ status: "transient", message: "no network" });
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
+
+    // A second automatic trigger inside the backoff window is correctly ignored.
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await Promise.resolve();
+    expect(flush).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+
+    await waitFor(() => expect(flush).toHaveBeenCalledTimes(2));
+  });
+
+  it("still respects the backoff when the app is merely foregrounded", async () => {
+    // The other half. Coming back to the app is not news about the network, and a foreground
+    // that ignored the delay would retry a failing batch every time the screen woke up.
+    flush.mockResolvedValue({ status: "transient", message: "no network" });
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+});

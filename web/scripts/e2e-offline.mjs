@@ -40,13 +40,9 @@
  *
  * Local only. Nothing here runs in CI, and it needs `.env.local`.
  */
-import { spawn } from "node:child_process";
-import path from "node:path";
-
-import { chromium } from "playwright";
 import { neon } from "@neondatabase/serverless";
 
-import { mintSession, SESSION_COOKIE } from "./lib/session.mjs";
+import { checker, openSignedIn, startServer, waitFor, workerState } from "./lib/e2e.mjs";
 
 const PORT = Number(process.env.E2E_PORT ?? 3210);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -57,47 +53,7 @@ const PROJECT = "/projects/solenoid-bit-reader";
 /** Marks this run's rows, so a human reading the log knows where they came from. */
 const STAMP = `e2e ${new Date().toISOString()}`;
 
-const failures = [];
-function check(ok, label, detail = "") {
-  console.log(`  ${ok ? "ok  " : "FAIL"}  ${label}${detail ? `  — ${detail}` : ""}`);
-  if (!ok) failures.push(`${label}${detail ? `: ${detail}` : ""}`);
-  return ok;
-}
-
-async function waitFor(label, predicate, { timeout = 30_000, every = 250 } = {}) {
-  const deadline = Date.now() + timeout;
-  for (;;) {
-    let result;
-    try {
-      result = await predicate();
-    } catch {
-      result = false;
-    }
-    if (result) return result;
-    if (Date.now() > deadline) throw new Error(`timed out waiting for ${label}`);
-    await new Promise((r) => setTimeout(r, every));
-  }
-}
-
-/* ---------------------------------------------------------------------- the server */
-
-/**
- * A production build, not `next dev`.
- *
- * The worker precaches by scraping `/_next/static/...` out of the pages it caches, and dev
- * serves different URLs than a build does. Running this against a dev server would be
- * exercising a caching behaviour that no phone ever sees, which is the one thing §3.7 is for.
- */
-function startServer() {
-  const bin = path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
-  const child = spawn(process.execPath, [bin, "start", "-p", String(PORT)], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: process.env,
-  });
-  child.stdout.on("data", () => {});
-  child.stderr.on("data", (d) => process.stderr.write(d));
-  return child;
-}
+const { check, failures } = checker();
 
 /* ---------------------------------------------------------------------- the browser */
 
@@ -129,30 +85,6 @@ function readOutbox(page) {
   );
 }
 
-/** Whether the worker is active, controlling this page, and has the shell in its cache. */
-function workerState(page) {
-  return page.evaluate(async () => {
-    if (!("serviceWorker" in navigator)) return { ready: false, controlled: false, cached: [] };
-    const registration = await navigator.serviceWorker.ready;
-    const names = await caches.keys();
-    const shell = names.find((n) => n.startsWith("2ndmind-shell-"));
-    if (!shell) {
-      return {
-        ready: !!registration.active,
-        controlled: !!navigator.serviceWorker.controller,
-        cached: [],
-      };
-    }
-    const cache = await caches.open(shell);
-    const keys = await cache.keys();
-    return {
-      ready: !!registration.active,
-      controlled: !!navigator.serviceWorker.controller,
-      cached: keys.map((request) => new URL(request.url).pathname),
-    };
-  });
-}
-
 /* ---------------------------------------------------------------------- the run */
 
 async function main() {
@@ -166,7 +98,7 @@ async function main() {
   }
 
   const sql = neon(databaseUrl);
-  const server = startServer();
+  const server = startServer(PORT);
   let browser;
   let created = [];
 
@@ -174,24 +106,8 @@ async function main() {
     await waitFor("the server to answer", async () => (await fetch(BASE)).ok, { timeout: 60_000 });
     console.log(`\nserver up on ${BASE}\n`);
 
-    browser = await chromium.launch();
-    const context = await browser.newContext({
-      serviceWorkers: "allow",
-      // A phone, because this app's offline navigation is phone-only by construction: the tab
-      // bar is `.nav-mobile`, which is `display: none` above the breakpoint. The first run of
-      // this suite reported the bar missing from a 1280px-wide browser, which was true and
-      // meant nothing.
-      viewport: { width: 390, height: 844 },
-    });
-    await context.addCookies([
-      {
-        name: SESSION_COOKIE,
-        value: await mintSession(secret),
-        url: BASE,
-        httpOnly: true,
-        sameSite: "Lax",
-      },
-    ]);
+    ({ browser } = await openSignedIn(BASE, secret));
+    const context = browser.contexts()[0];
     const page = await context.newPage();
 
     // Kept for the failure path. When the round trip breaks, the useful evidence is what the

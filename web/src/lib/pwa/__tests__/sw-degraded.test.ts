@@ -337,3 +337,48 @@ describe("error reporting", () => {
     expect(posts).toHaveLength(2);
   });
 });
+
+describe("telling the page why it is the fallback", () => {
+  /**
+   * Falling back to the shell is a hard navigation, so everything the app had learned about the
+   * connection is thrown away with the document. It arrives knowing nothing — `navigator.onLine`
+   * says true, no request has been made — and would sit there looking broken and saying nothing.
+   *
+   * The worker is the only component still able to tell a stall from an absent network by then,
+   * so it says which it was, and `lib/net/reachability.ts` picks it up once on start.
+   */
+  it("marks the shell as degraded when the navigation stalled", async () => {
+    const network = stalling();
+    const handlers = loadWorker({
+      fetch: network.fetch,
+      cache: fakeCache({ "/cached": SHELL, "/offline": "offline" }),
+      budgetMs: BUDGET_MS,
+    });
+    const { event, response } = navigation("/private/athletics");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain('window.__2ndmindNet="degraded"');
+  });
+
+  it("says nothing of the sort when the network is simply gone", async () => {
+    // A refused request with the radio off is not a degraded connection, it is no connection —
+    // and `navigator.onLine === false` already tells the page that conclusively. Marking this
+    // as degraded would make the quieter message appear in the louder situation.
+    const network = refusing();
+    const handlers = loadWorker({
+      fetch: network.fetch,
+      cache: fakeCache({ "/cached": SHELL, "/offline": "offline" }),
+      budgetMs: BUDGET_MS,
+      onLine: false,
+    });
+    const { event, response } = navigation("/private/athletics");
+
+    handlers.get("fetch")!(event);
+    const html = await (await response()).text();
+
+    expect(html).toContain("replaceState");
+    expect(html).not.toContain("__2ndmindNet");
+  });
+});
