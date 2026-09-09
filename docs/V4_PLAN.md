@@ -2,7 +2,7 @@
 updated: 2026-09-08
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Nine phases, 286 points. Phases 0 and 1 done (Milestone A); 4.4 done; Phase N is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 299 points. Phases 0, 1 and N done (Milestone A); 4.4 done; Phase 2 is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **286 points** (241 + Phase N's 45). You said 120–140. The gap is real and is §7 R2, not a rounding error.                                                                                                                                                                                                                                                                                                                                                       |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — colour on 09-07, the rest of the system on 09-08: **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Carbon is the default and amber stopped being decoration** (2026-09-08, D-196/D-197).<br>Recommended next: **Phase N**, which is now the only thing between here and the screens. |
+| **Budget**       | **299 points** (241 + Phase N's 45 + N9's 13, which was always a parenthetical in N5 and is now a row of its own). You said 120–140. The gap is real and is §7 R2, not a rounding error. **93 done.**                                                                                                                                                                                                                                       |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — colour on 09-07, the rest of the system on 09-08: **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured; N9 parked.<br>Next: **Phase 2**, training end to end — **Milestone B**. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -282,7 +282,7 @@ something shippable, which is the whole reason for this ordering.
 
 ---
 
-### Phase N · Degraded network — **45 pts** — ⚠ **inserted 2026-09-08, recommended next**
+### Phase N · Degraded network — **45 pts** — ✅ **DONE 2026-09-08**
 
 **Not UI work, and not in the original 484 questions.** It is here because it was found during
 V4 and because every screen Phases 5–7 build is a screen this bug hangs.
@@ -297,21 +297,29 @@ wifi, so the one signal the app consults actively lies.
 **The full diagnosis and the item-by-item plan are in [`DEGRADED_NETWORK.md`](DEGRADED_NETWORK.md).**
 Summary of the eight items:
 
-| #   | Item                                                                                 |     Pts |
-| --- | ------------------------------------------------------------------------------------ | ------: |
-| N1  | One deadline helper — `fetchWithDeadline`, budgets as named constants                |       3 |
-| N2  | The service worker races the network; stop retrying stalls                           |       8 |
-| N3  | Intercept RSC navigations — **the tab-tap freeze**, currently not intercepted at all |       5 |
-| N4  | Sync cannot wedge — a stalled flush currently disables "Send now" until reload       |       3 |
-| N5  | Writes stop depending on the network — watchdog now, outbox-always later             | 3 (+13) |
-| N6  | Stop prefetching into a stalled pipe — HTTP/2 shares one TCP connection              |       3 |
-| N7  | A reachability signal the app owns, said out loud once and quietly                   |       5 |
-| N8  | A degraded-network e2e profile, so it cannot come back                               |       5 |
+| #   | Item                                                                                 |     Pts | Result                                                                                                                                                                 |
+| --- | ------------------------------------------------------------------------------------ | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| N1  | One deadline helper — `fetchWithDeadline`, budgets as named constants                |       3 | ✅ `lib/net/deadline.ts`. The worker keeps its own copy — it cannot import — and a test fails if the two drift (D-204)                                                 |
+| N2  | The service worker races the network; stop retrying stalls                           |       8 | ✅ Plus stale-while-revalidate for anything precached, which is safe because the cache name carries the build id (D-205)                                               |
+| N3  | Intercept RSC navigations — **the tab-tap freeze**, currently not intercepted at all |       5 | ✅ **And the framework assumption was verified, not trusted** — Next really does fall back to a hard navigation. No `location.href` escape hatch needed (D-210)        |
+| N4  | Sync cannot wedge — a stalled flush currently disables "Send now" until reload       |       3 | ✅ Deadline on `httpPoster`, watchdog on the mutex, and `online` no longer swallowed by backoff (D-209)                                                                |
+| N5  | Writes stop depending on the network — watchdog now, outbox-always later             |       3 | ✅ **The plan's wording was false in the live app and was changed** (D-206). The implementation also had to avoid `setState` inside a `<form>` (D-207) — see §7 R5     |
+| N6  | Stop prefetching into a stalled pipe — HTTP/2 shares one TCP connection              |       3 | ✅ Gated on evidence, so a good connection keeps its instant tab transitions                                                                                          |
+| N7  | A reachability signal the app owns, said out loud once and quietly                   |       5 | ✅ Derived from real request outcomes; never probes. The worker tells the page why it is the fallback, since a hard navigation throws that knowledge away (D-208)      |
+| N8  | A degraded-network e2e profile, so it cannot come back                               |       5 | ✅ `npm run e2e:degraded`. Stalls requests rather than throttling them, because a service worker is its own CDP target (D-210)                                         |
+| N9  | **Every write through the outbox** — the deferred half of N5                          |      13 | ⏸ Not started, by Victor's call. Deferred because it touches every form and Phase 2 rebuilds one                                                                      |
 
-**N2 + N3 + N4 is 16 points and removes the freeze.** The rest turns "not frozen" into
-"seamless".
+**Measured after the fact:** a stalled tab tap reaches a usable screen in **~6.1s** — the 3s RSC
+deadline plus the 3s navigation deadline — a direct navigation falls back in **~3.1s**, and a
+precached public page opens in **~90ms** without touching the network. Every one of those was
+unbounded before.
 
-**Ends with:** a bad connection changes how fast the app is, never whether it works.
+**Three bugs were found by running it rather than reading it**, and each had passed every unit
+test that existed: the slow-save notice would have re-enabled the save button mid-POST (D-207),
+the app went silent the moment it landed on the fallback screen (D-208), and `online` was being
+swallowed by the sync backoff (D-209).
+
+**Ends with:** a bad connection changes how fast the app is, never whether it works. ✅
 
 ---
 
@@ -535,16 +543,21 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | ----- | --------------------------------------------------- | ------: | ---------------------- |
 | 0     | Say what is true — docs, and the 8.8px gate mystery |       8 | ✅ done                |
 | 1     | Tokens, themes, type, space, motion, primitives     |      40 | ✅ done · Milestone A  |
-| **N** | **Degraded network — the plane-wifi freeze**        |  **45** | ⚠ **recommended next** |
-| 2     | Training, end to end                                |      45 | **[FEATURE]**          |
+| **N** | **Degraded network — the plane-wifi freeze**        |  **45** | ✅ done                |
+| 2     | Training, end to end                                |      45 | **[FEATURE]** · next   |
+| N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
 | 3     | Tags                                                |      12 | **[FEATURE]**          |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
 | 5     | The private screens                                 |      50 |                        |
 | 6     | Brand and the public site                           |      36 |                        |
 | 7     | Gates, performance, review                          |      22 |                        |
-|       | **Total**                                           | **286** |                        |
+|       | **Total**                                           | **299** |                        |
 
-Pure design work, with both feature phases, the settings screen and Phase N removed:
+**299, not 286.** N9 is the 13-point half of N5 that was always in the plan as a parenthetical
+("3 (+13)") and was never in the total. Promoting it to a row is bookkeeping, not new scope —
+it is the same work, now visible. **93 points are done** (0, 1, N, and 4.4).
+
+Pure design work, with both feature phases, the settings screen and the whole of Phase N removed:
 **~178 pts.**
 
 **Where Phase N sits is a judgement, not a fact.** It is placed after Phase 1 because Phase 1 is
@@ -565,7 +578,7 @@ Unchanged by V4 and easy to break while redesigning:
 4. **`/cached` stays static and holds no server data.** Making it dynamic silently kills offline.
 5. **The print stylesheet is frozen** (Q123, Q355). The resume page-count gate stays (Q468).
 6. **`local-lock.tsx` is built and unmounted** (D-158). Do not delete it while tidying.
-7. **1,240 tests is a floor, not a target** (Q470). It was recorded as 582 until Phase 0 re-measured it — re-state the number whenever it moves, or the floor stops being one.
+7. **1,452 tests is a floor, not a target** (Q470). It was recorded as 582 until Phase 0 re-measured it, 1,240 until Phase 1, and 1,409 until Phase N — re-state the number whenever it moves, or the floor stops being one.
 8. **Every decision gets a `DECISIONS.md` entry**, continuing from D-190 (Q477, Q478).
 9. **Lands on main, screen by screen** (Q25, Q479). Inconsistency is acceptable on private only (Q26).
 10. **Colour never signals alone** (Q72).
@@ -600,10 +613,10 @@ The escape hatch is cheap and stays open: items **6.4 (About)** and **6.8 (resum
 the two pages a recruiter actually opens, cost 11 pts together, and can be lifted out of Phase 6
 and run immediately after Phase 1 without disturbing anything else.
 
-**R2 · The budget is out by ~145 points.** You said 120–140; this is **286** — it was 241 until
+**R2 · The budget is out by ~160 points.** You said 120–140; this is **299** — it was 241 until
 Phase N was inserted on 2026-09-08. Not a padding problem: it is Phase 2 (45) plus Phase 3 (12)
 plus the settings screen plus Phase N (45), none of which were UI work when you set the number,
-and Phase N is not UI work at all. Three honest readings: take the 286; or move the feature
+and Phase N is not UI work at all. Three honest readings: take the 299; or move the feature
 phases to V5, leaving ~178 plus Phase N; or stop after Phase 5 with the private app finished and
 the portfolio untouched. **Every phase boundary is a coherent stopping point** — that is why they
 are ordered this way. No recommendation here; it is a priorities call, not an engineering one.
@@ -645,10 +658,11 @@ be quietly skipped, because turning prose into structure is slower than restylin
 
 Small, and none of it blocks Phase 1 or Phase N.
 
-1. **Q402 — are log entries editable after saving?** Left at "no default". Phase 2's session
-   logging and Phase 3's tags both effectively need it (you will mistype a weight). Confirm, and
-   note that D-164's guard exists precisely so `fileEntry` can only move an entry _out_ of the
-   unsorted pile — a general edit path needs its own guard.
+1. ~~**Q402 — are log entries editable after saving?**~~ ✅ **Answered 2026-09-08: yes, editable,
+   with its own guard.** Not reusing D-164's — that one exists precisely so `fileEntry` can only
+   move an entry _out_ of the unsorted pile, and a general edit path is a different permission.
+   Phase 2 builds it; edits become ordinary sync ops, last-write-wins by HLC like every other
+   write.
 2. **C15 — the mark cannot be five things at 16px.** Q31 wants all five pillars; Q32/Q33 want one
    representational object legible at favicon size. Which single object is the mark? The five-pillar
    lockup then lives on the splash and OG image, where it has room.

@@ -43,6 +43,16 @@ Ships **2026-09-20**, the day UCLA fall term begins.
    D-023, which was verified by counting traced files in the build output, not by assumption.
 5. **Every write bumps the file's `updated:` frontmatter** so freshness stays honest without
    relying on discipline.
+6. **Every browser-side `fetch` has a deadline** — `fetchWithDeadline` from `lib/net/deadline.ts`,
+   never bare `fetch`. `fetch()` has no default timeout, so a request that connects and then
+   stalls never rejects, and this app's entire offline story is `try`/`catch`. Without a deadline
+   every fallback is unreachable in exactly the condition it was written for, which is what froze
+   the app on plane wifi (V4 Phase N, D-204). The service worker keeps its own copy of the budgets
+   because it cannot import the module; a test fails if the two drift.
+7. **`navigator.onLine === true` proves nothing.** It reports that the device has an interface,
+   not that anything answers, and it is `true` on plane wifi. `false` is conclusive and is still
+   worth checking. What the app actually believes about the connection is
+   `lib/net/reachability.ts`, derived from how real requests turned out.
 
 ## Stack
 
@@ -213,13 +223,29 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,375 tests across 90 files** as of
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,452 tests across 97 files** as of
 2026-09-08, all passing. A drop from that count is a regression, not noise.
 
-(It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86" until
-2026-09-08. The suite more than doubled during V3 and the floor was never re-stated, so for a
-week the number that is supposed to catch a regression would have accepted losing half the suite.
-Re-state it whenever it moves.)
+(It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
+"1,375 across 90" until V4 Phase N. The suite more than doubled during V3 and the floor was never
+re-stated, so for a week the number that is supposed to catch a regression would have accepted
+losing half the suite. Re-state it whenever it moves.)
+
+### Two end-to-end suites, and they stage opposite failures
+
+Unit tests cannot see either of these: neither has a service worker, a Cache Storage, or an
+IndexedDB that survives a navigation.
+
+- **`npm run e2e`** — the offline round trip (V3 §3.7). The radio is off, so every `fetch`
+  rejects immediately. Writes to the real database and cleans up after itself by client id.
+- **`npm run e2e:degraded`** — a connection that is **connected and answering nothing** (V4
+  Phase N8). Nothing rejects, so before Phase N no `catch` ran and the app hung. Writes nothing.
+
+**Every check in the offline suite passed on the build that froze on plane wifi.** That is the
+argument for the second one existing, and for not merging them: they are different failures, and
+a suite that stages the easy one is not evidence about the hard one.
+
+Both are local-only and need `.env.local`. Shared setup is in `scripts/lib/e2e.mjs`.
 
 ### Layout is checked by measurement, not by looking
 

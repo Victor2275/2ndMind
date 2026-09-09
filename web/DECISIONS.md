@@ -19,8 +19,207 @@ useful part.
 
 ## 2026-09-08 · V4 Phase N — the degraded network, and the notification badge
 
-The plane-wifi freeze, diagnosed in `docs/DEGRADED_NETWORK.md` and built here. The badge is not
-part of that and is only in this section because it was reported the same day.
+The plane-wifi freeze, diagnosed in `docs/DEGRADED_NETWORK.md` and built here — **Phase N
+complete**, N1 through N8, with the 13-point outbox-always half of N5 deliberately deferred to
+N9. The badge is not part of that and is only in this section because it was reported the same
+day.
+
+Three of these entries record things found by *running* the app rather than reading it: D-207
+(the notice would have re-enabled the save button mid-POST), D-208 (the app went silent the moment
+it landed on the fallback) and D-209 (`online` was swallowed by backoff). All three passed every
+unit test that existed at the time they were written.
+
+### D-210 · The degraded network is its own e2e suite, and it stalls requests rather than throttling them
+
+**Decision.** `npm run e2e:degraded` (`scripts/e2e-degraded.mjs`). It builds, starts a production
+server, and drives a real Chromium through a connection that is **connected and answering
+nothing**. The setup both suites need moved to `scripts/lib/e2e.mjs`.
+
+**Why a second suite rather than a phase of the existing one.** `e2e-offline.mjs` stages a
+connection that is *off*, and every check in it passed on the build that froze on plane wifi. The
+two conditions fail in opposite ways: offline rejects, so every `catch` runs; degraded never
+settles, so none of them do. Keeping them apart also keeps this one free of the offline suite's
+database writes — it writes nothing and needs no teardown.
+
+**Why route interception rather than `Network.emulateNetworkConditions`.** Network emulation is
+applied to a **target**, and a service worker is its own target. Throttling the page throttles the
+page's own fetches and leaves every request the worker makes running at full speed. The first
+version of this file did exactly that and reported the app working beautifully — the worker was
+quietly on a perfect connection while the page beside it was on a terrible one. `context.route`
+with `serviceWorkers: "allow"` covers both, and a handler that never resolves is a more faithful
+stall than any latency figure.
+
+**What it settled.** N3 rests on undocumented framework behaviour — that a rejected RSC fetch makes
+the App Router perform a hard navigation. `DEGRADED_NETWORK.md` said to verify that rather than
+trust it. **It holds:** Next logs _"Failed to fetch RSC payload … Falling back to browser
+navigation"_, and a stalled tab tap reaches a usable screen in **~6.1s**, which is the 3s RSC
+deadline plus the 3s navigation deadline — the number the design predicts. A direct navigation
+falls back in ~3.1s; a precached public page opens in ~90ms without touching the network. **No
+explicit `location.href` fallback is needed.** If that check ever fails, that is the change to
+make.
+
+**The bound is 20s and deliberately loose.** It is not measuring how fast the fallback is, it is
+measuring that one exists — the value before Phase N was infinity. A tight bound would fail on a
+busy laptop and teach everyone to ignore the suite.
+
+**How to reverse.** Delete the script and the `e2e:degraded` entry in `package.json`.
+
+### D-209 · `online` clears the sync backoff
+
+**Decision.** `SyncRunner`'s `online` handler resets `nextAttemptRef` before running. The
+foreground trigger still respects the delay.
+
+**Why.** Backoff exists to stop the app hammering a network that is not working. `online` is the
+one event that says _that has changed_, which makes the remaining delay stale evidence about a
+connection that no longer exists. Without this the reconnect trigger is swallowed whenever the
+last attempt failed inside the backoff window, and the queue waits for the next foreground —
+which, on a phone in a pocket, may be hours.
+
+**Found by running the suite, not by reading the code.** `npm run e2e` reached "back online" with
+one op held, dispatched `online`, and watched nothing happen; a manual "Send now" a moment later
+emptied the outbox at once. That is what identified it as a swallowed trigger rather than a wedged
+runner.
+
+**Why only `online`.** Foregrounding the app is not news about the network. A foreground that
+ignored the delay would retry a failing batch every time the screen woke up.
+
+**How to reverse.** Drop the `nextAttemptRef.current = 0` line. The guard test in
+`sync-runner.test.tsx` fails, which is the point.
+
+### D-208 · The worker tells the page why it is the fallback
+
+**Decision.** When the worker serves the cached shell because a navigation **stalled** — as
+opposed to there being no network — it injects `window.__2ndmindNet="degraded"` alongside the
+`replaceState` it already writes. `lib/net/reachability.ts` adopts that once, on start.
+
+**Why.** Falling back to the shell is a _hard navigation_: the document is replaced and every
+observation `reachability.ts` had made goes with it. So the app arrives on the fallback screen
+knowing nothing — `navigator.onLine` says `true`, no request has been made yet — and sits there
+looking broken while saying nothing. That is exactly the plane case, and the one place N7's
+message is most needed.
+
+**Why the worker and not the page.** By the time the document loads, the worker is the only
+component still able to tell a stall from an absent network: it is the thing that caught the
+`TimeoutError`. The flag is the only part of that knowledge which survives the reload.
+
+**Why it is not a latch.** Any later request that answers clears it in the ordinary way. It is a
+starting point, not a verdict.
+
+**Found by `npm run e2e:degraded`.** Every unit test passed and the fallback worked; the app still
+said nothing once it landed. No amount of reading would have shown that.
+
+**How to reverse.** Drop the `marker` in `serveFromCache` and `adoptWorkerVerdict`.
+
+### D-207 · Nothing inside a `<form>` may call `setState` while its action is pending
+
+**Decision.** `SlowSaveNotice` renders once, hidden, and a timer toggles `hidden` through a ref.
+No React state.
+
+**Why — and this is the important half.** On **React 19.2.8, a `setState` in any component inside a
+`<form>` ends `useFormStatus().pending` for every component reading it, while the action's promise
+is still unresolved.** Measured rather than assumed: a sibling that flips one boolean takes a
+`disabled={pending}` save button out of its pending state and re-enables it mid-POST.
+
+The obvious implementation of this notice — `useState`, flipped by a timer — would therefore have
+shipped a **worse bug than the one it fixes**: at six seconds the notice appears for a frame, the
+save button comes back to life while the request is still in flight, and the obvious thing to do
+with a re-enabled Save button is press it again. A duplicated entry costs far more than a silent
+save.
+
+**How it is guarded.** `slow-save.test.tsx` asserts that the notice becomes visible _and_ that
+`pending` is still true afterwards. Verified by mutation: the `useState` version fails exactly that
+test and no other.
+
+**Consequence beyond this component.** Anything that later wants to render inside a form while it
+is submitting — a progress hint, a spinner with its own state — has the same constraint. Reach for
+a ref.
+
+**How to reverse.** There is no reason to. If React changes this behaviour, the guard test simply
+keeps passing.
+
+### D-206 · The slow-save notice promises only what is true
+
+**Decision.** A save that has been running for six seconds says _"Still trying — the connection is
+slow. Keep this open until it saves."_ It says nothing about the entry being stored on the device.
+
+**Why the plan's wording was rejected.** `DEGRADED_NETWORK.md` §5 N5 proposed _"still trying; this
+is saved on the device either way"_. That is true on the cached shell, which writes through the
+outbox — and **false in the live app**, where a form under `/private` posts straight to a Server
+Action and there is no local copy of anything. The message would have offered a guarantee exactly
+where it does not exist, and someone acting on it — closing the app, confident the entry was safe
+— would lose the entry. Victor was shown the contradiction and chose the honest, smaller sentence.
+
+**What would make the larger sentence true** is routing every write through the outbox: the
+13-point half of N5, deliberately deferred and now **N9** in `V4_PLAN.md`. When it lands, this
+wording should change with it.
+
+**Why the button stays disabled.** The plan's phrase "instead of a disabled button" is about the
+silence, not the disabling. Re-enabling submit while a POST may still be in flight buys a
+duplicate.
+
+**Where it appears.** The four phone write paths: quick log, quick capture, bodyweight, and the
+unmounted workout form — the last so that remounting it (D-159) restores a form which behaves like
+the rest of the app.
+
+**How to reverse.** Delete `slow-save.tsx` and its four call sites.
+
+### D-205 · Precached pages are served before the network; RSC payloads are never served at all
+
+**Decision.** Two changes in the worker's fetch handler, opposite in shape:
+
+- **Anything precached and not under `/private` is served from the cache first**, with a
+  revalidation behind the response.
+- **RSC payloads get a deadline and nothing else** — no cache, no retry, and on timeout the
+  rejection is allowed through.
+
+**Why stale-while-revalidate is safe here specifically.** The cache name carries `BUILD_ID`, so a
+deploy empties it and `precachePublic` refills it; and every public route is statically rendered.
+Within one build the cached copy and the network copy are the same bytes, so the round trip could
+only ever confirm what is already on disk — and on a stalled connection it costs three seconds of
+blank screen to do it. Nothing under `/private` is eligible, because nothing under `/private` is
+ever cached (§2.1); that exclusion is now enforced inside `serveFromCache` too, so the invariant is
+true by construction rather than by argument.
+
+**Why an RSC payload gets the opposite treatment.** It is a private, per-request render. Nothing on
+disk could stand in for one, and a stale payload would render as a stale page — which the previous
+version of `sw-navigation.test.ts` correctly refused. What that test got wrong was concluding that
+_ignoring_ the request was therefore safe: an ignored request is one with no deadline, and on a
+stalled connection it never settled. That was the tab-tap freeze, and it was invisible because the
+test asked whether the worker responded rather than what happened when the network did not.
+
+**How to reverse.** Delete the precached branch in `handleNavigation` for the first; delete the
+`RSC` branch in the fetch handler for the second, which restores the freeze.
+
+### D-204 · Every network call has a deadline, and the worker's copy of the budgets is pinned to the app's
+
+**Decision.** `src/lib/net/deadline.ts` owns `fetchWithDeadline` and one `BUDGET` table
+(navigation 3s, RSC 3s, sync 10s, report 5s, asset 10s). The service worker carries a duplicate of
+those numbers, and `sw-deadline.test.ts` fails if the two stop matching.
+
+**Why any of this exists.** `fetch()` has no default timeout. A request that connects and then
+stalls never rejects — and the app's entire offline story is `try`/`catch`, so **every fallback in
+the codebase was unreachable in exactly the condition it was written for.** The app did not fall
+back; it hung. `navigator.onLine` is `true` on plane wifi, so the one signal being consulted was
+actively lying about the one case that mattered.
+
+**Why the budgets are generous.** The failure to avoid is turning "slow but working" into
+"broken" — a 1s budget on a genuinely slow connection fails requests that would have succeeded.
+The fix is falling back _well_, not failing _sooner_. It is also why `sync` gets 10s: a batch of a
+hundred ops is legitimately slow, and nobody is watching a flush.
+
+**Why the duplication is allowed.** A service worker is a standalone script with no module graph;
+it cannot import the file. That is the one place these numbers can silently drift, so it is checked
+rather than argued about — with a positive control, since the test loops over whatever its parser
+found and a parser matching nothing would pass while checking nothing.
+
+**A stall and a rejection are kept apart.** `AbortSignal.timeout` rejects with `TimeoutError`, a
+caller's own abort with `AbortError`, and `AbortSignal.any` adopts whichever fired. That
+distinction decides two things: whether retrying is sensible (D-157's retry is for a _fast_
+failure; retrying a stall spends the budget twice for the same fallback), and whether the failure
+is evidence about the connection at all — a component unmounting is not.
+
+**How to reverse.** Deleting the module restores the freeze. Tuning a budget means editing both the
+module and the worker, which the test will insist on.
 
 ### D-203 · The notification badge is an alpha stencil, drawn from the same mark
 

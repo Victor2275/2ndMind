@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-06
+updated: 2026-09-08
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -15,8 +15,11 @@ read_when: Always — anything about current priorities or scheduling.
   **V3 complete 2026-09-06** — the phone app, every phase, scoped 2026-08-30 in
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
-  A **V4 UI overhaul** is named but deliberately not started — offline behaviour was proven
-  first, on purpose, before the look changes underneath it. Not yet its own plan document.
+  **V4 is under way** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
+  299 points, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every colour, size,
+  space and motion value comes from one place and a test fails if it does not — the settings
+  screen pulled forward, and **Phase N**, the plane-wifi freeze. **Phase 2 (training, end to
+  end) is next; it is Milestone B.**
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 

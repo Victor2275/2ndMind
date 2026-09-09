@@ -1,7 +1,37 @@
 # Degraded network — why the app freezes on plane wifi
 
 **Reported:** 2026-09-08, from plane wifi. The app freezes when the connection is bad but not
-gone. **Status:** diagnosed, not yet fixed. **Size:** ~45 points.
+gone. **Status: fixed and verified, 2026-09-08.** N1–N8 shipped; N5's 13-point half is deferred
+to **N9**. **Size:** ~45 points.
+
+## 0. What happened, for anyone reading this later
+
+The diagnosis in §1 held exactly. The fix is `src/lib/net/deadline.ts` plus deadlines in the
+service worker, and `npm run e2e:degraded` now measures it: a stalled tab tap reaches a usable
+screen in **~6.1s** (the 3s RSC deadline, then the 3s navigation deadline), a direct navigation
+falls back in **~3.1s**, and a precached public page opens in **~90ms** without touching the
+network. Before Phase N every one of those was unbounded.
+
+**N3's open question is closed.** §5 said to verify on a real build that the App Router falls back
+to a hard navigation when an RSC fetch fails, rather than trusting it. It does — Next logs
+_"Failed to fetch RSC payload … Falling back to browser navigation"_ — so the explicit
+`location.href` escape hatch was **not** needed. Decisions: D-204 through D-210 in
+`web/DECISIONS.md`.
+
+**Three bugs were found by running it, not by reading it,** and all three passed every unit test
+in existence at the time:
+
+1. The slow-save notice, written the obvious way, would have **re-enabled the save button
+   mid-POST** — a `setState` inside a `<form>` ends `useFormStatus().pending` for every reader
+   (D-207).
+2. Landing on the cached shell is a hard navigation, so the app arrived at the fallback screen
+   with everything it had learned about the connection thrown away, and **said nothing** (D-208).
+3. `online` was being **swallowed by the sync backoff**, so a reconnect did not drain the outbox
+   (D-209).
+
+Two corrections to this document's own plan are recorded where they belong: N5's proposed wording
+was false in the live app (D-206), and the first degraded harness throttled the page but not the
+service worker, which is its own target (D-210).
 
 ---
 
@@ -81,14 +111,14 @@ Two rules fall out:
 
 Points are difficulty, not schedule — same convention as `V4_PLAN.md`.
 
-### N1 · One deadline helper — 3 pts
+### N1 · One deadline helper — 3 pts — DONE
 
 `src/lib/net/deadline.ts`. `fetchWithDeadline(input, init, ms)` over
 `AbortSignal.any([AbortSignal.timeout(ms), init.signal])`, with the budgets as named constants
 rather than scattered numbers. Starting budgets, to be tuned against a real measurement:
 navigation 3s, RSC 3s, sync 10s (a 100-op batch is legitimately slow), error report 5s.
 
-### N2 · The worker races the network — 8 pts **← highest value**
+### N2 · The worker races the network — 8 pts — DONE **← highest value**
 
 - Navigations become `Promise.race([fetch, deadline])`. On timeout, serve the cached shell or
   the precached public page **immediately**.
@@ -99,7 +129,7 @@ navigation 3s, RSC 3s, sync 10s (a 100-op batch is legitimately slow), error rep
   `reporting` guard means one stalled POST disables worker error reporting for the worker's
   whole life.
 
-### N3 · Intercept RSC navigations — 5 pts
+### N3 · Intercept RSC navigations — 5 pts — DONE, and the fallback was verified
 
 Add a branch for same-origin GETs carrying the `RSC` header or `_rsc` param, raced against the
 same deadline. On timeout, **let it reject**: the App Router falls back to a hard navigation
@@ -110,13 +140,13 @@ _Verify the fallback on a real installed build rather than trusting it_ — it i
 behaviour, not a documented API, and the whole fix rests on it. If it does not hold, the
 fallback is an explicit `location.href` from a router error boundary.
 
-### N4 · Sync cannot wedge — 3 pts
+### N4 · Sync cannot wedge — 3 pts — DONE
 
 Give `httpPoster` the deadline. `flush` already classifies a network rejection as `transient`,
 so backoff, the badge and the retry screen all start working with no further change. Add a
 belt-and-braces timeout around the whole run so `runningRef` can never stay true.
 
-### N5 · Writes stop depending on the network — 3 pts now, 13 later
+### N5 · Writes stop depending on the network — 3 pts DONE, 13 deferred to N9
 
 Server actions are framework-owned POSTs; you cannot hand one an `AbortSignal`, so there is no
 way to time one out from outside.
@@ -128,11 +158,11 @@ way to time one out from outside.
   machinery exists; this is plumbing, not new architecture. **This is the real fix** — it makes
   a bad connection incapable of affecting whether a log entry survives.
 
-### N6 · Stop prefetching into a stalled pipe — 3 pts
+### N6 · Stop prefetching into a stalled pipe — 3 pts — DONE
 
 `prefetch={false}` on the tab bar's links once the connection is known degraded. See §3b.
 
-### N7 · A reachability signal the app owns — 5 pts
+### N7 · A reachability signal the app owns — 5 pts — DONE
 
 Derive `healthy | degraded | unreachable` from actual request outcomes — a fired deadline is
 evidence, a fast success is evidence, `navigator.onLine === false` is conclusive but
@@ -143,11 +173,30 @@ Then **say it once, quietly**: "Connection is poor — everything is being saved
 This is the part that makes it _seamless_ rather than merely non-frozen. The app is genuinely
 fine in this state; it just needs to say so instead of looking broken.
 
-### N8 · A test that reproduces it — 5 pts
+### N8 · A test that reproduces it — 5 pts — DONE
 
 `scripts/e2e-offline.mjs` already drives an offline run. Add a **degraded** profile via CDP
 `Network.emulateNetworkConditions` (high latency, packet loss) and assert every screen reaches
 a usable state within a bound. Without this the bug returns the next time someone adds a fetch.
+
+### N9 · Every write goes through the outbox — 13 pts — **not started**
+
+The half of N5 that was deferred, promoted to an item of its own so it stops being a footnote.
+
+Server actions are framework-owned POSTs with no `AbortSignal`, so a write in the live app cannot
+be timed out and, more importantly, **has no local copy**. Only the cached shell writes through
+the outbox. That asymmetry is why N5 ships a smaller sentence than this document originally
+proposed: the app cannot honestly promise an entry is safe on the device, because in the live app
+it is not (D-206).
+
+Routing every write through the outbox makes the online and offline write paths one path. Ops
+already carry idempotency keys and the outbox already dedupes, so this is plumbing rather than new
+architecture — and it is the change that makes a bad connection **incapable** of affecting whether
+an entry survives. When it lands, `slow-save.tsx`'s wording should grow back into the sentence
+this document first wrote.
+
+Deferred deliberately on 2026-09-08: it touches every form in the app, and V4 Phase 2 is about to
+rebuild one of them.
 
 ## 6. Ordering
 
