@@ -64,6 +64,13 @@
       "when": 1788702440330,
       "tag": "0008_brief_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788934390712,
+      "tag": "0009_exercises_and_client_keys",
+      "breakpoints": true
     }
   ]
 }

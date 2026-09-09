@@ -106,8 +106,9 @@ const KIND: Record<Entity, string> = {
   task: "Task",
   bodyweight: "Weigh-in",
   rehab: "Rehab",
-  workout: "Workout",
+  workout: "Session",
   workout_set: "Set",
+  exercise: "Exercise",
   ai_summary: "Summary",
 };
 

@@ -131,14 +131,47 @@ describe("writing offline", () => {
   it("refuses to queue a write for a pull-only table", async () => {
     // Not a user-facing error — a programming one. The server would reject it after a round
     // trip, and this catches it before it costs a flush.
+    //
+    // The example moved from `workout` to `ai_summary` in V4 Phase 2: sessions are writable
+    // now (`SYNC_DESIGN.md` §4a), and `ai_summary` is the last table the phone can only read.
     await expect(
       enqueue(db, {
-        entity: "workout",
+        entity: "ai_summary",
         op: "create",
-        row: { clientId: "w1" },
+        row: { kind: "daily", periodStart: "2026-09-08" },
         hlc: clock.tick(),
       }),
     ).rejects.toThrow(/pull-only/);
+  });
+
+  it("queues a whole session as one op, sets included", async () => {
+    // The aggregate op (§4a). One outbox entry, not one per set — which is what makes the
+    // server able to apply it in a single transaction and assign the foreign key itself.
+    const clientId = "aaaaaaaa-0000-4000-8000-000000000001";
+    await enqueue(db, {
+      entity: "workout",
+      op: "create",
+      row: {
+        clientId,
+        performedAt: "2026-09-08T18:00:00.000Z",
+        title: "Push A",
+        notes: "",
+        sets: [
+          { clientId: "bbbbbbbb-0000-4000-8000-000000000001", exercise: "Bench Press", reps: 5 },
+          { clientId: "bbbbbbbb-0000-4000-8000-000000000002", exercise: "Bench Press", reps: 5 },
+        ],
+      },
+      hlc: clock.tick(),
+    });
+
+    const queued = await pendingBatch(db, 10);
+    expect(queued).toHaveLength(1);
+    expect(queued[0].entity).toBe("workout");
+    expect((queued[0].payload as { sets: unknown[] }).sets).toHaveLength(2);
+
+    // And it is readable locally straight away, which is what lets the session appear in
+    // "Recent sessions" before it has ever reached the server.
+    expect(await getLocal(db, "workout", clientId)).toBeDefined();
   });
 
   it("hides a deleted row but keeps it, because a tombstone is a row", async () => {

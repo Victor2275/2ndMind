@@ -47,6 +47,89 @@ export const PAYLOADS = {
     completedOn: z.iso.date(),
     slug: z.string().min(1).max(128),
   }),
+
+  /**
+   * A set, on its own (V4 Phase 2, `SYNC_DESIGN.md` §4a).
+   *
+   * Used for **edits and deletes after the session exists** — fixing a mistyped weight in set
+   * three does not resend the session. It is deliberately not how a set is first created:
+   * `parentClientId` is required and the server refuses one whose parent it has never seen, so
+   * a set cannot arrive before the workout it belongs to. Creating a session and its sets in
+   * one atomic op is the `workout` payload below, and it is the only path that makes a set for
+   * the first time.
+   */
+  workout_set: z.object({
+    clientId: z.uuid(),
+    parentClientId: z.uuid(),
+    exercise: z.string().min(1).max(200),
+    setIndex: z.number().int().min(0).max(500).default(0),
+    setType: z.enum(["normal", "warmup", "failure", "drop"]).default("normal"),
+    weightLbs: z.number().min(0).max(5_000).nullable().default(null),
+    reps: z.number().int().min(0).max(1_000).nullable().default(null),
+    distanceM: z.number().min(0).max(1_000_000).nullable().default(null),
+    durationS: z.number().int().min(0).max(360_000).nullable().default(null),
+    spm: z.number().int().min(0).max(200).nullable().default(null),
+    rpe: z.number().min(0).max(10).nullable().default(null),
+  }),
+
+  /**
+   * A whole session, sets included — **the aggregate op** (`SYNC_DESIGN.md` §4a).
+   *
+   * This is the shape the deferral in §11.1 was about. `workout_sets.workout_id` is an integer
+   * foreign key to a `serial`, and offline that number does not exist yet — so a set created on
+   * the phone has nothing to point at. Three ways out were considered and only one is good:
+   * send the session and its sets as **one operation**, let the server open a transaction and
+   * assign the foreign key itself. There is no ordering to get wrong, no orphan to guard
+   * against, and no partial session can exist.
+   *
+   * It also matches how the data is produced. You finish a session and save it once; a workout
+   * without its sets was never a meaningful thing to write.
+   *
+   * `sets` is capped rather than unbounded because this is one row on the wire and one
+   * transaction on the server — 200 sets is far beyond any real session and well inside what a
+   * single statement should carry.
+   */
+  workout: z.object({
+    clientId: z.uuid(),
+    performedAt: isoDate,
+    title: z.string().max(200).default(""),
+    notes: z.string().max(20_000).default(""),
+    sets: z
+      .array(
+        z.object({
+          clientId: z.uuid(),
+          exercise: z.string().min(1).max(200),
+          setIndex: z.number().int().min(0).max(500).default(0),
+          setType: z.enum(["normal", "warmup", "failure", "drop"]).default("normal"),
+          weightLbs: z.number().min(0).max(5_000).nullable().default(null),
+          reps: z.number().int().min(0).max(1_000).nullable().default(null),
+          distanceM: z.number().min(0).max(1_000_000).nullable().default(null),
+          durationS: z.number().int().min(0).max(360_000).nullable().default(null),
+          spm: z.number().int().min(0).max(200).nullable().default(null),
+          rpe: z.number().min(0).max(10).nullable().default(null),
+        }),
+      )
+      .max(200)
+      .default([]),
+  }),
+
+  /**
+   * A catalogue entry (V4 Phase 2.1).
+   *
+   * The phone may add one — that is the point of "AI ADD" and of typing a movement the seed
+   * does not know. `name` is the catalogue's natural key on the server, but the op is addressed
+   * by `clientId`: two devices adding "Zercher Squat" on the same afternoon must not collide on
+   * a unique index and lose one of them, and last-write-wins on a client key resolves that the
+   * same way it does everywhere else.
+   */
+  exercise: z.object({
+    clientId: z.uuid(),
+    name: z.string().min(1).max(200),
+    modality: z.enum(["lift", "erg", "water", "conditioning"]).default("lift"),
+    muscles: z.array(z.string().max(40)).max(12).default([]),
+    equipment: z.string().max(40).default(""),
+    source: z.enum(["seed", "manual", "ai"]).default("manual"),
+  }),
 } as const;
 
 export type WritableEntity = keyof typeof PAYLOADS;
@@ -57,6 +140,9 @@ const _writableCovered: Record<WritableEntity, true> = {
   task: true,
   bodyweight: true,
   rehab: true,
+  workout: true,
+  workout_set: true,
+  exercise: true,
 };
 void _writableCovered;
 

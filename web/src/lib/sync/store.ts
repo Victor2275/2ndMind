@@ -95,26 +95,42 @@ interface SyncSchema extends DBSchema {
   rehab_completions: { key: string; value: LocalRecord; indexes: { dirty: number } };
   workouts: { key: string; value: LocalRecord; indexes: { dirty: number } };
   workout_sets: { key: string; value: LocalRecord; indexes: { dirty: number } };
+  exercises: { key: string; value: LocalRecord; indexes: { dirty: number } };
   ai_summaries: { key: string; value: LocalRecord; indexes: { dirty: number } };
 }
 
 export type SyncDb = IDBPDatabase<SyncSchema>;
 
 export const DB_NAME = "2ndmind";
-export const DB_VERSION = 1;
+
+/**
+ * Bumped to 2 by V4 Phase 2, which added the `exercises` store.
+ *
+ * The upgrade is written to be **re-runnable from any earlier version**, which is why it asks
+ * `objectStoreNames.contains` rather than branching on `oldVersion`. A phone that has been
+ * offline for a fortnight upgrades straight from 1 to 2 and a fresh install creates everything
+ * at once; a version ladder would need every rung to stay correct forever, and the rung nobody
+ * exercises is the one that breaks. The cost of getting this wrong is not a failed query — it
+ * is `openSyncDb` throwing, which takes the whole local store with it.
+ */
+export const DB_VERSION = 2;
 
 export async function openSyncDb(name = DB_NAME): Promise<SyncDb> {
   return openDB<SyncSchema>(name, DB_VERSION, {
     upgrade(db) {
-      const outbox = db.createObjectStore("outbox", { keyPath: "opId" });
-      outbox.createIndex("by-hlc", "hlc");
-      outbox.createIndex("by-state", "state");
-      outbox.createIndex("by-client", "clientId");
+      if (!db.objectStoreNames.contains("outbox")) {
+        const outbox = db.createObjectStore("outbox", { keyPath: "opId" });
+        outbox.createIndex("by-hlc", "hlc");
+        outbox.createIndex("by-state", "state");
+        outbox.createIndex("by-client", "clientId");
+      }
 
-      db.createObjectStore("meta");
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
 
       for (const entity of ENTITIES) {
-        const store = db.createObjectStore(STORE_FOR[entity], { keyPath: "key" });
+        const name = STORE_FOR[entity];
+        if (db.objectStoreNames.contains(name)) continue;
+        const store = db.createObjectStore(name, { keyPath: "key" });
         store.createIndex("dirty", "dirty");
       }
     },

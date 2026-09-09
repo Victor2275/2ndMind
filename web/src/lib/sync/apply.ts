@@ -1,10 +1,11 @@
-import { gt, inArray } from "drizzle-orm";
+import { eq, gt, inArray } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import type * as schema from "@/lib/db/schema";
 import {
   aiSummaries,
   bodyweightEntries,
+  exercises,
   logEntries,
   rehabCompletions,
   tasks,
@@ -85,6 +86,56 @@ const WRITERS = {
     columns: (p: Record<string, unknown>) => ({
       completedOn: p.completedOn as string,
       slug: p.slug as string,
+    }),
+  },
+  workout: {
+    table: workouts,
+    conflict: [workouts.clientId],
+    identity: (p: Record<string, unknown>) => String(p.clientId),
+    // `sets` is deliberately absent: it is not a column on this table. `writeRow` handles it
+    // separately, inside the transaction that makes the aggregate atomic.
+    columns: (p: Record<string, unknown>) => ({
+      clientId: p.clientId as string,
+      performedAt: new Date(p.performedAt as string),
+      title: p.title as string,
+      notes: p.notes as string,
+      source: "phone",
+      // Null on purpose, and load-bearing: `workouts_external_id_idx` is unique, and Postgres
+      // treats each null as distinct — so hand-logged sessions never collide with each other
+      // or with a Hevy import (D-026).
+      externalId: null,
+    }),
+  },
+  workout_set: {
+    table: workoutSets,
+    conflict: [workoutSets.clientId],
+    identity: (p: Record<string, unknown>) => String(p.clientId),
+    // `workoutId` is absent for the same reason: it is resolved from `parentClientId` at apply
+    // time, because the phone has never seen the server's serial.
+    columns: (p: Record<string, unknown>) => ({
+      clientId: p.clientId as string,
+      exercise: p.exercise as string,
+      setIndex: p.setIndex as number,
+      setType: p.setType as string,
+      weightLbs: p.weightLbs as number | null,
+      reps: p.reps as number | null,
+      distanceM: p.distanceM as number | null,
+      durationS: p.durationS as number | null,
+      spm: p.spm as number | null,
+      rpe: p.rpe as number | null,
+    }),
+  },
+  exercise: {
+    table: exercises,
+    conflict: [exercises.clientId],
+    identity: (p: Record<string, unknown>) => String(p.clientId),
+    columns: (p: Record<string, unknown>) => ({
+      clientId: p.clientId as string,
+      name: p.name as string,
+      modality: p.modality as string,
+      muscles: p.muscles as string[],
+      equipment: p.equipment as string,
+      source: p.source as string,
     }),
   },
 } as const;
@@ -195,8 +246,17 @@ export async function applyOps(db: Db, ops: WireOp[]): Promise<OpResult[]> {
         }
       }
 
-      await writeRow(db, entity, op, payload);
-      results.set(op.opId, { opId: op.opId, status: "applied" });
+      try {
+        await writeRow(db, entity, op, payload);
+        results.set(op.opId, { opId: op.opId, status: "applied" });
+      } catch (error) {
+        // A set for a session the server has never seen. Permanent rather than transient: it
+        // will never succeed on a later attempt, so retrying it forever is how an outbox stops
+        // draining. Everything else is a real failure and takes the batch down, which is
+        // correct — a 500 is retried, and the op stays queued.
+        if (!(error instanceof UnknownParentError)) throw error;
+        results.set(op.opId, { opId: op.opId, status: "rejected", reason: error.message });
+      }
     }
   }
 
@@ -261,6 +321,27 @@ async function storedStamps(
           .map((r) => [`${r.day}|${r.slug}`, r.hlc] as const),
       );
     }
+    case "workout": {
+      const rows = await db
+        .select({ id: workouts.clientId, hlc: workouts.updatedHlc })
+        .from(workouts)
+        .where(inArray(workouts.clientId, identities));
+      return new Map(rows.map((r) => [r.id, r.hlc]));
+    }
+    case "workout_set": {
+      const rows = await db
+        .select({ id: workoutSets.clientId, hlc: workoutSets.updatedHlc })
+        .from(workoutSets)
+        .where(inArray(workoutSets.clientId, identities));
+      return new Map(rows.map((r) => [r.id, r.hlc]));
+    }
+    case "exercise": {
+      const rows = await db
+        .select({ id: exercises.clientId, hlc: exercises.updatedHlc })
+        .from(exercises)
+        .where(inArray(exercises.clientId, identities));
+      return new Map(rows.map((r) => [r.id, r.hlc]));
+    }
   }
 }
 
@@ -313,6 +394,101 @@ async function writeRow(
         });
       return;
     }
+    case "exercise": {
+      const columns = WRITERS.exercise.columns(payload);
+      await db
+        .insert(exercises)
+        .values({ ...columns, ...stamp })
+        .onConflictDoUpdate({ target: exercises.clientId, set: { ...columns, ...stamp } });
+      return;
+    }
+
+    /**
+     * A session and every set it contains, in one transaction (`SYNC_DESIGN.md` §4a).
+     *
+     * The parent is upserted first so its `id` exists, then the sets are written pointing at
+     * it. Both inside `db.transaction`, which is the entire reason this design was chosen over
+     * the two alternatives: **no partial session can exist.** A crash between the two
+     * statements rolls back rather than leaving a workout with no sets, or sets that a later
+     * read would count toward a PR board while the session they belong to is missing.
+     *
+     * A re-sent create is an upsert on both levels, so retrying is free — which matters,
+     * because retrying is not optional here: failed writes are held and retried (D-129), and
+     * the op that carries a whole gym session is the most expensive one to lose.
+     */
+    case "workout": {
+      const columns = WRITERS.workout.columns(payload);
+      const sets = (payload.sets ?? []) as Record<string, unknown>[];
+
+      await db.transaction(async (tx) => {
+        const [parent] = await tx
+          .insert(workouts)
+          .values({ ...columns, ...stamp })
+          .onConflictDoUpdate({ target: workouts.clientId, set: { ...columns, ...stamp } })
+          .returning({ id: workouts.id });
+
+        if (sets.length === 0) return;
+
+        // Deleting the session tombstones its sets too. Reads already filter children by the
+        // parent's `deleted_at`, so this is belt and braces — but a set left live under a
+        // deleted session is a set that still reaches `allEfforts()` on a device that only
+        // ever pulled the child row.
+        const rows = sets.map((set) => ({
+          ...WRITERS.workout_set.columns(set),
+          workoutId: parent.id,
+          ...stamp,
+        }));
+
+        for (const row of rows) {
+          await tx
+            .insert(workoutSets)
+            .values(row)
+            .onConflictDoUpdate({ target: workoutSets.clientId, set: row });
+        }
+      });
+      return;
+    }
+
+    /**
+     * One set, after the session exists — an edit or a delete, never a first create.
+     *
+     * The parent is resolved from `parentClientId`, because the phone has never seen the
+     * server's `serial`. A set whose parent is unknown is **dropped rather than guessed at**:
+     * inventing a workout to hang it on would manufacture a session that never happened, and
+     * the ordering guarantee that makes that impossible is exactly what the aggregate op
+     * exists to provide. In practice it cannot happen — the create carries the parent — so
+     * this is the guard for a client bug, not a normal path.
+     */
+    case "workout_set": {
+      const parentClientId = String(payload.parentClientId);
+      const [parent] = await db
+        .select({ id: workouts.id })
+        .from(workouts)
+        .where(eq(workouts.clientId, parentClientId))
+        .limit(1);
+      if (!parent) throw new UnknownParentError(parentClientId);
+
+      const columns = { ...WRITERS.workout_set.columns(payload), workoutId: parent.id };
+      await db
+        .insert(workoutSets)
+        .values({ ...columns, ...stamp })
+        .onConflictDoUpdate({ target: workoutSets.clientId, set: { ...columns, ...stamp } });
+      return;
+    }
+  }
+}
+
+/**
+ * A set arrived for a session the server has never seen.
+ *
+ * Its own type so `applyOps` can turn it into a `rejected` result with a useful reason, rather
+ * than a 500 that takes the whole batch down. Permanent, not transient: the op will never
+ * succeed on a later attempt, and retrying it forever is how an outbox stops draining.
+ */
+export class UnknownParentError extends Error {
+  constructor(readonly parentClientId: string) {
+    super(`no workout with clientId ${parentClientId}`);
+    this.name = "UnknownParentError";
   }
 }
 
@@ -412,6 +588,15 @@ export async function pullChanges(
       .from(workoutSets)
       .where(gt(workoutSets.serverSeq, since))
       .orderBy(workoutSets.serverSeq)
+      .limit(perTable),
+  );
+  push(
+    "exercise",
+    await db
+      .select()
+      .from(exercises)
+      .where(gt(exercises.serverSeq, since))
+      .orderBy(exercises.serverSeq)
       .limit(perTable),
   );
   push(

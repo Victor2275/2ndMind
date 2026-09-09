@@ -13,6 +13,7 @@ export const ENTITIES = [
   "rehab",
   "workout",
   "workout_set",
+  "exercise",
   "ai_summary",
 ] as const;
 
@@ -21,14 +22,25 @@ export type Entity = (typeof ENTITIES)[number];
 /**
  * The subset the phone may create or change. Everything else is pull-only.
  *
- * `workout` and `workout_set` are **not** here, which is the outcome of `SYNC_DESIGN.md` §11.1:
- * "workouts too" was chosen and reversed the same day. Creating a workout offline means a set
- * pointing at a parent `serial` that does not exist yet, which needs the aggregate op in §4a.
- * Log-only avoids it entirely — the Training log category already carries exercise, weight,
- * reps, distance, duration, SPM and RPE — and workouts keep arriving from Hevy imports on the
- * laptop. `ai_summary` is pull-only because the phone never writes one.
+ * **`workout`, `workout_set` and `exercise` joined this list in V4 Phase 2**, which is the
+ * reversal `SYNC_DESIGN.md` §11.1 deferred twice — on 2026-08-30 for cost, and again on
+ * 2026-09-03 (D-159), which solved the symptom instead by having `allEfforts()` read sets out
+ * of log entries. Q391 asked for real session logging, so §4a is finally built: a session and
+ * all its sets travel as **one aggregate op**, applied in a single transaction, and the server
+ * assigns the foreign key itself. There is no ordering to get wrong and no orphan to guard
+ * against.
+ *
+ * `ai_summary` stays pull-only because the phone never writes one.
  */
-export const WRITABLE: readonly Entity[] = ["log_entry", "task", "bodyweight", "rehab"];
+export const WRITABLE: readonly Entity[] = [
+  "log_entry",
+  "task",
+  "bodyweight",
+  "rehab",
+  "workout",
+  "workout_set",
+  "exercise",
+];
 
 export function isWritable(entity: Entity): boolean {
   return WRITABLE.includes(entity);
@@ -49,6 +61,7 @@ export const STORE_FOR = {
   rehab: "rehab_completions",
   workout: "workouts",
   workout_set: "workout_sets",
+  exercise: "exercises",
   ai_summary: "ai_summaries",
 } as const satisfies Record<Entity, string>;
 
@@ -66,16 +79,19 @@ export type RowStore = (typeof STORE_FOR)[Entity];
  * Returning one string for both keeps every caller — the store, the outbox, the merge — from
  * having to branch on which kind of table it is holding.
  *
- * `workout` and `workout_set` are addressed by the **server's** `id`, and that is safe for
- * exactly one reason: they are pull-only (`WRITABLE` above), so the phone never mints one and
- * there is no window in which two devices could disagree about what a row is called. If they
- * ever become writable, this case has to move to a client-generated key first — the §4a
- * aggregate op that `SYNC_DESIGN.md` §11.1 defers is the same piece of work.
+ * **`workout` and `workout_set` moved to the `clientId` branch in V4 Phase 2.** They were
+ * addressed by the server's `id`, which was safe for exactly one reason — being pull-only, the
+ * phone never minted one — and that reason has now gone. The note that used to live here said
+ * *"if they ever become writable, this case has to move to a client-generated key first"*; this
+ * is that move, and the migration backfills `client_id` for every existing row so the server's
+ * id is never needed as an identity again.
  *
- * They fell into the `clientId` branch until 2026-09-04, so `identityOf` threw on every
- * workout row the server sent and **the whole workout mirror had never populated once**. The
- * sync runner caught it and said nothing; the athletics page offline was quietly reading an
- * empty store. Found by the error panel D-165 put on the dashboard, on its first day.
+ * They fell into the `clientId` branch once before, by accident, until 2026-09-04 — back when
+ * the column did not exist, so `identityOf` threw on every workout row the server sent and
+ * **the whole workout mirror had never populated once**. The sync runner caught it and said
+ * nothing; the athletics page offline was quietly reading an empty store. Found by the error
+ * panel D-165 put on the dashboard, on its first day. Worth remembering, because the shape of
+ * the fix now looks identical to the shape of the bug.
  */
 export function identityOf(entity: Entity, row: Record<string, unknown>): string {
   switch (entity) {
@@ -85,14 +101,6 @@ export function identityOf(entity: Entity, row: Record<string, unknown>): string
       return `${String(row.completedOn)}|${String(row.slug)}`;
     case "ai_summary":
       return `${String(row.kind)}|${String(row.periodStart)}`;
-    case "workout":
-    case "workout_set": {
-      const id = row.id;
-      if (typeof id !== "number" && typeof id !== "string") {
-        throw new Error(`${entity} row has no id`);
-      }
-      return String(id);
-    }
     default: {
       const clientId = row.clientId;
       if (typeof clientId !== "string" || clientId.length === 0) {

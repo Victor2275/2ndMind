@@ -73,10 +73,16 @@ function syncColumns() {
  * without an idempotency key every flaky connection manufactures duplicate rows. Same problem
  * D-026 solved for Hevy imports with a derived `external_id`.
  *
- * Only two tables need this. `bodyweight_entries` (`measured_on`), `rehab_completions`
- * (`completed_on, slug`) and `ai_summaries` (`kind, period_start`) already have natural keys
- * that make an offline create idempotent for free, and `workouts`/`workout_sets` are pull-only
- * — the phone never creates one (`SYNC_DESIGN.md` §11.1).
+ * `bodyweight_entries` (`measured_on`), `rehab_completions` (`completed_on, slug`) and
+ * `ai_summaries` (`kind, period_start`) already have natural keys that make an offline create
+ * idempotent for free, so they do not need one.
+ *
+ * **`workouts` and `workout_sets` gained this in V4 Phase 2**, which is the reversal
+ * `SYNC_DESIGN.md` §11.1 spent two paragraphs deferring. They were pull-only precisely because
+ * they had no client key: a set offline points at a parent `serial` that does not exist yet.
+ * §4a is the answer — a session and its sets travel as one aggregate op — and a client key on
+ * both tables is the first half of it. `exercises` carries one for the same reason: the phone
+ * can add to the catalogue.
  *
  * The `gen_random_uuid()` default matters: rows created on the laptop get an id too, so this
  * is the global identity for every row rather than a phone-only marker. The phone therefore
@@ -101,12 +107,14 @@ export const workouts = pgTable(
     source: text("source").notNull().default("manual"),
     notes: text("notes").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    clientId: clientId(),
     ...syncColumns(),
   },
   (t) => [
     // Partial-unique in spirit: manual entries leave externalId null, and Postgres treats
     // each null as distinct, so hand-logged workouts never collide with each other.
     uniqueIndex("workouts_external_id_idx").on(t.externalId),
+    uniqueIndex("workouts_client_id_idx").on(t.clientId),
     index("workouts_performed_at_idx").on(t.performedAt),
     index("workouts_server_seq_idx").on(t.serverSeq),
   ],
@@ -132,14 +140,67 @@ export const workoutSets = pgTable(
     /** Strokes per minute. Erg work only; the vault tracks SPM targets per race distance. */
     spm: integer("spm"),
     rpe: numeric("rpe", { precision: 4, scale: 2, mode: "number" }),
+    clientId: clientId(),
     ...syncColumns(),
   },
   (t) => [
     index("workout_sets_workout_id_idx").on(t.workoutId),
     index("workout_sets_exercise_idx").on(t.exercise),
+    uniqueIndex("workout_sets_client_id_idx").on(t.clientId),
     index("workout_sets_server_seq_idx").on(t.serverSeq),
   ],
 );
+
+/**
+ * The exercise catalogue (V4 Phase 2.1).
+ *
+ * A row per movement, so the session form knows what to ask for before you have typed a
+ * number. `modality` is the load-bearing column: a lift wants weight and reps, an erg piece
+ * wants distance, duration and a stroke rate, and asking for all five every time is what made
+ * the old form slow. `muscles` is a plain text array rather than a join table — it is read
+ * whole, filtered in memory, and never queried across rows.
+ *
+ * **Seeded, not empty.** `scripts/seed-exercises.mjs` writes a curated ~150 from
+ * `lib/athletics/catalogue.ts`, which is the same list the phone mirrors so fuzzy search works
+ * with no signal. `source` says where a row came from: `seed` for those, `manual` for one you
+ * typed, `ai` for one the AI-add path proposed and you confirmed. Nothing is ever created
+ * without confirmation — D-186's rule for voice, applied here.
+ *
+ * `name` is unique because the catalogue is addressed by it: a set stores the exercise *name*,
+ * not a foreign key. That is deliberate. `workout_sets.exercise` is free text today and every
+ * Hevy import writes names this table has never seen, so a foreign key would make importing a
+ * CSV fail on a movement nobody had catalogued yet. The catalogue assists entry; it does not
+ * police history.
+ */
+export const exercises = pgTable(
+  "exercises",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    /** "lift" | "erg" | "water" | "conditioning" — which fields the session form asks for. */
+    modality: text("modality").notNull().default("lift"),
+    /** Primary muscles worked. Empty for erg and conditioning, where it means little. */
+    muscles: text("muscles")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /** "barbell", "dumbbell", "machine", "cable", "bodyweight", "machine-erg", "" */
+    equipment: text("equipment").notNull().default(""),
+    /** "seed" | "manual" | "ai" — where the row came from, for pruning later. */
+    source: text("source").notNull().default("manual"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    clientId: clientId(),
+    ...syncColumns(),
+  },
+  (t) => [
+    uniqueIndex("exercises_name_idx").on(t.name),
+    uniqueIndex("exercises_client_id_idx").on(t.clientId),
+    index("exercises_server_seq_idx").on(t.serverSeq),
+  ],
+);
+
+export type Exercise = typeof exercises.$inferSelect;
+export type NewExercise = typeof exercises.$inferInsert;
 
 export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;

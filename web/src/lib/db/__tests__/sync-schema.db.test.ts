@@ -147,6 +147,12 @@ describe("the sync schema", () => {
       new Set([
         "workouts",
         "workout_sets",
+        // Added by V4 Phase 2, and this test is why the migration carries the trigger by hand:
+        // drizzle-kit generates the table and none of the DDL around it, so a new syncable
+        // table arrives with `server_seq` set only by its column default. Inserts would look
+        // fine and **updates would never advance the cursor**, so an edit made on the laptop
+        // would never reach the phone. Silence, exactly as the note above predicts.
+        "exercises",
         "tasks",
         "log_entries",
         "bodyweight_entries",

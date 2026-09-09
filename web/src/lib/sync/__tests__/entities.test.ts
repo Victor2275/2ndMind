@@ -22,8 +22,22 @@ const ROWS: Record<string, Record<string, unknown>> = {
   task: { clientId: "6f1c2d8e-0000-4000-8000-000000000002", title: "x" },
   bodyweight: { measuredOn: "2026-09-04", weightLbs: 171 },
   rehab: { completedOn: "2026-09-04", slug: "dead-bug" },
-  workout: { id: 412, title: "Push A", performedAt: "2026-09-04T18:00:00Z" },
-  workout_set: { id: 9081, workoutId: 412, exercise: "Bench Press", reps: 5 },
+  // Addressed by `clientId` since V4 Phase 2 made them writable. The server's `id` is still
+  // on the row and is deliberately ignored — see the test below.
+  workout: {
+    clientId: "6f1c2d8e-0000-4000-8000-000000000003",
+    id: 412,
+    title: "Push A",
+    performedAt: "2026-09-04T18:00:00Z",
+  },
+  workout_set: {
+    clientId: "6f1c2d8e-0000-4000-8000-000000000004",
+    id: 9081,
+    workoutId: 412,
+    exercise: "Bench Press",
+    reps: 5,
+  },
+  exercise: { clientId: "6f1c2d8e-0000-4000-8000-000000000005", name: "Bench Press" },
   ai_summary: { kind: "daily", periodStart: "2026-09-04" },
 };
 
@@ -37,19 +51,32 @@ describe("identityOf", () => {
     }
   });
 
-  it("addresses a workout by the server's id, because the phone never mints one", () => {
-    // Safe only because workouts are pull-only. The moment they become writable this is a
-    // duplicate-row generator, so the assertion below pins the assumption it rests on.
-    expect(identityOf("workout", ROWS.workout)).toBe("412");
-    expect(identityOf("workout_set", ROWS.workout_set)).toBe("9081");
-    expect(isWritable("workout")).toBe(false);
-    expect(isWritable("workout_set")).toBe(false);
+  it("addresses a workout by its client id, and ignores the server's", () => {
+    // **This reverses the previous version of this test** (V4 Phase 2). It used to assert the
+    // opposite — that a workout is named by the server's `id` — which was correct only while
+    // workouts were pull-only, and said so: *"the moment they become writable this is a
+    // duplicate-row generator"*. They are writable now, so the identity had to move first.
+    //
+    // The fixtures carry both keys, so a regression to the old branch would be caught here
+    // rather than by two devices quietly disagreeing about what a session is called.
+    expect(identityOf("workout", ROWS.workout)).toBe("6f1c2d8e-0000-4000-8000-000000000003");
+    expect(identityOf("workout_set", ROWS.workout_set)).toBe(
+      "6f1c2d8e-0000-4000-8000-000000000004",
+    );
+    expect(isWritable("workout")).toBe(true);
+    expect(isWritable("workout_set")).toBe(true);
+    expect(isWritable("exercise")).toBe(true);
   });
 
-  it("refuses a workout row with no id rather than inventing one", () => {
+  it("still refuses a workout row with no client id rather than inventing one", () => {
     // A row with no identity must not quietly become the key "undefined", which is one
     // object-store slot that every such row would then overwrite in turn.
-    expect(() => identityOf("workout_set", { exercise: "Bench Press" })).toThrow(/no id/);
+    expect(() => identityOf("workout_set", { exercise: "Bench Press" })).toThrow(/clientId/);
+    expect(() => identityOf("workout", { id: 412 })).toThrow(/clientId/);
+  });
+
+  it("keeps ai_summary pull-only, so the phone never writes one", () => {
+    expect(isWritable("ai_summary")).toBe(false);
   });
 
   it("still requires a client id where there is no natural key", () => {
@@ -58,7 +85,9 @@ describe("identityOf", () => {
   });
 
   it("gives two rows of the same entity different names", () => {
-    expect(identityOf("workout_set", { id: 1 })).not.toBe(identityOf("workout_set", { id: 2 }));
+    expect(identityOf("workout_set", { clientId: "a" })).not.toBe(
+      identityOf("workout_set", { clientId: "b" }),
+    );
     expect(identityOf("rehab", { completedOn: "2026-09-04", slug: "a" })).not.toBe(
       identityOf("rehab", { completedOn: "2026-09-04", slug: "b" }),
     );
