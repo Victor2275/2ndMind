@@ -25,7 +25,7 @@ export function SiteHeader({ name }: { name: string }) {
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href="/"
-          className="group flex min-w-0 items-center gap-2 font-mono text-sm font-semibold tracking-tight text-foreground"
+          className="group flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight text-foreground"
         >
           <span
             aria-hidden
@@ -43,7 +43,7 @@ export function SiteHeader({ name }: { name: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-md px-1.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-[380px]:px-2 sm:px-3",
+                  "relative rounded-md px-1.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring phone:px-3",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -66,7 +66,7 @@ export function SiteHeader({ name }: { name: string }) {
               Last, not first: at 360px the nav wins the space fight against the name, and a
               link placed ahead of "About" sits where the site's identity belongs — the first
               thing on the page read "Private" instead of "Victor Gusev". */}
-          <PrivateLink className="rounded-md px-1.5 py-1.5 text-sm text-primary transition-colors hover:bg-accent/60 min-[380px]:px-2 sm:px-3" />
+          <PrivateLink className="rounded-md px-1.5 py-1.5 text-sm text-primary transition-colors hover:bg-accent/60 phone:px-3" />
         </nav>
       </div>
     </header>

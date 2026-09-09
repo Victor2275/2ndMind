@@ -56,13 +56,12 @@ export function ProjectGrid({ projects }: { projects: ProjectCard[] }) {
           project had an image. With four of six carrying one, a card without an image was
           being stretched to match its neighbour and opening ~200px of void above its tags.
           Uneven card heights read as a set; a void reads as a missing image. */}
-      <div key={filter} className="mt-8 grid items-start gap-4 sm:grid-cols-2">
+      <div key={filter} className="mt-8 grid rise-stagger items-start gap-4 sm:grid-cols-2">
         {shown.map((p, i) => (
           <Link
             key={p.slug}
             href={`/projects/${p.slug}`}
-            style={{ animationDelay: `${i * 60}ms` }}
-            className="group card-scan flex rise flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="group card-scan flex flex-col overflow-hidden rounded-lg border border-border bg-card/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {/* Only a real photograph earns a figure.
                 Five of six projects have no image, and the generated stand-in was costing

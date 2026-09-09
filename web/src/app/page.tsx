@@ -80,9 +80,7 @@ export default function AboutPage() {
         </div>
 
         <div className="min-w-0">
-          <p className="font-mono text-xs tracking-[0.18em] text-primary uppercase">
-            {profile.persona}
-          </p>
+          <p className="eyebrow text-primary">{profile.persona}</p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
             {profile.name}
           </h1>
@@ -126,9 +124,7 @@ export default function AboutPage() {
             key={f.label}
             className="rounded-lg border border-border bg-card/70 p-4 transition-colors duration-300 hover:border-primary/50"
           >
-            <dt className="font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground uppercase">
-              {f.label}
-            </dt>
+            <dt className="eyebrow text-muted-foreground">{f.label}</dt>
             <dd className="tabular mt-1.5 text-sm font-medium text-foreground">{f.value}</dd>
           </div>
         ))}
@@ -140,7 +136,7 @@ export default function AboutPage() {
           "what I'm working on now" section Victor asked for is about current *work* — 2ndMind,
           coursework — and is still to be built. */}
       {experience.length > 0 && (
-        <section className="mt-16 rise" style={{ animationDelay: "200ms" }}>
+        <section className="mt-16 rise">
           <h2 className="text-xl font-bold tracking-tight">Most recent</h2>
           <div className="mt-6">
             <article className="group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_8px_30px_-12px_var(--primary)]">
@@ -174,7 +170,7 @@ export default function AboutPage() {
 
       {/* Previous Experience */}
       {experience.length > 1 && (
-        <section className="mt-16 rise" style={{ animationDelay: "240ms" }}>
+        <section className="mt-16 rise">
           <h2 className="text-xl font-bold tracking-tight">Previous Experience</h2>
           <div className="mt-6 space-y-8">
             {experience.slice(1).map((role) => (
@@ -214,11 +210,10 @@ export default function AboutPage() {
       )}
 
       {/* Pointers */}
-      <section className="mt-16 grid gap-4 sm:grid-cols-2">
+      <section className="mt-16 grid rise-stagger gap-4 sm:grid-cols-2">
         <Link
           href="/projects"
-          className="group card-scan rise rounded-lg border border-border bg-card/70 p-6"
-          style={{ animationDelay: "260ms" }}
+          className="group card-scan rounded-lg border border-border bg-card/70 p-6"
         >
           <h2 className="text-base font-semibold transition-colors group-hover:text-primary">
             Projects
@@ -237,12 +232,9 @@ export default function AboutPage() {
 
         <Link
           href={`/projects/${featured.slug}`}
-          className="group card-scan rise rounded-lg border border-border bg-card/70 p-6"
-          style={{ animationDelay: "320ms" }}
+          className="group card-scan rounded-lg border border-border bg-card/70 p-6"
         >
-          <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">
-            Most recent build
-          </p>
+          <p className="eyebrow text-primary">Most recent build</p>
           <h2 className="mt-2 text-base font-semibold transition-colors group-hover:text-primary">
             {featured.title}
           </h2>
@@ -255,16 +247,13 @@ export default function AboutPage() {
       <section className="mt-16">
         <h2 className="text-xl font-bold tracking-tight">Hobbies and Interests</h2>
 
-        <div className="mt-6 grid gap-3 lg:grid-cols-3">
-          {pursuits.map((p, i) => (
+        <div className="mt-6 grid rise-stagger gap-3 lg:grid-cols-3">
+          {pursuits.map((p) => (
             <article
               key={p.slug}
-              style={{ animationDelay: `${240 + i * 70}ms` }}
-              className="group card-scan flex rise flex-col rounded-lg border border-border bg-card/70 p-4"
+              className="group card-scan flex flex-col rounded-lg border border-border bg-card/70 p-4"
             >
-              <p className="font-mono text-[0.62rem] tracking-[0.16em] text-primary uppercase">
-                {p.kicker}
-              </p>
+              <p className="eyebrow text-primary">{p.kicker}</p>
               <h3 className="mt-1.5 text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
                 {p.title}
               </h3>
