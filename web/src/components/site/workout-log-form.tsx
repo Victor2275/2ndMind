@@ -42,8 +42,10 @@ function SaveButton() {
   );
 }
 
-const FIELD =
-  "w-full rounded-md border border-border bg-card/70 px-2.5 py-1.5 font-mono text-xs text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+/** No width in the base, so a call site that wants one is not fighting `w-full` — see D-219. */
+const CONTROL =
+  "rounded-md border border-border bg-card/70 px-2.5 py-1.5 font-mono text-xs text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+const FIELD = `${CONTROL} w-full`;
 
 const LABEL = "eyebrow text-muted-foreground";
 
@@ -66,7 +68,7 @@ function SetRow({ index }: { index: number }) {
         {index === 0 && <label className={LABEL}>Distance</label>}
         <div className="mt-1 flex gap-1">
           <input name="distance" inputMode="decimal" className={FIELD} placeholder="500" />
-          <select name="distanceUnit" className={`${FIELD} w-16`} defaultValue="m">
+          <select name="distanceUnit" className={`${CONTROL} w-16 shrink-0`} defaultValue="m">
             <option value="m">m</option>
             <option value="km">km</option>
             <option value="mi">mi</option>

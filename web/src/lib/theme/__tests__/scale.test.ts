@@ -28,16 +28,34 @@ const ROOT = path.join(__dirname, "..", "..", "..", "..");
 const CSS = readFileSync(path.join(ROOT, "src", "app", "scale.css"), "utf8");
 const GLOBALS = readFileSync(path.join(ROOT, "src", "app", "globals.css"), "utf8");
 
-/** Every `--token: value;` in the file's `@theme` block. */
-const TOKENS: Record<string, string> = (() => {
-  const block = CSS.match(/@theme\s*\{([\s\S]*?)\n\}/);
-  if (!block) throw new Error("no @theme block in scale.css");
+function declarations(block: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const line of block[1].split("\n")) {
+  for (const line of block.split("\n")) {
     const decl = line.match(/^\s*--([\w-]+):\s*([^;]+);/);
     if (decl) out[decl[1]] = decl[2].trim();
   }
   return out;
+}
+
+/** Every `--token: value;` in the file's `@theme` block. */
+const TOKENS: Record<string, string> = (() => {
+  const block = CSS.match(/@theme\s*\{([\s\S]*?)\n\}/);
+  if (!block) throw new Error("no @theme block in scale.css");
+  return declarations(block[1]);
+})();
+
+/**
+ * The space scale, which lives in `:root` rather than `@theme` on purpose (D-219).
+ *
+ * `--spacing-*` is the namespace Tailwind's `max-w-*` / `w-*` / `min-w-*` consult **before**
+ * `--container-*`, so a space step named `sm` or `2xl` silently redefines `max-w-sm` and
+ * `max-w-2xl` for the entire app. It did, for a week: `/private/settings` rendered inside a
+ * 64px column and five other screens with it, with no error and no failing test.
+ */
+const SPACE_TOKENS: Record<string, string> = (() => {
+  const block = CSS.match(/\n:root\s*\{([\s\S]*?)\n\}/);
+  if (!block) throw new Error("no :root block in scale.css");
+  return declarations(block[1]);
 })();
 
 const STEPS = ["xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl", "5xl"] as const;
@@ -165,25 +183,47 @@ describe("the type scale", () => {
 
 describe("the spacing vocabulary", () => {
   it("has exactly eight values", () => {
-    const declared = Object.keys(TOKENS).filter((t) => t.startsWith("spacing-"));
+    const declared = Object.keys(SPACE_TOKENS).filter((t) => t.startsWith("spacing-"));
     expect(declared.sort()).toEqual(SPACE.map((s) => `spacing-${s}`).sort());
   });
 
   it("puts every value on the 4-point grid", () => {
     // Q137. A 4-point grid with a 6px value in it is not a grid, it is a suggestion.
     for (const name of SPACE) {
-      const px = Number(TOKENS[`spacing-${name}`].replace("rem", "")) * 16;
+      const px = Number(SPACE_TOKENS[`spacing-${name}`].replace("rem", "")) * 16;
       expect(px % 4, `--spacing-${name} is ${px}px, off the 4-point grid`).toBe(0);
     }
   });
 
   it("increases monotonically", () => {
-    const px = SPACE.map((s) => Number(TOKENS[`spacing-${s}`].replace("rem", "")) * 16);
+    const px = SPACE.map((s) => Number(SPACE_TOKENS[`spacing-${s}`].replace("rem", "")) * 16);
     for (const [i, value] of px.slice(1).entries()) {
       expect(value, `--spacing-${SPACE[i + 1]} is not larger than the step below`).toBeGreaterThan(
         px[i],
       );
     }
+  });
+
+  /**
+   * The guard for D-219, and the one assertion in this file that is about damage rather than
+   * design.
+   *
+   * `@theme { --spacing-2xl: 4rem }` reads as "name the 64px step". What it also does is hand
+   * `max-w-2xl` a new value, because `--spacing-*` is consulted before `--container-*`, and
+   * `max-w-2xl` is how `/private/settings`, the update notice, the sign-in card, the register
+   * card and both error screens set their width. All six rendered inside a 64px column, with
+   * every class name reading correctly and no test failing.
+   *
+   * It is written as "no `--spacing-*` in `@theme` at all" rather than as a list of the names
+   * that collide, because that list is Tailwind's and can grow in a minor release — and the
+   * next collision would be as silent as this one.
+   */
+  it("stays out of the @theme block, where it would redefine max-w-*", () => {
+    const shadowed = Object.keys(TOKENS).filter((t) => t.startsWith("spacing-"));
+    expect(
+      shadowed,
+      `--${shadowed[0]} in @theme silently redefines max-w-${shadowed[0]?.slice(8)}. See D-219.`,
+    ).toEqual([]);
   });
 });
 

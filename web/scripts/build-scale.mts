@@ -367,12 +367,6 @@ lines.push(
   "  --tracking-caps: 0.12em;",
 );
 
-/* --- space ------------------------------------------------------------------------------ */
-lines.push("", "  /* ---- Space · eight values, all multiples of 4px (V4 §1.7, Q127/Q137) ---- */");
-for (const [name, px, why] of SPACE) {
-  lines.push(`  --spacing-${name}: ${r(px / 16)}rem;  /* ${px}px — ${why} */`);
-}
-
 /* --- radius ----------------------------------------------------------------------------- */
 lines.push("", "  /* ---- Radius · scales with the size of the thing (V4 §1.7, Q152) ---- */");
 for (const [name, multiplier, why] of RADIUS) {
@@ -433,6 +427,43 @@ for (const [name, rem, why] of ICONS) {
 }
 lines.push(`  --icon-stroke: ${ICON_STROKE};  /* Q213 — lucide ships 2 */`);
 
+lines.push("}", "");
+
+/**
+ * Space — declared outside `@theme`, and that is the whole point (D-219).
+ *
+ * These eight values used to sit in the `@theme` block above with the rest of the scale, which
+ * looked right and was wrong. `--spacing-*` is one of Tailwind's namespaces, and it is the
+ * namespace `max-w-*`, `w-*`, `min-w-*` and `basis-*` consult **before** `--container-*`. So
+ * declaring `--spacing-sm: 1rem` did not merely add a `p-sm` utility — it silently redefined
+ * `max-w-sm` from Tailwind's 24rem to 1rem, `max-w-2xl` from 42rem to 4rem, and so on for every
+ * name this scale happens to share with a container size.
+ *
+ * The damage was invisible in code review and total on screen: `/private/settings` rendered its
+ * entire content inside a 64-pixel column, one word per line, and the "update available" notice,
+ * the sign-in card, the register card and both error screens were the same shape. Nothing threw,
+ * no test failed, and the class names all read correctly.
+ *
+ * Here in `:root` the values are unchanged and `var(--spacing-md)` still resolves everywhere, so
+ * DESIGN.md §5 stays true and the vocabulary survives — what is given up is Tailwind emitting
+ * `p-sm` / `gap-md` utilities from them, which had **zero call sites** in the app at the time
+ * this was found. That is the trade: a naming convenience nobody had used, against six screens.
+ *
+ * To reverse it, move this loop back inside the `@theme` block — and rename the steps first, to
+ * anything that is not also a container size, or the six screens break again the same way.
+ * `scale.test.ts` fails if `--spacing-*` reappears inside `@theme`.
+ */
+lines.push(
+  "/* ---- Space · eight values, all multiples of 4px (V4 §1.7, Q127/Q137) ----",
+  " *",
+  " * Deliberately NOT in `@theme` — see the note in `scripts/build-scale.mts` and D-219.",
+  " * `--spacing-*` is the namespace `max-w-*` reads first, so naming a space step `sm` or `2xl`",
+  " * overwrites `max-w-sm` and `max-w-2xl` for the whole app. Use these as `var(--spacing-md)`. */",
+  ":root {",
+);
+for (const [name, px, why] of SPACE) {
+  lines.push(`  --spacing-${name}: ${r(px / 16)}rem;  /* ${px}px — ${why} */`);
+}
 lines.push("}", "");
 
 /**

@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-09
 domain: engineering
 stability: volatile
 summary: The design system of record — tokens, type, space, motion, and the rules that govern them.
@@ -263,9 +263,10 @@ Settled now:
 
 ## 5. Space and layout
 
-### The spacing vocabulary — **done (V4 §1.7, D-199)**
+### The spacing vocabulary — **done (V4 §1.7, D-199; narrowed by D-219)**
 
-Eight values, every one a multiple of 4px (Q127, Q137). Generated into `scale.css`.
+Eight values, every one a multiple of 4px (Q127, Q137). Generated into `scale.css`, and read as
+`var(--spacing-md)` — **not** as `p-md` or `gap-md`, which is the part that changed.
 
 | Token | | Use |
 |---|---|---|
@@ -282,10 +283,28 @@ The jumps from 16→24 and 32→48 are deliberate. An even 4-8-12-16-20-24-28-32
 values and no opinion; the gaps that actually recur here are "inside a control", "inside a card",
 "between cards" and "between sections".
 
+**These are custom properties, not Tailwind utilities — and that is a correction (D-219).**
+They were declared inside `@theme`, which generated `p-sm` / `gap-md` and friends. It also did
+something nobody intended: `--spacing-*` is the namespace Tailwind's `max-w-*`, `w-*` and
+`min-w-*` consult **before** `--container-*`, so naming a space step `sm` or `2xl` silently
+redefined `max-w-sm` and `max-w-2xl` for the whole app — `max-w-2xl` went from 42rem to 4rem.
+`/private/settings` rendered its entire content inside a 64-pixel column, and so did five other
+screens, with every class name reading correctly and no test failing.
+
+They now live in a `:root` block. The values and the vocabulary are unchanged and
+`var(--spacing-md)` still resolves everywhere; what is given up is the generated utilities, which
+had **zero call sites**. `scale.test.ts` fails if any `--spacing-*` reappears inside `@theme`.
+
 **Tailwind's numeric utilities still work.** `p-3` and `gap-5` cannot be removed without editing
 every layout in the app, and doing that is not what §1.7 is worth. What the vocabulary buys is
-that new code and every reworked component say *why* a gap is the size it is. §7.1 is where a
-gate could be added.
+that new code and every reworked component say *why* a gap is the size it is — as
+`gap-[var(--spacing-md)]` where it matters, or as a comment. §7.1 is where a gate could be added.
+
+**Two width utilities on one element is the related trap.** A shared class constant carrying
+`w-full` composed with a call site adding `w-24` is not an override: same specificity, so the
+winner is Tailwind's emit order. Keep the width out of the shared constant.
+`width-conflicts.test.ts` enforces it; `scripts/diag-widths.mjs` measures the result in a real
+browser, because jsdom reports every element as zero pixels wide and cannot see any of this.
 
 ### Breakpoints — **done (V4 §1.7, D-199)**
 

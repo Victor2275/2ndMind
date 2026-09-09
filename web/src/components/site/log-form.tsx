@@ -42,8 +42,21 @@ import type { SpokenEntry } from "@/lib/voice/parse";
  * per field. Each is declared in `categories.ts`; none of them is special-cased here.
  */
 
-const INPUT =
-  "w-full rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+/**
+ * The look of a control, with no width in it (D-219).
+ *
+ * `w-full` used to be part of this string, and every call site that wanted a *narrower* control
+ * wrote `${INPUT} w-16`. Those two utilities have identical specificity, so which one applies is
+ * decided by the order Tailwind happens to emit them in — not by the order they are written in
+ * the class attribute, which is what it looks like. `w-full` won, so the unit select below took
+ * the whole row and squashed the number input beside it to nothing.
+ *
+ * Keeping the width out of the base is the fix that cannot come back: a call site now says how
+ * wide it is exactly once.
+ */
+const CONTROL =
+  "rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+const INPUT = `${CONTROL} w-full`;
 const LABEL = "eyebrow text-muted-foreground";
 
 /** Local date as YYYY-MM-DD. `toISOString` would shift to UTC and, in the evening in
@@ -254,7 +267,7 @@ function FieldInput({
             placeholder={field.placeholder}
             className={INPUT}
           />
-          <select name={`${name}Unit`} defaultValue="m" className={`${INPUT} w-16 shrink-0`}>
+          <select name={`${name}Unit`} defaultValue="m" className={`${CONTROL} w-16 shrink-0`}>
             <option value="m">m</option>
             <option value="km">km</option>
             <option value="mi">mi</option>

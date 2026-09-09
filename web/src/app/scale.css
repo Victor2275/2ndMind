@@ -66,16 +66,6 @@
    * utility and by anything else that sets `uppercase`. */
   --tracking-caps: 0.12em;
 
-  /* ---- Space · eight values, all multiples of 4px (V4 §1.7, Q127/Q137) ---- */
-  --spacing-3xs: 0.25rem;  /* 4px — hairline gap — icon to its own label */
-  --spacing-2xs: 0.5rem;  /* 8px — inside a control */
-  --spacing-xs: 0.75rem;  /* 12px — between rows of a list */
-  --spacing-sm: 1rem;  /* 16px — inside a card — the default padding of the md card size */
-  --spacing-md: 1.5rem;  /* 24px — between cards in a grid */
-  --spacing-lg: 2rem;  /* 32px — inside a large card, and between a heading and its content */
-  --spacing-xl: 3rem;  /* 48px — between sections on a private screen */
-  --spacing-2xl: 4rem;  /* 64px — between sections on the public site, which breathes more */
-
   /* ---- Radius · scales with the size of the thing (V4 §1.7, Q152) ---- */
   --radius-control: calc(var(--radius) * 0.6);  /* buttons, inputs, chips that are not pills */
   --radius-card: calc(var(--radius) * 1);  /* the base — a card, a panel, a menu */
@@ -128,6 +118,22 @@
   --icon-md: 1.25rem;  /* 20px — the default, and what the tab bar uses */
   --icon-lg: 1.5rem;  /* 24px — a lone icon carrying a whole control */
   --icon-stroke: 1.75;  /* Q213 — lucide ships 2 */
+}
+
+/* ---- Space · eight values, all multiples of 4px (V4 §1.7, Q127/Q137) ----
+ *
+ * Deliberately NOT in `@theme` — see the note in `scripts/build-scale.mts` and D-219.
+ * `--spacing-*` is the namespace `max-w-*` reads first, so naming a space step `sm` or `2xl`
+ * overwrites `max-w-sm` and `max-w-2xl` for the whole app. Use these as `var(--spacing-md)`. */
+:root {
+  --spacing-3xs: 0.25rem;  /* 4px — hairline gap — icon to its own label */
+  --spacing-2xs: 0.5rem;  /* 8px — inside a control */
+  --spacing-xs: 0.75rem;  /* 12px — between rows of a list */
+  --spacing-sm: 1rem;  /* 16px — inside a card — the default padding of the md card size */
+  --spacing-md: 1.5rem;  /* 24px — between cards in a grid */
+  --spacing-lg: 2rem;  /* 32px — inside a large card, and between a heading and its content */
+  --spacing-xl: 3rem;  /* 48px — between sections on a private screen */
+  --spacing-2xl: 4rem;  /* 64px — between sections on the public site, which breathes more */
 }
 
 @utility icon-sm {
