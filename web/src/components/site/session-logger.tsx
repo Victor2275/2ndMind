@@ -1,18 +1,19 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ExerciseList, keyFor } from "@/components/site/exercise-list";
+import {
+  ExerciseFilterBar,
+  ExerciseRows,
+  keyFor,
+  NO_FILTERS,
+  useExerciseSections,
+  type ExerciseFilterState,
+} from "@/components/site/exercise-list";
 import { MuscleMap } from "@/components/site/muscle-map";
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { howTo, type Modality } from "@/lib/athletics/catalogue";
 import {
   localCatalogue,
@@ -38,6 +39,7 @@ import {
   type SetInput,
 } from "@/lib/athletics/session";
 import { buzzRested, buzzSaved } from "@/lib/haptics";
+import { useKeyboardInset } from "@/lib/keyboard-inset";
 import { fetchWithDeadline } from "@/lib/net/deadline";
 
 /** No per-exercise default and no catalogue entry to read one from — the on-screen rest timer
@@ -1099,12 +1101,60 @@ function ExercisePicker({
   onCreated: (entry: LocalExercise) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [filters, setFilters] = useState<ExerciseFilterState>(NO_FILTERS);
+  /** The create block starts folded away — see the footer for why. */
+  const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [suggestion, setSuggestion] = useState<NewExerciseInput | null>(null);
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   const selectedKeys = useMemo(() => new Set(selected), [selected]);
+
+  const { sections } = useExerciseSections({
+    entries: catalogue,
+    efforts,
+    filters,
+    // The picker's, not the browser's: what you are about to log is overwhelmingly something you
+    // logged last week, and eight rows at the top of the list beats typing the name.
+    recent: true,
+  });
+
+  /** Only measured while the panel is open, so a closed picker costs no viewport listener. */
+  const keyboardInset = useKeyboardInset(open);
+
+  /**
+   * Changing what is listed sends you back to the top of it.
+   *
+   * Without this the panel keeps the scroll offset it had, so typing a query while forty rows
+   * down leaves the best match above the visible area — the same "it was at the bottom of the
+   * list" complaint D-238 fixed, arriving by a different route. The header is fixed, so the
+   * search box you just typed into stays put either way; only the rows move.
+   */
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: 0 });
+  }, [filters.query, filters.group, filters.equipment, filters.showArchived]);
+
+  /**
+   * Closing throws the query, the filters and the half-finished creation away.
+   *
+   * Reopening onto last time's search is the wrong default here: the picker is opened once per
+   * movement in the worst case, and a stale `bnch` filtering the list down to one row reads as
+   * the catalogue having lost everything else. The selection is cleared for the same reason —
+   * an "Add 3 exercises" button on a panel you have already added from would add them twice.
+   */
+  function setOpen(next: boolean) {
+    if (!next) {
+      setFilters(NO_FILTERS);
+      setSelected([]);
+      setCreating(false);
+      setNewName("");
+      setSuggestion(null);
+      setProblem(null);
+    }
+    onOpenChange(next);
+  }
 
   function toggle(entry: LocalExercise) {
     const key = keyFor(entry);
@@ -1225,22 +1275,54 @@ function ExercisePicker({
     }
   }
 
+  // Zero results is the one moment "add it by name" is certainly what you want, so the create
+  // block unfolds itself rather than waiting to be asked. Derived, not state: it folds back the
+  // instant the query matches something again, with nothing to keep in sync.
+  const showCreate = creating || sections.length === 0;
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      {/* Right rather than bottom: on a laptop this is the plan's second column — the session
-          stays visible on the left while you pick — and on a phone it is a full-height panel,
-          which is what a list of a hundred and forty rows wants either way. */}
-      <SheetContent side="right" className="w-full gap-0 sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Add exercises</SheetTitle>
-          <SheetDescription>
+    <Sheet open={open} onOpenChange={setOpen}>
+      {/* Full screen on a phone, the plan's second column from `sm` up (D-237).
+          It used to be `side="right"` at every width, which on a phone slid a full-width panel
+          in from the edge — the gesture a navigation drawer makes, for something that is not
+          navigation — and, more to the point, put the search box *inside* the scrolling area.
+          Forty rows down the list you could no longer reach the one control that would have got
+          you there in one move. Header and footer are fixed now; only the rows scroll. */}
+      <SheetContent
+        side="fullscreen"
+        showCloseButton={false}
+        // `bg-background`, not the inherited `bg-popover`: at this size it is a screen rather
+        // than an overlay, and the rows' sticky group headings are painted in `background` — a
+        // popover-coloured panel behind them shows every heading as a visible band.
+        className="gap-0 bg-background text-foreground"
+        // The keyboard covers the bottom of a fixed panel without resizing it. Shortening the
+        // content box here re-lays the flex column out inside what is left, which lifts the
+        // footer clear and shortens the scroller by the same amount. See `useKeyboardInset`.
+        style={{ paddingBottom: keyboardInset || undefined }}
+      >
+        <div className="shrink-0 border-b border-border px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <SheetTitle>Add exercises</SheetTitle>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="-mr-2 flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <XIcon className="icon-sm" aria-hidden />
+            </button>
+          </div>
+          <SheetDescription className="sr-only">
             Tap to select as many as you want, then add them in one pass.
           </SheetDescription>
-        </SheetHeader>
+          <ExerciseFilterBar entries={catalogue} value={filters} onChange={setFilters} />
+        </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4">
-          <ExerciseList
-            entries={catalogue}
+        {/* `overscroll-contain` so flicking past the last row scrolls the list to its end rather
+            than handing the gesture to the session underneath and pulling the page with it. */}
+        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+          <ExerciseRows
+            sections={sections}
             efforts={efforts}
             onSelect={toggle}
             selectedKeys={selectedKeys}
@@ -1248,77 +1330,93 @@ function ExercisePicker({
           />
         </div>
 
-        <div className="border-t border-border p-4">
-          <div className="flex gap-2">
-            <input
-              value={newName}
-              onChange={(event) => setNewName(event.target.value)}
-              placeholder="Add a movement by name"
-              aria-label="Add a movement by name"
-              autoComplete="off"
-              className={FIELD}
-            />
-            <button
-              type="button"
-              onClick={() => void ask()}
-              disabled={asking || newName.trim() === ""}
-              className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
-            >
-              {asking ? "Asking…" : "AI"}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                void createIt(
-                  {
-                    name: newName.trim(),
-                    modality: "lift",
-                    equipment: "other",
-                    primaryMuscles: [],
-                    secondaryMuscles: [],
-                  },
-                  "manual",
-                )
-              }
-              disabled={newName.trim() === ""}
-              className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
-            >
-              Add
-            </button>
-          </div>
+        <div className="shrink-0 border-t border-border px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          {/* Folded away by default (D-237). Open, this block is a field, two buttons and
+              sometimes a suggestion card — around 120px of a phone screen, held permanently, for
+              the rare movement that is not among the hundred and forty already listed. Those
+              pixels are worth more as two more rows of the list. */}
+          {showCreate ? (
+            <div className="mb-3">
+              <div className="flex gap-2">
+                <input
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  placeholder="Add a movement by name"
+                  aria-label="Add a movement by name"
+                  autoComplete="off"
+                  className={FIELD}
+                />
+                <button
+                  type="button"
+                  onClick={() => void ask()}
+                  disabled={asking || newName.trim() === ""}
+                  className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
+                >
+                  {asking ? "Asking…" : "AI"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void createIt(
+                      {
+                        name: newName.trim(),
+                        modality: "lift",
+                        equipment: "other",
+                        primaryMuscles: [],
+                        secondaryMuscles: [],
+                      },
+                      "manual",
+                    )
+                  }
+                  disabled={newName.trim() === ""}
+                  className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
+                >
+                  Add
+                </button>
+              </div>
 
-          {suggestion && (
-            <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-2">
-              <p className="text-sm text-foreground">{suggestion.name}</p>
-              <p className="mt-0.5 font-mono text-[0.6rem] text-muted-foreground">
-                {suggestion.modality}
-                {suggestion.primaryMuscles.length > 0
-                  ? ` · ${suggestion.primaryMuscles.join(", ")}`
-                  : ""}
-                {` · ${suggestion.equipment}`}
-              </p>
-              {/* It proposes; you confirm. Nothing the model produced is written until this. */}
-              <button
-                type="button"
-                onClick={() => void createIt(suggestion, "ai")}
-                className="mt-2 min-h-10 w-full rounded-md border border-primary/50 px-3 text-xs text-primary transition-colors hover:bg-primary/10"
-              >
-                Add this
-              </button>
+              {suggestion && (
+                <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-2">
+                  <p className="text-sm text-foreground">{suggestion.name}</p>
+                  <p className="mt-0.5 font-mono text-[0.6rem] text-muted-foreground">
+                    {suggestion.modality}
+                    {suggestion.primaryMuscles.length > 0
+                      ? ` · ${suggestion.primaryMuscles.join(", ")}`
+                      : ""}
+                    {` · ${suggestion.equipment}`}
+                  </p>
+                  {/* It proposes; you confirm. Nothing the model produced is written until this. */}
+                  <button
+                    type="button"
+                    onClick={() => void createIt(suggestion, "ai")}
+                    className="mt-2 min-h-10 w-full rounded-md border border-primary/50 px-3 text-xs text-primary transition-colors hover:bg-primary/10"
+                  >
+                    Add this
+                  </button>
+                </div>
+              )}
+
+              {problem && (
+                <p role="status" className="mt-2 text-xs text-muted-foreground">
+                  {problem}
+                </p>
+              )}
             </div>
-          )}
-
-          {problem && (
-            <p role="status" className="mt-2 text-xs text-muted-foreground">
-              {problem}
-            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="mb-2 min-h-10 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              + Not in the list?
+            </button>
           )}
 
           <button
             type="button"
             onClick={addSelected}
             disabled={selected.length === 0}
-            className="mt-3 min-h-11 w-full rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+            className="min-h-11 w-full rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
           >
             {selected.length === 0
               ? "Select an exercise"

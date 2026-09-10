@@ -125,7 +125,12 @@ export function score(name: string, query: string): number | null {
  * Ties break on name so the order is stable between keystrokes. A list that reshuffles under
  * your thumb while the score is equal is how you tap the wrong row.
  */
-export function searchExercises<T extends Searchable>(items: T[], query: string, limit = 40): T[] {
+export function searchExercises<T extends Searchable>(
+  items: T[],
+  query: string,
+  limit = 40,
+  boost?: (item: T) => number,
+): T[] {
   const trimmed = query.trim();
   if (trimmed.length === 0) return items.slice(0, limit);
 
@@ -136,9 +141,60 @@ export function searchExercises<T extends Searchable>(items: T[], query: string,
       const aliasScore = score(alias, trimmed);
       if (aliasScore !== null && (best === null || aliasScore > best)) best = aliasScore;
     }
-    if (best !== null) hits.push({ item, score: best });
+    if (best !== null) hits.push({ item, score: best + (boost?.(item) ?? 0) });
   }
 
   hits.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
   return hits.slice(0, limit).map((hit) => hit.item);
+}
+
+/**
+ * How recently each exercise was actually performed — the input to `recencyBoost`.
+ *
+ * Keyed by exercise **name**, because that is the only identifier an `Effort` carries; a set
+ * records what it was called at the time. A rename therefore drops an exercise's history for
+ * ranking purposes until it is logged again, which is the honest failure: the alternative is
+ * guessing that two names are the same movement, and guessing wrong silently promotes the wrong
+ * row to the top of a picker.
+ */
+export function lastPerformed(efforts: readonly { exercise: string; performedAt: Date }[]) {
+  const map = new Map<string, number>();
+  for (const effort of efforts) {
+    const at = effort.performedAt.getTime();
+    const seen = map.get(effort.exercise);
+    if (seen === undefined || at > seen) map.set(effort.exercise, at);
+  }
+  return map;
+}
+
+/**
+ * A small thumb on the scale for movements you actually do (D-238).
+ *
+ * ## Why it is small
+ *
+ * The weights in `score` run to +50 for an exact prefix and +45 for a contiguous word-initial
+ * run. These tiers top out at +12, an order below that, and the reason is a rule worth stating:
+ * **history breaks ties, it does not overturn matches.** A boost big enough to lift a weak match
+ * above a strong one would mean typing the full name of a movement you have never done and
+ * watching something else sit above it — which reads as the search being broken, not as being
+ * helpful. Two names that both match well, one of which you did on Tuesday, is the case this is
+ * for, and it is the common one.
+ *
+ * ## Why recency rather than frequency
+ *
+ * A training block is a handful of movements repeated for weeks. Frequency would keep promoting
+ * last cycle's lifts a month after they stopped being what you do; the 14-day tier tracks the
+ * block you are in now.
+ */
+export function recencyBoost(
+  lastAt: ReadonlyMap<string, number>,
+  name: string,
+  now = Date.now(),
+): number {
+  const at = lastAt.get(name);
+  if (at === undefined) return 0;
+  const days = (now - at) / 86_400_000;
+  if (days <= 14) return 12;
+  if (days <= 60) return 6;
+  return 3;
 }

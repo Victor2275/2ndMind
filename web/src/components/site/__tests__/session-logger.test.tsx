@@ -46,11 +46,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Opens the picker sheet, selects the first row, and adds it. */
+/**
+ * The picker's selectable rows, in list order.
+ *
+ * Scoped to the `<ul>`s rather than to the whole panel: `aria-pressed` is the right semantics
+ * for a toggle, and since D-232 the filter chips in the pinned header are toggles too, so
+ * "every button that is not pressed" now finds "All" and "Any kit" before it finds an exercise.
+ */
+async function pickerRows() {
+  const lists = await screen.findAllByRole("list");
+  return lists.flatMap((list) => within(list).getAllByRole("button", { pressed: false }));
+}
+
+/** Opens the picker, selects the first row, and adds it. */
 async function addFirstExercise() {
   fireEvent.click(screen.getByRole("button", { name: "Add exercise" }));
-  const rows = await screen.findAllByRole("button", { pressed: false });
-  // The first row of the list — every pickable row carries `aria-pressed`.
+  const rows = await pickerRows();
   fireEvent.click(rows[0]);
   fireEvent.click(await screen.findByRole("button", { name: /Add 1 exercise$/ }));
 }
@@ -60,7 +71,7 @@ describe("multi-select picking", () => {
     render(<SessionLogger />);
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }));
 
-    const rows = await screen.findAllByRole("button", { pressed: false });
+    const rows = await pickerRows();
     fireEvent.click(rows[0]);
     fireEvent.click(rows[1]);
 
@@ -76,7 +87,7 @@ describe("multi-select picking", () => {
   it("counts a single selection in the singular", async () => {
     render(<SessionLogger />);
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }));
-    const rows = await screen.findAllByRole("button", { pressed: false });
+    const rows = await pickerRows();
     fireEvent.click(rows[0]);
     expect(await screen.findByRole("button", { name: /Add 1 exercise$/ })).toBeInTheDocument();
   });
@@ -84,7 +95,7 @@ describe("multi-select picking", () => {
   it("deselects on a second tap rather than adding twice", async () => {
     render(<SessionLogger />);
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }));
-    const rows = await screen.findAllByRole("button", { pressed: false });
+    const rows = await pickerRows();
     fireEvent.click(rows[0]);
     fireEvent.click(rows[0]);
     expect(await screen.findByRole("button", { name: "Select an exercise" })).toBeDisabled();
