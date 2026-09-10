@@ -2,7 +2,7 @@
 updated: 2026-09-10
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2 and 2+ done (Milestones A and B); 4.4 done; Phase 3 is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2, 2+ and 2++ done (Milestones A and B); 4.4 and §2.13 done; Phase 3 is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **443 points** (311 + Phase 2++'s 119, plus §2.12's 13). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **282 done.** |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens. **Phase 2++ done** (2026-09-10) — the figure redrawn, the catalogue audited and renamed, an exercise browser, the logger rebuilt to Hevy standard, routines, and Phase 5.6 pulled forward whole.<br>Next: **Phase 3**, tags. N9 still parked. |
+| **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **293 done.** |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens. **Phase 2++ done** (2026-09-10) — the figure redrawn, the catalogue audited and renamed, an exercise browser, the logger rebuilt to Hevy standard, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10) — three things he found using it: the picker rebuilt for a phone, the search ranking fixed, and the figure replaced with licensed art.<br>Next: **Phase 3**, tags. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -568,6 +568,40 @@ screen is reachable" are different claims, and only the end-to-end run could tel
 **zero** matching sets — no training had been logged through the new logger yet — so the dry run
 that R3 asked for turned a belief into a number before anything was written.
 `workout_sets.exercise_before_v2` keeps the original string for one release regardless.
+
+---
+
+### §2.13 · The picker on a phone, and a figure that can be licensed — **11 pts** — ✅ **done 2026-09-10**
+
+Reported after the first real use of Phase 2++ on the phone, same shape as §2.12: not in the
+original plan, here because one of the two was a shipped defect and the other was an offer worth
+taking.
+
+| #     | What he reported                                       | What it actually was                                                                                                             | Pts |
+| ----- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --: |
+| 2.13a | "the exercise picker opens a sidebar, hard to use"     | Three faults: the search box scrolled away with the list, a drawer gesture for something that is not navigation, and a footer under the keyboard (D-237) |   5 |
+| 2.13b | "I searched 'erg' and it was at the bottom of the list" | Not the matcher. The grouping re-bucketed the ranked results and `full body` sorts into `Other`, dead last (D-238)                  |   2 |
+| 2.13c | "use the body SVGs from these two repos"               | Neither has a licence. A properly MIT-licensed upstream did, and it is better art than the hand-drawn figure (D-239)                |   4 |
+
+**2.13a is the one worth reading twice.** The complaint named the animation, but the fault under
+it was structural: the search box lived *inside* the scrolling region, so the single control that
+would take you to any of a hundred and forty rows in one move was itself forty rows away. A fixed
+header is the whole fix; the full-screen panel, the chips and the keyboard inset are what make it
+sit right on a phone once it is fixed. Verified in a real browser at 390px by
+`scripts/diag-picker.mjs`, which measures the three things jsdom cannot see — that the panel fills
+the viewport, that the search box is still on screen after 1200px of scrolling, and that the Add
+button is above the fold.
+
+**2.13b was ranking thrown away by layout.** `searchExercises` had ranked `Row (Erg)` near the
+top and the group buckets discarded that ordering before it reached the screen. Grouping is for
+browsing and ranking is for searching; a query now decides which is in force.
+
+**2.13c is a licence question first.** Both repositories Victor found ship the same unlicensed
+SVG pair — no `LICENSE` file means all rights reserved — and both are coarser than this vault's
+20-region vocabulary. Looking for the same art *with* a licence found
+react-native-body-highlighter (MIT), which is better than either, covers 15 of the 20 regions
+outright, and needed five regions drawn by hand. D-222 is untouched: one drawing, highlighted
+from the catalogue. D-226 — that a careful hand could reach reference fidelity — is reversed.
 
 ---
 

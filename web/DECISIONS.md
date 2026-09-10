@@ -17,6 +17,131 @@ useful part.
 
 ---
 
+## 2026-09-10 · The picker on a phone, and a figure that can be licensed
+
+Two corrections after using Phase 2++ on the phone it was built for.
+
+---
+
+### D-237 · The exercise picker is a full screen with a fixed header, not a drawer
+
+**Decision.** The picker `SheetContent` moves from `side="right"` to a new `side="fullscreen"`:
+the whole viewport on a phone, rising from the bottom, and the same right-hand panel it always
+was from `sm` up. Inside it, the search box and the filters sit in a **fixed header** and the
+add/create controls in a **fixed footer**; only the rows scroll. `ExerciseList` splits into
+`useExerciseSections` + `ExerciseFilterBar` + `ExerciseRows` so both screens still share one set
+of filtering rules.
+
+**Why.** Victor: *"it opens a sidebar, which is hard to use."* Three separate faults under that:
+
+1. **The search box scrolled away.** It was inside the scrolling region, so forty rows into a
+   hundred-and-forty-row list the one control that would have got you there in a single move was
+   off-screen. This is the whole of the complaint, and nothing else on the list mattered as much.
+2. **The gesture was wrong.** A panel sliding in from the right edge is what a navigation drawer
+   does. This is not navigation, and on a phone it was full-width anyway, so the animation
+   promised a drawer and delivered a screen.
+3. **The footer sat under the keyboard.** A phone keyboard shrinks the *visual* viewport and
+   leaves the *layout* viewport — what `fixed` is measured against — alone, so "Add 3 exercises"
+   vanished the instant you tapped the name field.
+
+**Four things came with it.**
+
+- **Filters are chips, not `<select>`.** A native select on iOS opens a full-height wheel over
+  the list you are trying to filter. Chips also show what the options are without being opened.
+  Only groups and equipment that actually occur get a chip — a filter that leads to an empty list
+  is a dead end you had to tap to discover.
+- **The keyboard is measured, not assumed.** `lib/keyboard-inset.ts` reads `visualViewport` and
+  the panel takes the covered strip as `padding-bottom`, which re-lays the flex column out inside
+  what is left. The alternative, `interactive-widget=resizes-content` on the viewport meta, is
+  app-wide: it would change the bottom tab bar's behaviour on every screen to fix one panel.
+- **The create block folds away.** A field, two buttons and sometimes a suggestion card is ~120px
+  of a phone screen held permanently for the rare movement that is not among the hundred and
+  forty already listed. Those pixels are two more rows. It unfolds itself when a search returns
+  nothing, which is the one moment it is certainly what you want.
+- **`bg-background`, not `bg-popover`.** At full-screen size this is a screen rather than an
+  overlay, and the sticky group headings are painted in `background` — a popover-coloured panel
+  behind them showed every heading as a visible band.
+
+**How to reverse.** `side="right"` on the `SheetContent` in `session-logger.tsx` and put
+`ExerciseFilterBar` back inside the scroller. `side="fullscreen"` in `ui/sheet.tsx` is a new
+variant and harms nothing left in place. Keep the split in `exercise-list.tsx` either way — the
+browser page's behaviour is unchanged by it.
+
+---
+
+### D-238 · A search abandons the grouping — the "erg" bug
+
+**Decision.** With a query present the list is **one flat section in score order**. Muscle-group
+sections come back the moment the box is cleared. Recently performed movements get a small
+ranking boost, and the picker (not the browser) opens with a "Recent" section of eight.
+
+**Why.** Victor: *"when I searched 'erg', it was at the bottom of the list."* He was right and
+the cause was not the matcher. `searchExercises` had already ranked `Row (Erg)` near the top;
+`ExerciseList` then threw that ranking away by re-bucketing rows into muscle groups, which paint
+in the fixed `GROUPS` order. `Row (Erg)` is tagged `full body`, which has no coarse group, so it
+landed in `Other` — dead last — however well it had scored.
+
+The fix is not a better group order. **Grouping is for browsing and ranking is for searching**,
+and no single order honours both. So the query decides which one is in force.
+
+**Why the history boost is small.** The tiers top out at +12 against a `score` that pays +50 for
+an exact prefix. History breaks ties; it does not overturn matches. A boost large enough to lift
+a weak match above a strong one would mean typing a movement's full name and watching something
+else sit above it, which reads as the search being broken rather than as being helpful. Recency
+rather than frequency, because a training block is a handful of movements repeated for weeks and
+frequency would still be promoting last cycle's lifts a month after they stopped being what you
+do.
+
+**How to reverse.** Return the `query.length > 0` branch of `useExerciseSections` to the grouping
+path, and drop the `boost` argument at its call site. `searchExercises`'s fourth parameter is
+optional and inert without it.
+
+---
+
+### D-239 · The body figure's geometry is licensed art, not hand-drawn — D-226 reversed
+
+**Decision.** The ~250 hand-drawn paths in `muscle-map.tsx` are replaced by the SVG geometry of
+**react-native-body-highlighter** v3.2.0, MIT, in `lib/athletics/body-paths.ts`, with the licence
+reproduced in `NOTICE` at the repository root. Five regions the upstream has no path for —
+front `lats` and `hip flexors`, back `back`, `rotator cuff` and `abductors` — are original
+additions placed against the measured bounding boxes of the parts they sit between.
+
+**Why D-222 still survives, and D-226 does not.** D-222 is *one drawing computed from the data
+cannot disagree with the data, where a hundred and forty pictures can*. Nothing here touches
+that: the highlight is still computed from the same `muscles` array the search chips and the
+record grouping use. D-226 was the narrower claim that a careful hand could reach reference
+fidelity in a day. It could not, quite, and it no longer has to — this is a proper anatomical
+illustration whose licence simply permits use.
+
+**Why not the two repositories Victor found.** `diabeatz96/FalseStory` and `wathmal/MMM-Hevy`
+both ship the same `body-front.svg` / `body-back.svg` pair and **neither has a licence file**,
+which means all rights reserved. They are also coarser than this vault's vocabulary — about 12
+front and 7 back regions against 20 — so adopting them would have cost regions as well as
+permission. The MIT upstream was found by looking for the same thing with a licence attached.
+
+**Two mappings that are decisions, not renames.** Upstream's `upper-back` is drawn as the lat V,
+so it is `lats` here — calling it `back` would light the wrong shape for the 23 catalogue entries
+tagged `lats`, which is most of the pulling movements. Upstream's back-view `deltoids` is the
+posterior head, so it is `rear delts`; the front-view one is `shoulders`. That is exactly the
+split D-227 made in the vocabulary, arrived at independently.
+
+**What `detail="simple"` now means.** It was "bellies without striation seams". It is now
+"silhouette plus the worked regions only" — about a dozen paths instead of a hundred and sixty.
+What the picture *says* is unchanged, because what it says is which regions are lit; what goes is
+resting anatomy nobody can resolve at 40px, and with it the cost of drawing it once per row of a
+scrolling catalogue. `onRegionTap` forces full detail, since a region that is not drawn cannot be
+tapped.
+
+**What it cost.** ~58KB of path data in the client bundle, against roughly 20KB of hand-drawn
+paths before. It is bundled, cached and offline like everything else on this screen.
+
+**How to reverse.** `git revert` this commit; the previous `muscle-map.tsx` is self-contained and
+has no other dependency. Delete `body-paths.ts` and the `react-native-body-highlighter` section
+of `NOTICE` together — the notice is a licence obligation for as long as the paths are here, and
+for no longer.
+
+---
+
 ## 2026-09-10 · V4 Phase 2++ — training, as a product
 
 Phase 2 shipped the mechanism: a session logs offline and lands in Neon. Using it produced a
