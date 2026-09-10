@@ -10,6 +10,9 @@ import { PrTable } from "@/components/site/pr-table";
 import { RehabChecklist } from "@/components/site/rehab-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { GoalCard, SpmPanel, WeekReview } from "@/components/site/training-panels";
+import { TrainingTabs } from "@/components/site/training-tabs";
+import { WeekMuscles } from "@/components/site/week-panels";
+import { CATALOGUE } from "@/lib/athletics/catalogue";
 import {
   adjustSeconds,
   goalProgress,
@@ -48,6 +51,7 @@ import {
   isoDay,
   shiftDay,
   splitSeries,
+  weeklyMuscleVolume,
   weeklyVolume,
   weekReview,
   weekStartOf,
@@ -291,6 +295,22 @@ async function Training() {
 
   const reviewDays = weekReview(plan, sessionDates.map(isoDay), weekStart, today);
 
+  /**
+   * What this week trained (V4 Phase 2++ Stage 7).
+   *
+   * The muscle lookup comes from the bundled catalogue rather than the `exercises` table: it is
+   * already in this build, it cannot be a round trip, and it is the same list the figure is
+   * drawn from everywhere else. A movement Victor added by hand is simply absent from it and
+   * contributes nothing, which is the honest answer — nobody has said what it works.
+   */
+  const musclesFor = new Map(
+    CATALOGUE.map((entry) => [
+      entry.name,
+      { primary: entry.primaryMuscles as string[], secondary: entry.secondaryMuscles as string[] },
+    ]),
+  );
+  const muscleWeek = weeklyMuscleVolume(efforts, musclesFor, weekStart);
+
   const rehabHistory = Array.from({ length: REHAB_WINDOW_DAYS }, (_, i) => {
     const day = shiftDay(historyFrom, i);
     return { day, count: rehabDone.get(day)?.size ?? 0 };
@@ -333,6 +353,16 @@ async function Training() {
 
         <Panel title="This week" meta={plan.length > 0 ? "plan vs logged" : undefined}>
           <WeekReview days={reviewDays} planFound={plan.length > 0} />
+        </Panel>
+      </section>
+
+      {/* What the week actually trained, on the figure Stage 1 redrew (V4 Phase 2++ Stage 7).
+          Placed with the two panels above rather than among the charts: it answers "what do I
+          do tomorrow", which is the same question the rehab ticks and the plan review answer,
+          and a different one from "how is the 2k going". */}
+      <section className="mt-4">
+        <Panel title="Muscles this week" meta="working sets · secondary counts half">
+          <WeekMuscles week={muscleWeek} />
         </Panel>
       </section>
 
@@ -506,8 +536,18 @@ async function Training() {
 
       {history.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-bold tracking-tight">Recent sessions</h2>
-          <History workouts={history} />
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold tracking-tight">Recent sessions</h2>
+            {/* The full list is its own screen now (Stage 7) — this page keeps the last few,
+                which is the summary, and stops carrying a list that grows without bound. */}
+            <Link
+              href="/private/athletics/history"
+              className="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              all sessions →
+            </Link>
+          </div>
+          <History workouts={history.slice(0, 5)} />
         </section>
       )}
 
@@ -565,10 +605,11 @@ export default function AthleticsPage() {
   return (
     <main className="pb-16">
       <PageHeader
-        eyebrow="Athletics"
-        title="Training"
+        eyebrow="Training"
+        title="Records"
         lede="Records, trends and the protocol, computed from every stored set on each load. The goal, the stroke-rate targets, the rehab protocol and the weekly split are read from the vault, so editing the markdown changes this page."
       />
+      <TrainingTabs />
       <Suspense
         fallback={
           <>

@@ -22,6 +22,90 @@ const DAY = new Intl.DateTimeFormat("en-US", {
  * The number that carries this panel is the *required raw split* — what the monitor has to
  * read. "Sub-2:00 weight-adjusted" is not something anyone can pace to; a raw target is.
  */
+/**
+ * The adjusted split against the goal, as a gauge (V4 Phase 2++ Stage 7, Phase 5.6, Q405–Q414).
+ *
+ * ## Why a gauge and not another number
+ *
+ * The four `Stat` boxes below already give the numbers, and they answer *what* precisely and
+ * *how close* not at all — 2:04.3 against 2:00.0 is four seconds or a season depending on what
+ * you already know. A bar answers "how close" in one glance, which is the only question this
+ * card is opened to ask.
+ *
+ * ## The scale is fixed, and that is the point
+ *
+ * It runs from ten seconds *above* the target to the target itself, so the bar's motion between
+ * sessions is legible rather than rescaled away — a gauge that renormalises to its own data
+ * shows the same picture whether you improved by a tenth or by five seconds. Past the target the
+ * bar is full and says so in words; a gauge that keeps growing past its own goal has stopped
+ * being a gauge.
+ *
+ * Colour never signals alone: the state is written out beside the bar either way.
+ */
+const GAUGE_RANGE_S = 10;
+
+function SplitGauge({
+  bestAdjustedS,
+  targetAdjustedS,
+  met,
+}: {
+  bestAdjustedS: number | null;
+  targetAdjustedS: number;
+  met: boolean;
+}) {
+  if (bestAdjustedS === null) {
+    return (
+      <p className="rounded-md border border-border bg-card/40 px-3 py-2 text-xs text-muted-foreground">
+        No piece at this distance logged yet, so there is nothing to measure against the goal.
+      </p>
+    );
+  }
+
+  const gap = bestAdjustedS - targetAdjustedS;
+  // Full at the target, empty ten seconds off it, clamped at both ends.
+  const filled = Math.max(0, Math.min(1, 1 - gap / GAUGE_RANGE_S));
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="tabular font-mono text-2xl text-foreground">
+          {formatSplit(bestAdjustedS)}
+        </span>
+        <span className="tabular font-mono text-xs text-muted-foreground">
+          goal {formatSplit(targetAdjustedS)}
+        </span>
+      </div>
+
+      <div
+        role="meter"
+        aria-valuenow={Math.round(filled * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Best adjusted split against the goal, ${Math.round(filled * 100)} per cent of the way`}
+        className="mt-2 h-2.5 w-full overflow-hidden rounded-pill bg-foreground/10"
+      >
+        <div
+          className={`h-full rounded-pill transition-[width] duration-medium ${
+            met ? "bg-success" : "bg-primary"
+          }`}
+          style={{ width: `${filled * 100}%` }}
+        />
+      </div>
+
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {met ? (
+          <span className="text-success">Goal met at this bodyweight.</span>
+        ) : (
+          <>
+            <span className="tabular font-mono text-foreground">{gap.toFixed(1)}s</span> per 500m to
+            find. The bar fills over the last {GAUGE_RANGE_S} seconds.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
 export function GoalCard({
   goal,
   progress,
@@ -43,7 +127,13 @@ export function GoalCard({
 
   return (
     <div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <SplitGauge
+        bestAdjustedS={progress.bestAdjustedS}
+        targetAdjustedS={progress.targetAdjustedS}
+        met={met}
+      />
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Target (adjusted)"
           value={formatSplit(progress.targetAdjustedS)}

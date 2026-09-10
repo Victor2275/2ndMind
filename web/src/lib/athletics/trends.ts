@@ -323,3 +323,102 @@ const WEEKDAY_NAMES = [
   "Friday",
   "Saturday",
 ];
+
+/* ------------------------------------------------------ V4 Phase 2++ Stage 7 */
+
+/**
+ * How hard each muscle was worked this week, in three bands.
+ *
+ * ## Why three, and why they are bands rather than a number
+ *
+ * The question this answers is *what have I neglected* — asked on a Thursday, deciding what to
+ * do on Friday. A set count per muscle answers it precisely and is unreadable at a glance;
+ * three bands answer it imprecisely and are readable from across a room, which is the trade the
+ * whole panel exists to make. The thresholds are volume landmarks rather than science: below
+ * `TRAINED_AT` a muscle has effectively had a warm-up, and at or above `HAMMERED_AT` another
+ * session for it this week is a recovery decision rather than a programming one.
+ *
+ * ## Secondary muscles count half
+ *
+ * A row works the lats directly and the biceps incidentally, and counting both as one set would
+ * make every pulling week look like an arm specialisation. Half is a convention, not a
+ * measurement, and it is the smallest one that keeps the ordering sensible.
+ *
+ * The bands map onto the figure's own three states — unlit, secondary, primary — so
+ * `muscle-map.tsx` draws this with no new drawing code. A legend names them anyway: colour
+ * never signals alone.
+ */
+export const TRAINED_AT = 1;
+export const HAMMERED_AT = 10;
+
+export type MuscleWeek = {
+  /** Muscle name → weighted working sets this week. Only muscles with any work appear. */
+  sets: Map<string, number>;
+  hammered: string[];
+  trained: string[];
+};
+
+export function weeklyMuscleVolume(
+  efforts: Effort[],
+  musclesFor: Map<string, { primary: string[]; secondary: string[] }>,
+  weekStart: string,
+): MuscleWeek {
+  const sets = new Map<string, number>();
+
+  for (const effort of efforts) {
+    if (!isWorkingSet(effort)) continue;
+    const day = isoDay(effort.performedAt);
+    if (day < weekStart) continue;
+
+    const muscles = musclesFor.get(effort.exercise);
+    if (!muscles) continue;
+
+    for (const muscle of muscles.primary) {
+      sets.set(muscle, (sets.get(muscle) ?? 0) + 1);
+    }
+    for (const muscle of muscles.secondary) {
+      // Half, per the note above — an incidental muscle is worked, not trained.
+      if (muscles.primary.includes(muscle)) continue;
+      sets.set(muscle, (sets.get(muscle) ?? 0) + 0.5);
+    }
+  }
+
+  const hammered: string[] = [];
+  const trained: string[] = [];
+  for (const [muscle, count] of sets) {
+    if (count >= HAMMERED_AT) hammered.push(muscle);
+    else if (count >= TRAINED_AT) trained.push(muscle);
+  }
+
+  return { sets, hammered: hammered.sort(), trained: trained.sort() };
+}
+
+export type HeatDay = {
+  day: string;
+  /** Working sets logged that day. 0 for a rest day, which is a fact rather than a gap. */
+  sets: number;
+};
+
+/**
+ * A day-by-day strip of how much was logged, for the session heatmap (Q405–Q414, Phase 5.6).
+ *
+ * Every day in the window is returned, including the empty ones — a heatmap with holes in it is
+ * a heatmap that cannot be read, because the eye counts positions rather than dates. The window
+ * ends on `today` and runs back `days` days, so the last cell is always today whether or not
+ * anything was logged.
+ */
+export function sessionHeat(efforts: Effort[], today: string, days = 70): HeatDay[] {
+  const byDay = new Map<string, number>();
+  for (const effort of efforts) {
+    if (!isWorkingSet(effort)) continue;
+    const day = isoDay(effort.performedAt);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+
+  const out: HeatDay[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const day = shiftDay(today, -i);
+    out.push({ day, sets: byDay.get(day) ?? 0 });
+  }
+  return out;
+}

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { SessionHeatmap, WeekMuscles } from "@/components/site/week-panels";
 import { THEMES } from "@/lib/theme/registry";
 
 export const dynamic = "force-dynamic";
@@ -366,6 +367,32 @@ const MAP_CASES: Array<[string, string[], number]> = [
   ["Stretching · nothing marked", [], 96],
 ];
 
+/** A plausible hard week: a push day, a pull day and two erg pieces. */
+const WEEK_MUSCLES = {
+  sets: new Map<string, number>([
+    ["chest", 12],
+    ["triceps", 7.5],
+    ["shoulders", 4],
+    ["lats", 11],
+    ["back", 9],
+    ["biceps", 5.5],
+    ["quads", 10],
+    ["glutes", 6],
+    ["abs", 3],
+  ]),
+  hammered: ["chest", "lats", "quads"],
+  trained: ["abs", "back", "biceps", "glutes", "shoulders", "triceps"],
+};
+
+/** Ten weeks, with a deload in the middle and a rest day every Sunday. */
+const HEAT_DAYS = Array.from({ length: 70 }, (_, i) => {
+  const day = new Date(Date.UTC(2026, 6, 6) + i * 86_400_000).toISOString().slice(0, 10);
+  const weekday = i % 7;
+  const deload = i >= 28 && i < 35;
+  const sets = weekday === 6 ? 0 : deload ? 4 : weekday % 2 === 0 ? 18 : 9;
+  return { day, sets };
+});
+
 /** Primary/secondary split — the reference's red-prime, pink-assist, unavailable until now. */
 const PRIMARY_SECONDARY_CASES: Array<[string, string[], string[], number]> = [
   [
@@ -514,6 +541,23 @@ export default function KitchenSinkPage() {
         meta="Filters the exercise browser (Stage 4) and sets muscles in the edit form (Stage 4)"
       >
         <MuscleMapTapDemo />
+      </Panel>
+
+      {/* The two week panels, populated (V4 Phase 2++ Stage 7). Both render empty on a fresh
+          database, which is the state the real page shows most weeks — so the *populated* state
+          is the one that needs a home where it can be looked at. */}
+      <Panel
+        title="Muscles this week"
+        meta="V4 Phase 2++ Stage 7 · three bands on Stage 1's figure"
+      >
+        <WeekMuscles week={WEEK_MUSCLES} />
+      </Panel>
+
+      <Panel
+        title="Session heatmap"
+        meta="V4 Phase 2++ Stage 7 · a column is a week, a row a weekday"
+      >
+        <SessionHeatmap days={HEAT_DAYS} />
       </Panel>
 
       {/* One block per theme. `data-theme` on the section re-declares the whole palette for its

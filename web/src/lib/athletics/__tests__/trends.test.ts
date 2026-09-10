@@ -9,9 +9,12 @@ import {
   chartableLifts,
   e1rmSeries,
   flagSpm,
+  HAMMERED_AT,
   isoDay,
+  sessionHeat,
   shiftDay,
   splitSeries,
+  weeklyMuscleVolume,
   weeklyVolume,
   weekReview,
   weekStartOf,
@@ -308,5 +311,105 @@ describe("weekReview", () => {
       "Sunday",
     ]);
     expect(bare.every((d) => !d.missed)).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------ V4 Phase 2++ Stage 7 */
+
+describe("weeklyMuscleVolume", () => {
+  const muscles = new Map([
+    ["Bench Press (Barbell)", { primary: ["chest"], secondary: ["triceps"] }],
+    ["Row (Barbell)", { primary: ["back"], secondary: ["lats", "biceps"] }],
+  ]);
+
+  const effort = (over: Partial<Effort> = {}): Effort => ({
+    exercise: "Bench Press (Barbell)",
+    performedAt: new Date("2026-09-09T18:00:00Z"),
+    setType: "normal",
+    weightLbs: 185,
+    reps: 5,
+    distanceM: null,
+    durationS: null,
+    spm: null,
+    ...over,
+  });
+
+  it("counts a primary muscle once per working set", () => {
+    const week = weeklyMuscleVolume([effort(), effort()], muscles, "2026-09-07");
+    expect(week.sets.get("chest")).toBe(2);
+  });
+
+  it("counts a secondary muscle half, so a pulling week is not an arm week", () => {
+    const week = weeklyMuscleVolume([effort(), effort()], muscles, "2026-09-07");
+    expect(week.sets.get("triceps")).toBe(1);
+  });
+
+  it("ignores warmups, like every other ranking in this app", () => {
+    const week = weeklyMuscleVolume([effort({ setType: "warmup" })], muscles, "2026-09-07");
+    expect(week.sets.get("chest")).toBeUndefined();
+  });
+
+  it("ignores anything before the week started", () => {
+    const week = weeklyMuscleVolume(
+      [effort({ performedAt: new Date("2026-09-01T18:00:00Z") })],
+      muscles,
+      "2026-09-07",
+    );
+    expect(week.sets.size).toBe(0);
+  });
+
+  it("bands a muscle as hammered at ten and trained below it", () => {
+    const many = Array.from({ length: HAMMERED_AT }, () => effort());
+    const week = weeklyMuscleVolume(many, muscles, "2026-09-07");
+    expect(week.hammered).toContain("chest");
+    // Ten sets of bench gives the triceps five — worked, not hammered.
+    expect(week.trained).toContain("triceps");
+    expect(week.hammered).not.toContain("triceps");
+  });
+
+  it("skips an exercise the catalogue does not know rather than guessing", () => {
+    const week = weeklyMuscleVolume([effort({ exercise: "Mystery Lift" })], muscles, "2026-09-07");
+    expect(week.sets.size).toBe(0);
+  });
+
+  it("does not double-count a muscle listed as both primary and secondary", () => {
+    const odd = new Map([["X", { primary: ["chest"], secondary: ["chest"] }]]);
+    const week = weeklyMuscleVolume([effort({ exercise: "X" })], odd, "2026-09-07");
+    expect(week.sets.get("chest")).toBe(1);
+  });
+});
+
+describe("sessionHeat", () => {
+  const effort = (day: string): Effort => ({
+    exercise: "Bench Press (Barbell)",
+    performedAt: new Date(`${day}T18:00:00Z`),
+    setType: "normal",
+    weightLbs: 185,
+    reps: 5,
+    distanceM: null,
+    durationS: null,
+    spm: null,
+  });
+
+  it("returns every day in the window, empty ones included", () => {
+    // A heatmap with holes cannot be read — the eye counts positions, not dates.
+    const heat = sessionHeat([], "2026-09-09", 7);
+    expect(heat).toHaveLength(7);
+    expect(heat.every((d) => d.sets === 0)).toBe(true);
+  });
+
+  it("ends on today whether or not anything was logged", () => {
+    const heat = sessionHeat([], "2026-09-09", 7);
+    expect(heat[heat.length - 1].day).toBe("2026-09-09");
+  });
+
+  it("counts working sets per day", () => {
+    const heat = sessionHeat([effort("2026-09-08"), effort("2026-09-08")], "2026-09-09", 7);
+    expect(heat.find((d) => d.day === "2026-09-08")?.sets).toBe(2);
+  });
+
+  it("is chronological, oldest first", () => {
+    const heat = sessionHeat([], "2026-09-09", 5);
+    expect(heat.map((d) => d.day)).toEqual([...heat.map((d) => d.day)].sort());
   });
 });

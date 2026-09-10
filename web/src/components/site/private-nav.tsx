@@ -14,18 +14,35 @@ import { usePathname } from "next/navigation";
 /**
  * `except` keeps a section from lighting up on a page that has its own entry.
  *
- * Added with **Train** (V4 §2.12, D-225). The session logger lives at `/private/athletics/log`, and the
- * phone reaches it from the tab bar — but this bar is the *only* navigation above 40rem, and it
- * had no entry for it at all. The single most-used write screen in the app was unreachable on a
- * laptop except by typing the URL, which is what Victor found. Without `except`, Athletics would
- * also light on the logger, because its href is a prefix of the logger's.
+ * It was added with **Train** (V4 §2.12, D-225) when the logger and the record board were two
+ * entries here, and it is unused now — see below — but kept, because the situation it solves
+ * recurs the moment any section grows a page with its own entry.
+ *
+ * ## Nine entries became eight (V4 Phase 2++ Stage 7)
+ *
+ * **Train** and **Athletics** were two of nine top-level items spent on one subject, in a bar
+ * that already scrolls sideways at 1440px — and C-11 in the V4 plan has asked whether nine is
+ * the right number since 2026-09-06. They are one area: you log a session, you look at what the
+ * sessions add up to, you edit the catalogue they are written in, and you read the history.
+ * So this carries **Training**, pointing at the logger because that is the screen you reach for
+ * at a rack, and the four screens inside it are tabs on the page (`training-tabs.tsx`).
  */
-const NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  /** Broader than `href` when an entry stands for more than the page it opens. */
+  match?: string;
+  /** Paths that must *not* light this entry, for a page with an entry of its own. */
+  except?: string[];
+};
+
+const NAV: NavItem[] = [
   { href: "/private", label: "Today" },
   { href: "/private/now", label: "Now" },
   { href: "/private/log", label: "Log" },
-  { href: "/private/athletics/log", label: "Train" },
-  { href: "/private/athletics", label: "Athletics", except: ["/private/athletics/log"] },
+  // `match` is broader than `href`: the entry *goes* to the logger and *lights* for the whole
+  // area, so Records, Exercises and History all keep Training marked.
+  { href: "/private/athletics/log", label: "Training", match: "/private/athletics" },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },
   { href: "/private/calendar", label: "Calendar" },
@@ -41,10 +58,11 @@ export function PrivateNav() {
       {NAV.map((item) => {
         // Exact match for the index, prefix match for the rest — otherwise "/private" would
         // light up on every page underneath it.
+        const prefix = item.match ?? item.href;
         const active =
           item.href === "/private"
             ? pathname === "/private"
-            : pathname.startsWith(item.href) &&
+            : pathname.startsWith(prefix) &&
               !item.except?.some((path) => pathname.startsWith(path));
 
         return (

@@ -11,6 +11,7 @@ import { ErrorPanel } from "@/components/site/error-panel";
 import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
 import { ProposalReview } from "@/components/site/proposal-review";
 import { QuickCapture } from "@/components/site/quick-capture";
+import { RehabChecklist } from "@/components/site/rehab-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { Task } from "@/lib/db/schema";
@@ -28,6 +29,9 @@ import {
 } from "@/lib/tasks/queries";
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
+import { parseRehabProtocol } from "@/lib/athletics/protocol";
+import { rehabCompletionsBetween } from "@/lib/athletics/queries";
+import { isoDay, shiftDay } from "@/lib/athletics/trends";
 import { readVaultFileCached } from "@/lib/vault/write";
 import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
 import { localDay, recentSummaries, recordSummary } from "@/lib/ai/summaries";
@@ -530,6 +534,69 @@ async function SummaryArchive() {
   );
 }
 
+/**
+ * The rehab protocol, mirrored here while it is unfinished (V4 Phase 2++ Stage 7, Phase 5.6).
+ *
+ * ## Why it appears here at all, and why it disappears
+ *
+ * It is four items that have to be done *daily*, and the page they live on is the record board
+ * — which is the page you open after training, not before. Today is the page that answers "what
+ * do I do now", and an unfinished daily protocol is one of the answers.
+ *
+ * **It renders nothing once every item is ticked.** A panel that is always on screen saying
+ * "all done" stops being read within a week, which is the same argument D-165 made for the error
+ * panel above. The one on `/private/athletics` stays put either way: that is its home, and this
+ * is a reminder.
+ *
+ * Silent on any failure. The vault or the database being unreachable is worth saying on the page
+ * that owns this data; here it would be a second error message about someone else's panel.
+ */
+async function RehabToday() {
+  if (!isDatabaseConfigured()) return null;
+
+  const today = isoDay(new Date());
+  const from = shiftDay(today, -13);
+
+  let items: ReturnType<typeof parseRehabProtocol> = [];
+  let done = new Map<string, Set<string>>();
+  try {
+    const [vault, completions] = await Promise.all([
+      readVaultFileCached("context/02_physical_performance/benchmarks_and_logs.md"),
+      rehabCompletionsBetween(db(), from, today),
+    ]);
+    items = parseRehabProtocol(vault.content);
+    done = completions;
+  } catch {
+    return null;
+  }
+
+  if (items.length === 0) return null;
+
+  const todayDone = done.get(today) ?? new Set<string>();
+  if (items.every((item) => todayDone.has(item.slug))) return null;
+
+  const history = Array.from({ length: 14 }, (_, i) => {
+    const day = shiftDay(from, i);
+    return { day, count: done.get(day)?.size ?? 0 };
+  });
+
+  return (
+    <div className="mt-8">
+      <Panel title="Rehab" meta={`${todayDone.size} of ${items.length} today`}>
+        {/* `firstAction={false}`: the capture box above is this page's first action, and two
+            markers make the fold gate measure the wrong one. */}
+        <RehabChecklist
+          items={items}
+          done={todayDone}
+          day={today}
+          history={history}
+          firstAction={false}
+        />
+      </Panel>
+    </div>
+  );
+}
+
 export default async function TodayPage({ searchParams }: PageProps<"/private">) {
   /**
    * `?capture=1` puts the cursor in the capture box on arrival (§3.5, D-178).
@@ -572,6 +639,12 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
         }
       >
         <Tasks focusCapture={focusCapture} />
+      </Suspense>
+
+      {/* Under the tasks and above the schedule: it is a thing to *do*, like the tasks, and it
+          vanishes entirely once the day's items are ticked. */}
+      <Suspense fallback={null}>
+        <RehabToday />
       </Suspense>
 
       {/* Below the tasks, not above them (V3 §3.1).

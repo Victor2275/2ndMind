@@ -56,7 +56,11 @@ const TABS = [
 
 /** Everything that did not earn a tab. Order is by how often it is opened. */
 const MORE = [
+  // The Train tab opens the logger; these are the other three screens in the same area, whose
+  // in-page tabs (V4 Phase 2++ Stage 7) also reach each other once you are on any of them.
   { href: "/private/athletics", label: "Training records" },
+  { href: "/private/athletics/exercises", label: "Exercises" },
+  { href: "/private/athletics/history", label: "Training history" },
   { href: "/private/now", label: "Now" },
   { href: "/private/academics", label: "Academics" },
   { href: "/private/work", label: "Work" },

@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/site/page-shell";
 import { RecentSessions } from "@/components/site/recent-sessions";
 import { SessionLogger } from "@/components/site/session-logger";
+import { TrainingTabs } from "@/components/site/training-tabs";
 
 /**
  * Logging a session (V4 Phase 2.5).
@@ -39,17 +38,8 @@ export default function LogSessionPage() {
     // becomes a table at: a table of six columns wants more than 42rem, and squeezing it into
     // the phone's width would have made the table worse than the cards it replaced.
     <main className="max-w-2xl pb-16 lg:max-w-4xl">
-      <PageHeader eyebrow="Athletics" title="Log a session" />
-
-      {/* The overview is one tap away rather than the default. The tab bar's Train action lands
-          here because logging is what you are doing when you reach for the phone at a rack —
-          reading the record board is what you do afterwards. */}
-      <Link
-        href="/private/athletics"
-        className="mt-2 inline-block font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
-      >
-        records, trends and the protocol →
-      </Link>
+      <PageHeader eyebrow="Training" title="Log a session" />
+      <TrainingTabs />
 
       <div className="mt-6">
         <SessionLogger />
