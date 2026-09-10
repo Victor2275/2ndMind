@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -36,10 +37,15 @@ function prLine(
   return `${record.heaviest.weightLbs} × ${record.heaviest.reps}`;
 }
 
+/** The stable key a row is addressed by — used for `selectedKeys` and as the React key. */
+export const keyFor = (entry: LocalExercise): string =>
+  entry.clientId ?? entry.seedKey ?? entry.name;
+
 export function ExerciseList({
   entries,
   efforts = [],
   onSelect,
+  selectedKeys,
   emptyLabel = "Nothing matches.",
 }: {
   entries: LocalExercise[];
@@ -47,6 +53,13 @@ export function ExerciseList({
   efforts?: Effort[];
   /** Picker mode: a row is a button and this fires instead of linking to the detail page. */
   onSelect?: (entry: LocalExercise) => void;
+  /**
+   * Multi-select mode (V4 Phase 2++ Stage 5): rows whose `keyFor` is in this set show a check
+   * mark instead of the usual glyph. The caller owns the selection — this component only ever
+   * reports a tap through `onSelect`, so toggling, capping a count or clearing it all stay the
+   * caller's decision.
+   */
+  selectedKeys?: ReadonlySet<string>;
   emptyLabel?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -156,13 +169,27 @@ export function ExerciseList({
           <ul className="divide-y divide-border/60 rounded-lg border border-border bg-card/40">
             {list.map((entry) => {
               const pr = prLine(entry, records);
+              const selected = selectedKeys?.has(keyFor(entry)) ?? false;
               const content = (
                 <>
-                  <MuscleMap
-                    primary={entry.primaryMuscles}
-                    secondary={entry.secondaryMuscles}
-                    size={40}
-                  />
+                  {selectedKeys ? (
+                    <span
+                      aria-hidden
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-transparent"
+                      }`}
+                    >
+                      <CheckIcon className="size-3.5" />
+                    </span>
+                  ) : (
+                    <MuscleMap
+                      primary={entry.primaryMuscles}
+                      secondary={entry.secondaryMuscles}
+                      size={40}
+                    />
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-foreground">
                       {entry.name}
@@ -183,11 +210,12 @@ export function ExerciseList({
               );
 
               return (
-                <li key={entry.clientId ?? entry.seedKey ?? entry.name}>
+                <li key={keyFor(entry)}>
                   {onSelect ? (
                     <button
                       type="button"
                       onClick={() => onSelect(entry)}
+                      aria-pressed={selectedKeys ? selected : undefined}
                       className="flex min-h-14 w-full items-center gap-3 px-3 text-left transition-colors hover:bg-primary/10"
                     >
                       {content}

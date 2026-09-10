@@ -102,6 +102,7 @@ const WRITERS = {
       performedAt: new Date(p.performedAt as string),
       title: p.title as string,
       notes: p.notes as string,
+      exerciseNotes: (p.exerciseNotes ?? {}) as Record<string, string>,
       source: "phone",
       // Null on purpose, and load-bearing: `workouts_external_id_idx` is unique, and Postgres
       // treats each null as distinct — so hand-logged sessions never collide with each other
@@ -126,6 +127,9 @@ const WRITERS = {
       durationS: p.durationS as number | null,
       spm: p.spm as number | null,
       rpe: p.rpe as number | null,
+      completedAt: p.completedAt ? new Date(p.completedAt as string) : null,
+      notes: (p.notes ?? "") as string,
+      pieceType: (p.pieceType ?? null) as string | null,
     }),
   },
   exercise: {

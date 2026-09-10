@@ -29,6 +29,9 @@ export type LocalSet = {
   durationS: number | null;
   spm: number | null;
   rpe: number | null;
+  completedAt: string | null;
+  notes: string;
+  pieceType: string | null;
 };
 
 export type LocalSession = {
@@ -36,6 +39,7 @@ export type LocalSession = {
   performedAt: Date;
   title: string;
   notes: string;
+  exerciseNotes: Record<string, string>;
   sets: LocalSet[];
 };
 
@@ -64,6 +68,9 @@ function toSet(row: Row): LocalSet {
     durationS: num(row.durationS),
     spm: num(row.spm),
     rpe: num(row.rpe),
+    completedAt: typeof row.completedAt === "string" ? row.completedAt : null,
+    notes: str(row.notes),
+    pieceType: typeof row.pieceType === "string" ? row.pieceType : null,
   };
 }
 
@@ -135,11 +142,49 @@ export async function localSessions(db: SyncDb): Promise<LocalSession[]> {
       performedAt: new Date(str(row.performedAt)),
       title: str(row.title),
       notes: str(row.notes),
+      exerciseNotes:
+        row.exerciseNotes && typeof row.exerciseNotes === "object"
+          ? (row.exerciseNotes as Record<string, string>)
+          : {},
       sets: [...merged.values()].sort((a, b) => a.setIndex - b.setIndex),
     });
   }
 
   return sessions.sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime());
+}
+
+/**
+ * The most recent sets logged for each exercise, excluding one session — the "previous set"
+ * ghost the logger shows in each input's placeholder (V4 Phase 2++ Stage 5, Hevy's own
+ * single-best feature by Victor's account).
+ *
+ * `sessions` is assumed newest-first, which is what `localSessions` already returns — so the
+ * first session encountered for a given exercise, other than the excluded one, is by
+ * construction the most recent, and nothing here has to re-sort or compare dates.
+ */
+export function mostRecentSetsByExercise(
+  sessions: LocalSession[],
+  excludeSessionId?: string,
+): Map<string, LocalSet[]> {
+  const byExercise = new Map<string, LocalSet[]>();
+  for (const session of sessions) {
+    if (session.clientId === excludeSessionId) continue;
+    const byName = new Map<string, LocalSet[]>();
+    for (const set of session.sets) {
+      const list = byName.get(set.exercise) ?? [];
+      list.push(set);
+      byName.set(set.exercise, list);
+    }
+    for (const [exercise, sets] of byName) {
+      if (!byExercise.has(exercise)) {
+        byExercise.set(
+          exercise,
+          [...sets].sort((a, b) => a.setIndex - b.setIndex),
+        );
+      }
+    }
+  }
+  return byExercise;
 }
 
 /** Every set on this device, flattened — the input shape the PR functions want. */

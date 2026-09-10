@@ -192,6 +192,73 @@ describe("a session and its sets arrive as one op", () => {
   });
 });
 
+describe("tick-to-complete, per-set notes and piece type (V4 Phase 2++ Stage 5)", () => {
+  it("carries completedAt, notes and pieceType through the aggregate op", async () => {
+    await applyOps(db, [
+      op(
+        session(SESSION, [
+          {
+            clientId: SET_A,
+            exercise: "Row (Erg)",
+            setIndex: 0,
+            distanceM: 2000,
+            durationS: 420,
+            completedAt: "2026-09-09T18:05:00.000Z",
+            notes: "felt heavy",
+            pieceType: "steady",
+          },
+        ]),
+      ),
+    ]);
+
+    const [set] = await db.select().from(workoutSets).where(eq(workoutSets.clientId, SET_A));
+    expect(set.completedAt).not.toBeNull();
+    expect(set.notes).toBe("felt heavy");
+    expect(set.pieceType).toBe("steady");
+  });
+
+  it("carries the same three fields through a standalone set edit", async () => {
+    await applyOps(db, [op(session())]);
+
+    await applyOps(db, [
+      op({
+        entity: "workout_set",
+        clientId: SET_A,
+        op: "update",
+        payload: {
+          clientId: SET_A,
+          parentClientId: SESSION,
+          exercise: "Bench Press",
+          setIndex: 0,
+          weightLbs: 185,
+          reps: 5,
+          completedAt: "2026-09-09T18:00:00.000Z",
+          notes: "left shoulder twinge",
+        },
+      }),
+    ]);
+
+    const [set] = await db.select().from(workoutSets).where(eq(workoutSets.clientId, SET_A));
+    expect(set.completedAt).not.toBeNull();
+    expect(set.notes).toBe("left shoulder twinge");
+  });
+
+  it("carries exerciseNotes on the session itself", async () => {
+    await applyOps(db, [
+      op({
+        ...session(),
+        payload: {
+          ...session().payload,
+          exerciseNotes: { "Bench Press": "felt strong today" },
+        },
+      }),
+    ]);
+
+    const [parent] = await db.select().from(workouts);
+    expect(parent.exerciseNotes).toEqual({ "Bench Press": "felt strong today" });
+  });
+});
+
 describe("editing a set after the session exists", () => {
   it("changes one set without resending the session", async () => {
     // §4a: "after creation, sets are independent". Fixing a typo in set three must not mean

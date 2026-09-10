@@ -30,6 +30,13 @@ export const SAVED = 18;
 export const FAILED = [70, 90, 70];
 
 /**
+ * The rest timer reached zero (V4 Phase 2++ Stage 5). Three short pulses — distinct from
+ * `SAVED`'s single tick and from `FAILED`'s two long ones by count alone, which is the
+ * dimension easiest to feel through a pocket without attending to duration.
+ */
+export const RESTED = [40, 60, 40, 60, 40];
+
+/**
  * @param pattern  A duration, or a `[vibrate, pause, vibrate…]` sequence.
  * @returns whether the device accepted it — for tests, not for callers to branch on.
  */
@@ -53,4 +60,9 @@ export function buzzSaved(): boolean {
 /** A flush failed. Distinct from `buzzSaved` by design; see the note above. */
 export function buzzFailed(): boolean {
   return buzz(FAILED);
+}
+
+/** The rest timer reached zero. */
+export function buzzRested(): boolean {
+  return buzz(RESTED);
 }

@@ -46,6 +46,7 @@ const input = (over: Record<string, unknown> = {}) => ({
   performedAt: new Date("2026-09-08T18:00:00.000Z"),
   title: "Push A",
   notes: "",
+  exerciseNotes: {},
   sets: [lift()],
   ...over,
 });
@@ -291,6 +292,9 @@ describe("changing a session after it is saved (Q402)", () => {
     durationS: null,
     spm: null,
     rpe: null,
+    completedAt: null,
+    notes: "",
+    pieceType: null,
   };
 
   it("edits one set without touching the session", async () => {
@@ -330,13 +334,18 @@ describe("changing a session after it is saved (Q402)", () => {
       performedAt: new Date("2026-09-08T18:00:00.000Z"),
       title: "Push B",
       notes: "felt heavy",
+      exerciseNotes: { "Bench Press": "left shoulder" },
     });
 
     expect(result.ok).toBe(true);
     const [op] = await allOps(db);
     expect(op.entity).toBe("workout");
     expect(op.op).toBe("update");
-    expect(op.payload).toMatchObject({ title: "Push B", notes: "felt heavy" });
+    expect(op.payload).toMatchObject({
+      title: "Push B",
+      notes: "felt heavy",
+      exerciseNotes: { "Bench Press": "left shoulder" },
+    });
     expect(op.payload.sets).toEqual([]);
   });
 

@@ -15,6 +15,31 @@ import { ENTITIES, WRITABLE, type Entity } from "@/lib/sync/entities";
 const isoDate = z.iso.datetime({ offset: true });
 
 /**
+ * The fields a set carries, shared between `workout_set` (an edit after the session exists) and
+ * the `sets[]` items inside the `workout` aggregate (V4 Phase 2++ Stage 5) — spread into both
+ * rather than duplicated, so a field added here cannot land on one and not the other.
+ *
+ * `completedAt`, `notes` and `pieceType` are the three Stage 2 added to `workout_sets` and never
+ * wired into this file — the DB column existed, but nothing on the wire could set it, so the
+ * logger's tick-to-complete and per-set notes had a column to write to and no path there. This
+ * is that path.
+ */
+const SET_FIELDS = {
+  exercise: z.string().min(1).max(200),
+  setIndex: z.number().int().min(0).max(500).default(0),
+  setType: z.enum(["normal", "warmup", "failure", "drop"]).default("normal"),
+  weightLbs: z.number().min(0).max(5_000).nullable().default(null),
+  reps: z.number().int().min(0).max(1_000).nullable().default(null),
+  distanceM: z.number().min(0).max(1_000_000).nullable().default(null),
+  durationS: z.number().int().min(0).max(360_000).nullable().default(null),
+  spm: z.number().int().min(0).max(200).nullable().default(null),
+  rpe: z.number().min(0).max(10).nullable().default(null),
+  completedAt: isoDate.nullable().default(null),
+  notes: z.string().max(2_000).default(""),
+  pieceType: z.string().max(40).nullable().default(null),
+};
+
+/**
  * Per-entity payload schemas. These are the *only* columns the phone may set — deliberately
  * not the whole row. `server_seq`, `updated_at` and `id` are the server's, and a client that
  * could set them could rewrite the cursor and make its own changes invisible to itself.
@@ -61,15 +86,7 @@ export const PAYLOADS = {
   workout_set: z.object({
     clientId: z.uuid(),
     parentClientId: z.uuid(),
-    exercise: z.string().min(1).max(200),
-    setIndex: z.number().int().min(0).max(500).default(0),
-    setType: z.enum(["normal", "warmup", "failure", "drop"]).default("normal"),
-    weightLbs: z.number().min(0).max(5_000).nullable().default(null),
-    reps: z.number().int().min(0).max(1_000).nullable().default(null),
-    distanceM: z.number().min(0).max(1_000_000).nullable().default(null),
-    durationS: z.number().int().min(0).max(360_000).nullable().default(null),
-    spm: z.number().int().min(0).max(200).nullable().default(null),
-    rpe: z.number().min(0).max(10).nullable().default(null),
+    ...SET_FIELDS,
   }),
 
   /**
@@ -94,21 +111,12 @@ export const PAYLOADS = {
     performedAt: isoDate,
     title: z.string().max(200).default(""),
     notes: z.string().max(20_000).default(""),
+    /** Per-exercise notes for the session, keyed by exercise name (V4 Phase 2++ Stage 5) — see
+     *  the column's doc in `schema.ts` for why this is keyed by name rather than a per-exercise
+     *  row. */
+    exerciseNotes: z.record(z.string(), z.string().max(2_000)).default({}),
     sets: z
-      .array(
-        z.object({
-          clientId: z.uuid(),
-          exercise: z.string().min(1).max(200),
-          setIndex: z.number().int().min(0).max(500).default(0),
-          setType: z.enum(["normal", "warmup", "failure", "drop"]).default("normal"),
-          weightLbs: z.number().min(0).max(5_000).nullable().default(null),
-          reps: z.number().int().min(0).max(1_000).nullable().default(null),
-          distanceM: z.number().min(0).max(1_000_000).nullable().default(null),
-          durationS: z.number().int().min(0).max(360_000).nullable().default(null),
-          spm: z.number().int().min(0).max(200).nullable().default(null),
-          rpe: z.number().min(0).max(10).nullable().default(null),
-        }),
-      )
+      .array(z.object({ clientId: z.uuid(), ...SET_FIELDS }))
       .max(200)
       .default([]),
   }),

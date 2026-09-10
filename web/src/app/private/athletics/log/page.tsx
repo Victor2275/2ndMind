@@ -34,7 +34,11 @@ export default function LogSessionPage() {
     // Capped rather than filling the layout's 64rem. This is a form, and a 976-pixel-wide row of
     // two inputs on a laptop reads as a mistake — Victor's report was that sessions were missing
     // on a computer, and arriving to a stretched version of the phone screen is only half a fix.
-    <main className="max-w-2xl pb-16">
+    //
+    // The cap lifts at `lg` (V4 Phase 2++ Stage 5), which is the same breakpoint the set list
+    // becomes a table at: a table of six columns wants more than 42rem, and squeezing it into
+    // the phone's width would have made the table worse than the cards it replaced.
+    <main className="max-w-2xl pb-16 lg:max-w-4xl">
       <PageHeader eyebrow="Athletics" title="Log a session" />
 
       {/* The overview is one tap away rather than the default. The tab bar's Train action lands

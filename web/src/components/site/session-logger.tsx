@@ -1,18 +1,28 @@
 "use client";
 
-import { ChevronDownIcon, PlusIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ExerciseList, keyFor } from "@/components/site/exercise-list";
 import { MuscleMap } from "@/components/site/muscle-map";
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { howTo, type Modality } from "@/lib/athletics/catalogue";
-import { searchExercises } from "@/lib/athletics/exercise-search";
 import {
   localCatalogue,
-  localEfforts,
+  localSessions,
   mergeCatalogue,
+  mostRecentSetsByExercise,
   withLocal,
   type LocalExercise,
+  type LocalSet,
+  type LocalSession,
 } from "@/lib/athletics/local";
 import { EQUIPMENT, type Equipment, type Muscle } from "@/lib/athletics/muscles";
 import { estimateOneRepMax, strengthRecords, type Effort } from "@/lib/athletics/prs";
@@ -23,8 +33,13 @@ import {
   saveSession,
   type SetInput,
 } from "@/lib/athletics/session";
-import { buzzSaved } from "@/lib/haptics";
+import { buzzRested, buzzSaved } from "@/lib/haptics";
 import { fetchWithDeadline } from "@/lib/net/deadline";
+
+/** No per-exercise default and no catalogue entry to read one from — the on-screen rest timer
+ *  falls back to this. Ninety seconds is a reasonable compromise across a curl and a squat; the
+ *  point of the editable default is that it does not have to stay that for either. */
+const DEFAULT_REST_SECONDS = 90;
 
 /**
  * Logging a training session (V4 Phase 2.5, Q391–Q400).
@@ -108,6 +123,8 @@ type Block = {
   modality: Modality;
   primaryMuscles: Muscle[];
   secondaryMuscles: Muscle[];
+  /** Rest timer default for this exercise, seconds. Editable per block (V4 Phase 2++ Stage 5). */
+  restSeconds: number;
   sets: SetInput[];
 };
 
@@ -116,12 +133,74 @@ function todayLocal(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
+/**
+ * The on-screen rest countdown (V4 Phase 2++ Stage 5). Starts when a set is ticked complete,
+ * sits in a sticky header so it is visible while scrolling to the next exercise, and buzzes
+ * once at zero — no push notification, per Victor's answer: this is a screen you are looking at,
+ * not one you have put down.
+ */
+function RestTimer({
+  timer,
+  onDismiss,
+}: {
+  timer: { startedAt: number; seconds: number } | null;
+  onDismiss: () => void;
+}) {
+  /**
+   * The countdown is **state**, not a value computed from `Date.now()` during render.
+   *
+   * Reading the clock while rendering is an impure render — the same props would produce a
+   * different tree a second later, which is what `react-hooks/purity` objects to and what makes
+   * a component behave differently under a concurrent re-render than under a normal one. The
+   * parent keys this component by `startedAt`, so a fresh timer remounts and this initialiser
+   * runs again with the new duration; only the interval below writes to it after that.
+   */
+  const [remaining, setRemaining] = useState(() => timer?.seconds ?? 0);
+
+  useEffect(() => {
+    if (!timer) return;
+    const id = setInterval(() => {
+      const left = timer.seconds - Math.floor((Date.now() - timer.startedAt) / 1000);
+      if (left <= 0) {
+        buzzRested();
+        onDismiss();
+      } else {
+        setRemaining(left);
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [timer, onDismiss]);
+
+  if (!timer) return null;
+
+  const mm = Math.floor(remaining / 60);
+  const ss = remaining % 60;
+
+  return (
+    <div className="sticky top-2 z-20 flex items-center justify-between gap-3 rounded-md border border-primary/40 bg-background/95 px-3 py-2 shadow-floating backdrop-blur-sm">
+      <span className="tabular font-mono text-lg text-primary">
+        {mm}:{String(ss).padStart(2, "0")}
+      </span>
+      <span className="text-xs text-muted-foreground">Rest</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="min-h-8 rounded-md px-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Skip
+      </button>
+    </div>
+  );
+}
+
 export function SessionLogger() {
   const [mirrored, setMirrored] = useState<LocalExercise[]>([]);
-  const [efforts, setEfforts] = useState<Effort[]>([]);
+  const [sessions, setSessions] = useState<LocalSession[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [exerciseNotes, setExerciseNotes] = useState<Record<string, string>>({});
+  const [restTimer, setRestTimer] = useState<{ startedAt: number; seconds: number } | null>(null);
   const [performedAt, setPerformedAt] = useState(todayLocal);
   const [picking, setPicking] = useState(false);
   const [state, setState] = useState<{ ok: boolean; message: string } | null>(null);
@@ -163,17 +242,40 @@ export function SessionLogger() {
   useEffect(() => {
     let cancelled = false;
     void withLocal(async (db) => {
-      const [list, history] = await Promise.all([localCatalogue(db), localEfforts(db)]);
+      const [list, history] = await Promise.all([localCatalogue(db), localSessions(db)]);
       if (cancelled) return;
       setMirrored(list);
-      setEfforts(history);
+      setSessions(history);
     });
     return () => {
       cancelled = true;
     };
   }, [generation]);
 
+  const efforts = useMemo<Effort[]>(
+    () =>
+      sessions.flatMap((session) =>
+        session.sets.map((set) => ({
+          exercise: set.exercise,
+          performedAt: session.performedAt,
+          setType: set.setType,
+          weightLbs: set.weightLbs,
+          reps: set.reps,
+          distanceM: set.distanceM,
+          durationS: set.durationS,
+          spm: set.spm,
+        })),
+      ),
+    [sessions],
+  );
   const records = useMemo(() => strengthRecords(efforts), [efforts]);
+
+  /** Previous-set ghosts (V4 Phase 2++ Stage 5) — Hevy's single best feature, by Victor's own
+   *  account. Excludes the session being drafted, so a set just typed is never its own ghost. */
+  const previousByExercise = useMemo(
+    () => mostRecentSetsByExercise(sessions, sessionId),
+    [sessions, sessionId],
+  );
 
   const addBlock = useCallback((entry: LocalExercise) => {
     setBlocks((current) => [
@@ -184,10 +286,32 @@ export function SessionLogger() {
         modality: entry.modality,
         primaryMuscles: entry.primaryMuscles,
         secondaryMuscles: entry.secondaryMuscles,
+        restSeconds: entry.restSeconds ?? DEFAULT_REST_SECONDS,
         sets: [emptySet(entry.name, 0)],
       },
     ]);
     setPicking(false);
+  }, []);
+
+  /** Multi-select add (V4 Phase 2++ Stage 5, Q-per-plan "Add 3 exercises" in one pass). */
+  const addBlocks = useCallback((entries: LocalExercise[]) => {
+    setBlocks((current) => [
+      ...current,
+      ...entries.map((entry) => ({
+        id: crypto.randomUUID(),
+        exercise: entry.name,
+        modality: entry.modality,
+        primaryMuscles: entry.primaryMuscles,
+        secondaryMuscles: entry.secondaryMuscles,
+        restSeconds: entry.restSeconds ?? DEFAULT_REST_SECONDS,
+        sets: [emptySet(entry.name, 0)],
+      })),
+    ]);
+    setPicking(false);
+  }, []);
+
+  const startRest = useCallback((seconds: number) => {
+    setRestTimer({ startedAt: Date.now(), seconds });
   }, []);
 
   const totals = useMemo(() => {
@@ -210,6 +334,7 @@ export function SessionLogger() {
         performedAt: new Date(performedAt),
         title,
         notes,
+        exerciseNotes,
         sets: blocks.flatMap((block) =>
           block.sets.map((set) => ({ ...set, exercise: block.exercise })),
         ),
@@ -229,11 +354,19 @@ export function SessionLogger() {
       setBlocks([]);
       setTitle("");
       setNotes("");
+      setExerciseNotes({});
+      setRestTimer(null);
     }
   }
 
   return (
     <div className="space-y-5">
+      <RestTimer
+        key={restTimer?.startedAt ?? "idle"}
+        timer={restTimer}
+        onDismiss={() => setRestTimer(null)}
+      />
+
       {/*
        * Two fields, and they wrap rather than compete.
        *
@@ -291,26 +424,43 @@ export function SessionLogger() {
           key={block.id}
           block={block}
           record={records.find((r) => r.exercise === block.exercise) ?? null}
+          previous={previousByExercise.get(block.exercise) ?? []}
+          exerciseNote={exerciseNotes[block.exercise] ?? ""}
+          onExerciseNoteChange={(text) =>
+            setExerciseNotes((current) => ({ ...current, [block.exercise]: text }))
+          }
           onChange={(next) =>
             setBlocks((current) => current.map((b, i) => (i === blockIndex ? next : b)))
           }
           onRemove={() => setBlocks((current) => current.filter((_, i) => i !== blockIndex))}
+          onStartRest={startRest}
         />
       ))}
 
-      {picking ? (
-        <ExercisePicker
-          catalogue={catalogue}
-          onPick={addBlock}
-          onAdded={(entry) => {
+      <ExercisePicker
+        open={picking}
+        onOpenChange={setPicking}
+        catalogue={catalogue}
+        efforts={efforts}
+        onAdd={(entries) => {
+          const created = entries.filter(
+            (e) => !catalogue.some((c) => c.seedKey === e.seedKey && c.name === e.name),
+          );
+          if (created.length > 0) {
             setMirrored((current) =>
-              [...current, entry].sort((a, b) => a.name.localeCompare(b.name)),
+              [...current, ...created].sort((a, b) => a.name.localeCompare(b.name)),
             );
-            addBlock(entry);
-          }}
-          onCancel={() => setPicking(false)}
-        />
-      ) : (
+          }
+          addBlocks(entries);
+        }}
+        onCreated={(entry) => {
+          setMirrored((current) =>
+            [...current, entry].sort((a, b) => a.name.localeCompare(b.name)),
+          );
+          addBlock(entry);
+        }}
+      />
+      {!picking && (
         <button
           type="button"
           onClick={() => setPicking(true)}
@@ -360,13 +510,22 @@ export function SessionLogger() {
 function ExerciseBlock({
   block,
   record,
+  previous,
+  exerciseNote,
+  onExerciseNoteChange,
   onChange,
   onRemove,
+  onStartRest,
 }: {
   block: Block;
   record: ReturnType<typeof strengthRecords>[number] | null;
+  /** Last time's sets for this exercise, for the ghost placeholders (V4 Phase 2++ Stage 5). */
+  previous: LocalSet[];
+  exerciseNote: string;
+  onExerciseNoteChange: (text: string) => void;
   onChange: (next: Block) => void;
   onRemove: () => void;
+  onStartRest: (seconds: number) => void;
 }) {
   const columns = FIELDS_FOR[block.modality];
   const [showing, setShowing] = useState(false);
@@ -383,22 +542,46 @@ function ExerciseBlock({
   };
 
   /**
+   * Tick to complete (V4 Phase 2++ Stage 5). Ticking on starts the rest timer and dims the row;
+   * ticking back off — a mis-tap — clears both the mark and, silently, nothing else: the numbers
+   * typed stay exactly as they were.
+   */
+  const toggleComplete = (index: number) => {
+    const set = block.sets[index];
+    const completing = set.completedAt === null;
+    onChange({
+      ...block,
+      sets: block.sets.map((s, i) =>
+        i === index ? { ...s, completedAt: completing ? new Date().toISOString() : null } : s,
+      ),
+    });
+    if (completing) onStartRest(block.restSeconds);
+  };
+
+  /**
    * Q400. "Same again" copies the previous row rather than adding a blank one.
    *
    * Straight sets are the common case — three sets of five at the same weight is one number
    * typed once, not three times — and an empty row that you then fill identically is exactly the
-   * friction Q392's three-taps target is about.
+   * friction Q392's three-taps target is about. The copy starts un-ticked and un-noted — those
+   * are facts about this rep, not the last one.
    */
   const addSet = () => {
-    const previous = block.sets[block.sets.length - 1];
-    const next = previous
-      ? { ...previous, setIndex: block.sets.length }
+    const last = block.sets[block.sets.length - 1];
+    const next = last
+      ? { ...last, setIndex: block.sets.length, completedAt: null, notes: "" }
       : emptySet(block.exercise, block.sets.length);
     onChange({ ...block, sets: [...block.sets, next] });
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card/40 p-3">
+    <section
+      className={`rounded-lg border border-border bg-card/40 p-3 transition-colors ${
+        block.sets.length > 0 && block.sets.every((s) => s.completedAt !== null)
+          ? "border-success/30 bg-success/5"
+          : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm text-foreground">{block.exercise}</h3>
@@ -413,6 +596,21 @@ function ExerciseBlock({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {/* Rest default, editable per exercise (V4 Phase 2++ Stage 5). */}
+          <label className="flex items-center gap-1 font-mono text-[0.6rem] text-muted-foreground">
+            <span className="sr-only">Rest, seconds, for {block.exercise}</span>
+            <input
+              type="number"
+              min={0}
+              step={5}
+              value={block.restSeconds}
+              onChange={(event) =>
+                onChange({ ...block, restSeconds: Number(event.target.value) || 0 })
+              }
+              className="tabular w-12 rounded border border-border bg-card/60 px-1 py-1 text-right"
+            />
+            s rest
+          </label>
           {/* Collapsed by default. The diagram and the cues are reference — useful the first few
               times you program a movement and pure clutter on the four hundredth bench press, so
               they are one tap away rather than occupying the screen you are typing into. */}
@@ -459,83 +657,258 @@ function ExerciseBlock({
         </div>
       )}
 
+      {/* Per-exercise note — "left knee bothered me on squats" — separate from a per-set one. */}
+      <input
+        value={exerciseNote}
+        onChange={(event) => onExerciseNoteChange(event.target.value)}
+        placeholder="Note for this exercise"
+        className="mt-2 min-h-9 w-full rounded-md border border-border/60 bg-background/30 px-2 text-xs text-foreground placeholder:text-muted-foreground/70 focus:border-primary/60 focus:outline-none"
+      />
+
       {/*
-       * One set per row on a phone, two columns of controls inside it (D-220).
+       * Cards on the phone, a table above 64rem (V4 Phase 2++ Stage 5, D-220 still applies — no
+       * width lives in a shared class constant, only at the call site).
        *
-       * The previous version put the number, every value field, a four-option select and a delete
-       * button on one flex line. Even with the width bug fixed that is five controls in 324
-       * pixels, and an erg piece has three value fields rather than two, so it was never going to
-       * fit. Here the values get the full width and the set type is a row of chips underneath,
-       * which is also fewer taps than a select: one, rather than open-scroll-choose.
+       * The previous version put the number, every value field, a four-option select and a
+       * delete button on one flex line. Even with the width bug fixed that is five controls in
+       * 324 pixels, and an erg piece has three value fields rather than two, so it was never
+       * going to fit on a phone. Here the values get the full width and the set type is a row of
+       * chips underneath. A laptop has the room a table wants — one row per set, values as
+       * columns — which reads faster once there is more than a handful of sets.
        */}
-      <ol className="mt-3 space-y-3">
-        {block.sets.map((set, index) => (
-          <li key={index} className="rounded-md border border-border/60 bg-background/30 p-2.5">
-            <div className="flex items-center justify-between gap-2">
-              {/* Q399. Numbered, so "add ten pounds on set three" has something to point at. */}
-              <span className="font-mono text-xs text-muted-foreground">Set {index + 1}</span>
-              <button
-                type="button"
-                onClick={() =>
-                  onChange({ ...block, sets: block.sets.filter((_, i) => i !== index) })
-                }
-                aria-label={`Delete set ${index + 1}`}
-                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
-              >
-                <Trash2Icon className="icon-sm" aria-hidden />
-              </button>
-            </div>
-
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {columns.map((column) => (
-                <div key={String(column)} className="min-w-0">
-                  <label className={LABEL} htmlFor={`s-${block.id}-${index}-${String(column)}`}>
-                    {COLUMN_LABEL[column]}
-                  </label>
-                  <input
-                    id={`s-${block.id}-${index}-${String(column)}`}
-                    inputMode="decimal"
-                    value={set[column] === null ? "" : String(set[column])}
-                    onChange={(event) => setField(index, column, event.target.value)}
-                    className={`${FIELD} mt-1 font-mono`}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* A radiogroup rather than a `<select>`: four options is few enough to show, and a
-                native select on Android is a full-screen modal for a choice that is "normal"
-                ninety-five percent of the time. */}
-            <div
-              role="radiogroup"
-              aria-label={`Set ${index + 1} type`}
-              className="mt-2 flex flex-wrap gap-1"
+      <ol className="mt-3 space-y-3 lg:hidden">
+        {block.sets.map((set, index) => {
+          const ghost = previous[index];
+          const done = set.completedAt !== null;
+          return (
+            <li
+              key={index}
+              className={`rounded-md border p-2.5 transition-colors ${
+                done
+                  ? "border-success/30 bg-success/5 opacity-70"
+                  : "border-border/60 bg-background/30"
+              }`}
             >
-              {SET_TYPES.map((type) => (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {/* Tick to complete. The row dims once every value is locked in, which is the
+                      visual cue that this set is done and the next one is the one to look at. */}
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={done}
+                    aria-label={`Mark set ${index + 1} ${done ? "not done" : "done"}`}
+                    onClick={() => toggleComplete(index)}
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                      done
+                        ? "border-success/50 bg-success/20 text-success"
+                        : "border-border text-transparent hover:border-primary/50"
+                    }`}
+                  >
+                    <CheckIcon className="icon-sm" aria-hidden />
+                  </button>
+                  {/* Q399. Numbered, so "add ten pounds on set three" has something to point at. */}
+                  <span className="font-mono text-xs text-muted-foreground">Set {index + 1}</span>
+                </div>
                 <button
-                  key={type}
                   type="button"
-                  role="radio"
-                  aria-checked={set.setType === type}
                   onClick={() =>
-                    onChange({
-                      ...block,
-                      sets: block.sets.map((s, i) => (i === index ? { ...s, setType: type } : s)),
-                    })
+                    onChange({ ...block, sets: block.sets.filter((_, i) => i !== index) })
                   }
-                  className={`min-h-9 rounded-md border px-2.5 font-mono text-[0.65rem] transition-colors ${
-                    set.setType === type
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
+                  aria-label={`Delete set ${index + 1}`}
+                  className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
                 >
-                  {type}
+                  <Trash2Icon className="icon-sm" aria-hidden />
                 </button>
-              ))}
-            </div>
-          </li>
-        ))}
+              </div>
+
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {columns.map((column) => (
+                  <div key={String(column)} className="min-w-0">
+                    <label className={LABEL} htmlFor={`s-${block.id}-${index}-${String(column)}`}>
+                      {COLUMN_LABEL[column]}
+                    </label>
+                    <input
+                      id={`s-${block.id}-${index}-${String(column)}`}
+                      inputMode="decimal"
+                      value={set[column] === null ? "" : String(set[column])}
+                      onChange={(event) => setField(index, column, event.target.value)}
+                      // Previous-set ghost (V4 Phase 2++ Stage 5) — Hevy's single best feature,
+                      // by Victor's account. Shown only where this set has nothing typed yet, so
+                      // it never hides a real, deliberately-cleared value.
+                      placeholder={
+                        ghost && ghost[column] !== null ? String(ghost[column]) : undefined
+                      }
+                      className={`${FIELD} mt-1 font-mono`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* A radiogroup rather than a `<select>`: four options is few enough to show, and a
+                  native select on Android is a full-screen modal for a choice that is "normal"
+                  ninety-five percent of the time. */}
+              <div
+                role="radiogroup"
+                aria-label={`Set ${index + 1} type`}
+                className="mt-2 flex flex-wrap gap-1"
+              >
+                {SET_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    role="radio"
+                    aria-checked={set.setType === type}
+                    onClick={() =>
+                      onChange({
+                        ...block,
+                        sets: block.sets.map((s, i) => (i === index ? { ...s, setType: type } : s)),
+                      })
+                    }
+                    className={`min-h-9 rounded-md border px-2.5 font-mono text-[0.65rem] transition-colors ${
+                      set.setType === type
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                value={set.notes}
+                onChange={(event) =>
+                  onChange({
+                    ...block,
+                    sets: block.sets.map((s, i) =>
+                      i === index ? { ...s, notes: event.target.value } : s,
+                    ),
+                  })
+                }
+                placeholder="Note for this set"
+                className="mt-2 min-h-8 w-full rounded-md border border-border/50 bg-background/40 px-2 text-[0.7rem] text-foreground placeholder:text-muted-foreground/60 focus:border-primary/60 focus:outline-none"
+              />
+            </li>
+          );
+        })}
       </ol>
+
+      {/* The desktop table — same data, same handlers, laid out as columns rather than cards. */}
+      <div className="mt-3 hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[40rem] text-left">
+          <thead>
+            <tr className="border-b border-border text-[0.65rem] text-muted-foreground">
+              <th className="w-10 py-1.5"></th>
+              <th className="w-10 py-1.5 font-mono">#</th>
+              {columns.map((column) => (
+                <th key={String(column)} className="py-1.5 font-mono">
+                  {COLUMN_LABEL[column]}
+                </th>
+              ))}
+              <th className="py-1.5 font-mono">Type</th>
+              <th className="py-1.5 font-mono">Note</th>
+              <th className="w-10 py-1.5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {block.sets.map((set, index) => {
+              const ghost = previous[index];
+              const done = set.completedAt !== null;
+              return (
+                <tr
+                  key={index}
+                  className={`border-b border-border/40 last:border-0 ${done ? "opacity-70" : ""}`}
+                >
+                  <td className="py-1.5">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={done}
+                      aria-label={`Mark set ${index + 1} ${done ? "not done" : "done"}`}
+                      onClick={() => toggleComplete(index)}
+                      className={`flex size-8 items-center justify-center rounded-md border transition-colors ${
+                        done
+                          ? "border-success/50 bg-success/20 text-success"
+                          : "border-border text-transparent hover:border-primary/50"
+                      }`}
+                    >
+                      <CheckIcon className="icon-sm" aria-hidden />
+                    </button>
+                  </td>
+                  <td className="tabular py-1.5 font-mono text-xs text-muted-foreground">
+                    {index + 1}
+                  </td>
+                  {columns.map((column) => (
+                    <td key={String(column)} className="py-1.5 pr-2">
+                      <input
+                        aria-label={`Set ${index + 1} ${COLUMN_LABEL[column]}`}
+                        inputMode="decimal"
+                        value={set[column] === null ? "" : String(set[column])}
+                        onChange={(event) => setField(index, column, event.target.value)}
+                        placeholder={
+                          ghost && ghost[column] !== null ? String(ghost[column]) : undefined
+                        }
+                        className="w-20 rounded-md border border-border bg-card/60 px-2 py-1 font-mono text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
+                      />
+                    </td>
+                  ))}
+                  <td className="py-1.5 pr-2">
+                    <select
+                      aria-label={`Set ${index + 1} type`}
+                      value={set.setType}
+                      onChange={(event) =>
+                        onChange({
+                          ...block,
+                          sets: block.sets.map((s, i) =>
+                            i === index
+                              ? { ...s, setType: event.target.value as SetInput["setType"] }
+                              : s,
+                          ),
+                        })
+                      }
+                      className="rounded-md border border-border bg-card/60 px-2 py-1 font-mono text-xs text-foreground"
+                    >
+                      {SET_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-1.5 pr-2">
+                    <input
+                      aria-label={`Set ${index + 1} note`}
+                      value={set.notes}
+                      onChange={(event) =>
+                        onChange({
+                          ...block,
+                          sets: block.sets.map((s, i) =>
+                            i === index ? { ...s, notes: event.target.value } : s,
+                          ),
+                        })
+                      }
+                      className="w-36 rounded-md border border-border bg-card/60 px-2 py-1 text-xs text-foreground"
+                    />
+                  </td>
+                  <td className="py-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({ ...block, sets: block.sets.filter((_, i) => i !== index) })
+                      }
+                      aria-label={`Delete set ${index + 1}`}
+                      className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+                    >
+                      <Trash2Icon className="icon-sm" aria-hidden />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <button
         type="button"
@@ -549,30 +922,69 @@ function ExerciseBlock({
 }
 
 /**
- * Choosing what to log (Q391).
+ * Choosing what to log — a sheet over the session, sharing one list with the browser page
+ * (Q391; rebuilt for V4 Phase 2++ Stage 5).
  *
- * Fuzzy search over the catalogue, so it works with no signal — see
- * `lib/athletics/exercise-search.ts` for why it is fuzzy rather than the prefix match the log
- * search uses.
+ * ## One component, two screens
+ *
+ * The rows, the grouping, the filters and the fuzzy search are `ExerciseList`, the same component
+ * `/private/athletics/exercises` renders. That is the plan's instruction and it is worth stating
+ * why: a picker and a browser ask the same question — *which exercise* — and the previous version
+ * answered it twice, with a hand-rolled result list here that had no grouping, no filters and no
+ * archived handling, drifting further from the browser with every change to either.
+ *
+ * ## Multi-select
+ *
+ * Tapping a row selects rather than adds. "Add 3 exercises" in one pass is Victor's answer, and
+ * it is the difference between planning a session in one visit to this sheet and opening it once
+ * per movement. A single tap on **Add** with nothing selected is still the fast path for one.
+ *
+ * ## Creating from here
+ *
+ * Kept, because the movement you want at 6am is sometimes not in the catalogue at all. It has its
+ * own name field rather than reusing the list's search box: the list's search is *finding*, and
+ * conflating the two is what makes "Add 'ben'" a plausible mis-tap. AI-assist proposes and never
+ * writes (D-186), same as everywhere else it appears.
  */
 function ExercisePicker({
+  open,
+  onOpenChange,
   catalogue,
-  onPick,
-  onAdded,
-  onCancel,
+  efforts,
+  onAdd,
+  onCreated,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   catalogue: LocalExercise[];
-  onPick: (entry: LocalExercise) => void;
-  onAdded: (entry: LocalExercise) => void;
-  onCancel: () => void;
+  efforts: Effort[];
+  onAdd: (entries: LocalExercise[]) => void;
+  onCreated: (entry: LocalExercise) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [newName, setNewName] = useState("");
   const [suggestion, setSuggestion] = useState<NewExerciseInput | null>(null);
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const results = useMemo(() => searchExercises(catalogue, query, 30), [catalogue, query]);
-  const exact = results.some((entry) => entry.name.toLowerCase() === query.trim().toLowerCase());
+  const selectedKeys = useMemo(() => new Set(selected), [selected]);
+
+  function toggle(entry: LocalExercise) {
+    const key = keyFor(entry);
+    setSelected((current) =>
+      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
+    );
+  }
+
+  function addSelected() {
+    // Selection order, not list order: three exercises picked in the order you plan to do them
+    // should arrive in that order, which is the only ordering information the tap sequence has.
+    const byKey = new Map(catalogue.map((entry) => [keyFor(entry), entry]));
+    const entries = selected.map((key) => byKey.get(key)).filter((e): e is LocalExercise => !!e);
+    if (entries.length === 0) return;
+    setSelected([]);
+    onAdd(entries);
+  }
 
   async function createIt(input: NewExerciseInput, source: "manual" | "ai") {
     const result = await addExercise({
@@ -584,11 +996,12 @@ function ExercisePicker({
       source,
     });
     if (result.ok) {
-      // No seedKey, no aliases, no how-to yet — a fresh row is exactly that until someone
-      // fills the rest in from the exercise detail page. `clientId` came back from the write
-      // itself, generated client-side, so this is editable/archivable immediately rather than
-      // only after the next sync.
-      onAdded({
+      setNewName("");
+      setSuggestion(null);
+      // No seedKey, no aliases, no how-to yet — a fresh row is exactly that until someone fills
+      // the rest in from the exercise detail page. `clientId` came back from the write itself,
+      // generated client-side, so it is editable immediately rather than only after a sync.
+      onCreated({
         seedKey: null,
         clientId: result.clientId ?? null,
         name: input.name,
@@ -611,10 +1024,9 @@ function ExercisePicker({
   /**
    * Q391's "AI ADD". It **proposes**; adding is still a tap of yours (D-186).
    *
-   * The most useful answer is usually that the movement is already in the catalogue under a
-   * name you did not think of, so a match is offered as a row to pick rather than something
-   * created — near-duplicates split an exercise's history in two and quietly lower the best on
-   * both halves.
+   * The most useful answer is usually that the movement is already in the catalogue under a name
+   * you did not think of, so a match is added straight away rather than duplicated —
+   * near-duplicates split an exercise's history in two and quietly lower the best on both halves.
    */
   async function ask() {
     setAsking(true);
@@ -626,16 +1038,14 @@ function ExercisePicker({
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text: query.trim() }),
+          body: JSON.stringify({ text: newName.trim() }),
         },
         "report",
       );
 
-      // The route's own shape — a proposed creation still speaks the old flat `muscles`, which
-      // Stage 4 (AI-assist on the create form) is where that gets upgraded to primary/secondary.
-      // Bridged here rather than left broken: every suggested muscle becomes primary, and an
-      // equipment guess outside the closed vocabulary falls back to "other" rather than being
-      // silently invalid.
+      // The route's own shape — a proposed creation still speaks the old flat `muscles`. Bridged
+      // here rather than left broken: every suggested muscle becomes primary, and an equipment
+      // guess outside the closed vocabulary falls back to "other" rather than being invalid.
       const data = (await response.json()) as {
         match?: string | null;
         create?: { name: string; modality: Modality; muscles: string[]; equipment: string } | null;
@@ -649,7 +1059,8 @@ function ExercisePicker({
 
       const matched = data.match ? catalogue.find((entry) => entry.name === data.match) : undefined;
       if (matched) {
-        onPick(matched);
+        setNewName("");
+        onAdd([matched]);
         return;
       }
 
@@ -678,62 +1089,52 @@ function ExercisePicker({
   }
 
   return (
-    <section className="rounded-lg border border-primary/40 bg-card/60 p-3">
-      <div className="flex items-center gap-2">
-        <SearchIcon className="icon-sm shrink-0 text-muted-foreground" aria-hidden />
-        <input
-          autoFocus
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search exercises"
-          aria-label="Search exercises"
-          autoComplete="off"
-          className={FIELD}
-        />
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Cancel"
-          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <XIcon className="icon-sm" aria-hidden />
-        </button>
-      </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* Right rather than bottom: on a laptop this is the plan's second column — the session
+          stays visible on the left while you pick — and on a phone it is a full-height panel,
+          which is what a list of a hundred and forty rows wants either way. */}
+      <SheetContent side="right" className="w-full gap-0 sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Add exercises</SheetTitle>
+          <SheetDescription>
+            Tap to select as many as you want, then add them in one pass.
+          </SheetDescription>
+        </SheetHeader>
 
-      <ul className="mt-2 max-h-64 overflow-y-auto">
-        {results.map((entry) => (
-          <li key={entry.name}>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4">
+          <ExerciseList
+            entries={catalogue}
+            efforts={efforts}
+            onSelect={toggle}
+            selectedKeys={selectedKeys}
+            emptyLabel="Nothing matches. Add it by name below."
+          />
+        </div>
+
+        <div className="border-t border-border p-4">
+          <div className="flex gap-2">
+            <input
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              placeholder="Add a movement by name"
+              aria-label="Add a movement by name"
+              autoComplete="off"
+              className={FIELD}
+            />
             <button
               type="button"
-              onClick={() => onPick(entry)}
-              className="flex min-h-11 w-full items-center gap-3 rounded-md px-2 text-left text-sm text-foreground transition-colors hover:bg-primary/10"
+              onClick={() => void ask()}
+              disabled={asking || newName.trim() === ""}
+              className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
             >
-              {/* Small enough to be a glyph rather than a picture: at 40px the question it answers
-                  is "is this the push or the pull one", which is exactly the question you have
-                  while scanning a list of similar names. */}
-              <MuscleMap
-                primary={entry.primaryMuscles}
-                secondary={entry.secondaryMuscles}
-                size={40}
-              />
-              <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-              <span className="shrink-0 font-mono text-[0.6rem] text-muted-foreground">
-                {entry.primaryMuscles.slice(0, 2).join(" · ") || entry.modality}
-              </span>
+              {asking ? "Asking…" : "AI"}
             </button>
-          </li>
-        ))}
-      </ul>
-
-      {query.trim() !== "" && !exact && (
-        <div className="mt-2 space-y-2">
-          <div className="flex gap-2">
             <button
               type="button"
               onClick={() =>
                 void createIt(
                   {
-                    name: query.trim(),
+                    name: newName.trim(),
                     modality: "lift",
                     equipment: "other",
                     primaryMuscles: [],
@@ -742,22 +1143,15 @@ function ExercisePicker({
                   "manual",
                 )
               }
-              className="min-h-10 flex-1 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-            >
-              Add “{query.trim()}”
-            </button>
-            <button
-              type="button"
-              onClick={() => void ask()}
-              disabled={asking}
+              disabled={newName.trim() === ""}
               className="min-h-10 shrink-0 rounded-md border border-dashed border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60"
             >
-              {asking ? "Asking…" : "AI add"}
+              Add
             </button>
           </div>
 
           {suggestion && (
-            <div className="rounded-md border border-primary/40 bg-primary/5 p-2">
+            <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-2">
               <p className="text-sm text-foreground">{suggestion.name}</p>
               <p className="mt-0.5 font-mono text-[0.6rem] text-muted-foreground">
                 {suggestion.modality}
@@ -778,13 +1172,24 @@ function ExercisePicker({
           )}
 
           {problem && (
-            <p role="status" className="text-xs text-muted-foreground">
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
               {problem}
             </p>
           )}
+
+          <button
+            type="button"
+            onClick={addSelected}
+            disabled={selected.length === 0}
+            className="mt-3 min-h-11 w-full rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          >
+            {selected.length === 0
+              ? "Select an exercise"
+              : `Add ${selected.length} exercise${selected.length === 1 ? "" : "s"}`}
+          </button>
         </div>
-      )}
-    </section>
+      </SheetContent>
+    </Sheet>
   );
 }
 

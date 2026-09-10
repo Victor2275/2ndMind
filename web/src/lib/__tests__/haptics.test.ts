@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buzz, buzzFailed, buzzSaved, FAILED, SAVED } from "@/lib/haptics";
+import { buzz, buzzFailed, buzzRested, buzzSaved, FAILED, RESTED, SAVED } from "@/lib/haptics";
 
 /**
  * §3.3. The property worth a test rather than a comment: **a failure must never feel like a
@@ -36,6 +36,21 @@ describe("the two patterns", () => {
     expect(vibrate).toHaveBeenLastCalledWith(SAVED);
     buzzFailed();
     expect(vibrate).toHaveBeenLastCalledWith(FAILED);
+  });
+});
+
+describe("the rest timer's pattern (V4 Phase 2++ Stage 5)", () => {
+  it("is distinct from both SAVED and FAILED by pulse count", () => {
+    expect(Array.isArray(RESTED)).toBe(true);
+    expect(RESTED.length).not.toBe(FAILED.length);
+    // Three pulses, not one and not two — SAVED is a single number, FAILED is two pulses.
+    expect(RESTED.filter((_, i) => i % 2 === 0)).toHaveLength(3);
+  });
+
+  it("sends its own pattern", () => {
+    const vibrate = withVibrate(() => true);
+    buzzRested();
+    expect(vibrate).toHaveBeenLastCalledWith(RESTED);
   });
 });
 

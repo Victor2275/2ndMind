@@ -33,12 +33,23 @@ export type SetInput = {
   durationS: number | null;
   spm: number | null;
   rpe: number | null;
+  /** Set when tick-to-complete marks a row done (V4 Phase 2++ Stage 5). Null for a set logged
+   *  the old way — plain entry, no tick — which is honest rather than a gap. */
+  completedAt: string | null;
+  /** Per-set note — "felt heavy", "left knee" — distinct from `exerciseNotes` below. */
+  notes: string;
+  /** What the piece *was*, orthogonal to `setType` — see the column's doc in `schema.ts`. */
+  pieceType: string | null;
 };
 
 export type SessionInput = {
   performedAt: Date;
   title: string;
   notes: string;
+  /** Per-exercise notes for the whole session, keyed by exercise name — there is no per-exercise
+   *  row in this schema, only per-set ones, and a note on set 1 must survive set 1 being
+   *  deleted. */
+  exerciseNotes: Record<string, string>;
   sets: SetInput[];
 };
 
@@ -70,6 +81,9 @@ export function emptySet(exercise: string, setIndex: number): SetInput {
     durationS: null,
     spm: null,
     rpe: null,
+    completedAt: null,
+    notes: "",
+    pieceType: null,
   };
 }
 
@@ -121,6 +135,7 @@ export async function saveSession(input: SessionInput, clientId: string): Promis
           performedAt: input.performedAt.toISOString(),
           title: input.title.trim(),
           notes: input.notes.trim(),
+          exerciseNotes: input.exerciseNotes,
           // Renumbered on the way out, so deleting the second of four sets leaves 0,1,2
           // rather than a gap. The index is what "Set 3" on screen counts from.
           sets: sets.map((set, index) => ({
@@ -237,12 +252,21 @@ export async function updateSession(session: {
   performedAt: Date;
   title: string;
   notes: string;
+  /**
+   * Required rather than defaulted, deliberately. `writeRow`'s `workout` case is a plain
+   * `onConflictDoUpdate` — it overwrites the whole row, `exerciseNotes` included — so a caller
+   * that forgot this field would silently wipe every per-exercise note the session had. The
+   * caller always has this value already: it came from the same read that put the rest of the
+   * form on screen.
+   */
+  exerciseNotes: Record<string, string>;
 }): Promise<SaveResult> {
   return oneOp("workout", "update", {
     clientId: session.clientId,
     performedAt: session.performedAt.toISOString(),
     title: session.title.trim(),
     notes: session.notes.trim(),
+    exerciseNotes: session.exerciseNotes,
     // Deliberately empty. An update carries no sets: they are independent rows now, and sending
     // the ones the screen happens to hold would overwrite an edit made elsewhere in between.
     sets: [],
@@ -272,6 +296,9 @@ export type LocalSetPayload = {
   durationS: number | null;
   spm: number | null;
   rpe: number | null;
+  completedAt: string | null;
+  notes: string;
+  pieceType: string | null;
 };
 
 /**
