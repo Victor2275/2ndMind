@@ -6,7 +6,7 @@
  *
  * `npm run scale:check` fails if this file is stale, and the test suite runs that check.
  *
- * Written 2026-09-09.
+ * Written 2026-09-10.
  */
 
 @theme {
@@ -88,6 +88,7 @@
    * The named half is what new code uses. Tailwind's letters are redeclared at the same
    * values because 400+ call sites spell them that way; a test pins each pair together, so
    * they cannot drift into being two sets. */
+  --breakpoint-cramped: 23.75rem;  /* 380px — Q42 — the wordmark drops and the mark stands alone below this */
   --breakpoint-phone: 40rem;  /* 640px — the line the app already uses: nav switch, ambient drift */
   --breakpoint-sm: 40rem;  /* = phone */
   --breakpoint-tablet: 48rem;  /* 768px — Q143 — tablet gets its own treatment, not desktop's */

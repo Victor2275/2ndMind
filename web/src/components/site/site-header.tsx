@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Mark } from "@/components/site/mark";
 import { PrivateLink } from "@/components/site/private-link";
 import { cn } from "@/lib/utils";
 
@@ -23,15 +24,25 @@ export function SiteHeader({ name }: { name: string }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-md print:hidden">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
+        {/* The mark replaces the magenta dot (Q36), and the name is set in the display face,
+            tracked tight (Q41) — it is a wordmark now, not a label.
+
+            Below `cramped` (380px) the wordmark is dropped and the mark stands alone (Q42). The
+            old comment on PrivateLink recorded the reason: at 360px the nav wins the space
+            fight against the name, and a truncated "Victor Gu…" is a worse identity than no
+            words at all. The link keeps its accessible name either way, from `sr-only`. */}
         <Link
           href="/"
-          className="group flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight text-foreground"
+          className="group flex min-w-0 items-center gap-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
+          <Mark className="icon-md text-primary transition-transform duration-fast ease-standard group-hover:scale-110" />
+          <span className="sr-only cramped:hidden">{name}</span>
           <span
             aria-hidden
-            className="size-1.5 rounded-full bg-primary transition-all duration-300 group-hover:scale-150 group-hover:shadow-[0_0_10px_2px_var(--primary)]"
-          />
-          <span className="truncate transition-colors group-hover:text-primary">{name}</span>
+            className="hidden truncate font-heading text-sm font-semibold tracking-tight transition-colors duration-fast group-hover:text-primary cramped:inline"
+          >
+            {name}
+          </span>
         </Link>
 
         <nav className="flex shrink-0 items-center gap-0.5">

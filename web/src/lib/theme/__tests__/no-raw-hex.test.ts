@@ -59,6 +59,19 @@ const ALLOWED: Array<[relative: string, why: string]> = [
       "pins every one of them to the generated CSS, which is what makes the duplication safe.",
   ],
   [
+    "lib/mark.ts",
+    "The mark's luminance mask (D-215). `#fff` and `#000` here are not colours — they are the " +
+      "keep and drop values of an SVG mask, where white preserves a pixel and black discards " +
+      "it. Theming them is meaningless: a mask painted in `var(--primary)` would cut the folds " +
+      "at whatever luminance that colour happens to have. The mark's actual colour is " +
+      "`currentColor` and appears nowhere in this file.",
+  ],
+  [
+    "components/site/mark.tsx",
+    "The same mask, in JSX. See the entry for lib/mark.ts — the two are pinned together by " +
+      "lib/__tests__/mark.test.ts, so the literals cannot diverge either.",
+  ],
+  [
     "components/site/filament-panel.tsx",
     'The fallback for `<input type="color">`, which accepts a 7-character hex string and ' +
       "nothing else — not a var(), not a colour function. It is also not a theme colour: it " +

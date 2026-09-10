@@ -4,6 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GROUND } from "@/lib/brand";
+import { hexToRgb } from "@/lib/theme/color";
+import { DEFAULT_THEME, themeById } from "@/lib/theme/registry";
 import { decodePng, eachPixel, type Png } from "@/test/png";
 
 /**
@@ -132,12 +135,65 @@ describe("icon-192.png", () => {
   it("is still a picture, not a stencil", () => {
     // The positive control, and the reverse mistake worth guarding: pointing `icon` at the
     // badge would "fix" the status bar by making the large icon a white smear. The large icon
-    // is the one place the mark is supposed to be magenta on a tile.
+    // is the one place the mark is supposed to be a coloured shape on an opaque tile.
     const icon = read("icon-192.png");
-    const magenta = share(icon, ([r, g, b, a]) => a > 200 && r > 120 && b > 100 && g < r - 40);
-    expect(magenta).toBeGreaterThan(0.05);
+    const coloured = share(icon, ([r, g, b, a]) => a > 200 && !(r === g && g === b));
+    expect(coloured).toBeGreaterThan(0.05);
 
     const opaqueCentre = icon.pixels[(96 * icon.width + 96) * 4 + 3];
     expect(opaqueCentre).toBe(255);
+  });
+
+  it("is drawn in the default theme's accent, not a colour of its own", () => {
+    // Rewritten 2026-09-10 (D-215). This assertion used to demand *magenta*, which is how the
+    // launcher icon stayed a V2-magenta brain for two days after D-197 made carbon the default:
+    // the mark carried its own gradient, the tile underneath it moved, and the test agreed with
+    // the mark. Deriving the expected colour from the registry is the point — if the default
+    // theme changes again, this fails until the icons are re-rendered, which is the failure that
+    // did not happen last time.
+    const { accent } = themeById(DEFAULT_THEME)!;
+    const [ar, ag, ab] = hexToRgb(accent);
+
+    const icon = read("icon-192.png");
+    // Generous: the mark is antialiased against the tile and PNG rounding moves a channel or
+    // two. The question is "is a meaningful share of this icon the accent", not "is any single
+    // pixel exact".
+    const near = share(
+      icon,
+      ([r, g, b, a]) =>
+        a > 200 && Math.abs(r - ar) < 24 && Math.abs(g - ag) < 24 && Math.abs(b - ab) < 24,
+    );
+    expect(near).toBeGreaterThan(0.05);
+  });
+
+  it("cuts its grooves as holes, so the tile shows through them", () => {
+    // The other half of D-215, and the thing that makes the badge work without a special
+    // drawing. A groove is transparent in the mark; over the tile it therefore reads as exactly
+    // the tile colour, and it cannot drift away from it the way `#140a10` did.
+    //
+    // Asserted on the *ground*: a row across the middle of the mark must contain pixels that are
+    // the tile colour, sitting between pixels that are the accent.
+    const [gr, gg, gb] = hexToRgb(GROUND);
+    const icon = read("icon-192.png");
+
+    const isGround = (x: number, y: number) => {
+      const i = (y * icon.width + x) * 4;
+      const [r, g, b] = [icon.pixels[i], icon.pixels[i + 1], icon.pixels[i + 2]];
+      return Math.abs(r - gr) < 12 && Math.abs(g - gg) < 12 && Math.abs(b - gb) < 12;
+    };
+
+    // Rows chosen to cross the fold band rather than the smooth crown or the underside.
+    const crossings = [80, 92, 104].map((y) => {
+      let runs = 0;
+      let inside = false;
+      for (let x = 40; x < 152; x++) {
+        const ground = isGround(x, y);
+        if (ground && !inside) runs += 1;
+        inside = ground;
+      }
+      return runs;
+    });
+    // At least one interior run of tile colour — a groove — on at least one of those rows.
+    expect(Math.max(...crossings)).toBeGreaterThan(0);
   });
 });

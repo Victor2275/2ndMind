@@ -64,19 +64,19 @@ export default function manifest(): MetadataRoute.Manifest {
         // retired when sessions became writable — the fast path still has to exist, it just
         // arrives somewhere better: a session screen that opens ready for the first exercise.
         url: "/private/athletics/log",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: "/icons/shortcut-training.png", sizes: "192x192", type: "image/png" }],
       },
       {
         name: "Quick note",
         short_name: "Note",
         url: "/private?capture=1",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: "/icons/shortcut-note.png", sizes: "192x192", type: "image/png" }],
       },
       {
         name: "End of day",
         short_name: "End of day",
         url: "/private/log?category=day",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: "/icons/shortcut-day.png", sizes: "192x192", type: "image/png" }],
       },
     ],
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import manifest from "@/app/manifest";
 import { GROUND, GROUND_LIGHT } from "@/lib/brand";
-import { DEFAULT_THEME, groundFor } from "@/lib/theme/registry";
+import { DEFAULT_THEME, groundFor, themeById } from "@/lib/theme/registry";
 
 const root = path.join(__dirname, "..", "..", "..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
@@ -72,5 +72,36 @@ describe("the ground colour is one colour", () => {
     const script = read("scripts/render-icons.mjs");
     const found = script.match(/const GROUND = "(#[0-9a-f]{6})";/i);
     expect(found?.[1].toLowerCase()).toBe(GROUND);
+  });
+
+  it("is joined by the accent the mark is drawn in", () => {
+    // Added 2026-09-10 (D-215). The mark is `currentColor` now, so the icon's colour is stated
+    // in the renderer rather than inside the drawing — which means it is a second hand-typed
+    // literal in a file that cannot import, and it gets the same treatment as the first.
+    //
+    // This is the check that was missing on 2026-09-08: D-197 moved the default theme to carbon
+    // and the tile followed it, but the mark's own magenta gradient did not, and nothing said
+    // so. Pinning the accent to the registry means the next default-theme change fails here
+    // until `node scripts/render-icons.mjs` has been re-run.
+    const script = read("scripts/render-icons.mjs");
+    const found = script.match(/const ACCENT = "(#[0-9a-f]{6})";/i);
+    expect(found?.[1].toLowerCase()).toBe(themeById(DEFAULT_THEME)!.accent.toLowerCase());
+  });
+
+  it("is not painted into the mark itself", () => {
+    // The drawing must stay colourless. A `fill="#..."` or a gradient stop back in brain.svg is
+    // precisely the drift D-215 removed: it would override `currentColor` and the mark would
+    // stop following the theme, silently and only on a phone.
+    const mark = read("public/icons/brain.svg");
+    expect(mark).toMatch(/fill="currentColor"/);
+
+    // Comments are stripped first, and deliberately: the drawing's own notes name `#140a10` and
+    // `#0e0e0e` while explaining the drift they came from, and a test that cannot tell markup
+    // from prose would forbid writing that down.
+    const markup = mark.replace(/<!--[\s\S]*?-->/g, "");
+    expect(markup).not.toMatch(/<linearGradient/);
+    // Only #fff and #000 may appear, and only inside the luminance mask.
+    const hexes = [...markup.matchAll(/#[0-9a-f]{3,8}\b/gi)].map((m) => m[0].toLowerCase());
+    expect(hexes.filter((h) => h !== "#fff" && h !== "#000")).toEqual([]);
   });
 });

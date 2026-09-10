@@ -17,6 +17,96 @@ useful part.
 
 ---
 
+## 2026-09-10 · V4 Phase 6 — brand and the public site
+
+Item 6.1 and 6.2. Started because the portfolio is untouched through peak application season
+(V4 §7 R1), which was accepted as a risk on 2026-09-06 and revisited on 2026-09-10.
+
+---
+
+### D-216 · `cramped` (380px) is a named breakpoint again
+
+**Decision.** `--breakpoint-cramped: 23.75rem` joins the set in `build-scale.mts`. The header
+wordmark is hidden below it and the mark stands alone (Q42).
+
+**Why this is not a reversal of §1.7.** §1.7 removed `min-[380px]:` from two call sites and
+recorded the removal as part of collapsing four breakpoint spellings into one set. What it
+objected to was an **arbitrary value written inline**, not the line itself — and Q42 asks for
+that line by name. Naming it is what makes "one set, under two spellings" true here too; leaving
+it out would have meant either an arbitrary utility (the thing §1.7 removed) or hiding the name
+at `phone:` (640px), which takes the site's identity off every phone.
+
+**How to reverse.** Drop the `cramped` row from `BREAKPOINTS`, run `npm run scale`, and change
+the two `cramped:` utilities in `site-header.tsx` to always-on.
+
+### D-215 · The mark is monochrome, and its folds are holes rather than paint
+
+**Decision.** `brain.svg` is redrawn a fifth time. The geometry is untouched — same blob, same
+six grooves, same wander. What changed is that the silhouette is now `currentColor` instead of a
+magenta gradient, and the folds are **knocked out of the alpha** by a luminance mask instead of
+being stroked in the ground colour.
+
+**Why, beyond Q35 asking for it.** Two bugs were live and neither was visible on a laptop:
+
+1. **The folds were cut in `#140a10`** — the *magenta* theme's ground. D-197 made carbon the
+   default on 2026-09-08 and moved the tile to `#0e0e0e`; the drawing did not follow. For two
+   days the launcher icon had warm-tinted grooves on a hueless tile.
+2. **The mark was still magenta.** D-197 says "the app icon, the splash screen and the phone's
+   status bar are all Carbon now, because one constant drives all four". That was true of the
+   *ground* and false of the mark, and `badge-icon.test.ts` actively pinned the mark magenta as
+   its positive control — so the test agreed with the bug.
+
+Both are now structurally impossible rather than merely fixed. A groove is transparent, so over
+the tile it *is* the tile colour and cannot drift from it; the mark's colour is set once, by
+whatever contains it, and appears nowhere in the drawing.
+
+**What it simplified.** D-203's badge no longer needs a special drawing. The two CSS rules in
+`render-icons.mjs` that recoloured the paths — and their dependence on the mark's internal
+structure — are gone; the badge is the mark with no tile behind it and `color: #fff`. D-203's
+assertion still holds and is now stronger, because the alpha knockout is a property of the mark
+everywhere rather than of one rendered variant.
+
+**What replaced the magenta assertion.** `icon-192.png` is now checked against
+`themeById(DEFAULT_THEME).accent` rather than against a colour named in the test, so the next
+default-theme change fails until the icons are re-rendered. That is precisely the failure that
+did not happen on 2026-09-08.
+
+**How to reverse.** Restore the `<linearGradient>` and the `stroke="#140a10"` group from git,
+put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
+following the theme with it.
+
+### D-217 · The favicon is generated, and it was never the mark before
+
+**Decision.** `scripts/render-icons.mjs` now also writes `src/app/icon.svg` (vector, with its
+own `prefers-color-scheme` branch), `src/app/apple-icon.png`, `src/app/favicon.ico` (three PNG
+frames, hand-packed), and three lucide shortcut glyphs.
+
+**What was found.** `src/app/favicon.ico` was 25,931 bytes, dated the day the repo was created,
+and no script in this project had ever written it — the mark was drawn in V3, months later, and
+the `.ico` was never part of that pipeline. The tab icon has never been Victor's.
+
+**Why an `.ico` at all, given `icon.svg`.** Browsers request `/favicon.ico` on their own whether
+or not a link tag points at one. Deleting it would serve a 404; leaving it would serve a stock
+icon beside the real one. Packing three PNG frames into an ICO container is a header and three
+16-byte entries, so it needs no encoder dependency.
+
+**The one place the drawing is adjusted for its size.** The `.ico` frames widen the fold stroke
+as they shrink — 18 → 21/26/40 viewBox units at 48/32/16px. At 16px a stroke of 18 units is
+0.56 device pixels, below one pixel, so the grooves grey out instead of cutting and the mark
+arrives as the striped blob D-148 named. The count and the wander are unchanged, which is what
+identifies it; only the width moves. This does not reopen D-203's refusal to simplify the badge
+— nothing is removed here.
+
+**Still marginal at 16px**, and recorded as such: the widened folds read closer to a crown than
+a brain at exactly 16 device pixels. On any HiDPI display the browser takes the 32px frame for a
+16px slot, and that one is unambiguous, so this only affects 1x screens. Victor's call whether
+to spend more on it.
+
+**How to reverse.** Delete the `faviconSvg`, `ico` and `GLYPHS` blocks from the renderer, restore
+the old `favicon.ico` from git, and repoint the manifest's three shortcuts at `icon-192.png`.
+
+---
+
 ## 2026-09-10 · The picker on a phone, and a figure that can be licensed
 
 Two corrections after using Phase 2++ on the phone it was built for.
