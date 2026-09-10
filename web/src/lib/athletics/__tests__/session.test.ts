@@ -7,6 +7,8 @@ import {
   addExercise,
   archiveExercise,
   deleteExercise,
+  deleteRoutine,
+  saveRoutine,
   deleteSession,
   deleteSet,
   emptySet,
@@ -357,5 +359,90 @@ describe("changing a session after it is saved (Q402)", () => {
     expect(op.entity).toBe("workout");
     expect(op.op).toBe("delete");
     expect(op.clientId).toBe(SESSION);
+  });
+});
+
+describe("routines (V4 Phase 2++ Stage 6)", () => {
+  const ROUTINE = "cccccccc-0000-4000-8000-000000000001";
+
+  const routine = (over: Record<string, unknown> = {}) => ({
+    name: "Push A",
+    notes: "",
+    exercises: [
+      {
+        exercise: "Bench Press (Barbell)",
+        position: 0,
+        targetSets: 3,
+        targetReps: 5,
+        targetWeightLbs: 185,
+      },
+    ],
+    ...over,
+  });
+
+  it("queues one op carrying every line", async () => {
+    const result = await saveRoutine(routine(), ROUTINE);
+    expect(result.ok).toBe(true);
+
+    const ops = await allOps(db);
+    expect(ops).toHaveLength(1);
+    expect(ops[0].entity).toBe("routine");
+    expect(ops[0].clientId).toBe(ROUTINE);
+    expect((ops[0].payload as { exercises: unknown[] }).exercises).toHaveLength(1);
+  });
+
+  it("gives every line a fresh client id, which is what makes replace-all simple", async () => {
+    // The writer never has to decide whether line three is "the same line" as before — see the
+    // `routines` table doc in schema.ts.
+    await saveRoutine(
+      routine({
+        exercises: [
+          { exercise: "A", position: 0, targetSets: null, targetReps: null, targetWeightLbs: null },
+          { exercise: "B", position: 1, targetSets: null, targetReps: null, targetWeightLbs: null },
+        ],
+      }),
+      ROUTINE,
+    );
+    const [op] = await allOps(db);
+    const lines = (op.payload as { exercises: { clientId: string }[] }).exercises;
+    expect(new Set(lines.map((l) => l.clientId)).size).toBe(2);
+  });
+
+  it("renumbers positions on the way out", async () => {
+    await saveRoutine(
+      routine({
+        exercises: [
+          { exercise: "A", position: 7, targetSets: null, targetReps: null, targetWeightLbs: null },
+          { exercise: "B", position: 9, targetSets: null, targetReps: null, targetWeightLbs: null },
+        ],
+      }),
+      ROUTINE,
+    );
+    const [op] = await allOps(db);
+    const lines = (op.payload as { exercises: { position: number }[] }).exercises;
+    expect(lines.map((l) => l.position)).toEqual([0, 1]);
+  });
+
+  it("refuses a nameless routine", async () => {
+    const result = await saveRoutine(routine({ name: "  " }), ROUTINE);
+    expect(result.ok).toBe(false);
+    expect(await allOps(db)).toHaveLength(0);
+  });
+
+  it("refuses an empty one", async () => {
+    const result = await saveRoutine(routine({ exercises: [] }), ROUTINE);
+    expect(result.ok).toBe(false);
+    expect(await allOps(db)).toHaveLength(0);
+  });
+
+  it("deletes as a tombstone that clears every line", async () => {
+    const result = await deleteRoutine(ROUTINE);
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("routine");
+    expect(op.op).toBe("delete");
+    // Replace-all: an empty list is what tombstones the lines with it.
+    expect(op.payload.exercises).toEqual([]);
   });
 });

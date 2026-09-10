@@ -24,12 +24,17 @@ let db: SyncDb;
 
 beforeEach(async () => {
   db = await openSyncDb(DB_NAME);
-  const tx = db.transaction(["outbox", "workouts", "workout_sets", "exercises"], "readwrite");
+  const tx = db.transaction(
+    ["outbox", "workouts", "workout_sets", "exercises", "routines", "routine_exercises"],
+    "readwrite",
+  );
   await Promise.all([
     tx.objectStore("outbox").clear(),
     tx.objectStore("workouts").clear(),
     tx.objectStore("workout_sets").clear(),
     tx.objectStore("exercises").clear(),
+    tx.objectStore("routines").clear(),
+    tx.objectStore("routine_exercises").clear(),
   ]);
   await tx.done;
   vi.stubGlobal("navigator", { ...globalThis.navigator, vibrate: vi.fn(() => true) });
@@ -184,5 +189,62 @@ describe("the set table and the set cards", () => {
     expect(within(table).getByRole("checkbox", { name: /Mark set 1/ })).toBeInTheDocument();
     // And the card list's own copy, outside the table.
     expect(screen.getAllByRole("checkbox", { name: /Mark set 1/ }).length).toBe(2);
+  });
+});
+
+describe("routines (V4 Phase 2++ Stage 6)", () => {
+  it("saves the session on screen as a routine, weights and all", async () => {
+    render(<SessionLogger />);
+    await addFirstExercise();
+
+    fireEvent.change(screen.getByLabelText("Session"), { target: { value: "Push A" } });
+    fireEvent.change(screen.getAllByLabelText(/lbs/i)[0], { target: { value: "185" } });
+    fireEvent.change(screen.getAllByLabelText(/reps/i)[0], { target: { value: "5" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save as routine" }));
+
+    await waitFor(async () => {
+      const ops = await allOps(db);
+      expect(ops.some((op) => op.entity === "routine")).toBe(true);
+    });
+
+    const op = (await allOps(db)).find((o) => o.entity === "routine")!;
+    const payload = op.payload as {
+      name: string;
+      exercises: { exercise: string; targetSets: number | null; targetWeightLbs: number | null }[];
+    };
+    expect(payload.name).toBe("Push A");
+    expect(payload.exercises).toHaveLength(1);
+    // "Pre-filled with last weights" means the numbers travel with the template.
+    expect(payload.exercises[0].targetWeightLbs).toBe(185);
+    expect(payload.exercises[0].targetSets).toBe(1);
+  });
+
+  it("offers no routine button before anything is added", () => {
+    render(<SessionLogger />);
+    expect(screen.queryByRole("button", { name: "Save as routine" })).not.toBeInTheDocument();
+  });
+
+  it("starts a saved routine pre-filled", async () => {
+    const { unmount } = render(<SessionLogger />);
+    await addFirstExercise();
+    fireEvent.change(screen.getByLabelText("Session"), { target: { value: "Push A" } });
+    fireEvent.change(screen.getAllByLabelText(/lbs/i)[0], { target: { value: "185" } });
+    fireEvent.change(screen.getAllByLabelText(/reps/i)[0], { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save as routine" }));
+    await waitFor(async () => {
+      expect((await allOps(db)).some((op) => op.entity === "routine")).toBe(true);
+    });
+    unmount();
+
+    // A fresh screen reads the routine back out of the local store and starts it.
+    render(<SessionLogger />);
+    const chip = await screen.findByRole("button", { name: /^Push A/ });
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(screen.getAllByLabelText(/lbs/i)[0]).toHaveValue("185");
+    });
+    expect(screen.getAllByLabelText(/reps/i)[0]).toHaveValue("5");
   });
 });

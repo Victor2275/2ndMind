@@ -16,11 +16,13 @@ import {
 import { howTo, type Modality } from "@/lib/athletics/catalogue";
 import {
   localCatalogue,
+  localRoutines,
   localSessions,
   mergeCatalogue,
   mostRecentSetsByExercise,
   withLocal,
   type LocalExercise,
+  type LocalRoutine,
   type LocalSet,
   type LocalSession,
 } from "@/lib/athletics/local";
@@ -28,8 +30,10 @@ import { EQUIPMENT, type Equipment, type Muscle } from "@/lib/athletics/muscles"
 import { estimateOneRepMax, strengthRecords, type Effort } from "@/lib/athletics/prs";
 import {
   addExercise,
+  deleteRoutine,
   emptySet,
   hasContent,
+  saveRoutine,
   saveSession,
   type SetInput,
 } from "@/lib/athletics/session";
@@ -201,6 +205,7 @@ export function SessionLogger() {
   const [notes, setNotes] = useState("");
   const [exerciseNotes, setExerciseNotes] = useState<Record<string, string>>({});
   const [restTimer, setRestTimer] = useState<{ startedAt: number; seconds: number } | null>(null);
+  const [routines, setRoutines] = useState<LocalRoutine[]>([]);
   const [performedAt, setPerformedAt] = useState(todayLocal);
   const [picking, setPicking] = useState(false);
   const [state, setState] = useState<{ ok: boolean; message: string } | null>(null);
@@ -242,10 +247,15 @@ export function SessionLogger() {
   useEffect(() => {
     let cancelled = false;
     void withLocal(async (db) => {
-      const [list, history] = await Promise.all([localCatalogue(db), localSessions(db)]);
+      const [list, history, saved] = await Promise.all([
+        localCatalogue(db),
+        localSessions(db),
+        localRoutines(db),
+      ]);
       if (cancelled) return;
       setMirrored(list);
       setSessions(history);
+      setRoutines(saved);
     });
     return () => {
       cancelled = true;
@@ -313,6 +323,86 @@ export function SessionLogger() {
   const startRest = useCallback((seconds: number) => {
     setRestTimer({ startedAt: Date.now(), seconds });
   }, []);
+
+  /**
+   * Start a routine (V4 Phase 2++ Stage 6) — pre-filled with the weights it was saved at.
+   *
+   * The routine stores only a name per line, so the modality, muscles and rest default are
+   * looked up in the catalogue the same way the picker does. A line whose exercise has since
+   * been renamed or deleted still opens as a block — the name is what history is keyed by, so
+   * refusing to load it would be worse than loading it with an empty figure.
+   */
+  const startRoutine = useCallback(
+    (routine: LocalRoutine) => {
+      setTitle((current) => (current.trim() === "" ? routine.name : current));
+      setBlocks(
+        routine.exercises.map((line) => {
+          const entry = catalogue.find((e) => e.name === line.exercise);
+          const count = Math.max(1, line.targetSets ?? 1);
+          return {
+            id: crypto.randomUUID(),
+            exercise: line.exercise,
+            modality: entry?.modality ?? "lift",
+            primaryMuscles: entry?.primaryMuscles ?? [],
+            secondaryMuscles: entry?.secondaryMuscles ?? [],
+            restSeconds: entry?.restSeconds ?? DEFAULT_REST_SECONDS,
+            sets: Array.from({ length: count }, (_, index) => ({
+              ...emptySet(line.exercise, index),
+              weightLbs: line.targetWeightLbs,
+              reps: line.targetReps,
+            })),
+          };
+        }),
+      );
+      setState({ ok: true, message: `Started “${routine.name}”.` });
+    },
+    [catalogue],
+  );
+
+  /**
+   * Save what is on screen as a routine. The targets are this session's own numbers — the
+   * heaviest working set per exercise, which is what "pre-filled with last weights" means when
+   * you start it again.
+   */
+  async function saveAsRoutine() {
+    const name = title.trim() === "" ? "Routine" : title.trim();
+    const result = await saveRoutine(
+      {
+        name,
+        notes: "",
+        exercises: blocks.map((block, index) => {
+          const working = block.sets.filter((set) => hasContent(set));
+          const heaviest = working.reduce<SetInput | null>(
+            (best, set) =>
+              set.weightLbs !== null && (best === null || set.weightLbs > (best.weightLbs ?? 0))
+                ? set
+                : best,
+            null,
+          );
+          return {
+            exercise: block.exercise,
+            position: index,
+            targetSets: working.length > 0 ? working.length : null,
+            targetReps: heaviest?.reps ?? null,
+            targetWeightLbs: heaviest?.weightLbs ?? null,
+          };
+        }),
+      },
+      crypto.randomUUID(),
+    );
+    setState(result);
+    if (result.ok) {
+      buzzSaved();
+      requestSync();
+      setGeneration((n) => n + 1);
+    }
+  }
+
+  async function removeRoutine(clientId: string) {
+    const result = await deleteRoutine(clientId);
+    setState(result);
+    if (result.ok) setGeneration((n) => n + 1);
+  }
 
   const totals = useMemo(() => {
     let sets = 0;
@@ -405,6 +495,40 @@ export function SessionLogger() {
         </div>
       </header>
 
+      {/* Routines (V4 Phase 2++ Stage 6). Above the sets rather than below them: the moment a
+          routine is useful is before you have added anything, and a control you scroll past to
+          reach is a control you use once. */}
+      {routines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={LABEL}>Routines</span>
+          {routines.map((routine) => (
+            <span
+              key={routine.clientId}
+              className="flex items-center rounded-pill border border-border bg-card/60"
+            >
+              <button
+                type="button"
+                onClick={() => startRoutine(routine)}
+                className="min-h-9 rounded-l-pill px-3 text-xs text-foreground transition-colors hover:text-primary"
+              >
+                {routine.name}
+                <span className="ml-1.5 font-mono text-[0.6rem] text-muted-foreground">
+                  {routine.exercises.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void removeRoutine(routine.clientId)}
+                aria-label={`Delete routine ${routine.name}`}
+                className="flex size-9 items-center justify-center rounded-r-pill text-muted-foreground transition-colors hover:text-destructive"
+              >
+                <XIcon className="size-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Q398. Kept at the top rather than the bottom: it is the number you glance at between
           sets, and the bottom of this page moves every time a row is added. */}
       <div className="flex items-center gap-4 rounded-lg border border-border bg-card/40 px-3 py-2 font-mono text-xs text-muted-foreground">
@@ -493,6 +617,19 @@ export function SessionLogger() {
         >
           {saving ? "Saving…" : "Save session"}
         </button>
+        {/* Saved from a finished session rather than built from a blank form — Victor's answer,
+            and what makes a routine cost a name and a tap rather than a second data-entry
+            screen. Hidden until there is something to save, since an empty one is not a
+            routine. */}
+        {blocks.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void saveAsRoutine()}
+            className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          >
+            Save as routine
+          </button>
+        )}
         {state && (
           <p
             role="status"

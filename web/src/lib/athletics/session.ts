@@ -302,6 +302,97 @@ export type LocalSetPayload = {
 };
 
 /**
+ * Routines (V4 Phase 2++ Stage 6).
+ *
+ * ## Saved from a finished session, not built from a blank form
+ *
+ * Victor's answer, and it is what makes a routine cost nothing to create: the session you just
+ * did *is* the template, so saving one is a name and a tap rather than a second data-entry
+ * screen. The weights come along, so starting it next week pre-fills what you actually lifted.
+ *
+ * ## Replace-all, and why each line gets a fresh id
+ *
+ * A routine op carries its whole line list and the server tombstones whatever is not in it (see
+ * `routines` in `schema.ts`). Minting a new `clientId` per line on every save is what makes that
+ * simple: the writer never has to decide whether line three is "the same line" as before, and
+ * reordering — the most common edit to a template — is just a different list.
+ */
+
+export type RoutineInput = {
+  name: string;
+  notes: string;
+  exercises: {
+    exercise: string;
+    position: number;
+    targetSets: number | null;
+    targetReps: number | null;
+    targetWeightLbs: number | null;
+  }[];
+};
+
+export async function saveRoutine(input: RoutineInput, clientId: string): Promise<SaveResult> {
+  const name = input.name.trim();
+  if (name === "") return { ok: false, message: "Give the routine a name first." };
+  if (input.exercises.length === 0) {
+    return { ok: false, message: "A routine with no exercises is not a routine." };
+  }
+
+  try {
+    const db = await openSyncDb();
+    try {
+      const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+      await enqueue(db, {
+        entity: "routine",
+        op: "create",
+        row: {
+          clientId,
+          name,
+          notes: input.notes.trim(),
+          // Renumbered on the way out, like a session's sets — the order on screen is the order
+          // stored, whatever the caller happened to hold.
+          exercises: input.exercises.map((line, index) => ({
+            clientId: crypto.randomUUID(),
+            ...line,
+            position: index,
+          })),
+        },
+        hlc: clock.tick(),
+      });
+      await saveClock(db, clock.state);
+      return { ok: true, clientId, message: `Saved “${name}”.` };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return { ok: false, message: "This device will not open its local store." };
+  }
+}
+
+/** Soft, and the server tombstones its lines with it — same as deleting a session. */
+export async function deleteRoutine(clientId: string): Promise<SaveResult> {
+  try {
+    const db = await openSyncDb();
+    try {
+      const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+      await enqueue(db, {
+        entity: "routine",
+        op: "delete",
+        // Name is required by the payload schema and unused by a delete; the tombstone is what
+        // the op carries. `exercises: []` tombstones every line, per the replace-all rule.
+        row: { clientId, name: "deleted", notes: "", exercises: [] },
+        hlc: clock.tick(),
+      });
+      await saveClock(db, clock.state);
+      return { ok: true, message: "Deleted." };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return { ok: false, message: "This device will not open its local store." };
+  }
+}
+
+/**
  * Editing the catalogue (V4 Phase 2++ Stage 4).
  *
  * ## Everything is editable, seeded rows included

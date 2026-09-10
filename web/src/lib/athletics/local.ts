@@ -153,6 +153,88 @@ export async function localSessions(db: SyncDb): Promise<LocalSession[]> {
   return sessions.sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime());
 }
 
+/** One line of a saved routine, as this device holds it (V4 Phase 2++ Stage 6). */
+export type LocalRoutineExercise = {
+  clientId: string;
+  exercise: string;
+  position: number;
+  targetSets: number | null;
+  targetReps: number | null;
+  targetWeightLbs: number | null;
+};
+
+export type LocalRoutine = {
+  clientId: string;
+  name: string;
+  notes: string;
+  exercises: LocalRoutineExercise[];
+};
+
+function toRoutineExercise(row: Row): LocalRoutineExercise {
+  return {
+    clientId: str(row.clientId),
+    exercise: str(row.exercise),
+    position: num(row.position) ?? 0,
+    targetSets: num(row.targetSets),
+    targetReps: num(row.targetReps),
+    targetWeightLbs: num(row.targetWeightLbs),
+  };
+}
+
+/**
+ * Every routine on this device, with its lines attached (V4 Phase 2++ Stage 6).
+ *
+ * The same two-source read `localSessions` needs, for the same reason: a routine **pulled** from
+ * the server arrives as a parent row plus separate `routine_exercise` rows, while one **saved
+ * here** is a single outbox op carrying its lines inline. Reading only the child store would
+ * make a routine you just saved appear empty until it synced.
+ *
+ * Unlike a session, a routine's lines are replace-all (see `routines` in `schema.ts`), so there
+ * is no merge-by-client-id to do: whichever source has lines for this routine has all of them,
+ * and the inline copy — always the newest, since it has not synced yet — wins outright.
+ */
+export async function localRoutines(db: SyncDb): Promise<LocalRoutine[]> {
+  const [parents, children] = await Promise.all([
+    listLocal(db, "routine"),
+    listLocal(db, "routine_exercise"),
+  ]);
+
+  const clientIdForServerId = new Map<string, string>();
+  for (const record of parents) {
+    const row = record.row as Row;
+    if (row.id !== undefined && row.id !== null) {
+      clientIdForServerId.set(String(row.id), str(row.clientId));
+    }
+  }
+
+  const byParent = new Map<string, LocalRoutineExercise[]>();
+  for (const record of children) {
+    const row = record.row as Row;
+    const parent =
+      row.routineId !== undefined ? (clientIdForServerId.get(String(row.routineId)) ?? "") : "";
+    if (!parent) continue;
+    const list = byParent.get(parent) ?? [];
+    list.push(toRoutineExercise(row));
+    byParent.set(parent, list);
+  }
+
+  return parents
+    .map((record) => {
+      const row = record.row as Row;
+      const clientId = str(row.clientId);
+      const inline = Array.isArray(row.exercises) ? (row.exercises as Row[]) : null;
+      const lines = inline ? inline.map(toRoutineExercise) : (byParent.get(clientId) ?? []);
+      return {
+        clientId,
+        name: str(row.name),
+        notes: str(row.notes),
+        exercises: [...lines].sort((a, b) => a.position - b.position),
+      };
+    })
+    .filter((routine) => routine.name !== "")
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /**
  * The most recent sets logged for each exercise, excluding one session — the "previous set"
  * ghost the logger shows in each input's placeholder (V4 Phase 2++ Stage 5, Hevy's own
