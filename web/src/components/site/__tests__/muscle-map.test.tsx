@@ -69,9 +69,9 @@ describe("the drawing", () => {
   });
 
   it("puts a region on the figure it belongs to and not the other", () => {
-    // Chest has three sub-shapes, each mirrored to both sides of the body.
+    // One pec path per side, drawn explicitly rather than mirrored (D-233).
     expect(litOn(render(<MuscleMap muscles={["chest"]} />).container)).toEqual({
-      front: 6,
+      front: 2,
       back: 0,
     });
 
