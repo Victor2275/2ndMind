@@ -1,5 +1,7 @@
 import type { CatalogueEntry } from "@/lib/athletics/catalogue";
+import type { Muscle } from "@/lib/athletics/muscles";
 import type { Effort } from "@/lib/athletics/prs";
+import { normalizeExerciseName } from "@/lib/athletics/renames";
 import { listLocal, openSyncDb, type SyncDb } from "@/lib/sync/store";
 
 /**
@@ -157,17 +159,38 @@ export async function localEfforts(db: SyncDb): Promise<Effort[]> {
   );
 }
 
-/** The catalogue as the phone has it, sorted by name so an empty query reads alphabetically. */
+const strArray = (value: unknown): string[] => (Array.isArray(value) ? (value as string[]) : []);
+
+/**
+ * The catalogue as the phone has it, sorted by name so an empty query reads alphabetically.
+ *
+ * `name` is passed through `normalizeExerciseName` (V4 Phase 2++ Stage 3) — a mirrored row can
+ * still carry a v1 name if this device has not pulled the rename yet, and reading it straight
+ * would let a session logged from this screen write new history under a name the server just
+ * retired. `renames.ts` ships in the client bundle for exactly this: it is the one lookup that
+ * has to be correct on a phone that has not synced today.
+ */
 export async function localCatalogue(db: SyncDb): Promise<CatalogueEntry[]> {
   const rows = await listLocal(db, "exercise");
   return rows
     .map((record) => {
       const row = record.row as Row;
+      const primaryMuscles = strArray(row.primaryMuscles);
       return {
-        name: str(row.name),
+        seedKey: typeof row.seedKey === "string" ? row.seedKey : null,
+        name: normalizeExerciseName(str(row.name)),
         modality: str(row.modality, "lift") as CatalogueEntry["modality"],
-        muscles: Array.isArray(row.muscles) ? (row.muscles as string[]) : [],
-        equipment: str(row.equipment),
+        equipment: str(row.equipment, "other") as CatalogueEntry["equipment"],
+        // Falls back to the legacy flat `muscles` array when `primaryMuscles` is empty — a row
+        // pulled before Stage 3's rename has only the legacy field populated, and the figure
+        // should still draw something rather than going blank for the transition window.
+        primaryMuscles: (primaryMuscles.length > 0
+          ? primaryMuscles
+          : strArray(row.muscles)) as Muscle[],
+        secondaryMuscles: strArray(row.secondaryMuscles) as Muscle[],
+        aliases: strArray(row.aliases),
+        howTo: str(row.howTo),
+        userEditedFields: strArray(row.userEditedFields),
       };
     })
     .filter((entry) => entry.name !== "")

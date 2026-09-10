@@ -167,6 +167,13 @@ export const workoutSets = pgTable(
      * its deny list.
      */
     pieceType: text("piece_type"),
+    /**
+     * The `exercise` string as it was before Stage 3's rename touched it. Transitional — added in
+     * the same migration as the rename script and dropped a release later — and it is the entire
+     * reason the rename is reversible despite rewriting `workout_sets.exercise` in place. Null on
+     * every row the rename never touched, including every row created after it ran.
+     */
+    exerciseBeforeV2: text("exercise_before_v2"),
     clientId: clientId(),
     ...syncColumns(),
   },

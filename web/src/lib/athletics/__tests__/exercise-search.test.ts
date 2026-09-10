@@ -22,20 +22,22 @@ const names = (query: string) => searchExercises(CATALOGUE, query).map((e) => e.
 
 describe("typing the name", () => {
   it("puts an exact prefix first", () => {
-    expect(first("bench")).toBe("Bench Press");
-    expect(first("deadlift")).toBe("Deadlift");
-    expect(first("pull up")).toBe("Pull Up");
+    // v2 naming is `Movement (Equipment)`, and Barbell wins the tie with Dumbbell alphabetically
+    // — both score identically up to the parenthesis, since the query never reaches it.
+    expect(first("bench")).toBe("Bench Press (Barbell)");
+    expect(first("deadlift")).toBe("Deadlift (Barbell)");
+    expect(first("pull up")).toBe("Pull Up (Bodyweight)");
   });
 
   it("is case and space insensitive", () => {
-    expect(first("BENCH PRESS")).toBe("Bench Press");
-    expect(first("benchpress")).toBe("Bench Press");
+    expect(first("BENCH PRESS")).toBe("Bench Press (Barbell)");
+    expect(first("benchpress")).toBe("Bench Press (Barbell)");
   });
 });
 
 describe("typing it badly, which is the point", () => {
   it("recovers from dropped vowels", () => {
-    expect(first("bnch")).toBe("Bench Press");
+    expect(first("bnch")).toBe("Bench Press (Barbell)");
     // There is no bare "Squat" in the catalogue — every squat is a named variant — so the
     // assertion is that dropping the vowels still lands you among them.
     expect(names("sqt").slice(0, 5).join(" ")).toMatch(/Squat/);
@@ -44,13 +46,13 @@ describe("typing it badly, which is the point", () => {
   it("finds a multi-word name from its initials", () => {
     // The one-handed case: "rdl" for Romanian Deadlift. Word starts are weighted heavily for
     // exactly this.
-    expect(names("rdl")).toContain("Romanian Deadlift");
-    expect(names("bss")).toContain("Bulgarian Split Squat");
+    expect(names("rdl")).toContain("Romanian Deadlift (Barbell)");
+    expect(names("bss")).toContain("Bulgarian Split Squat (Dumbbell)");
   });
 
   it("finds a name from a word in the middle of it", () => {
-    expect(names("incline")).toContain("Incline Bench Press");
-    expect(names("goblet")).toContain("Goblet Squat");
+    expect(names("incline")).toContain("Incline Bench Press (Barbell)");
+    expect(names("goblet")).toContain("Goblet Squat (Dumbbell)");
   });
 
   it("returns nothing when a character is simply not there", () => {
@@ -62,7 +64,7 @@ describe("typing it badly, which is the point", () => {
 describe("ranking", () => {
   it("prefers the shorter name when both match", () => {
     // "dip" should not be beaten by a long name that happens to contain d, i and p in order.
-    expect(first("dip")).toBe("Dip");
+    expect(first("dip")).toBe("Dip (Bodyweight)");
   });
 
   it("puts the names that actually contain the word above coincidences", () => {

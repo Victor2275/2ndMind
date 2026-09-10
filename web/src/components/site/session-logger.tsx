@@ -5,10 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MuscleMap } from "@/components/site/muscle-map";
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
-import { CATALOGUE, type CatalogueEntry, type Modality } from "@/lib/athletics/catalogue";
+import { CATALOGUE, howTo, type CatalogueEntry, type Modality } from "@/lib/athletics/catalogue";
 import { searchExercises } from "@/lib/athletics/exercise-search";
-import { howTo } from "@/lib/athletics/how-to";
 import { localCatalogue, localEfforts, withLocal } from "@/lib/athletics/local";
+import { EQUIPMENT, type Equipment, type Muscle } from "@/lib/athletics/muscles";
 import { estimateOneRepMax, strengthRecords, type Effort } from "@/lib/athletics/prs";
 import {
   addExercise,
@@ -83,12 +83,25 @@ const COLUMN_LABEL: Partial<Record<keyof SetInput, string>> = {
 
 const SET_TYPES: SetInput["setType"][] = ["normal", "warmup", "drop", "failure"];
 
+/**
+ * A movement typed by hand or proposed by the AI-add path — everything `addExercise` needs and
+ * nothing a seeded row has that a fresh one does not (no `seedKey`, no `aliases`, no `howTo`).
+ */
+type NewExerciseInput = {
+  name: string;
+  modality: Modality;
+  equipment: Equipment;
+  primaryMuscles: Muscle[];
+  secondaryMuscles: Muscle[];
+};
+
 /** One exercise's worth of sets, as the screen holds it before saving. */
 type Block = {
   id: string;
   exercise: string;
   modality: Modality;
-  muscles: string[];
+  primaryMuscles: Muscle[];
+  secondaryMuscles: Muscle[];
   sets: SetInput[];
 };
 
@@ -98,37 +111,65 @@ function todayLocal(): string {
 }
 
 /**
- * The catalogue, from the bundle first and the device second (D-224).
+ * The catalogue, from the bundle first and the device second (D-224, rewritten V4 Phase 2++
+ * Stage 3).
  *
  * This screen used to read the mirrored `exercises` store and nothing else, which made the whole
  * feature depend on a completed sync pull. That failed in the most ordinary way there is: the
- * catalogue is 165 rows and the pull is paged at 100, so a device that had synced **once** held
- * three quarters of it — and searching `bnch` on a phone in a gym found nothing at all, because
- * Bench Press happened to be in the half that had not arrived. It was not an error state; the
+ * catalogue is ~140 rows and the pull is paged at 100, so a device that had synced **once** held
+ * most but not all of it — and searching `bnch` on a phone in a gym could find nothing at all, if
+ * Bench Press happened to be in the part that had not arrived yet. It was not an error state; the
  * search box simply came up empty and the only way forward was to type the name in by hand.
  *
  * The seed is already in this bundle — `CATALOGUE` is the file `scripts/seed-exercises.mts`
- * inserts from, so the two cannot disagree — which means the 164 seeded movements are available
- * on first paint, before any network, on a device that has never synced. The mirror is then
- * merged over the top by name, and that is what carries the ones the seed does not know: an
- * exercise added on the phone, or one the AI-add path proposed.
+ * inserts from, so the two cannot disagree — which means every seeded movement is available on
+ * first paint, before any network, on a device that has never synced. The mirror is then merged
+ * over the top by `seedKey`, which is what carries the ones the seed does not know: an exercise
+ * added on the phone, or one the AI-add path proposed, both of which have no `seedKey` at all and
+ * are matched by `name` instead.
  *
- * Merged rather than concatenated, because a name present in both is the same movement, and two
- * rows for one lift split its history in half and show a lower best for each — which is exactly
- * what D-186 keeps the AI-add path from doing.
- *
- * **The bundle wins a collision, not the mirror**, which is the opposite of the obvious ordering
- * and matters as soon as the seed changes. Phase 2.9 gave every erg piece a set of muscles so the
- * body map has something to draw; a device that synced before the reseed still holds those rows
- * with an empty `muscles` array, and mirror-wins would let that stale copy blank the diagram on
- * the newest build. Nothing in the app can edit a seeded entry, so the bundle is the only writer
- * of those rows and is by definition the fresher of the two. A name the bundle does not know —
- * yours, or one AI-add proposed — is only in the mirror and comes through untouched.
+ * **The mirror wins for any row carrying `userEditedFields`, the bundle wins otherwise.** This is
+ * the reversal Stage 3 exists to make safe. The comment this replaced said *"nothing in the app
+ * can edit a seeded entry, so the bundle is the only writer of those rows"* — that premise is
+ * gone the moment the exercise detail page (Stage 4) can edit a seeded row's how-to text or its
+ * muscles. Bundle-always-wins under that premise would make every edit vanish on reload: correct
+ * in Postgres, correct in the mirror, invisible on screen. So the mirror wins precisely where a
+ * person actually changed something — `userEditedFields` says which fields, but the merge is
+ * per-row rather than per-field, matching `store.ts`'s own last-write-wins granularity — and the
+ * bundle still wins everywhere else, which is what keeps a stale pre-reseed mirror row from
+ * showing an old how-to or a blank figure after the seed changes something *nobody* edited.
  */
 function mergeCatalogue(mirrored: CatalogueEntry[]): CatalogueEntry[] {
+  const bySeedKey = new Map<string, CatalogueEntry>();
   const byName = new Map<string, CatalogueEntry>();
-  for (const entry of mirrored) byName.set(entry.name, entry);
-  for (const entry of CATALOGUE) byName.set(entry.name, entry);
+
+  for (const entry of CATALOGUE) {
+    if (entry.seedKey) bySeedKey.set(entry.seedKey, entry);
+    byName.set(entry.name, entry);
+  }
+
+  for (const entry of mirrored) {
+    if (entry.seedKey) {
+      const seeded = bySeedKey.get(entry.seedKey);
+      // No bundle row shares this seedKey — the seed dropped it, or (should not happen) the
+      // mirror is ahead of this build. Keep the mirror's copy rather than losing the row.
+      if (!seeded) {
+        byName.set(entry.name, entry);
+        continue;
+      }
+      if (entry.userEditedFields.length > 0) {
+        // The mirror wins, but the bundle's own name still resolves to it — otherwise renaming
+        // a seeded row and editing it in the same session would leave two entries in the list.
+        byName.delete(seeded.name);
+        byName.set(entry.name, entry);
+      }
+      // Else: bundle already holds the winning copy under this seedKey, nothing to do.
+    } else {
+      // No seedKey — a hand-typed or AI-added row, matched by name, same as before Stage 3.
+      byName.set(entry.name, entry);
+    }
+  }
+
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -198,7 +239,8 @@ export function SessionLogger() {
         id: crypto.randomUUID(),
         exercise: entry.name,
         modality: entry.modality,
-        muscles: entry.muscles,
+        primaryMuscles: entry.primaryMuscles,
+        secondaryMuscles: entry.secondaryMuscles,
         sets: [emptySet(entry.name, 0)],
       },
     ]);
@@ -431,7 +473,9 @@ function ExerciseBlock({
           {/* Collapsed by default. The diagram and the cues are reference — useful the first few
               times you program a movement and pure clutter on the four hundredth bench press, so
               they are one tap away rather than occupying the screen you are typing into. */}
-          {(block.muscles.length > 0 || description) && (
+          {(block.primaryMuscles.length > 0 ||
+            block.secondaryMuscles.length > 0 ||
+            description) && (
             <button
               type="button"
               onClick={() => setShowing((open) => !open)}
@@ -458,11 +502,11 @@ function ExerciseBlock({
 
       {showing && (
         <div className="mt-3 flex flex-wrap items-start gap-4 rounded-md border border-border/70 bg-background/40 p-3">
-          <MuscleMap muscles={block.muscles} size={124} />
+          <MuscleMap primary={block.primaryMuscles} secondary={block.secondaryMuscles} size={124} />
           <div className="min-w-[12rem] flex-1">
-            {block.muscles.length > 0 && (
+            {(block.primaryMuscles.length > 0 || block.secondaryMuscles.length > 0) && (
               <p className="font-mono text-[0.6rem] text-muted-foreground">
-                {block.muscles.join(" · ")}
+                {[...block.primaryMuscles, ...block.secondaryMuscles].join(" · ")}
               </p>
             )}
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
@@ -580,17 +624,39 @@ function ExercisePicker({
   onCancel: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [suggestion, setSuggestion] = useState<CatalogueEntry | null>(null);
+  const [suggestion, setSuggestion] = useState<NewExerciseInput | null>(null);
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   const results = useMemo(() => searchExercises(catalogue, query, 30), [catalogue, query]);
   const exact = results.some((entry) => entry.name.toLowerCase() === query.trim().toLowerCase());
 
-  async function createIt(entry: CatalogueEntry, source: "manual" | "ai") {
-    const result = await addExercise({ ...entry, source });
-    if (result.ok) onAdded(entry);
-    else setProblem(result.message);
+  async function createIt(input: NewExerciseInput, source: "manual" | "ai") {
+    const result = await addExercise({
+      name: input.name,
+      modality: input.modality,
+      equipment: input.equipment,
+      primaryMuscles: input.primaryMuscles,
+      secondaryMuscles: input.secondaryMuscles,
+      source,
+    });
+    if (result.ok) {
+      // No seedKey, no aliases, no how-to yet — a fresh row is exactly that until someone
+      // fills the rest in from the exercise detail page (Stage 4).
+      onAdded({
+        seedKey: null,
+        name: input.name,
+        modality: input.modality,
+        equipment: input.equipment,
+        primaryMuscles: input.primaryMuscles,
+        secondaryMuscles: input.secondaryMuscles,
+        aliases: [],
+        howTo: "",
+        userEditedFields: [],
+      });
+    } else {
+      setProblem(result.message);
+    }
   }
 
   /**
@@ -616,9 +682,14 @@ function ExercisePicker({
         "report",
       );
 
+      // The route's own shape — a proposed creation still speaks the old flat `muscles`, which
+      // Stage 4 (AI-assist on the create form) is where that gets upgraded to primary/secondary.
+      // Bridged here rather than left broken: every suggested muscle becomes primary, and an
+      // equipment guess outside the closed vocabulary falls back to "other" rather than being
+      // silently invalid.
       const data = (await response.json()) as {
         match?: string | null;
-        create?: CatalogueEntry | null;
+        create?: { name: string; modality: Modality; muscles: string[]; equipment: string } | null;
         error?: string;
       };
 
@@ -633,8 +704,20 @@ function ExercisePicker({
         return;
       }
 
-      if (data.create) setSuggestion(data.create);
-      else setProblem("Nothing came back that fits.");
+      if (data.create) {
+        const equipment = (EQUIPMENT as readonly string[]).includes(data.create.equipment)
+          ? (data.create.equipment as Equipment)
+          : "other";
+        setSuggestion({
+          name: data.create.name,
+          modality: data.create.modality,
+          equipment,
+          primaryMuscles: data.create.muscles as Muscle[],
+          secondaryMuscles: [],
+        });
+      } else {
+        setProblem("Nothing came back that fits.");
+      }
     } catch {
       // Offline, or the model took too long. Said out loud rather than hidden: this screen is
       // designed to work with no signal, and a control that silently disappears when the
@@ -679,10 +762,14 @@ function ExercisePicker({
               {/* Small enough to be a glyph rather than a picture: at 40px the question it answers
                   is "is this the push or the pull one", which is exactly the question you have
                   while scanning a list of similar names. */}
-              <MuscleMap muscles={entry.muscles} size={40} />
+              <MuscleMap
+                primary={entry.primaryMuscles}
+                secondary={entry.secondaryMuscles}
+                size={40}
+              />
               <span className="min-w-0 flex-1 truncate">{entry.name}</span>
               <span className="shrink-0 font-mono text-[0.6rem] text-muted-foreground">
-                {entry.muscles.slice(0, 2).join(" · ") || entry.modality}
+                {entry.primaryMuscles.slice(0, 2).join(" · ") || entry.modality}
               </span>
             </button>
           </li>
@@ -696,7 +783,13 @@ function ExercisePicker({
               type="button"
               onClick={() =>
                 void createIt(
-                  { name: query.trim(), modality: "lift", muscles: [], equipment: "" },
+                  {
+                    name: query.trim(),
+                    modality: "lift",
+                    equipment: "other",
+                    primaryMuscles: [],
+                    secondaryMuscles: [],
+                  },
                   "manual",
                 )
               }
@@ -719,8 +812,10 @@ function ExercisePicker({
               <p className="text-sm text-foreground">{suggestion.name}</p>
               <p className="mt-0.5 font-mono text-[0.6rem] text-muted-foreground">
                 {suggestion.modality}
-                {suggestion.muscles.length > 0 ? ` · ${suggestion.muscles.join(", ")}` : ""}
-                {suggestion.equipment ? ` · ${suggestion.equipment}` : ""}
+                {suggestion.primaryMuscles.length > 0
+                  ? ` · ${suggestion.primaryMuscles.join(", ")}`
+                  : ""}
+                {` · ${suggestion.equipment}`}
               </p>
               {/* It proposes; you confirm. Nothing the model produced is written until this. */}
               <button

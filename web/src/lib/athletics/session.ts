@@ -162,8 +162,9 @@ export async function saveSession(input: SessionInput, clientId: string): Promis
 export async function addExercise(entry: {
   name: string;
   modality: string;
-  muscles: string[];
   equipment: string;
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
   source: "manual" | "ai";
 }): Promise<SaveResult> {
   const name = entry.name.trim();
@@ -178,6 +179,7 @@ export async function addExercise(entry: {
       await enqueue(db, {
         entity: "exercise",
         op: "create",
+        // `seedKey` is deliberately absent: it identifies a *seeded* row, and this one is not.
         row: { clientId, ...entry, name },
         hlc: clock.tick(),
       });

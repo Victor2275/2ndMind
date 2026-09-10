@@ -170,7 +170,8 @@ describe("adding to the catalogue", () => {
     const result = await addExercise({
       name: "Zercher Squat",
       modality: "lift",
-      muscles: ["quads"],
+      primaryMuscles: ["quads"],
+      secondaryMuscles: [],
       equipment: "barbell",
       source: "manual",
     });
@@ -185,8 +186,9 @@ describe("adding to the catalogue", () => {
     const result = await addExercise({
       name: "   ",
       modality: "lift",
-      muscles: [],
-      equipment: "",
+      primaryMuscles: [],
+      secondaryMuscles: [],
+      equipment: "other",
       source: "manual",
     });
 

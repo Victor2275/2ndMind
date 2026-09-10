@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MuscleMap, expand } from "@/components/site/muscle-map";
-import { CATALOGUE } from "@/lib/athletics/catalogue";
+import { allMuscles, CATALOGUE } from "@/lib/athletics/catalogue";
 import { MUSCLES, REGIONS, type Muscle } from "@/lib/athletics/muscles";
 
 /**
@@ -164,14 +164,16 @@ describe("the catalogue it is drawn from", () => {
     // Mobility, stretching and foam rolling genuinely load nothing, so a blank figure is the
     // honest picture. Everything else has to light something, or the diagram is silently
     // useless on that exercise.
-    const blank = CATALOGUE.filter((entry) => expand(entry.muscles).size === 0).map((e) => e.name);
+    const blank = CATALOGUE.filter((entry) => expand(allMuscles(entry)).size === 0).map(
+      (e) => e.name,
+    );
     expect(blank.sort()).toEqual(["Foam Rolling", "Mobility", "Stretching"]);
   });
 
-  it("uses only names from the vocabulary (including the legacy `core` and `full body`)", () => {
+  it("uses only names from the vocabulary", () => {
     const known = new Set<string>(MUSCLES);
     for (const entry of CATALOGUE) {
-      for (const muscle of entry.muscles) {
+      for (const muscle of allMuscles(entry)) {
         expect(known.has(muscle), `${entry.name} claims "${muscle}", which is not in MUSCLES`).toBe(
           true,
         );
