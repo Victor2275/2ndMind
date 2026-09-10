@@ -71,6 +71,13 @@
       "when": 1788934390712,
       "tag": "0009_exercises_and_client_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789004349450,
+      "tag": "0010_catalogue_v2_schema",
+      "breakpoints": true
     }
   ]
 }

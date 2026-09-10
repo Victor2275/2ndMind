@@ -110,6 +110,8 @@ const KIND: Record<Entity, string> = {
   workout_set: "Set",
   exercise: "Exercise",
   ai_summary: "Summary",
+  routine: "Routine",
+  routine_exercise: "Routine exercise",
 };
 
 const VERB: Record<OutboxOp["op"], string> = {

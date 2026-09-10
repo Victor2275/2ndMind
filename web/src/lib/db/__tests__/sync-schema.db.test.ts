@@ -158,6 +158,9 @@ describe("the sync schema", () => {
         "bodyweight_entries",
         "rehab_completions",
         "ai_summaries",
+        // Added by V4 Phase 2++ Stage 2, same reason as `exercises` above.
+        "routines",
+        "routine_exercises",
       ]),
     );
   });

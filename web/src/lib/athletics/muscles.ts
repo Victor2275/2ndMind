@@ -108,6 +108,22 @@ export const GROUP_FOR: Record<Exclude<Muscle, "full body" | "core">, MuscleGrou
  * `""` is not in this list — the three loaded-nothing conditioning entries (mobility, stretching,
  * foam rolling) use it today and are folded into `"other"` in Stage 3's rewrite.
  */
+/**
+ * `exercises.primary_group`, derived rather than stored input — `apply.ts` calls this at write
+ * time so the column can never drift from the muscles it is grouping by. The first recognised
+ * name in `primaryMuscles` wins; an exercise with none (an unedited legacy row, or one whose
+ * only muscle is the `full body` sentinel, which has no single group) gets `null`, which the
+ * browser reads as "ungrouped" rather than guessing.
+ */
+export function primaryGroupOf(primaryMuscles: readonly string[]): MuscleGroup | null {
+  const groupFor = GROUP_FOR as Record<string, MuscleGroup | undefined>;
+  for (const muscle of primaryMuscles) {
+    const group = groupFor[muscle];
+    if (group) return group;
+  }
+  return null;
+}
+
 export const EQUIPMENT = [
   "barbell",
   "dumbbell",

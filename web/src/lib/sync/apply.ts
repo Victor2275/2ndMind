@@ -1,6 +1,7 @@
 import { eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
+import { primaryGroupOf } from "@/lib/athletics/muscles";
 import type * as schema from "@/lib/db/schema";
 import {
   aiSummaries,
@@ -8,6 +9,8 @@ import {
   exercises,
   logEntries,
   rehabCompletions,
+  routineExercises,
+  routines,
   tasks,
   workouts,
   workoutSets,
@@ -129,13 +132,57 @@ const WRITERS = {
     table: exercises,
     conflict: [exercises.clientId],
     identity: (p: Record<string, unknown>) => String(p.clientId),
+    columns: (p: Record<string, unknown>) => {
+      const primaryMuscles = (p.primaryMuscles ?? []) as string[];
+      return {
+        clientId: p.clientId as string,
+        name: p.name as string,
+        modality: p.modality as string,
+        muscles: p.muscles as string[],
+        equipment: p.equipment as string,
+        source: p.source as string,
+        seedKey: p.seedKey as string | null,
+        primaryMuscles,
+        secondaryMuscles: (p.secondaryMuscles ?? []) as string[],
+        // Derived, never trusted from the wire — see the field's doc in `schema.ts`.
+        primaryGroup: primaryGroupOf(primaryMuscles),
+        userEditedFields: (p.userEditedFields ?? []) as string[],
+        aliases: (p.aliases ?? []) as string[],
+        howTo: (p.howTo ?? "") as string,
+        notes: (p.notes ?? "") as string,
+        restSeconds: (p.restSeconds ?? null) as number | null,
+        archivedAt: p.archivedAt ? new Date(p.archivedAt as string) : null,
+      };
+    },
+  },
+  routine: {
+    table: routines,
+    conflict: [routines.clientId],
+    identity: (p: Record<string, unknown>) => String(p.clientId),
+    // `exercises` is deliberately absent: not a column on this table, handled separately inside
+    // the transaction that makes the aggregate atomic — see `writeRow`'s `routine` case.
     columns: (p: Record<string, unknown>) => ({
       clientId: p.clientId as string,
       name: p.name as string,
-      modality: p.modality as string,
-      muscles: p.muscles as string[],
-      equipment: p.equipment as string,
-      source: p.source as string,
+      notes: p.notes as string,
+    }),
+  },
+  /**
+   * Not a `WritableEntity` — `routine_exercise` is pull-only (see `sync/entities.ts`) and never
+   * arrives as its own op. This entry exists only so `writeRow`'s `routine` case has one place
+   * to build a line-item row from, the same shape `workout_set`'s entry serves for `workout`.
+   */
+  routine_exercise: {
+    table: routineExercises,
+    conflict: [routineExercises.clientId],
+    identity: (p: Record<string, unknown>) => String(p.clientId),
+    columns: (p: Record<string, unknown>) => ({
+      clientId: p.clientId as string,
+      exercise: p.exercise as string,
+      position: p.position as number,
+      targetSets: p.targetSets as number | null,
+      targetReps: p.targetReps as number | null,
+      targetWeightLbs: p.targetWeightLbs as number | null,
     }),
   },
 } as const;
@@ -342,6 +389,13 @@ async function storedStamps(
         .where(inArray(exercises.clientId, identities));
       return new Map(rows.map((r) => [r.id, r.hlc]));
     }
+    case "routine": {
+      const rows = await db
+        .select({ id: routines.clientId, hlc: routines.updatedHlc })
+        .from(routines)
+        .where(inArray(routines.clientId, identities));
+      return new Map(rows.map((r) => [r.id, r.hlc]));
+    }
   }
 }
 
@@ -396,10 +450,98 @@ async function writeRow(
     }
     case "exercise": {
       const columns = WRITERS.exercise.columns(payload);
-      await db
-        .insert(exercises)
-        .values({ ...columns, ...stamp })
-        .onConflictDoUpdate({ target: exercises.clientId, set: { ...columns, ...stamp } });
+      await atomically(db, (handle) => [
+        handle
+          .insert(exercises)
+          .values({ ...columns, ...stamp })
+          .onConflictDoUpdate({ target: exercises.clientId, set: { ...columns, ...stamp } }),
+
+        // Converge same-named live rows to one survivor (V4 Phase 2++ Stage 2, fixing the
+        // permanent-sync-wedge bug documented on `exercises.name` in schema.ts). `name` is no
+        // longer unique, so two devices creating "Zercher Squat" independently now both
+        // succeed instead of one 500ing the whole batch — but that would otherwise leave two
+        // live rows forever. This statement is pure and idempotent: for every `name_key` with
+        // more than one live row, it tombstones every row except the one with the highest
+        // `updated_hlc`. Run after *every* exercise write, cheap at catalogue scale, and
+        // correct regardless of which of two colliding writes triggers it — both converge to
+        // the same survivor because both compare against the same stored maximum.
+        //
+        // `COLLATE "C"` matters: `updated_hlc` is compared as a plain byte string everywhere
+        // else (`hlc.ts:compareHlc` is `a < b` in JS), and Postgres's default collation is
+        // locale-aware — it would occasionally disagree with that ordering.
+        handle.execute(sql`
+          UPDATE exercises AS e
+          SET deleted_at = now()
+          WHERE e.deleted_at IS NULL
+            AND e.name_key IS NOT NULL
+            AND e.updated_hlc COLLATE "C" < (
+              SELECT max(e2.updated_hlc COLLATE "C")
+              FROM exercises AS e2
+              WHERE e2.name_key = e.name_key AND e2.deleted_at IS NULL
+            )
+        `),
+      ]);
+      return;
+    }
+
+    /**
+     * A routine and every line it contains, in one transaction — the same aggregate shape as
+     * `workout` (`SYNC_DESIGN.md` §4a), with one difference: **replace-all.** Reordering and
+     * removing lines is the normal edit for a template, so rather than upserting into whatever
+     * lines already exist, this tombstones every existing line not present in the incoming list
+     * and upserts the rest. A re-sent create is therefore still idempotent — the same incoming
+     * `clientId`s tombstone the same complement every time.
+     */
+    case "routine": {
+      const columns = WRITERS.routine.columns(payload);
+      const exercisesIn = (payload.exercises ?? []) as Record<string, unknown>[];
+      const parentClientId = columns.clientId;
+      const incomingIds = exercisesIn.map((e) => String(e.clientId));
+      // A Postgres array literal built from bound params, not a JS array handed to `sql`
+      // directly — the driver has no column type to infer an array cast from, and interpolating
+      // one expands to a row expression instead (`($1, $2)`, not `{$1,$2}`).
+      const incomingIdsArray =
+        incomingIds.length > 0
+          ? sql`ARRAY[${sql.join(
+              incomingIds.map((id) => sql`${id}`),
+              sql`, `,
+            )}]::uuid[]`
+          : sql`ARRAY[]::uuid[]`;
+
+      await atomically(db, (handle) => [
+        handle
+          .insert(routines)
+          .values({ ...columns, ...stamp })
+          .onConflictDoUpdate({ target: routines.clientId, set: { ...columns, ...stamp } }),
+
+        // Tombstone whatever lines this routine had that are not in the new list. `<> ALL` over
+        // an empty array is vacuously true for every row, so an empty `exercises` (a delete, or
+        // a routine cleared to no lines) correctly tombstones everything with no special case.
+        // Safe on a first create too — `routineId` then matches no live rows, a no-op — and safe
+        // to re-run, since an already-tombstoned line stays excluded by `deleted_at IS NULL`.
+        handle.execute(sql`
+          UPDATE routine_exercises AS re
+          SET deleted_at = now()
+          WHERE re.deleted_at IS NULL
+            AND re.routine_id = (SELECT id FROM routines WHERE client_id = ${parentClientId})
+            AND re.client_id <> ALL(${incomingIdsArray})
+        `),
+
+        ...exercisesIn.map((line) => {
+          const row = {
+            ...WRITERS.routine_exercise.columns(line),
+            // A sub-select, not a value read back — see the identical comment on `workout`'s
+            // `workoutId` above. A batch statement may depend on an earlier one's *effect*, not
+            // its *result*.
+            routineId: sql<number>`(select id from ${routines} where ${routines.clientId} = ${parentClientId})`,
+            ...stamp,
+          };
+          return handle
+            .insert(routineExercises)
+            .values(row)
+            .onConflictDoUpdate({ target: routineExercises.clientId, set: row });
+        }),
+      ]);
       return;
     }
 
@@ -658,6 +800,24 @@ export async function pullChanges(
       .from(aiSummaries)
       .where(gt(aiSummaries.serverSeq, since))
       .orderBy(aiSummaries.serverSeq)
+      .limit(perTable),
+  );
+  push(
+    "routine",
+    await db
+      .select()
+      .from(routines)
+      .where(gt(routines.serverSeq, since))
+      .orderBy(routines.serverSeq)
+      .limit(perTable),
+  );
+  push(
+    "routine_exercise",
+    await db
+      .select()
+      .from(routineExercises)
+      .where(gt(routineExercises.serverSeq, since))
+      .orderBy(routineExercises.serverSeq)
       .limit(perTable),
   );
 

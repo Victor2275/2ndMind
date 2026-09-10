@@ -97,6 +97,8 @@ interface SyncSchema extends DBSchema {
   workout_sets: { key: string; value: LocalRecord; indexes: { dirty: number } };
   exercises: { key: string; value: LocalRecord; indexes: { dirty: number } };
   ai_summaries: { key: string; value: LocalRecord; indexes: { dirty: number } };
+  routines: { key: string; value: LocalRecord; indexes: { dirty: number } };
+  routine_exercises: { key: string; value: LocalRecord; indexes: { dirty: number } };
 }
 
 export type SyncDb = IDBPDatabase<SyncSchema>;
@@ -104,16 +106,20 @@ export type SyncDb = IDBPDatabase<SyncSchema>;
 export const DB_NAME = "2ndmind";
 
 /**
- * Bumped to 2 by V4 Phase 2, which added the `exercises` store.
+ * Bumped to 3 by V4 Phase 2++ Stage 2, which added the `routines` and `routine_exercises`
+ * stores. Bumped to 2 by V4 Phase 2, which added `exercises`.
  *
  * The upgrade is written to be **re-runnable from any earlier version**, which is why it asks
  * `objectStoreNames.contains` rather than branching on `oldVersion`. A phone that has been
- * offline for a fortnight upgrades straight from 1 to 2 and a fresh install creates everything
+ * offline for a fortnight upgrades straight from 1 to 3 and a fresh install creates everything
  * at once; a version ladder would need every rung to stay correct forever, and the rung nobody
  * exercises is the one that breaks. The cost of getting this wrong is not a failed query — it
- * is `openSyncDb` throwing, which takes the whole local store with it.
+ * is `openSyncDb` throwing, which takes the whole local store with it. Missing this bump when a
+ * store is added is exactly that cost: `openSyncDb` resolves without the new store, the first
+ * transaction against it throws `NotFoundError`, and `withLocal`'s catch swallows it — the
+ * screen renders empty with no error anywhere.
  */
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export async function openSyncDb(name = DB_NAME): Promise<SyncDb> {
   return openDB<SyncSchema>(name, DB_VERSION, {

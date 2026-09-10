@@ -1,9 +1,10 @@
 // @vitest-environment node
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { bodyweightEntries, logEntries, rehabCompletions, tasks } from "@/lib/db/schema";
+import { bodyweightEntries, exercises, logEntries, rehabCompletions, tasks } from "@/lib/db/schema";
 import { applyOps, pullChanges, type Db } from "@/lib/sync/apply";
+import { ENTITIES } from "@/lib/sync/entities";
 import { HlcClock } from "@/lib/sync/hlc";
 import type { WireOp } from "@/lib/sync/protocol";
 import { resetTestDb } from "@/test/pg";
@@ -279,6 +280,140 @@ describe("pulling changes", () => {
     expect(changes[0].row).not.toHaveProperty("serverSeq");
     expect(changes[0].row).not.toHaveProperty("updatedHlc");
     expect(typeof changes[0].serverSeq).toBe("number");
+  });
+});
+
+describe("the exercise name-collision bug (V4 Phase 2++ Stage 2)", () => {
+  /**
+   * `exercises` was unique on both `name` and `client_id`, but a create only conflicts on
+   * `client_id`. Two devices adding the same name independently — different clientIds, same
+   * string — raised a raw Postgres unique violation, which is not `UnknownParentError`, so it
+   * was never caught: the route 500'd, the whole batch died, and everything else queued behind
+   * it in that batch retried forever. This is the test that would have failed before the fix.
+   */
+  it("does not 500 when two different devices create the same name", async () => {
+    const first = op({
+      entity: "exercise",
+      clientId: uuid(1001),
+      payload: { clientId: uuid(1001), name: "Zercher Squat", source: "manual" },
+    });
+    const second = op({
+      entity: "exercise",
+      clientId: uuid(1002),
+      payload: { clientId: uuid(1002), name: "Zercher Squat", source: "manual" },
+    });
+
+    const [r1] = await applyOps(db, [first]);
+    expect(r1.status).toBe("applied");
+
+    // Before the fix, this threw a raw unique-violation error rather than resolving.
+    const [r2] = await applyOps(db, [second]);
+    expect(r2.status).toBe("applied");
+  });
+
+  it("converges same-named live rows to the one with the highest updated_hlc", async () => {
+    const older = op({
+      entity: "exercise",
+      clientId: uuid(1003),
+      payload: { clientId: uuid(1003), name: "Zercher Squat", source: "manual" },
+    });
+    await applyOps(db, [older]);
+
+    // A later stamp, from the same or a different device — either way, this is the create the
+    // catalogue should end up with.
+    const newer = op({
+      entity: "exercise",
+      clientId: uuid(1004),
+      payload: { clientId: uuid(1004), name: "Zercher Squat", source: "manual" },
+    });
+    await applyOps(db, [newer]);
+
+    const live = await db.select().from(exercises).where(isNull(exercises.deletedAt));
+    const named = live.filter((r) => r.name === "Zercher Squat");
+    expect(named).toHaveLength(1);
+    expect(named[0].clientId).toBe(uuid(1004));
+
+    const gone = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.clientId, uuid(1003)));
+    expect(gone[0].deletedAt).not.toBeNull();
+  });
+
+  it("does not touch rows with different names", async () => {
+    await applyOps(db, [
+      op({
+        entity: "exercise",
+        clientId: uuid(1005),
+        payload: { clientId: uuid(1005), name: "Zercher Squat", source: "manual" },
+      }),
+    ]);
+    await applyOps(db, [
+      op({
+        entity: "exercise",
+        clientId: uuid(1006),
+        payload: { clientId: uuid(1006), name: "Front Squat", source: "manual" },
+      }),
+    ]);
+
+    const live = await db.select().from(exercises).where(isNull(exercises.deletedAt));
+    expect(live.map((r) => r.name).sort()).toEqual(["Front Squat", "Zercher Squat"]);
+  });
+
+  it("is case- and whitespace-insensitive, via the generated name_key", async () => {
+    await applyOps(db, [
+      op({
+        entity: "exercise",
+        clientId: uuid(1007),
+        payload: { clientId: uuid(1007), name: "Zercher Squat", source: "manual" },
+      }),
+    ]);
+    await applyOps(db, [
+      op({
+        entity: "exercise",
+        clientId: uuid(1008),
+        payload: { clientId: uuid(1008), name: "  zercher squat  ", source: "manual" },
+      }),
+    ]);
+
+    const live = await db.select().from(exercises).where(isNull(exercises.deletedAt));
+    const named = live.filter((r) => r.clientId === uuid(1007) || r.clientId === uuid(1008));
+    expect(named).toHaveLength(1);
+  });
+
+  it("derives primary_group from primary_muscles server-side, ignoring anything sent for it", async () => {
+    await applyOps(db, [
+      op({
+        entity: "exercise",
+        clientId: uuid(1009),
+        payload: {
+          clientId: uuid(1009),
+          name: "Bench Press",
+          source: "manual",
+          primaryMuscles: ["chest"],
+        },
+      }),
+    ]);
+
+    const [row] = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.clientId, uuid(1009)));
+    expect(row.primaryGroup).toBe("Chest");
+  });
+});
+
+describe("pullChanges covers every entity", () => {
+  it("has a push() for every ENTITIES member, not just the ones with a test", () => {
+    // `pullChanges` is eight (now ten) hand-written blocks with no compile-time check that a
+    // new entity got one — unlike `_writableCovered` and the `storedStamps` switch, both
+    // exhaustive by construction. This is the runtime stand-in: it reads the source rather than
+    // trusting a fixture, so an entity added without a `push(...)` call fails here instead of
+    // silently never reaching the phone.
+    const source = pullChanges.toString();
+    for (const entity of ENTITIES) {
+      expect(source, `pullChanges has no push("${entity}", ...) call`).toContain(`"${entity}"`);
+    }
   });
 });
 

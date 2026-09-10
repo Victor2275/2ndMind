@@ -15,6 +15,8 @@ export const ENTITIES = [
   "workout_set",
   "exercise",
   "ai_summary",
+  "routine",
+  "routine_exercise",
 ] as const;
 
 export type Entity = (typeof ENTITIES)[number];
@@ -31,6 +33,11 @@ export type Entity = (typeof ENTITIES)[number];
  * against.
  *
  * `ai_summary` stays pull-only because the phone never writes one.
+ *
+ * **`routine` joined in Phase 2++ Stage 2**, as an aggregate op like `workout` — a routine and
+ * its exercise list travel together. `routine_exercise` deliberately did not join it: a line
+ * item is never addressed on its own, only embedded in a `routine` op, the same way a set is
+ * never created on its own — only embedded in a `workout` op — until the parent exists.
  */
 export const WRITABLE: readonly Entity[] = [
   "log_entry",
@@ -40,6 +47,7 @@ export const WRITABLE: readonly Entity[] = [
   "workout",
   "workout_set",
   "exercise",
+  "routine",
 ];
 
 export function isWritable(entity: Entity): boolean {
@@ -63,6 +71,8 @@ export const STORE_FOR = {
   workout_set: "workout_sets",
   exercise: "exercises",
   ai_summary: "ai_summaries",
+  routine: "routines",
+  routine_exercise: "routine_exercises",
 } as const satisfies Record<Entity, string>;
 
 /** The object-store names, as literals, for typing IndexedDB transactions. */

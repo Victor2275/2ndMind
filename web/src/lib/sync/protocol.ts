@@ -114,13 +114,17 @@ export const PAYLOADS = {
   }),
 
   /**
-   * A catalogue entry (V4 Phase 2.1).
+   * A catalogue entry (V4 Phase 2.1; editable fields added Phase 2++ Stage 2).
    *
    * The phone may add one — that is the point of "AI ADD" and of typing a movement the seed
    * does not know. `name` is the catalogue's natural key on the server, but the op is addressed
    * by `clientId`: two devices adding "Zercher Squat" on the same afternoon must not collide on
    * a unique index and lose one of them, and last-write-wins on a client key resolves that the
-   * same way it does everywhere else.
+   * same way it does everywhere else — `apply.ts`'s writer now also converges same-named live
+   * rows to one survivor after the fact, since the database no longer refuses the second insert.
+   *
+   * `primaryGroup` is deliberately absent: it is derived server-side from `primaryMuscles` in
+   * `apply.ts`, never accepted from the client, so it cannot drift from the muscles it groups by.
    */
   exercise: z.object({
     clientId: z.uuid(),
@@ -129,6 +133,45 @@ export const PAYLOADS = {
     muscles: z.array(z.string().max(40)).max(12).default([]),
     equipment: z.string().max(40).default(""),
     source: z.enum(["seed", "manual", "ai"]).default("manual"),
+    seedKey: z.string().max(200).nullable().default(null),
+    primaryMuscles: z.array(z.string().max(40)).max(6).default([]),
+    secondaryMuscles: z.array(z.string().max(40)).max(6).default([]),
+    userEditedFields: z.array(z.string().max(40)).max(24).default([]),
+    aliases: z.array(z.string().max(100)).max(20).default([]),
+    howTo: z.string().max(2_000).default(""),
+    notes: z.string().max(4_000).default(""),
+    restSeconds: z.number().int().min(0).max(3_600).nullable().default(null),
+    archivedAt: isoDate.nullable().default(null),
+  }),
+
+  /**
+   * A routine, its exercise list included — the same aggregate shape as `workout` and for the
+   * same reason: `routine_exercises.routine_id` is an integer foreign key to a `serial` that
+   * does not exist offline, so the routine and its lines travel as one operation and the server
+   * assigns the key inside a transaction.
+   *
+   * `exercises` is a **replacement** of the routine's whole line list, not an addition to it —
+   * see `routines` in `schema.ts`. Each line carries its own `clientId`, generated fresh by the
+   * client on every save even for a line that looks unchanged; that is what lets the server's
+   * writer treat this as "these are the lines now" without having to match old lines to new ones.
+   */
+  routine: z.object({
+    clientId: z.uuid(),
+    name: z.string().min(1).max(200),
+    notes: z.string().max(4_000).default(""),
+    exercises: z
+      .array(
+        z.object({
+          clientId: z.uuid(),
+          exercise: z.string().min(1).max(200),
+          position: z.number().int().min(0).max(500).default(0),
+          targetSets: z.number().int().min(0).max(50).nullable().default(null),
+          targetReps: z.number().int().min(0).max(1_000).nullable().default(null),
+          targetWeightLbs: z.number().min(0).max(5_000).nullable().default(null),
+        }),
+      )
+      .max(100)
+      .default([]),
   }),
 } as const;
 
@@ -143,6 +186,7 @@ const _writableCovered: Record<WritableEntity, true> = {
   workout: true,
   workout_set: true,
   exercise: true,
+  routine: true,
 };
 void _writableCovered;
 

@@ -39,6 +39,15 @@ const ROWS: Record<string, Record<string, unknown>> = {
   },
   exercise: { clientId: "6f1c2d8e-0000-4000-8000-000000000005", name: "Bench Press" },
   ai_summary: { kind: "daily", periodStart: "2026-09-04" },
+  // Added V4 Phase 2++ Stage 2. Addressed by clientId like workout/workout_set — routine is
+  // writable, routine_exercise is pull-only, but both fall into the same identity branch.
+  routine: { clientId: "6f1c2d8e-0000-4000-8000-000000000006", name: "Push A" },
+  routine_exercise: {
+    clientId: "6f1c2d8e-0000-4000-8000-000000000007",
+    id: 55,
+    routineId: 1,
+    exercise: "Bench Press",
+  },
 };
 
 describe("identityOf", () => {
@@ -77,6 +86,13 @@ describe("identityOf", () => {
 
   it("keeps ai_summary pull-only, so the phone never writes one", () => {
     expect(isWritable("ai_summary")).toBe(false);
+  });
+
+  it("makes routine writable but keeps routine_exercise pull-only", () => {
+    // A routine's lines only ever arrive embedded in a `routine` op — the same relationship
+    // `workout_set` had to `workout` until it grew its own writable path.
+    expect(isWritable("routine")).toBe(true);
+    expect(isWritable("routine_exercise")).toBe(false);
   });
 
   it("still requires a client id where there is no natural key", () => {

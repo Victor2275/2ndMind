@@ -106,6 +106,13 @@ export const workouts = pgTable(
     title: text("title").notNull().default(""),
     source: text("source").notNull().default("manual"),
     notes: text("notes").notNull().default(""),
+    /**
+     * Per-exercise notes for the session — "left knee bothered me on squats" — keyed by exercise
+     * name (V4 Phase 2++ Stage 2). There is no per-exercise row in this schema, only per-set
+     * ones, and a note attached to set 1 dies the moment set 1 is deleted; keying by name on the
+     * parent survives that.
+     */
+    exerciseNotes: jsonb("exercise_notes").$type<Record<string, string>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     clientId: clientId(),
     ...syncColumns(),
@@ -140,6 +147,26 @@ export const workoutSets = pgTable(
     /** Strokes per minute. Erg work only; the vault tracks SPM targets per race distance. */
     spm: integer("spm"),
     rpe: numeric("rpe", { precision: 4, scale: 2, mode: "number" }),
+    /**
+     * Set when a ticked-off set is marked done in the rebuilt logger (V4 Phase 2++ Stage 2).
+     * Null for a set logged the old way — plain entry, no tick — which is not a data gap, it is
+     * the honest answer for a set nobody stepped through in order.
+     */
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    /** Per-set note — "felt heavy", "left knee" — separate from `workouts.exerciseNotes`, which
+     *  is per exercise for the whole session rather than per rep. */
+    notes: text("notes").notNull().default(""),
+    /**
+     * What the piece *was*, orthogonal to `setType`'s "does this count". A technical paddle at
+     * low pressure and a race piece both `count` — `setType` stays `"normal"` on both — but they
+     * answer a different question a PR board should never conflate. Free text on purpose, not
+     * an enum: `"start"`, `"race"`, `"technical"`, `"steady"` today, and a new one tomorrow
+     * should not need a migration. `isWorkingSet` in `lib/athletics/prs.ts` is untouched by this
+     * column and must stay that way — extending `setType` instead would have let a light
+     * technical paddle silently enter the PR board the moment someone added `"technical"` to
+     * its deny list.
+     */
+    pieceType: text("piece_type"),
     clientId: clientId(),
     ...syncColumns(),
   },
@@ -166,34 +193,116 @@ export const workoutSets = pgTable(
  * typed, `ai` for one the AI-add path proposed and you confirmed. Nothing is ever created
  * without confirmation — D-186's rule for voice, applied here.
  *
- * `name` is unique because the catalogue is addressed by it: a set stores the exercise *name*,
- * not a foreign key. That is deliberate. `workout_sets.exercise` is free text today and every
- * Hevy import writes names this table has never seen, so a foreign key would make importing a
- * CSV fail on a movement nobody had catalogued yet. The catalogue assists entry; it does not
- * police history.
+ * `name` is *not* unique — it was, until V4 Phase 2++ Stage 2 found the bug that came from it.
+ * `workout_sets.exercise` stores the name as free text, never a foreign key, so uniqueness on
+ * `name` bought nothing there — but the op that adds a catalogue entry is addressed by
+ * `client_id`, and a create only conflicts on that. Two devices adding "Zercher Squat" the same
+ * afternoon therefore raised a **raw Postgres unique violation** on `exercises_name_idx`, which
+ * is not an `UnknownParentError`, so `applyOps` did not catch it — the route 500'd, the whole
+ * batch died, and every other entity queued behind it in that batch retried forever. Fixed two
+ * ways: uniqueness dropped here, and `apply.ts`'s exercise writer now converges same-named live
+ * rows to one survivor (highest `updated_hlc`) after every write, so the data stays clean without
+ * ever needing the database to refuse the second insert.
+ *
+ * ## Phase 2++ Stage 2's additions
+ *
+ * Additive only — nothing above is dropped, and `muscles` stays populated for one release so a
+ * client on the pre-Stage-3 bundle still renders a figure from `pullChanges`'s row. `seedKey` is
+ * the identity Stage 3's rename keys on instead of `name`, so a name can change without losing
+ * the row's history of AI-suggest matches, how-to text and user edits. `userEditedFields` is
+ * what `mergeCatalogue` (`session-logger.tsx`) has to respect once seeded rows are editable —
+ * without it, a bundle reseed cannot tell "the user changed this" from "the seed changed this".
  */
 export const exercises = pgTable(
   "exercises",
   {
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
+    /**
+     * Lowercased, trimmed `name`, generated rather than written — the collision-convergence
+     * query below groups on this, and a hand-maintained copy is a copy that can disagree with
+     * `name` the moment an update sets one and not the other.
+     */
+    nameKey: text("name_key").generatedAlwaysAs(sql`lower(btrim(name))`),
     /** "lift" | "erg" | "water" | "conditioning" — which fields the session form asks for. */
     modality: text("modality").notNull().default("lift"),
-    /** Primary muscles worked. Empty for erg and conditioning, where it means little. */
+    /**
+     * Primary muscles worked, from the old 15-word vocabulary. Kept through Stage 2 so a client
+     * on the pre-Stage-3 bundle still gets a figure from every pulled row; retired one release
+     * after Stage 3 seeds `primaryMuscles`/`secondaryMuscles` for every row.
+     */
     muscles: text("muscles")
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    /** Prime movers, from `lib/athletics/muscles.ts`'s ~21-word vocabulary. Stage 3 backfills. */
+    primaryMuscles: text("primary_muscles")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /** Assisting muscles — the figure's lighter, secondary highlight. */
+    secondaryMuscles: text("secondary_muscles")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /**
+     * Coarse Hevy-style group (`Chest`, `Back`, …), for the exercise browser's sticky section
+     * headers. Derived server-side from `primaryMuscles` via `primaryGroupOf` at write time —
+     * never trusted from the client — so it cannot drift from the muscles it is grouping by.
+     */
+    primaryGroup: text("primary_group"),
     /** "barbell", "dumbbell", "machine", "cable", "bodyweight", "machine-erg", "" */
     equipment: text("equipment").notNull().default(""),
     /** "seed" | "manual" | "ai" — where the row came from, for pruning later. */
     source: text("source").notNull().default("manual"),
+    /**
+     * The identity Stage 3's rename keys on, instead of `name`. Null until Stage 3 backfills it
+     * for every seeded row; a hand-added or AI-suggested row never gets one, which is correct —
+     * `seedKey` means "this row traces to a specific catalogue.ts entry", and those rows do not.
+     * Not unique here: uniqueness is enforced by the rename script's own totality check
+     * (`renames.test.ts`), not by the database, because a partly-migrated table legitimately has
+     * many rows sharing the null `seedKey`.
+     */
+    seedKey: text("seed_key"),
+    /**
+     * Which columns a person has edited by hand, so a bundle reseed (`seed-exercises.mts`) knows
+     * to leave them alone. Without this, editing a seeded row's how-to text would be silently
+     * overwritten the next time the seed script runs — correct in Postgres, correct in the
+     * mirror, and gone on the next deploy.
+     */
+    userEditedFields: text("user_edited_fields")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /** Other names this movement is logged under — "incline press" for "Incline Bench Press". */
+    aliases: text("aliases")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /** Setup, execution, common error — moved here from the static `how-to.ts` map in Stage 3 so
+     *  an edit is a sync op rather than a code change. Empty until then. */
+    howTo: text("how_to").notNull().default(""),
+    /** Free-form notes, distinct from `howTo` — "use the 2-inch deficit plates", not technique. */
+    notes: text("notes").notNull().default(""),
+    /** Per-exercise default rest, seconds. Null means "use the logger's default". */
+    restSeconds: integer("rest_seconds"),
+    /**
+     * Archived — hidden from the browser and the picker, kept for history. Two-step removal per
+     * Victor's answer: archive first (reversible, syncs), delete only from the archive view
+     * (permanent, confirmed) via the ordinary tombstone every other entity already uses.
+     */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** Which seed pass last touched this row's non-user-edited fields. Compared against the
+     *  running catalogue version in `seed-exercises.mts`, not read anywhere else. */
+    seedVersion: integer("seed_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     clientId: clientId(),
     ...syncColumns(),
   },
   (t) => [
-    uniqueIndex("exercises_name_idx").on(t.name),
+    index("exercises_name_idx").on(t.name),
+    index("exercises_name_key_idx").on(t.nameKey),
+    uniqueIndex("exercises_seed_key_idx").on(t.seedKey),
     uniqueIndex("exercises_client_id_idx").on(t.clientId),
     index("exercises_server_seq_idx").on(t.serverSeq),
   ],
@@ -206,6 +315,74 @@ export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
 export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type NewWorkoutSet = typeof workoutSets.$inferInsert;
+
+/**
+ * A saved routine — a template you start a session from (V4 Phase 2++ Stage 2, absorbed into
+ * Stage 6). Victor's answer: saved from a finished session rather than built from a blank form,
+ * pre-filled with the weights that session used.
+ *
+ * Syncs as one aggregate op, like `workouts` (`SYNC_DESIGN.md` §4a) — a routine and its exercise
+ * list travel together, and the server assigns `routine_exercises.routine_id` itself inside the
+ * transaction, for the same reason a set cannot point at a workout that does not exist yet
+ * offline. The one difference from a workout's aggregate: **a routine op replaces the whole list
+ * rather than upserting into it.** Reordering and removing exercises is the normal edit for a
+ * template — you save a routine, not append to one — so the write that makes that correct is
+ * "these are the exercises now", not "here are some more".
+ */
+export const routines = pgTable(
+  "routines",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    notes: text("notes").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    clientId: clientId(),
+    ...syncColumns(),
+  },
+  (t) => [
+    uniqueIndex("routines_client_id_idx").on(t.clientId),
+    index("routines_server_seq_idx").on(t.serverSeq),
+  ],
+);
+
+export type Routine = typeof routines.$inferSelect;
+export type NewRoutine = typeof routines.$inferInsert;
+
+/**
+ * One line of a routine. Pull-only — it is in `ENTITIES` and `STORE_FOR` so it mirrors onto the
+ * phone, but not in `sync/entities.ts`'s `WRITABLE`, because a lone line item is never addressed
+ * on its own: it only ever arrives embedded in a `routine` op, the same way `workout_sets` only
+ * ever arrives embedded in a `workout` op on first create.
+ *
+ * `clientId` is generated fresh, client-side, every time a routine is saved — even for "the same"
+ * exercise line the person is just re-saving unchanged. That is what makes replace-all simple: the
+ * writer does not need to match old line items to new ones, only tombstone whichever old rows for
+ * this routine are not among the incoming `clientId`s and upsert the rest.
+ */
+export const routineExercises = pgTable(
+  "routine_exercises",
+  {
+    id: serial("id").primaryKey(),
+    routineId: integer("routine_id")
+      .notNull()
+      .references(() => routines.id, { onDelete: "cascade" }),
+    exercise: text("exercise").notNull(),
+    position: integer("position").notNull().default(0),
+    targetSets: integer("target_sets"),
+    targetReps: integer("target_reps"),
+    targetWeightLbs: numeric("target_weight_lbs", { precision: 7, scale: 2, mode: "number" }),
+    clientId: clientId(),
+    ...syncColumns(),
+  },
+  (t) => [
+    index("routine_exercises_routine_id_idx").on(t.routineId),
+    uniqueIndex("routine_exercises_client_id_idx").on(t.clientId),
+    index("routine_exercises_server_seq_idx").on(t.serverSeq),
+  ],
+);
+
+export type RoutineExercise = typeof routineExercises.$inferSelect;
+export type NewRoutineExercise = typeof routineExercises.$inferInsert;
 
 /**
  * Tasks — the one model for everything actionable (D-037).
