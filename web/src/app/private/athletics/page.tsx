@@ -541,6 +541,18 @@ async function Training() {
             , on a phone or here — an exercise, a row per set, saved on the device and synced when
             there is signal. Those sets are what the records and charts above are computed from.
           </p>
+          {/* V4 Phase 2++ Stage 4. A sub-page of Athletics rather than a tenth `PrivateNav`
+              entry — C-11 has been asking for fewer top-level items since 2026-09-06. */}
+          <p className="mt-3 text-sm text-muted-foreground">
+            Browse, edit or add a movement at{" "}
+            <Link
+              href="/private/athletics/exercises"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Exercises
+            </Link>
+            .
+          </p>
         </div>
       </section>
     </>

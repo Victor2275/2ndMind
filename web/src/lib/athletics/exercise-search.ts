@@ -26,7 +26,17 @@ export type Searchable = {
   name: string;
   modality?: string;
   equipment?: string;
+  /**
+   * Other names this movement used to be called (V4 Phase 2++ Stage 3's `renames.ts`) or is
+   * also known by. Matched the same way `name` is; the highest-scoring alias, if any beats the
+   * name itself, is what `searchExercises` ranks by — see its doc for why.
+   */
+  aliases?: readonly string[];
 };
+
+/** The `(Equipment)` suffix every v2 name carries, stripped for the length bonus only — see its
+ *  call site in `score`. Matches "(Barbell)", "(EZ Bar)", "(Bike Erg)" — one or more words. */
+const EQUIPMENT_SUFFIX = / \([A-Za-z0-9 ]+\)$/;
 
 /**
  * How well `query` matches `name`, or `null` for no match at all.
@@ -65,9 +75,15 @@ export function score(name: string, query: string): number | null {
     from = index + 1;
   }
 
-  // A short name that matched is more likely to be the one meant: "Dip" over "Dumbbell Incline
-  // Press" for the query "dip".
-  total += Math.max(0, 20 - haystack.length);
+  /**
+   * A short name that matched is more likely to be the one meant: "Dip" over "Dumbbell Incline
+   * Press" for the query "dip". Measured against the name with its `(Equipment)` suffix
+   * stripped — every v2 name carries one (Stage 3), which pushed almost every name past the
+   * 20-character floor and made this bonus fire for nothing. "Dip (Bodyweight)" is 15 real
+   * characters of movement name; it should read as short, not as "Dumbbell Incline Press"-long.
+   */
+  const core = haystack.replace(EQUIPMENT_SUFFIX, "");
+  total += Math.max(0, 20 - core.length);
 
   /**
    * A contiguous run beats a scattered one, by a lot.
@@ -100,6 +116,12 @@ export function score(name: string, query: string): number | null {
  * search, and for a concrete reason: this is a picker. Opening it should show you what there is,
  * whereas showing someone their entire log because they cleared the box is noise.
  *
+ * **Matches an alias as well as the name** (V4 Phase 2++ Stage 4) — typing "barbell curl" still
+ * finds "Bicep Curl (Barbell)", because that is what `Row (Erg)` used to be twenty-two different
+ * strings of, and a rename should not cost the muscle memory of the old name. The item's own
+ * best score wins regardless of which string produced it: an alias match never outranks a
+ * genuine name match for the same item, it only rescues an item the name alone would have missed.
+ *
  * Ties break on name so the order is stable between keystrokes. A list that reshuffles under
  * your thumb while the score is equal is how you tap the wrong row.
  */
@@ -109,8 +131,12 @@ export function searchExercises<T extends Searchable>(items: T[], query: string,
 
   const hits: { item: T; score: number }[] = [];
   for (const item of items) {
-    const value = score(item.name, trimmed);
-    if (value !== null) hits.push({ item, score: value });
+    let best = score(item.name, trimmed);
+    for (const alias of item.aliases ?? []) {
+      const aliasScore = score(alias, trimmed);
+      if (aliasScore !== null && (best === null || aliasScore > best)) best = aliasScore;
+    }
+    if (best !== null) hits.push({ item, score: best });
   }
 
   hits.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));

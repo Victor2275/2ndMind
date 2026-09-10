@@ -274,7 +274,80 @@ export type LocalSetPayload = {
   rpe: number | null;
 };
 
-/** One op, one clock tick, one store open. Shared by every mutation above. */
+/**
+ * Editing the catalogue (V4 Phase 2++ Stage 4).
+ *
+ * ## Everything is editable, seeded rows included
+ *
+ * That is Victor's answer, and it is the reversal `mergeCatalogue` in `session-logger.tsx` had
+ * to be rewritten for: a seeded row's `userEditedFields` is what tells a bundle reseed to leave
+ * a column alone rather than overwrite the edit on the next reload.
+ *
+ * ## Archive, then delete — two separate ops
+ *
+ * `archiveExercise` sets `archivedAt` and nothing else; the row keeps syncing, keeps its
+ * history, and is reversible from the archive view. `deleteExercise` is the ordinary tombstone
+ * every other entity in this app already has — permanent, and only reachable from the archive.
+ */
+
+/** Every field the exercise detail page can change. */
+export type ExerciseEdit = {
+  clientId: string;
+  seedKey: string | null;
+  name: string;
+  modality: string;
+  equipment: string;
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+  aliases: string[];
+  howTo: string;
+  notes: string;
+  restSeconds: number | null;
+  source: string;
+  /** Which of the fields above a person has changed — union'd with whatever was already there,
+   *  since a field once edited by hand stays that way for good (`seed-exercises.mts`). */
+  userEditedFields: string[];
+};
+
+export async function updateExercise(entry: ExerciseEdit): Promise<SaveResult> {
+  return exerciseOp("update", entry);
+}
+
+/** Reversible — the row keeps syncing and stays in the archive view. */
+export async function archiveExercise(entry: ExerciseEdit): Promise<SaveResult> {
+  return exerciseOp("update", { ...entry, archivedAt: new Date().toISOString() });
+}
+
+/** Reverses `archiveExercise`. */
+export async function unarchiveExercise(entry: ExerciseEdit): Promise<SaveResult> {
+  return exerciseOp("update", { ...entry, archivedAt: null });
+}
+
+/** Permanent. Only reachable from the archive view, and confirmed there. */
+export async function deleteExercise(entry: ExerciseEdit): Promise<SaveResult> {
+  return exerciseOp("delete", entry);
+}
+
+async function exerciseOp(
+  op: "update" | "delete",
+  row: Record<string, unknown>,
+): Promise<SaveResult> {
+  try {
+    const db = await openSyncDb();
+    try {
+      const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
+      await enqueue(db, { entity: "exercise", op, row, hlc: clock.tick() });
+      await saveClock(db, clock.state);
+      return { ok: true, message: op === "delete" ? "Deleted." : "Saved." };
+    } finally {
+      db.close();
+    }
+  } catch {
+    return { ok: false, message: "This device will not open its local store." };
+  }
+}
+
+/** One op, one clock tick, one store open. Shared by every session mutation above. */
 async function oneOp(
   entity: "workout" | "workout_set",
   op: "update" | "delete",

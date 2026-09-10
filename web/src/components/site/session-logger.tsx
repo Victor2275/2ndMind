@@ -5,9 +5,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MuscleMap } from "@/components/site/muscle-map";
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
-import { CATALOGUE, howTo, type CatalogueEntry, type Modality } from "@/lib/athletics/catalogue";
+import { howTo, type Modality } from "@/lib/athletics/catalogue";
 import { searchExercises } from "@/lib/athletics/exercise-search";
-import { localCatalogue, localEfforts, withLocal } from "@/lib/athletics/local";
+import {
+  localCatalogue,
+  localEfforts,
+  mergeCatalogue,
+  withLocal,
+  type LocalExercise,
+} from "@/lib/athletics/local";
 import { EQUIPMENT, type Equipment, type Muscle } from "@/lib/athletics/muscles";
 import { estimateOneRepMax, strengthRecords, type Effort } from "@/lib/athletics/prs";
 import {
@@ -110,71 +116,8 @@ function todayLocal(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-/**
- * The catalogue, from the bundle first and the device second (D-224, rewritten V4 Phase 2++
- * Stage 3).
- *
- * This screen used to read the mirrored `exercises` store and nothing else, which made the whole
- * feature depend on a completed sync pull. That failed in the most ordinary way there is: the
- * catalogue is ~140 rows and the pull is paged at 100, so a device that had synced **once** held
- * most but not all of it — and searching `bnch` on a phone in a gym could find nothing at all, if
- * Bench Press happened to be in the part that had not arrived yet. It was not an error state; the
- * search box simply came up empty and the only way forward was to type the name in by hand.
- *
- * The seed is already in this bundle — `CATALOGUE` is the file `scripts/seed-exercises.mts`
- * inserts from, so the two cannot disagree — which means every seeded movement is available on
- * first paint, before any network, on a device that has never synced. The mirror is then merged
- * over the top by `seedKey`, which is what carries the ones the seed does not know: an exercise
- * added on the phone, or one the AI-add path proposed, both of which have no `seedKey` at all and
- * are matched by `name` instead.
- *
- * **The mirror wins for any row carrying `userEditedFields`, the bundle wins otherwise.** This is
- * the reversal Stage 3 exists to make safe. The comment this replaced said *"nothing in the app
- * can edit a seeded entry, so the bundle is the only writer of those rows"* — that premise is
- * gone the moment the exercise detail page (Stage 4) can edit a seeded row's how-to text or its
- * muscles. Bundle-always-wins under that premise would make every edit vanish on reload: correct
- * in Postgres, correct in the mirror, invisible on screen. So the mirror wins precisely where a
- * person actually changed something — `userEditedFields` says which fields, but the merge is
- * per-row rather than per-field, matching `store.ts`'s own last-write-wins granularity — and the
- * bundle still wins everywhere else, which is what keeps a stale pre-reseed mirror row from
- * showing an old how-to or a blank figure after the seed changes something *nobody* edited.
- */
-function mergeCatalogue(mirrored: CatalogueEntry[]): CatalogueEntry[] {
-  const bySeedKey = new Map<string, CatalogueEntry>();
-  const byName = new Map<string, CatalogueEntry>();
-
-  for (const entry of CATALOGUE) {
-    if (entry.seedKey) bySeedKey.set(entry.seedKey, entry);
-    byName.set(entry.name, entry);
-  }
-
-  for (const entry of mirrored) {
-    if (entry.seedKey) {
-      const seeded = bySeedKey.get(entry.seedKey);
-      // No bundle row shares this seedKey — the seed dropped it, or (should not happen) the
-      // mirror is ahead of this build. Keep the mirror's copy rather than losing the row.
-      if (!seeded) {
-        byName.set(entry.name, entry);
-        continue;
-      }
-      if (entry.userEditedFields.length > 0) {
-        // The mirror wins, but the bundle's own name still resolves to it — otherwise renaming
-        // a seeded row and editing it in the same session would leave two entries in the list.
-        byName.delete(seeded.name);
-        byName.set(entry.name, entry);
-      }
-      // Else: bundle already holds the winning copy under this seedKey, nothing to do.
-    } else {
-      // No seedKey — a hand-typed or AI-added row, matched by name, same as before Stage 3.
-      byName.set(entry.name, entry);
-    }
-  }
-
-  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
 export function SessionLogger() {
-  const [mirrored, setMirrored] = useState<CatalogueEntry[]>([]);
+  const [mirrored, setMirrored] = useState<LocalExercise[]>([]);
   const [efforts, setEfforts] = useState<Effort[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [title, setTitle] = useState("");
@@ -232,7 +175,7 @@ export function SessionLogger() {
 
   const records = useMemo(() => strengthRecords(efforts), [efforts]);
 
-  const addBlock = useCallback((entry: CatalogueEntry) => {
+  const addBlock = useCallback((entry: LocalExercise) => {
     setBlocks((current) => [
       ...current,
       {
@@ -618,9 +561,9 @@ function ExercisePicker({
   onAdded,
   onCancel,
 }: {
-  catalogue: CatalogueEntry[];
-  onPick: (entry: CatalogueEntry) => void;
-  onAdded: (entry: CatalogueEntry) => void;
+  catalogue: LocalExercise[];
+  onPick: (entry: LocalExercise) => void;
+  onAdded: (entry: LocalExercise) => void;
   onCancel: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -642,9 +585,12 @@ function ExercisePicker({
     });
     if (result.ok) {
       // No seedKey, no aliases, no how-to yet — a fresh row is exactly that until someone
-      // fills the rest in from the exercise detail page (Stage 4).
+      // fills the rest in from the exercise detail page. `clientId` came back from the write
+      // itself, generated client-side, so this is editable/archivable immediately rather than
+      // only after the next sync.
       onAdded({
         seedKey: null,
+        clientId: result.clientId ?? null,
         name: input.name,
         modality: input.modality,
         equipment: input.equipment,
@@ -652,6 +598,9 @@ function ExercisePicker({
         secondaryMuscles: input.secondaryMuscles,
         aliases: [],
         howTo: "",
+        notes: "",
+        restSeconds: null,
+        archivedAt: null,
         userEditedFields: [],
       });
     } else {

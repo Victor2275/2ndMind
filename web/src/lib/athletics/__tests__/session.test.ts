@@ -5,13 +5,18 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   addExercise,
+  archiveExercise,
+  deleteExercise,
   deleteSession,
   deleteSet,
   emptySet,
   hasContent,
   saveSession,
+  unarchiveExercise,
+  updateExercise,
   updateSession,
   updateSet,
+  type ExerciseEdit,
 } from "@/lib/athletics/session";
 import { allOps, DB_NAME, openSyncDb, type SyncDb } from "@/lib/sync/store";
 
@@ -194,6 +199,64 @@ describe("adding to the catalogue", () => {
 
     expect(result.ok).toBe(false);
     expect(await allOps(db)).toHaveLength(0);
+  });
+});
+
+const exercise = (over: Partial<ExerciseEdit> = {}): ExerciseEdit => ({
+  clientId: "aaaaaaaa-0000-4000-8000-000000000099",
+  seedKey: "bench-press",
+  name: "Bench Press (Barbell)",
+  modality: "lift",
+  equipment: "barbell",
+  primaryMuscles: ["chest"],
+  secondaryMuscles: ["triceps"],
+  aliases: [],
+  howTo: "",
+  notes: "",
+  restSeconds: null,
+  source: "seed",
+  userEditedFields: [],
+  ...over,
+});
+
+describe("editing the catalogue (V4 Phase 2++ Stage 4)", () => {
+  it("queues an update carrying userEditedFields", async () => {
+    const result = await updateExercise(
+      exercise({ howTo: "New text.", userEditedFields: ["howTo"] }),
+    );
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("exercise");
+    expect(op.op).toBe("update");
+    expect(op.payload).toMatchObject({ howTo: "New text.", userEditedFields: ["howTo"] });
+  });
+
+  it("archives by setting archivedAt, not deletedAt", async () => {
+    const result = await archiveExercise(exercise());
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.op).toBe("update");
+    expect(op.payload.archivedAt).toBeTruthy();
+  });
+
+  it("unarchives by clearing archivedAt", async () => {
+    const result = await unarchiveExercise(exercise());
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.op).toBe("update");
+    expect(op.payload.archivedAt).toBeNull();
+  });
+
+  it("deletes as a tombstone, only reachable from the archive in the UI", async () => {
+    const result = await deleteExercise(exercise());
+    expect(result.ok).toBe(true);
+
+    const [op] = await allOps(db);
+    expect(op.entity).toBe("exercise");
+    expect(op.op).toBe("delete");
   });
 });
 

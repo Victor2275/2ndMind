@@ -1,4 +1,4 @@
-import type { CatalogueEntry } from "@/lib/athletics/catalogue";
+import { CATALOGUE, type CatalogueEntry } from "@/lib/athletics/catalogue";
 import type { Muscle } from "@/lib/athletics/muscles";
 import type { Effort } from "@/lib/athletics/prs";
 import { normalizeExerciseName } from "@/lib/athletics/renames";
@@ -162,6 +162,27 @@ export async function localEfforts(db: SyncDb): Promise<Effort[]> {
 const strArray = (value: unknown): string[] => (Array.isArray(value) ? (value as string[]) : []);
 
 /**
+ * A `CatalogueEntry` as a specific row on this device rather than a seed definition — everything
+ * the exercise browser and detail page (V4 Phase 2++ Stage 4) need to edit, archive or delete it.
+ *
+ * `clientId` is what makes this different from a bundle entry, and it is null for exactly one
+ * reason: the bundle's rows are seed *definitions*, authored in `catalogue.ts` with no server
+ * row behind them yet on a device that has never synced. Every real row — seeded or not — gets a
+ * client-generated or server-assigned id the moment it exists in Postgres, which for the seed
+ * happens the first time `scripts/seed-exercises.mts` runs. `clientId === null` therefore means
+ * "not editable from this screen yet", not "does not exist" — the entry is still fully readable
+ * and pickable, it just cannot be the target of `updateExercise`/`archiveExercise` until a pull
+ * fills it in.
+ */
+export type LocalExercise = CatalogueEntry & {
+  clientId: string | null;
+  /** Free-form notes — "use the 2-inch deficit plates" — never part of the seed. */
+  notes: string;
+  restSeconds: number | null;
+  archivedAt: string | null;
+};
+
+/**
  * The catalogue as the phone has it, sorted by name so an empty query reads alphabetically.
  *
  * `name` is passed through `normalizeExerciseName` (V4 Phase 2++ Stage 3) — a mirrored row can
@@ -170,7 +191,7 @@ const strArray = (value: unknown): string[] => (Array.isArray(value) ? (value as
  * retired. `renames.ts` ships in the client bundle for exactly this: it is the one lookup that
  * has to be correct on a phone that has not synced today.
  */
-export async function localCatalogue(db: SyncDb): Promise<CatalogueEntry[]> {
+export async function localCatalogue(db: SyncDb): Promise<LocalExercise[]> {
   const rows = await listLocal(db, "exercise");
   return rows
     .map((record) => {
@@ -178,6 +199,7 @@ export async function localCatalogue(db: SyncDb): Promise<CatalogueEntry[]> {
       const primaryMuscles = strArray(row.primaryMuscles);
       return {
         seedKey: typeof row.seedKey === "string" ? row.seedKey : null,
+        clientId: typeof row.clientId === "string" ? row.clientId : null,
         name: normalizeExerciseName(str(row.name)),
         modality: str(row.modality, "lift") as CatalogueEntry["modality"],
         equipment: str(row.equipment, "other") as CatalogueEntry["equipment"],
@@ -190,11 +212,94 @@ export async function localCatalogue(db: SyncDb): Promise<CatalogueEntry[]> {
         secondaryMuscles: strArray(row.secondaryMuscles) as Muscle[],
         aliases: strArray(row.aliases),
         howTo: str(row.howTo),
+        notes: str(row.notes),
+        restSeconds: num(row.restSeconds),
+        archivedAt: typeof row.archivedAt === "string" ? row.archivedAt : null,
         userEditedFields: strArray(row.userEditedFields),
       };
     })
     .filter((entry) => entry.name !== "")
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The catalogue, from the bundle first and the device second (D-224, moved here from
+ * `session-logger.tsx` in V4 Phase 2++ Stage 4 so the exercise browser can share it).
+ *
+ * This screen used to read the mirrored `exercises` store and nothing else, which made the whole
+ * feature depend on a completed sync pull. That failed in the most ordinary way there is: the
+ * catalogue is ~140 rows and the pull is paged at 100, so a device that had synced **once** held
+ * most but not all of it — and searching `bnch` on a phone in a gym could find nothing at all, if
+ * Bench Press happened to be in the part that had not arrived yet. It was not an error state; the
+ * search box simply came up empty and the only way forward was to type the name in by hand.
+ *
+ * The seed is already in this bundle — `CATALOGUE` is the file `scripts/seed-exercises.mts`
+ * inserts from, so the two cannot disagree — which means every seeded movement is available on
+ * first paint, before any network, on a device that has never synced. The mirror is then merged
+ * over the top by `seedKey`, which is what carries the ones the seed does not know: an exercise
+ * added on the phone, or one the AI-add path proposed, both of which have no `seedKey` at all and
+ * are matched by `name` instead.
+ *
+ * **The mirror wins for any row carrying `userEditedFields`, the bundle wins otherwise.** This is
+ * the reversal Stage 3 exists to make safe. The comment this replaced said *"nothing in the app
+ * can edit a seeded entry, so the bundle is the only writer of those rows"* — that premise is
+ * gone the moment the exercise detail page (Stage 4) can edit a seeded row's how-to text or its
+ * muscles. Bundle-always-wins under that premise would make every edit vanish on reload: correct
+ * in Postgres, correct in the mirror, invisible on screen. So the mirror wins precisely where a
+ * person actually changed something — `userEditedFields` says which fields, but the merge is
+ * per-row rather than per-field, matching `store.ts`'s own last-write-wins granularity — and the
+ * bundle still wins everywhere else, which is what keeps a stale pre-reseed mirror row from
+ * showing an old how-to or a blank figure after the seed changes something *nobody* edited.
+ */
+export function mergeCatalogue(mirrored: LocalExercise[]): LocalExercise[] {
+  const bundle: LocalExercise[] = CATALOGUE.map((entry) => ({
+    ...entry,
+    clientId: null,
+    notes: "",
+    restSeconds: null,
+    archivedAt: null,
+  }));
+
+  const bySeedKey = new Map<string, LocalExercise>();
+  const byName = new Map<string, LocalExercise>();
+
+  for (const entry of bundle) {
+    if (entry.seedKey) bySeedKey.set(entry.seedKey, entry);
+    byName.set(entry.name, entry);
+  }
+
+  for (const entry of mirrored) {
+    if (entry.seedKey) {
+      const seeded = bySeedKey.get(entry.seedKey);
+      // No bundle row shares this seedKey — the seed dropped it, or (should not happen) the
+      // mirror is ahead of this build. Keep the mirror's copy rather than losing the row.
+      if (!seeded) {
+        byName.set(entry.name, entry);
+        continue;
+      }
+      if (entry.userEditedFields.length > 0) {
+        // The mirror wins, but the bundle's own name still resolves to it — otherwise renaming
+        // a seeded row and editing it in the same session would leave two entries in the list.
+        byName.delete(seeded.name);
+        byName.set(entry.name, entry);
+      } else {
+        // The bundle already holds the winning copy under this seedKey, but the mirror still
+        // knows this row's real clientId and archivedAt — carry those over so the browser can
+        // still edit/archive a row nobody has touched yet.
+        byName.set(seeded.name, {
+          ...seeded,
+          clientId: entry.clientId,
+          archivedAt: entry.archivedAt,
+          restSeconds: entry.restSeconds,
+        });
+      }
+    } else {
+      // No seedKey — a hand-typed or AI-added row, matched by name, same as before Stage 3.
+      byName.set(entry.name, entry);
+    }
+  }
+
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Opens the store, runs `read`, and always closes it. */

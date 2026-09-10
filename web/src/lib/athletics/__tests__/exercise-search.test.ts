@@ -109,6 +109,32 @@ describe("the empty query", () => {
   });
 });
 
+describe("aliases (V4 Phase 2++ Stage 4)", () => {
+  it("finds an entry by its old v1 name", () => {
+    // "Barbell Curl" was the whole name before Stage 3; it is now an alias of "Bicep Curl
+    // (Barbell)" — see renames.ts, which is where every v2 entry's aliases come from.
+    expect(names("Barbell Curl")).toContain("Bicep Curl (Barbell)");
+    expect(names("Erg 2000m")).toContain("Row (Erg)");
+  });
+
+  it("never lets an alias match outrank a genuine name match", () => {
+    const results = searchExercises(CATALOGUE, "bicep curl");
+    expect(results[0]?.name).toMatch(/^Bicep Curl/);
+  });
+});
+
+describe("the equipment suffix does not defeat the short-name bonus", () => {
+  it("still treats a short movement name as short, suffix included", () => {
+    // Every v2 name is at least a few characters longer than its v1 name because of the
+    // trailing "(Equipment)" — the ~20-character floor the old catalogue tuned this bonus
+    // against is meaningless now unless the suffix is excluded from the measurement.
+    expect(score("Dip (Bodyweight)", "dip")).not.toBeNull();
+    expect(score("Dip (Bodyweight)", "dip")!).toBeGreaterThan(
+      score("Diamond Push Up (Bodyweight)", "dip") ?? -1,
+    );
+  });
+});
+
 describe("score", () => {
   it("is null for a miss, so callers cannot mistake 0 for no match", () => {
     expect(score("Bench Press", "zzz")).toBeNull();
