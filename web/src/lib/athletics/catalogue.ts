@@ -27,11 +27,23 @@
  *
  * It was a grouping key with a diagram pencilled in against it. Phase 2.9 built that diagram —
  * `components/site/muscle-map.tsx` — and it reads this array directly, which is why the closed
- * vocabulary below matters more than it did: a typo here is now a body region that never lights
- * up rather than a group with one member. The demonstration clips 2.10 asked for are **not**
- * here and will not be: there is no lawfully reusable set of them, so Victor's call was a written
+ * vocabulary matters more than it did: a typo here is now a body region that never lights up
+ * rather than a group with one member. The demonstration clips 2.10 asked for are **not** here
+ * and will not be: there is no lawfully reusable set of them, so Victor's call was a written
  * description instead, which lives in `how-to.ts`.
+ *
+ * ## `MUSCLES` moved to `lib/athletics/muscles.ts` (Phase 2++, Stage 1)
+ *
+ * Re-exported here so nothing that already imports it from this file breaks. This file's own
+ * entries still use the old 15-word vocabulary — `core` rather than `abs`/`obliques`, no
+ * `rear delts`/`rotator cuff`/`adductors`/`abductors`/`hip flexors` — because this whole array is
+ * rewritten wholesale in Stage 3 (`renames.ts`, a reviewable diff, `seedKey`s). Retagging it twice
+ * would be wasted work. The two exceptions are `Hip Adduction` and `Hip Abduction`, corrected
+ * below to the more specific new names because the mis-tag was already live and the fix does not
+ * touch a stored exercise name — only a tag Stage 1's figure can now draw.
  */
+import { MUSCLES, type Muscle } from "@/lib/athletics/muscles";
+export { MUSCLES, type Muscle };
 
 /** What the session form should ask for. */
 export type Modality = "lift" | "erg" | "water" | "conditioning";
@@ -44,33 +56,6 @@ export type CatalogueEntry = {
   /** How it is loaded, for grouping and for the eventual diagrams. */
   equipment: string;
 };
-
-/**
- * Muscle names are a closed list on purpose.
- *
- * Free text here would give "quads", "quadriceps" and "Quads" as three groups the moment
- * anything tried to group by them — and the diagrams this is a hook for need to map a name to a
- * region. A test asserts every entry below uses one of these.
- */
-export const MUSCLES = [
-  "chest",
-  "back",
-  "lats",
-  "traps",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "forearms",
-  "quads",
-  "hamstrings",
-  "glutes",
-  "calves",
-  "core",
-  "lower back",
-  "full body",
-] as const;
-
-export type Muscle = (typeof MUSCLES)[number];
 
 const lift = (name: string, equipment: string, ...muscles: Muscle[]): CatalogueEntry => ({
   name,
@@ -208,8 +193,10 @@ export const CATALOGUE: CatalogueEntry[] = [
   lift("Machine Row", "machine", "back", "lats"),
   lift("Assisted Pull Up", "machine", "lats", "biceps"),
   lift("Back Extension", "machine", "lower back", "glutes"),
-  lift("Hip Abduction", "machine", "glutes"),
-  lift("Hip Adduction", "machine", "quads"),
+  // Corrected in Stage 1 (Phase 2++): these were tagged `glutes`/`quads`, the nearest names the
+  // old 15-word vocabulary had. The new vocabulary has the actual regions.
+  lift("Hip Abduction", "machine", "abductors"),
+  lift("Hip Adduction", "machine", "adductors"),
 
   // ---------------------------------------------------------------- bodyweight
   lift("Pull Up", "bodyweight", "lats", "biceps"),

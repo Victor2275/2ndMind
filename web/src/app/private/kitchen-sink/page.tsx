@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowRightIcon, CheckIcon, TriangleAlertIcon } from "lucide-react";
 
 import { MuscleMap } from "@/components/site/muscle-map";
+import { MuscleMapTapDemo } from "@/components/site/muscle-map-tap-demo";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { SheetDemo } from "@/components/site/sheet-demo";
 import { Badge } from "@/components/ui/badge";
@@ -365,6 +366,36 @@ const MAP_CASES: Array<[string, string[], number]> = [
   ["Stretching · nothing marked", [], 96],
 ];
 
+/** Primary/secondary split — the reference's red-prime, pink-assist, unavailable until now. */
+const PRIMARY_SECONDARY_CASES: Array<[string, string[], string[], number]> = [
+  [
+    "Bench Press · chest primary, triceps + rear delts secondary",
+    ["chest"],
+    ["triceps", "shoulders"],
+    200,
+  ],
+  [
+    "Deadlift · hamstrings + glutes primary, lower back + traps secondary",
+    ["hamstrings", "glutes"],
+    ["lower back", "traps"],
+    200,
+  ],
+  [
+    "Overhead Press · shoulders primary, triceps + traps secondary",
+    ["shoulders"],
+    ["triceps", "traps"],
+    200,
+  ],
+];
+
+/** New Stage 1 regions the old 15-word vocabulary had no room for. */
+const NEW_REGION_CASES: Array<[string, string[], number]> = [
+  ["rear delts · back-only, was drawn as `shoulders` before Stage 1", ["rear delts"], 132],
+  ["rotator cuff", ["rotator cuff"], 132],
+  ["abs + obliques · split from `core`", ["abs", "obliques"], 132],
+  ["adductors, abductors, hip flexors", ["adductors", "abductors", "hip flexors"], 132],
+];
+
 export default function KitchenSinkPage() {
   return (
     <div className="flex flex-col gap-8" id="top">
@@ -415,6 +446,74 @@ export default function KitchenSinkPage() {
             </figure>
           ))}
         </div>
+      </Panel>
+
+      {/* Redrawn at reference fidelity for Phase 2++ Stage 1, against
+          Muscles-worked-in-the-bench-press-exercise-2.png in the project root: striated bellies,
+          dark seams, `--primary` for the prime mover and `--primary-300` for the assist. */}
+      <Panel
+        title="Muscle map — primary / secondary"
+        meta="V4 Phase 2++ Stage 1 · unavailable until the catalogue carries a split (Stage 3)"
+      >
+        <div className="flex flex-wrap items-start gap-6">
+          {PRIMARY_SECONDARY_CASES.map(([label, primary, secondary, size]) => (
+            <figure key={label} className="flex flex-col items-center gap-2">
+              <MuscleMap primary={primary} secondary={secondary} size={size} />
+              <figcaption className="max-w-[14rem] text-center">
+                <Spec>{label}</Spec>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel
+        title="Muscle map — new regions"
+        meta="Vocabulary grew 15 → 21 (see lib/athletics/muscles.ts)"
+      >
+        <div className="flex flex-wrap items-start gap-6">
+          {NEW_REGION_CASES.map(([label, muscles, size]) => (
+            <figure key={label} className="flex flex-col items-center gap-2">
+              <MuscleMap muscles={muscles} size={size} />
+              <figcaption className="max-w-[12rem] text-center">
+                <Spec>{label}</Spec>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel
+        title="Muscle map — detail levels"
+        meta="`full` (≥96px default) draws striation seams · `simple` (<96px default) draws bellies only"
+      >
+        <div className="flex flex-wrap items-end gap-6">
+          <figure className="flex flex-col items-center gap-2">
+            <MuscleMap muscles={["chest", "triceps"]} size={200} detail="full" />
+            <figcaption className="text-center">
+              <Spec>detail=&quot;full&quot;, 200px</Spec>
+            </figcaption>
+          </figure>
+          <figure className="flex flex-col items-center gap-2">
+            <MuscleMap muscles={["chest", "triceps"]} size={40} />
+            <figcaption className="text-center">
+              <Spec>default at 40px (simple)</Spec>
+            </figcaption>
+          </figure>
+          <figure className="flex flex-col items-center gap-2">
+            <MuscleMap muscles={["chest", "triceps"]} size={132} detail="simple" />
+            <figcaption className="text-center">
+              <Spec>detail=&quot;simple&quot;, forced at 132px</Spec>
+            </figcaption>
+          </figure>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Muscle map — tappable"
+        meta="Filters the exercise browser (Stage 4) and sets muscles in the edit form (Stage 4)"
+      >
+        <MuscleMapTapDemo />
       </Panel>
 
       {/* One block per theme. `data-theme` on the section re-declares the whole palette for its

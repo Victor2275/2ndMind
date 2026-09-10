@@ -1,48 +1,50 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { MuscleMap, expand } from "@/components/site/muscle-map";
-import { CATALOGUE, MUSCLES, type Muscle } from "@/lib/athletics/catalogue";
+import { CATALOGUE } from "@/lib/athletics/catalogue";
+import { MUSCLES, REGIONS, type Muscle } from "@/lib/athletics/muscles";
 
 /**
- * The body map (V4 Phase 2.9).
+ * The body map (V4 Phase 2.9, redrawn at reference fidelity in Phase 2++ Stage 1).
  *
  * ## What can and cannot be tested here
  *
  * jsdom does not lay out SVG, so nothing here can say the drawing *looks* right — that is what
- * `/private/kitchen-sink` is for, and it is why the six cases on that page were chosen to be
- * the ones that go wrong. What is testable is the part that would silently lie: which regions
- * are marked, that every catalogue entry can be drawn, and that a `full body` tag means the
- * whole figure rather than a region nobody defined.
+ * `/private/kitchen-sink` is for. What is testable is the part that would silently lie: which
+ * regions are marked, that every vocabulary name and every catalogue entry can be drawn, that a
+ * `full body` tag means the whole figure, and that primary and secondary render as visibly
+ * different classes rather than collapsing to one colour.
  */
 
 /** Regions are marked by fill, so the count of highlighted paths is the assertion. */
-function litRegions(container: HTMLElement): number {
-  return container.querySelectorAll("path.fill-primary").length;
+function litRegions(container: HTMLElement, cls = "fill-primary"): number {
+  return container.querySelectorAll(`path.${cls}`).length;
 }
 
 /** The same count, split by figure — each is a `<g>` whose `<title>` names it. */
-function litOn(container: HTMLElement): { front: number; back: number } {
+function litOn(container: HTMLElement, cls = "fill-primary"): { front: number; back: number } {
   const count = (label: string) => {
     const title = [...container.querySelectorAll("title")].find((t) => t.textContent === label);
-    return title?.parentElement?.querySelectorAll("path.fill-primary").length ?? -1;
+    return title?.parentElement?.querySelectorAll(`path.${cls}`).length ?? -1;
   };
   return { front: count("Front"), back: count("Back") };
 }
 
 describe("expand", () => {
-  it("turns `full body` into every region", () => {
+  it("turns `full body` into every drawable region", () => {
     const all = expand(["full body"]);
-    // Every name except the sentinel itself, which is not a place on the body.
-    expect(all.size).toBe(MUSCLES.length - 1);
+    expect(all.size).toBe(REGIONS.length);
     expect(all.has("full body" as Muscle)).toBe(false);
     expect(all.has("chest")).toBe(true);
     expect(all.has("calves")).toBe(true);
   });
 
+  it("turns the legacy `core` synonym into abs and obliques", () => {
+    expect([...expand(["core"])].sort()).toEqual(["abs", "obliques"]);
+  });
+
   it("ignores names that are not in the vocabulary", () => {
-    // The AI-add path and hand-typed entries can put anything in this column. A diagram is not
-    // the place to discover it, so an unknown name is dropped rather than thrown on.
     expect([...expand(["chest", "pecs", "", "biceps"])]).toEqual(["chest", "biceps"]);
   });
 
@@ -57,7 +59,7 @@ describe("the drawing", () => {
     expect(litRegions(container)).toBe(0);
     // The body is still drawn. A diagram that renders an empty box for stretching would read
     // as broken rather than as "nothing is loaded here".
-    expect(container.querySelectorAll("path").length).toBeGreaterThan(20);
+    expect(container.querySelectorAll("path").length).toBeGreaterThan(40);
   });
 
   it("marks more paths for two regions than for one", () => {
@@ -67,10 +69,9 @@ describe("the drawing", () => {
   });
 
   it("puts a region on the figure it belongs to and not the other", () => {
-    // The property that makes a back-only tag visible at all. A bench press must light the front
-    // and a deadlift the back; a diagram that lit both would be saying nothing.
+    // Chest has three sub-shapes, each mirrored to both sides of the body.
     expect(litOn(render(<MuscleMap muscles={["chest"]} />).container)).toEqual({
-      front: 4,
+      front: 6,
       back: 0,
     });
 
@@ -78,16 +79,19 @@ describe("the drawing", () => {
     expect(legs.front).toBe(0);
     expect(legs.back).toBeGreaterThan(0);
 
-    // And a region that really is on both is on both.
-    const delts = litOn(render(<MuscleMap muscles={["shoulders"]} />).container);
-    expect(delts.front).toBeGreaterThan(0);
-    expect(delts.back).toBeGreaterThan(0);
+    // `shoulders` is front-only and `rear delts` is back-only now — the split Stage 1 made to
+    // fix the old figure drawing the same deltoid path on both views under one name.
+    const front = litOn(render(<MuscleMap muscles={["shoulders"]} />).container);
+    expect(front.front).toBeGreaterThan(0);
+    expect(front.back).toBe(0);
+
+    const back = litOn(render(<MuscleMap muscles={["rear delts"]} />).container);
+    expect(back.front).toBe(0);
+    expect(back.back).toBeGreaterThan(0);
   });
 
   it("lights something for every muscle name in the vocabulary", () => {
-    // The guard against a name that exists in `MUSCLES` and in the catalogue but was never given
-    // a shape — which renders as an exercise whose diagram is simply blank, with no error.
-    for (const muscle of MUSCLES) {
+    for (const muscle of REGIONS) {
       const { container } = render(<MuscleMap muscles={[muscle]} />);
       expect(litRegions(container), `${muscle} lights no region on either figure`).toBeGreaterThan(
         0,
@@ -108,16 +112,63 @@ describe("the drawing", () => {
   });
 });
 
+describe("primary and secondary", () => {
+  it("renders primary and secondary as visibly different classes", () => {
+    const { container } = render(<MuscleMap primary={["chest"]} secondary={["triceps"]} />);
+    expect(litRegions(container, "fill-primary")).toBeGreaterThan(0);
+    expect(litRegions(container, "fill-primary-300")).toBeGreaterThan(0);
+  });
+
+  it("falls back to the legacy `muscles` prop as primary, with no secondary", () => {
+    const { container } = render(<MuscleMap muscles={["chest"]} />);
+    expect(litRegions(container, "fill-primary")).toBeGreaterThan(0);
+    expect(litRegions(container, "fill-primary-300")).toBe(0);
+  });
+});
+
+describe("detail levels", () => {
+  it("draws striation seams at full detail and omits them at simple detail", () => {
+    const full = render(<MuscleMap muscles={["chest"]} detail="full" />);
+    const simple = render(<MuscleMap muscles={["chest"]} detail="simple" />);
+    expect(full.container.querySelectorAll("path").length).toBeGreaterThan(
+      simple.container.querySelectorAll("path").length,
+    );
+  });
+
+  it("defaults to simple below 96px and full at or above it", () => {
+    const small = render(<MuscleMap muscles={["chest"]} size={40} />);
+    const large = render(<MuscleMap muscles={["chest"]} size={132} />);
+    expect(large.container.querySelectorAll("path").length).toBeGreaterThan(
+      small.container.querySelectorAll("path").length,
+    );
+  });
+});
+
+describe("region taps", () => {
+  it("calls onRegionTap with the region tapped", () => {
+    const onRegionTap = vi.fn();
+    render(<MuscleMap muscles={[]} onRegionTap={onRegionTap} />);
+    const chest = screen.getByRole("button", { name: "chest" });
+    fireEvent.click(chest);
+    expect(onRegionTap).toHaveBeenCalledWith("chest");
+  });
+
+  it("is not interactive when no handler is given", () => {
+    render(<MuscleMap muscles={[]} />);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+});
+
 describe("the catalogue it is drawn from", () => {
   it("gives every seeded entry at least one region, except the three that load nothing", () => {
     // Mobility, stretching and foam rolling genuinely load nothing, so a blank figure is the
-    // honest picture. Everything else — including erg pieces, which were empty until 2.9 — has
-    // to light something, or the diagram is silently useless on that exercise.
+    // honest picture. Everything else has to light something, or the diagram is silently
+    // useless on that exercise.
     const blank = CATALOGUE.filter((entry) => expand(entry.muscles).size === 0).map((e) => e.name);
     expect(blank.sort()).toEqual(["Foam Rolling", "Mobility", "Stretching"]);
   });
 
-  it("uses only names from the closed vocabulary", () => {
+  it("uses only names from the vocabulary (including the legacy `core` and `full body`)", () => {
     const known = new Set<string>(MUSCLES);
     for (const entry of CATALOGUE) {
       for (const muscle of entry.muscles) {
