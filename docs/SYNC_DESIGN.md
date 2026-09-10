@@ -35,7 +35,9 @@ None of these were visible from the plan. All three are cheap now and expensive 
 | | Direction | Mechanism |
 |---|---|---|
 | Postgres rows — logs, tasks, bodyweight, rehab | **Both ways** | Outbox + pull cursor (this document) |
-| Workouts and sets | Server → phone only | Pull only — the phone logs training as a `log_entry`, and `allEfforts()` merges both sources on read so those sets still reach the records (D-159); workouts themselves come from Hevy imports on the laptop (§11.1) |
+| Workouts and sets | **Both ways** since V4 Phase 2 | The aggregate op — a session and all its sets travel as one operation (§4a). The row above described the state §11.1 deferred twice; `allEfforts()` no longer merges two sources, because there is only one |
+| The exercise catalogue | **Both ways** | Outbox + pull cursor. Writable since V4 Phase 2 so the phone can add a movement; **editable** since Phase 2++, including seeded rows — see the `user_edited_fields` note in §2 |
+| Routines and their lines | **Both ways** (the routine), pull-only (its lines) | A second aggregate op, with one difference from a workout's: it is **replace-all** (§4b) |
 | AI summaries | Server → phone only | Pull only; the phone never creates one |
 | Rendered vault pages — Today, Athletics, School | Server → phone only | **Not cached.** `/cached` renders these from the local mirror instead (§2.1, D-161); the worker caches no private response, because one would survive sign-out |
 | The public site | Server → phone only | Service-worker precache (D-130) |
@@ -234,6 +236,48 @@ create is atomic.
 **Deleting a workout** soft-deletes the parent only. Reads filter children by the parent's
 `deleted_at`, which is why §4 adds the column to both tables. The `ON DELETE CASCADE` stays for
 genuine hard deletes; there are none in normal operation.
+
+---
+
+## 4b. Routines as one aggregate, **replace-all** — BUILT 2026-09-10 (V4 Phase 2++)
+
+A routine is a template a session is started from, saved *from* a finished session rather than
+built in a blank form. It has the same foreign-key problem a workout has —
+`routine_exercises.routine_id` points at a `serial` that does not exist offline — so it takes the
+same answer: **one op carries the routine and its whole line list**, and the server resolves the
+key inside the transaction, with the line's `routine_id` written as a sub-select rather than read
+back from the insert (the batch rule in §4a applies unchanged).
+
+```
+op: { entity: "routine", op: "create", clientId, hlc, payload: {
+  clientId, name, notes,
+  exercises: [ { clientId, exercise, position, targetSets, targetReps, targetWeightLbs }, … ],
+} }
+```
+
+**The one difference from a workout: this replaces rather than upserts.** Applying a routine op
+tombstones every live line of that routine whose `client_id` is not in the incoming list, then
+upserts the incoming ones.
+
+Why the two aggregates differ is worth writing down, because they look identical otherwise:
+
+- A **workout's** sets accumulate one at a time and are corrected in place. Its aggregate must
+  not delete what it was not told about, or an edit made on the laptop between two saves on the
+  phone would vanish.
+- A **routine's** lines are rewritten wholesale on every save — reordering and removing is the
+  normal edit to a template. Under replace-all the writer never has to decide whether line three
+  is "the same line" as before, so a reorder is just a different list.
+
+That is also why the client mints a **fresh `clientId` for every line on every save**. Line
+identity carries no information here; the position in the list does.
+
+`routine_exercise` is in `ENTITIES` and `STORE_FOR` but **not** in `WRITABLE`. A line is never
+addressed on its own — it only ever arrives inside a routine op — which is exactly the
+relationship `workout_set` had to `workout` before sets became independently editable.
+
+**Deleting a routine** sends the op with an empty `exercises` list, which tombstones the parent
+through the ordinary `stamp` and every line through the replace-all rule, in the same
+transaction.
 
 ---
 

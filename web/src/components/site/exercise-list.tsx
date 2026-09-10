@@ -163,7 +163,7 @@ export function ExerciseList({
         <div key={label}>
           {/* Sticky, Hevy-style — the header you are scrolling past is the one answering
               "what am I looking at" for the rows currently on screen. */}
-          <h3 className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-1.5 eyebrow text-muted-foreground backdrop-blur-sm">
+          <h3 className="sticky top-0 z-10 bg-background/95 py-1.5 eyebrow text-muted-foreground backdrop-blur-sm">
             {label} · {list.length}
           </h3>
           <ul className="divide-y divide-border/60 rounded-lg border border-border bg-card/40">

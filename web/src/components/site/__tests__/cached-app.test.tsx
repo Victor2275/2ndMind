@@ -179,6 +179,49 @@ describe("which view it shows", () => {
   });
 });
 
+describe("the exercise browser, offline (V4 Phase 2++ Stage 8)", () => {
+  /**
+   * These two routes fell through to the record board until Stage 8, which made "offline
+   * throughout" true of the data layer and false of the screen — `npm run e2e` navigated to an
+   * exercise's page with no signal and got Training. The e2e catches it now too; this catches it
+   * in a second, without a browser.
+   */
+  it("renders the browser for the exercises list", async () => {
+    at("/private/athletics/exercises");
+    readCachedView.mockResolvedValue({ ...BLANK });
+    render(<CachedApp />);
+
+    // The browser's own controls, not the record board's.
+    expect(await screen.findByLabelText("Search exercises")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter by muscle group")).toBeInTheDocument();
+  });
+
+  it("renders one exercise for a detail path, decoding the name", async () => {
+    // A hand-typed movement's only identity is its name, spaces and all, so the slug has to
+    // survive the round trip through the URL.
+    at(`/private/athletics/exercises/${encodeURIComponent("Bench Press (Barbell)")}`);
+    readCachedView.mockResolvedValue({ ...BLANK });
+    render(<CachedApp />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Bench Press (Barbell)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still shows the record board for the athletics index itself", async () => {
+    // The detail prefix is checked before the list and both before `/private/athletics`, the
+    // same longest-prefix-first rule the logger already needed.
+    at("/private/athletics");
+    readCachedView.mockResolvedValue({ ...BLANK });
+    render(<CachedApp />);
+
+    // The record board's own line about why it computes nothing here (D-025).
+    expect(await screen.findByText(/Records, charts/i)).toBeInTheDocument();
+    // The discriminator: the browser's filters belong to the other two routes, not this one.
+    expect(screen.queryByLabelText("Filter by muscle group")).not.toBeInTheDocument();
+  });
+});
+
 describe("what it admits it cannot show", () => {
   it("names the missing panels rather than rendering them empty", async () => {
     // An empty Schedule reads as "nothing on today", which is a different and wrong claim.

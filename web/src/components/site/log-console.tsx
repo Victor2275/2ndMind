@@ -201,7 +201,11 @@ export function LogConsole({
           categories, with nothing on screen to say they were there. A tab you cannot see is a
           tab that does not get used. Two short rows cost about 30px and hide nothing.
         */}
-        <div className="-mx-1 flex flex-wrap gap-1">
+        {/* No negative margin: it made this row 8px wider than its parent, which is the one
+            thing `scripts/diag-widths.mjs` counts as a fault — and one permanent offender is
+            enough to make a gate that exits 1 on every run and therefore never gets read.
+            Found while adding the Training routes to that gate (V4 Phase 2++ Stage 8). */}
+        <div className="flex flex-wrap gap-1">
           {TAB_CATEGORIES.map((c) => {
             const done = loggedToday.includes(c.key);
             return (

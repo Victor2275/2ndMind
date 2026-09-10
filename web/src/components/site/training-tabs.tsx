@@ -33,7 +33,12 @@ export function TrainingTabs() {
   return (
     <nav
       aria-label="Training"
-      className="-mx-1 mt-4 flex [scrollbar-width:none] items-center gap-1 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
+      // No negative margin, unlike `PrivateNav`'s otherwise-identical row. That one is hidden
+      // below the desktop breakpoint, so it is never measured at phone width; this one is
+      // always on screen, and `scripts/diag-widths.mjs` counts an element wider than its parent
+      // as a containment fault whether or not the page ends up scrolling. A gate that reports
+      // twelve deliberate offenders every run is a gate nobody reads.
+      className="mt-4 flex [scrollbar-width:none] items-center gap-1 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
     >
       {TABS.map((tab) => {
         // Records is the area's index, so it matches exactly; the rest match by prefix, which is

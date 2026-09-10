@@ -112,6 +112,17 @@ const PRIVATE_PAGES = [
   // The overflow check earns its keep here too, since nothing else in the app puts a five-theme
   // stack of galleries into a 360px viewport.
   { name: "private-kitchen-sink", url: "/private/kitchen-sink", gated: false },
+  // The Training area (V4 Phase 2++). Ungated: the logger's first action is the exercise picker,
+  // which is a sheet rather than a thing on the page, and the other three are screens you read.
+  // Swept for the screenshots and the overflow read, which is what caught the picker sheet's
+  // 140-row list needing its own scroll container.
+  { name: "private-exercises", url: "/private/athletics/exercises", gated: false },
+  {
+    name: "private-exercise-detail",
+    url: "/private/athletics/exercises/bench-press",
+    gated: false,
+  },
+  { name: "private-training-history", url: "/private/athletics/history", gated: false },
 ];
 
 /**

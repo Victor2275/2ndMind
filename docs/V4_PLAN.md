@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-09
+updated: 2026-09-10
 domain: engineering
 stability: volatile
 summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2 and 2+ done (Milestones A and B); 4.4 done; Phase 3 is next.
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **311 points** (241 + Phase N's 45 + N9's 13 + Phase 2+'s 12, the last two both deferred work made visible rather than new scope). You said 120–140. The gap is real and is §7 R2, not a rounding error. **138 done.**                                                                                                                                            |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens.<br>Next: **Phase 3**, tags. N9 still parked. |
+| **Budget**       | **443 points** (311 + Phase 2++'s 119, plus §2.12's 13). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **282 done.** |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens. **Phase 2++ done** (2026-09-10) — the figure redrawn, the catalogue audited and renamed, an exercise browser, the logger rebuilt to Hevy standard, routines, and Phase 5.6 pulled forward whole.<br>Next: **Phase 3**, tags. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -525,6 +525,52 @@ back.
 
 ---
 
+### Phase 2++ · Training, properly — **119 pts** **[FEATURE]** — ✅ **done 2026-09-10**
+
+Scoped by sixty questions on 2026-09-09, after Victor used Phase 2 and asked for the *product*
+rather than the mechanism. His summary of the screen: *"ugly / doesn't feel like an app."* His
+audit request: *"2k erg and 5k erg both exist, which doesn't make sense."* The reference
+throughout is Hevy. It absorbs Phase 5.6 whole.
+
+| #   | Stage                                                                                                                                                      | Pts | Status |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --: | ------ |
+| 1   | **The figure**, redrawn at reference fidelity — striated bellies, a prime-mover/assist split, two detail levels, tappable regions; vocabulary 15 → 21 (D-226, D-227) |  13 | ✅ done |
+| 2   | **Schema and sync** — a dozen columns on `exercises`, three on `workout_sets`, `exercise_notes` on `workouts`, `routines` + `routine_exercises`, and the name-collision fix (D-228, D-229, D-230) |  18 | ✅ done |
+| 3   | **Catalogue v2 and the rename** — 164 → 139, `Movement (Equipment)`, the erg and water collapses, and the one-shot rewrite of logged history (D-231, D-232, D-233) |  20 | ✅ done |
+| 4   | **The exercise browser** — list, detail, create, edit, archive-then-delete, alias search, AI-assist on the create form                                       |  18 | ✅ done |
+| 5   | **The logger** — previous-set ghosts, tick-to-complete, a rest timer, multi-select picking in a sheet, per-set and per-exercise notes, a table above 64rem   |  16 | ✅ done |
+| 6   | **Routines** — saved from a finished session, started pre-filled with the weights it was saved at                                                             |  14 | ✅ done |
+| 7   | **The dashboard** — Phase 5.6 pulled forward whole, plus the weekly muscle figure; nav consolidates to one Training area (D-234, D-235)                       |  12 | ✅ done |
+| 8   | **Gates, tests, docs** — the new routes in both browser gates, offline create-and-edit in the e2e, and this (D-236)                                          |   8 | ✅ done |
+
+**The audit found more than the example did.** "2k erg and 5k erg" do not literally exist; what
+did was `Erg 500m · 1000m · 2000m · 5000m · 6000m · 10000m · Half Marathon · 1/4/20/30/60 Minutes
+· Intervals ×4`, four `Paddle` distances and four Ski/Bike variants — **31 of 164 rows were a
+distance parameter encoded in a name string**, with an empty `distance_m` column beside them.
+They collapse to three erg names and four water ones, and the parameter moves onto the set.
+`prs.ts` was already bucketing erg records by exercise *and* rounded distance, so per-distance
+PRs survived the collapse with no new code.
+
+**One bug found by reading, not by failing.** `exercises` was unique on both `name` and
+`client_id` while a create only conflicted on `client_id`, so two devices adding the same name
+raised a raw unique violation — not an `UnknownParentError`, therefore uncaught — which 500'd the
+whole batch and left every entity queued behind it retrying forever. A permanent sync wedge from
+an index that protected nothing (D-228).
+
+**Two things the gates caught that nothing else would have.** `npm run shots` found Today's fold
+gate measuring the wrong element the afternoon the rehab mirror shipped — 1583px against a 500px
+limit, with the capture box not having moved (D-235). And `npm run e2e` found that the exercise
+browser did not exist offline: everything under it was, but any `/private/athletics/*` path that
+was not `/log` fell through to the record board (D-236). "The data layer is offline" and "the
+screen is reachable" are different claims, and only the end-to-end run could tell them apart.
+
+**The rename was the only irreversible act, and it turned out to be free.** `--check` reported
+**zero** matching sets — no training had been logged through the new logger yet — so the dry run
+that R3 asked for turned a belief into a number before anything was written.
+`workout_sets.exercise_before_v2` keeps the original string for one release regardless.
+
+---
+
 ### Phase 3 · Tags — **12 pts** **[FEATURE]**
 
 The answer to Q3. Small, and it fixes the complaint you led with.
@@ -570,7 +616,7 @@ Milestone C. The phase that changes your day.
 | 5.3 | **Motion and touch pass** — pressed states within 100ms everywhere, redesigned swipe reveals (colour then icon), designed pull-to-refresh, haptics on swipe-complete and save, hover stripped on touch (Q193–Q200)                                                                                                                                                                              |   6 |
 | 5.4 | **Today** — capture box made the loudest thing, domain icons on tasks, overdue loud but not red, completed collapsed, summaries collapsed and quieter, agenda with a "now" marker, archive moved to the log (Q376–Q390)                                                                                                                                                                         |   6 |
 | 5.5 | **Log (non-training tabs)** — last-used category, drafts surviving restart, today's entries below the form, marked search results (Q393, Q394, Q401, Q404)                                                                                                                                                                                                                                      |   5 |
-| 5.6 | **Athletics** — the adjusted split against sub-2:00 as a gauge, heatmap over the session list, rehab checklist mirrored to Today when incomplete, a parse miss that _reads_ as a parse miss (Q405–Q414)                                                                                                                                                                                         |   6 |
+| 5.6 | ~~**Athletics**~~ — ✅ **absorbed by Phase 2++ Stage 7** (2026-09-10): the gauge, the heatmap, the rehab mirror and the reworked record board all shipped there, plus a weekly muscle figure the original item did not ask for (Q405–Q414)                                                                                                                                                                                         |   6 |
 | 5.7 | **Academics** — audit as a progress structure, planner as a board on desktop and table on phone, **unverifiable marked distinctly from failing** (Q415–Q418)                                                                                                                                                                                                                                    |   5 |
 | 5.8 | **Work, Calendar, Hobbies, Sync** — kanban pipeline, agenda + month strip + view switch, Google/vault provenance, spool levels and colour swatches, per-item sync reasons designed (Q419–Q428)                                                                                                                                                                                                  |   6 |
 | 5.9 | **Charts** — the one number above every chart, near-sparklines on phone and full axes on desktop, the sub-2:00 goal line drawn, tap-to-pin instead of tooltips, tables restructured to cards under 40rem, mount animation off (Q227–Q242)                                                                                                                                                       |   6 |
@@ -628,19 +674,24 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 2     | Training, end to end                                |      45 | ✅ done · Milestone B  |
 | 2+    | The catalogue gets pictures — diagram, written how-to |      12 | ✅ done                |
 | 2.12  | Four bugs Victor found — one older than Phase 2      |      13 | ✅ done                |
+| 2++   | **Training, properly** — the figure, the audit, the browser, the logger, routines, the dashboard | **119** | ✅ done |
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
 | 3     | Tags                                                |      12 | **[FEATURE]** · next   |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
 | 5     | The private screens                                 |      50 |                        |
 | 6     | Brand and the public site                           |      36 |                        |
 | 7     | Gates, performance, review                          |      22 |                        |
-|       | **Total**                                           | **324** |                        |
+|       | **Total**                                           | **443** |                        |
 
-**324, not 286.** Three rows were promoted out of footnotes rather than invented: N9 is the
-13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the diagram and the
-descriptions Victor asked for alongside 2.1, and §2.12 is the four defects he found on first
-use — which is not scope creep, it is the cost of shipping Phase 2 becoming visible.
-**163 points are done** (0, 1, N, 2, 2+, §2.12, and 4.4).
+**443, not 286.** Four rows were promoted out of footnotes or added after use rather than
+invented: N9 is the 13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the
+diagram and the descriptions Victor asked for alongside 2.1, §2.12 is the four defects he found
+on first use, and **Phase 2++ is what he asked for after using the thing §2.12 fixed** — which is
+not scope creep either, it is the difference between a mechanism and a product becoming visible.
+**282 points are done** (0, 1, N, 2, 2+, §2.12, 2++, and 4.4).
+
+Phase 2++ alone is larger than Phase 2 and Phase 5 combined. That is recorded rather than
+litigated: every stage boundary in it was a coherent stopping point, and none of them were taken.
 
 Pure design work, with both feature phases, the settings screen and the whole of Phase N removed:
 **~178 pts.**

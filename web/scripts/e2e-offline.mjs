@@ -76,6 +76,9 @@ function readOutbox(page) {
                 op: op.op,
                 clientId: op.clientId,
                 state: op.state,
+                // Carried since V4 Phase 2++ Stage 8, for the one check that needs to see
+                // *what* was queued rather than only that something was.
+                payload: op.payload,
               })),
             );
             db.close();
@@ -101,6 +104,7 @@ async function main() {
   const server = startServer(PORT);
   let browser;
   let created = [];
+  let createdExercises = [];
 
   try {
     await waitFor("the server to answer", async () => (await fetch(BASE)).ok, { timeout: 60_000 });
@@ -293,17 +297,32 @@ async function main() {
       addEventListener("offline", () => window.__connectivity.push("offline"));
     });
 
-    await page.getByLabel("Session").fill(`Push A (${STAMP})`);
+    // `#session-title` rather than the label: `RecentSessions` below the form grew a
+    // "Delete session <title>" button, so "Session" now matches two things.
+    await page.locator("#session-title").fill(`Push A (${STAMP})`);
 
     // Searched on the phone, over the mirrored catalogue — the whole reason it is a synced table
     // rather than an API call. `bnch` rather than `bench`, so the fuzzy matcher is exercised
     // here too and not only in its unit tests.
+    //
+    // The picker is a sheet with multi-select since V4 Phase 2++ Stage 5: tapping a row
+    // *selects* it, and a second control adds everything selected — "add three exercises" in one
+    // pass rather than three trips. Driving it the old way is what broke this step, and the
+    // check below is what would say so out loud next time.
     await page.getByRole("button", { name: /add exercise/i }).click();
     await page.getByLabel("Search exercises").fill("bnch");
     await page
       .getByRole("button", { name: /^Bench Press/ })
       .first()
       .click();
+    await page.getByRole("button", { name: /^Add 1 exercise$/ }).click();
+    check(
+      await page
+        .getByRole("button", { name: /^Remove Bench Press/ })
+        .first()
+        .isVisible(),
+      "the picker added the selected exercise",
+    );
 
     await page.locator('[id$="-0-weightLbs"]').first().fill("185");
     await page.locator('[id$="-0-reps"]').first().fill("5");
@@ -332,6 +351,87 @@ async function main() {
       "no set is queued separately",
     );
     created = sessionOps.map((op) => op.clientId);
+
+    /* -- 3b. create and edit an exercise, still with no network --------------------- */
+    //
+    // V4 Phase 2++ Stage 4 made the catalogue editable and Stage 2 made `exercises` writable
+    // through the same outbox as everything else. The property worth an end-to-end check is that
+    // both halves work **with the radio off**: the catalogue is a synced table precisely so the
+    // gym-basement screen does not depend on a network, and an edit that quietly needed one
+    // would only ever be discovered standing in a gym.
+    const invented = `E2E Movement ${STAMP}`;
+    console.log("\ncreating an exercise with no network");
+
+    await page.getByRole("button", { name: /add exercise/i }).click();
+    // Waited for rather than assumed: the sheet is a portal that animates in, and the create
+    // button is disabled until the name field has something in it. Clicking through either of
+    // those is a no-op that looks exactly like a feature that does not work.
+    const nameField = page.getByLabel("Add a movement by name");
+    await nameField.waitFor({ state: "visible", timeout: 10_000 });
+    await nameField.fill(invented);
+    const addByName = page.getByRole("button", { name: "Add", exact: true });
+    await addByName.waitFor({ state: "visible", timeout: 10_000 });
+    await page
+      .waitForFunction(
+        () =>
+          !document.querySelector(
+            '[data-slot="sheet-content"] button:disabled[class*="border-dashed"]',
+          ),
+        { timeout: 5_000 },
+      )
+      .catch(() => {});
+    await addByName.click();
+    // The write is one IndexedDB transaction; give it a beat before reading the outbox back.
+    await page.waitForTimeout(750);
+
+    const afterCreate = await readOutbox(page);
+    if (afterCreate.filter((op) => op.entity === "exercise").length === 0) {
+      // The sheet says why when it refuses — surface it rather than reporting only a count.
+      const said = await page
+        .locator('[data-slot="sheet-content"] [role="status"]')
+        .first()
+        .textContent()
+        .catch(() => null);
+      console.log(`  why   the sheet said: ${said ?? "(nothing)"}`);
+    }
+    const exerciseOps = afterCreate.filter((op) => op.entity === "exercise");
+    check(exerciseOps.length === 1, "the new exercise is one queued op", `${exerciseOps.length}`);
+    createdExercises = exerciseOps.map((op) => op.clientId);
+
+    // And edit it, from the browser's detail page — reached offline, off the precached shell.
+    await page.goto(`${BASE}/private/athletics/exercises/${encodeURIComponent(invented)}`);
+    // Waited for, not sampled: offline this page is the precached shell, which hydrates and
+    // *then* reads IndexedDB for the row. Checking the instant the navigation resolves measures
+    // the shell's own "not found on this device yet" placeholder, which is a true statement
+    // about a moment rather than about the feature.
+    const detailShown = await page
+      .getByRole("heading", { name: invented })
+      .waitFor({ state: "visible", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    check(detailShown, "the new exercise has a detail page offline");
+
+    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByLabel("How to").fill("Written with the radio off.");
+    // `.last()`: the shell's own capture box is above every view and has a Save of its own, so
+    // "Save" alone is ambiguous here in a way it is not on the live route.
+    await page
+      .getByRole("button", { name: /^Save$/ })
+      .last()
+      .click();
+    await page.waitForTimeout(750);
+
+    const afterEdit = await readOutbox(page);
+    const edits = afterEdit.filter((op) => op.entity === "exercise" && op.op === "update");
+    check(edits.length === 1, "the edit queues its own op", `${edits.length}`);
+    check(
+      edits[0]?.payload?.userEditedFields?.includes("howTo") === true,
+      "the edit records which field a person changed",
+      JSON.stringify(edits[0]?.payload?.userEditedFields),
+    );
+
+    // Back to the logger, so step 4 flushes from the screen it started on.
+    await page.goto(`${BASE}/private/athletics/log`);
 
     /* -- 4. back online, and do nothing ------------------------------------------- */
     console.log("\nback online, without going anywhere");
@@ -472,6 +572,25 @@ async function main() {
       "the numbers are the ones that were typed",
       setRows.map((r) => `${r.weight_lbs}x${r.reps}`).join(" "),
     );
+
+    const exerciseRows = await sql`
+      select client_id, name, how_to, user_edited_fields, source, deleted_at
+      from exercises where client_id = ANY(${createdExercises})`;
+    check(
+      exerciseRows.length === createdExercises.length,
+      "the exercise invented offline arrived",
+      `${exerciseRows.length}/${createdExercises.length}`,
+    );
+    check(
+      exerciseRows.every((r) => r.how_to === "Written with the radio off."),
+      "the offline edit arrived with it, not just the create",
+      exerciseRows.map((r) => r.how_to).join(" | "),
+    );
+    check(
+      exerciseRows.every((r) => (r.user_edited_fields ?? []).includes("howTo")),
+      "user_edited_fields survived the trip, so a reseed will not overwrite the edit",
+      exerciseRows.map((r) => JSON.stringify(r.user_edited_fields)).join(" | "),
+    );
   } finally {
     /* -- teardown ----------------------------------------------------------------- */
     if (browser) await browser.close();
@@ -488,6 +607,20 @@ async function main() {
       if (created.every((id) => uuid.test(id))) {
         const gone = await sql`delete from workouts where client_id = ANY(${created}) returning id`;
         console.log(`\ncleaned up ${gone.length} session(s) this run created.`);
+      } else {
+        console.error(`\nREFUSED to clean up: ids do not look generated — ${created.join(", ")}`);
+        failures.push("teardown refused to delete unrecognised ids");
+      }
+    }
+
+    if (createdExercises.length > 0) {
+      // Same two guards as the sessions above, and a hard delete for the same reason: as far as
+      // the catalogue is concerned this row was never meant to exist.
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (createdExercises.every((id) => uuid.test(id))) {
+        const gone =
+          await sql`delete from exercises where client_id = ANY(${createdExercises}) returning id`;
+        console.log(`cleaned up ${gone.length} exercise(s) this run created.`);
       } else {
         console.error(`\nREFUSED to clean up: ids do not look generated — ${created.join(", ")}`);
         failures.push("teardown refused to delete unrecognised ids");

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { LogForm } from "@/components/site/log-form";
+import { ExerciseBrowser } from "@/components/site/exercise-browser";
+import { ExerciseDetail } from "@/components/site/exercise-detail";
 import { SessionLogger } from "@/components/site/session-logger";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { OutboxConsole } from "@/components/site/outbox-console";
@@ -38,7 +40,8 @@ const HEAD = "text-base font-semibold tracking-tight text-foreground";
 const META = "font-mono text-[0.65rem] text-muted-foreground";
 
 /** Which of the cached views to show, from the path the navigation was trying to reach. */
-type ViewKey = "today" | "athletics" | "session" | "academics" | "log" | "sync";
+type ViewKey =
+  "today" | "athletics" | "session" | "exercises" | "exercise" | "academics" | "log" | "sync";
 
 /**
  * The private screens this page has no copy of, and what to call them on screen.
@@ -69,6 +72,21 @@ function viewFor(path: string): Target {
   // recognised before it, or logging offline would land on the read-only overview — the one
   // screen in this app that most needs to work with no signal.
   if (path.startsWith("/private/athletics/log")) return { kind: "view", key: "session" };
+  /**
+   * The exercise browser and one exercise's page, offline (V4 Phase 2++ Stage 8).
+   *
+   * They read the bundled catalogue merged with the mirror and write through the outbox — the
+   * same two things the logger does — so there is nothing an offline variant would do
+   * differently, and the live components are mounted unchanged. Without these two lines the
+   * whole area fell through to `athletics`, and "offline throughout" was true of the data layer
+   * and false of the screen: `npm run e2e` reached the detail page with no signal and got the
+   * record board.
+   *
+   * Detail before list, longest prefix first, for the same reason `log` comes before
+   * `athletics`.
+   */
+  if (path.startsWith("/private/athletics/exercises/")) return { kind: "view", key: "exercise" };
+  if (path.startsWith("/private/athletics/exercises")) return { kind: "view", key: "exercises" };
   if (path.startsWith("/private/athletics")) return { kind: "view", key: "athletics" };
   if (path.startsWith("/private/academics")) return { kind: "view", key: "academics" };
   if (path.startsWith("/private/log")) return { kind: "view", key: "log" };
@@ -94,6 +112,8 @@ const TITLE: Record<ViewKey, string> = {
   today: "Today",
   session: "Log a session",
   athletics: "Training",
+  exercises: "Exercises",
+  exercise: "Exercise",
   academics: "Academics",
   log: "The log",
   sync: "Not sent",
@@ -229,6 +249,9 @@ export function CachedApp() {
               and writes the outbox either way, so there is nothing for an offline variant to do
               differently — which is the point of `lib/athletics/session.ts` having one path. */}
           {key === "session" && <SessionLogger />}
+          {/* Same argument as the logger above: the live components, mounted unchanged. */}
+          {key === "exercises" && <ExerciseBrowser />}
+          {key === "exercise" && <ExerciseDetail slug={slugFrom(path)} />}
           {key === "academics" && <AcademicsView view={view} />}
           {key === "log" && <LogView view={view} query={queryFrom(path)} />}
           {key === "sync" && <OutboxConsole />}
@@ -239,6 +262,17 @@ export function CachedApp() {
       {bar}
     </div>
   );
+}
+
+/**
+ * The exercise a detail path names, decoded.
+ *
+ * `seedKey ?? name`, URL-encoded by `exerciseHref` — so a movement typed by hand, whose name is
+ * the only identity it has, round-trips through the URL intact including its spaces.
+ */
+function slugFrom(path: string): string {
+  const tail = path.split("/private/athletics/exercises/")[1] ?? "";
+  return decodeURIComponent(tail.split("?")[0] ?? "");
 }
 
 /**

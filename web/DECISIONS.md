@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-09
+updated: 2026-09-10
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,216 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-10 · V4 Phase 2++ — training, as a product
+
+Phase 2 shipped the mechanism: a session logs offline and lands in Neon. Using it produced a
+different verdict — *"the screen is ugly / doesn't feel like an app"* — and an audit request:
+*"2k erg and 5k erg both exist, which doesn't make sense."* Sixty questions on 2026-09-09 scoped
+the answer; this is what was built, in eight stages, with Hevy as the reference throughout.
+
+Every entry below names what it reverses.
+
+---
+
+### D-226 · The figure is redrawn at reference fidelity, and D-222 is **not** reversed
+
+**Decision.** `muscle-map.tsx` is rewritten — more anatomical sub-shapes per region, a generated
+striation overlay, and a `detail` prop so a 40px glyph in a scrolling list does not pay for
+texture nobody can see. Highlighting splits in two: `--primary` for the prime mover and
+`--primary-300` for the assist, against Victor's reference image's red and pink.
+
+**Why D-222 survives.** Its argument was never about fidelity — it was that *one drawing computed
+from the data cannot disagree with the data*, where a hundred and forty pictures can, and no test
+can read a picture. That is unchanged. What changed is that the drawing got better.
+
+**Why the accent ramp rather than red and pink.** Literal hex would need a `no-raw-hex`
+exemption and would be wrong the moment the theme changes. The ramp is generated and
+contrast-solved per theme, so this is correct in all five with no exemption.
+
+**How to reverse.** `git revert` the Stage 1 commit. The vocabulary in `lib/athletics/muscles.ts`
+is a separate concern and worth keeping either way.
+
+---
+
+### D-227 · The muscle vocabulary grows 15 → 21, and `core` becomes a synonym
+
+**Decision.** `MUSCLES` moves out of `catalogue.ts` into `lib/athletics/muscles.ts` and grows:
+`core` splits into `abs` and `obliques`, `shoulders` sheds `rear delts`, and `rotator cuff`,
+`adductors`, `abductors` and `hip flexors` are added.
+
+**Why.** The old list was a grouping key with a diagram pencilled in against it. A figure that
+means to look anatomical needs regions a sit-up and a Russian twist do not share. It also fixed a
+live mis-tag: `Hip Adduction` was labelled `quads` because the vocabulary had nothing better.
+
+**Why `core` stays.** Stage 1 shipped before the catalogue was re-tagged, and a vocabulary change
+that blanks every figure for a release is a worse trade than one deprecated name. `expand()`
+turns it into `abs` + `obliques`.
+
+**How to reverse.** Delete the six added names and restore `core` as a first-class region; the
+figure keeps a shape for it either way.
+
+---
+
+### D-228 · `exercises.name` stops being unique, because uniqueness caused a sync wedge
+
+**Decision.** The unique index on `exercises.name` is dropped. `apply.ts`'s exercise writer
+instead converges same-named live rows to one survivor — highest `updated_hlc`, compared
+`COLLATE "C"` to match `hlc.ts`'s plain byte compare — after every write.
+
+**Why.** The index protected nothing: `workout_sets.exercise` stores the *string*, never a
+foreign key, so two rows sharing a name split no history. What it did do was refuse the second
+insert when two devices added the same name — a raw Postgres unique violation, which is not an
+`UnknownParentError`, so `applyOps` never caught it. The route 500'd, the whole batch died, and
+**every other entity queued behind it retried forever**. A permanent sync wedge, from an index
+that bought nothing.
+
+**How to reverse.** Restore the unique index and delete the convergence statement — and expect
+the wedge back the first time two devices invent the same movement.
+
+---
+
+### D-229 · A routine op is replace-all, unlike a workout's
+
+**Decision.** `routines` + `routine_exercises` sync as one aggregate op like `workouts`
+(`SYNC_DESIGN.md` §4a), with one difference: the op carries the routine's **whole** line list and
+the server tombstones every live line not in it. Each line gets a fresh `clientId` on every save.
+
+**Why.** Reordering and removing lines is the normal edit to a template — you save a routine, you
+do not append to one. Under replace-all the writer never has to decide whether line three is "the
+same line" as before, and a reorder is simply a different list. A workout's sets are the opposite
+case: they accumulate one at a time and are corrected in place, which is why that aggregate
+upserts and does not replace.
+
+**How to reverse.** Match lines by a stable id and diff them. That is more code and one more
+thing to get wrong on a screen where the whole list is rewritten on every save anyway.
+
+---
+
+### D-230 · `piece_type` is a new column, **not** a new `set_type`
+
+**Decision.** `workout_sets` gains `piece_type` — `"steady"`, `"interval"`, `"warmup"`,
+`"race"` — alongside the existing `set_type`.
+
+**Why.** They answer different questions. `set_type` answers *does this count*, and
+`isWorkingSet` in `prs.ts` is a **deny-list defaulting to true**: anything it does not know about
+counts toward a PR. Adding `"technical"` or `"race"` there would have silently entered a light
+technical paddle onto the record board. `piece_type` answers *what was the intent*, and nothing
+ranks on it.
+
+**How to reverse.** Drop the column and accept that the collapsed erg and water entries lose the
+distinction that used to live in their names.
+
+---
+
+### D-231 · How-to text moves from a code map to a database column — reverses D-223's shape
+
+**Decision.** `lib/athletics/how-to.ts` is deleted. Its text is folded into `catalogue.ts` as a
+field per entry and seeded into `exercises.how_to`, which the exercise detail page can edit.
+
+**Why.** D-223's argument — *text beats a demonstration clip, because it costs no request, works
+with no signal, is searchable, and can say what usually goes wrong* — is unchanged and is why the
+text still exists. What changed is where it lives. As a static map keyed by name it could not be
+edited without a deploy, and a rename broke the link silently. As a column it is editable from
+the screen that shows it, and `seed_key` rather than `name` is what the seed matches on, so a
+rename cannot break it again.
+
+**How to reverse.** Move the strings back into a map and delete the column. The seed script would
+need to stop writing it.
+
+---
+
+### D-232 · Seeded exercises become editable, and `user_edited_fields` is what makes that safe
+
+**Decision.** Every catalogue row is editable, seeded ones included. Each edit records which
+fields a person changed. `scripts/seed-exercises.mts` respects that list **per column**, and
+`mergeCatalogue` lets the mirror win for any row carrying one.
+
+**Why.** This is the reversal the whole phase turns on, and the comment it broke said so out
+loud: *"Nothing in the app can edit a seeded entry, so the bundle is the only writer of those
+rows."* That premise is what made bundle-always-wins correct. Shipping the old merge unchanged
+would have made every edit vanish on reload — correct in Postgres, correct in the mirror,
+invisible on screen — which is the worst shape a bug can have.
+
+**How to reverse.** Make seeded rows read-only again and the merge can go back to
+bundle-always-wins. The column can stay; it costs nothing when nothing writes it.
+
+---
+
+### D-233 · The catalogue is renamed once, and history is rewritten with it
+
+**Decision.** 164 entries become 139. Every name becomes `Movement (Equipment)`. 22 erg rows
+collapse to 3, 9 water rows to 4, and the bodyweight and standing-machine calf raises to one.
+`scripts/rename-exercises.mts` rewrites `workout_sets.exercise` to match, and
+`workout_sets.exercise_before_v2` keeps the original string for one release.
+
+**Why.** Victor's example understated it: 31 of the 164 rows were a distance or duration
+parameter encoded in a name string, with an empty `distance_m` column sitting beside them. The
+distance now lives on the set, where `prs.ts` was **already** bucketing erg records by exercise
+and rounded distance — so per-distance PRs survived the collapse without a line of new code.
+
+**Why it is safe to have done at all.** The dry run reported **zero** matching sets: no training
+had been logged through the new logger yet. R3 in the plan called this out as "believed
+near-empty", and the `--check` run is what turned the belief into a number before anything was
+written.
+
+**How to reverse.** Within one release: `update workout_sets set exercise = exercise_before_v2
+where exercise_before_v2 is not null`, then revert the Stage 3 commit. After that column is
+dropped, the map in `renames.ts` is the only record and reversal means running it backwards.
+
+---
+
+### D-234 · Nine private nav entries become eight — C-11, answered
+
+**Decision.** **Train** and **Athletics** merge into one **Training** entry pointing at the
+logger, with Log / Exercises / Records / History as in-page tabs (`training-tabs.tsx`). Training
+history moves to a route of its own.
+
+**Why.** Two of nine top-level items were spent on one subject, in a bar that already scrolls
+sideways at 1440px, and C-11 has asked whether nine is the right number since 2026-09-06. They
+are one area. Splitting history out also takes a list that grows without bound off a page whose
+job is the summary of that list.
+
+**Note.** D-225 added the Train entry six weeks — one day — earlier, and it was right then: the
+logger was unreachable on a laptop. It is reachable now as the Training entry's own destination,
+so nothing regressed. `except` is kept in `private-nav.tsx`, unused, because the situation it
+solves recurs the moment any section grows a page with its own entry.
+
+**How to reverse.** Split the entry back in two and delete the tabs.
+
+---
+
+### D-235 · A mirrored panel must not claim the page's `data-first-action`
+
+**Decision.** `RehabChecklist` takes `firstAction`, default true. The copy mirrored onto Today
+passes `false`.
+
+**Why.** Found by `npm run shots` the same afternoon the mirror shipped: Today's fold gate
+reported the first action at **1583px** against a 500px limit, and the capture box had not moved
+at all. Two elements carrying the marker means the gate measures whichever it finds last — a
+passing check quietly becoming a check about the wrong element, which is the same class of
+failure as a test that has stopped testing anything.
+
+**How to reverse.** Drop the prop and put the marker back on both — and watch the gate start
+lying again.
+
+---
+
+### D-236 · The offline shell learns the exercise routes, because "offline throughout" was half true
+
+**Decision.** `cached-app.tsx` gains `exercises` and `exercise` views, mounting the same
+`ExerciseBrowser` and `ExerciseDetail` the live routes do.
+
+**Why.** Everything underneath was already offline — the catalogue is bundled, the mirror is
+IndexedDB, and every write goes through the outbox — but the *screen* was not: any
+`/private/athletics/*` path that was not `/log` fell through to the record board. `npm run e2e`
+navigated to an exercise's page with no signal and got Training. The data layer being offline is
+not the same claim as the screen being reachable, and only the end-to-end run could tell them
+apart.
+
+**How to reverse.** Delete the two routing lines; the views fall back to the record board.
 
 ---
 

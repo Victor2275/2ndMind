@@ -30,6 +30,12 @@ const ROUTES = [
   "/private/now",
   "/private/athletics/log",
   "/private/athletics",
+  // The rest of the Training area (V4 Phase 2++). The exercise detail page is included by name
+  // rather than by pattern: it is the only one of the four with a table, a chart and a 200px
+  // figure on one screen, which is the combination a 390px viewport is most likely to break.
+  "/private/athletics/exercises",
+  "/private/athletics/exercises/bench-press",
+  "/private/athletics/history",
   "/private/sync",
   "/private/calendar",
   "/private/academics",

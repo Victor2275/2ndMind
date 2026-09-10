@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-09
+updated: 2026-09-10
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -223,13 +223,14 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,502 tests across 100 files** as of
-2026-09-09, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,644 tests across 110 files** as of
+2026-09-10, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
-"1,375 across 90", then "1,452 across 97" until V4 Phase 2. The suite more than doubled during V3 and the floor was never
-re-stated, so for a week the number that is supposed to catch a regression would have accepted
-losing half the suite. Re-state it whenever it moves.)
+"1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
+2++. The suite more than doubled during V3 and the floor was never re-stated, so for a week the
+number that is supposed to catch a regression would have accepted losing half the suite.
+Re-state it whenever it moves.)
 
 ### Two end-to-end suites, and they stage opposite failures
 
@@ -406,14 +407,33 @@ Rules that hold the athletics side together, each with a decision entry:
   stored on the entry. It is the second input to every adjusted split, and two copies would
   drift. It is deliberately **not** on the session form — a form that asks every session gets a
   number typed carelessly, which is worse than a missing one.
-- **The exercise catalogue ships in the bundle** (D-224). `lib/athletics/catalogue.ts` is what
-  the seed script inserts *and* what the session screen searches, with the synced mirror merged
-  over the top for movements you added yourself. Reading only the mirror made the feature depend
-  on a completed sync pull, and the pull is paged — a half-synced device found nothing.
-- **One muscle diagram, not 164 pictures** (D-222). `muscle-map.tsx` highlights regions from the
-  same `muscles` array everything else groups by, so the drawing cannot contradict the data.
-  `how-to.ts` carries the written description; there are no demonstration clips and there will
-  not be (D-223).
+- **The exercise catalogue ships in the bundle** (D-224, D-232). `lib/athletics/catalogue.ts` is
+  what the seed script inserts *and* what every training screen searches, with the synced mirror
+  merged over the top — `mergeCatalogue` in `lib/athletics/local.ts`, shared by the logger and
+  the browser. Reading only the mirror made the feature depend on a completed sync pull, and the
+  pull is paged: a half-synced device found nothing.
+  **The merge rule changed when seeded rows became editable.** It matches on `seed_key`, and the
+  mirror wins for any row carrying `user_edited_fields`; the bundle wins otherwise. The comment
+  it replaced said *"nothing in the app can edit a seeded entry"* — once that stopped being true,
+  bundle-always-wins would have made every edit vanish on reload.
+- **The catalogue is addressed by `seed_key`, not by name** (D-231, D-233). A name can change:
+  V4 Phase 2++ renamed all 164 of them to `Movement (Equipment)` and collapsed 31 rows whose
+  names were really distance parameters. `scripts/seed-exercises.mts` matches on `seed_key`,
+  honours `user_edited_fields` per column, and **skips tombstoned rows rather than resurrecting
+  them**. `renames.ts` is the v1 → v2 map, pinned against a frozen fixture of the old names, and
+  it also ships client-side so a device on a stale build cannot write new history under a dead
+  name.
+- **One muscle diagram, not 139 pictures** (D-222, D-226). `muscle-map.tsx` highlights regions
+  from the entry's own `primaryMuscles`/`secondaryMuscles`, so the drawing cannot contradict the
+  data. It was redrawn at reference fidelity in Phase 2++ and the vocabulary grew to 21 regions
+  (`lib/athletics/muscles.ts`), but D-222's argument is unchanged — one drawing computed from the
+  data, not many that can drift. The written how-to now lives in `exercises.how_to`, seeded from
+  the catalogue and editable on the exercise's own page; there are no demonstration clips and
+  there will not be (D-223, D-231).
+- **`set_type` says whether a set counts; `piece_type` says what it was** (D-230). `isWorkingSet`
+  in `prs.ts` is a deny-list defaulting to *true*, so adding a value to `set_type` silently lets
+  it onto the record board. A technical paddle and a race piece both count as work and are not
+  the same thing — that distinction lives in `piece_type`, which nothing ranks on.
 - **Records are derived on read, never stored** (D-025). A stored PR has no invalidation
   story and reads high forever after a correction.
 - **Imports are idempotent** (D-026). Hevy exports are cumulative, so re-importing is the
