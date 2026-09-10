@@ -1,0 +1,42 @@
+[
+  {
+    "file": "site.png",
+    "slug": null,
+    "title": "Victor Gusev"
+  },
+  {
+    "file": "project-proof.png",
+    "slug": "proof",
+    "title": "Proof"
+  },
+  {
+    "file": "project-micromouse-simulator.png",
+    "slug": "micromouse-simulator",
+    "title": "Micromouse Simulator"
+  },
+  {
+    "file": "project-five-second-rule.png",
+    "slug": "five-second-rule",
+    "title": "5 Second Rule"
+  },
+  {
+    "file": "project-solenoid-bit-reader.png",
+    "slug": "solenoid-bit-reader",
+    "title": "Solenoid Bit Reader"
+  },
+  {
+    "file": "project-taskable.png",
+    "slug": "taskable",
+    "title": "TaskAble"
+  },
+  {
+    "file": "project-smart-bottle.png",
+    "slug": "smart-bottle",
+    "title": "Smart Bottle"
+  },
+  {
+    "file": "project-dimaag-paper.png",
+    "slug": "dimaag-paper",
+    "title": "Research Paper — RL for Autonomous Navigation"
+  }
+]

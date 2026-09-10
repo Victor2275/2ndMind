@@ -17,6 +17,8 @@
     "build:sw": "node scripts/build-sw.mjs",
     "tokens": "node scripts/build-tokens.mts",
     "tokens:check": "node scripts/build-tokens.mts --check",
+    "og": "node scripts/render-og.mjs",
+    "icons": "node scripts/render-icons.mjs",
     "scale": "node scripts/build-scale.mts",
     "scale:check": "node scripts/build-scale.mts --check",
     "db:generate": "drizzle-kit generate",

@@ -88,6 +88,59 @@ describe("the ground colour is one colour", () => {
     expect(found?.[1].toLowerCase()).toBe(themeById(DEFAULT_THEME)!.accent.toLowerCase());
   });
 
+  it("is joined by the four colours the OG cards are drawn in", () => {
+    // Added 2026-09-10 (D-218). `render-og.mjs` is plain ESM run by node, like the icon
+    // renderer, so it carries literals for the same reason and gets the same pin.
+    //
+    // This caught a real mistake on the way in: `MUTED` had been written as `#a1a1a1`, a value
+    // invented while drafting rather than taken from the palette. It cleared contrast and looked
+    // right, which is exactly why nothing else would have found it — the summary line on every
+    // link preview would simply have been a grey the site does not use.
+    const script = read("scripts/render-og.mjs");
+    const carbon = themeById(DEFAULT_THEME)!;
+    const tokens = read("src/app/tokens.css");
+
+    // The generator writes each value's hex in a trailing comment beside the oklch(), so the
+    // block can be read for tokens the registry does not carry.
+    // The selector with its brace, not just the name: `@custom-variant dark` lists every
+    // dark theme by name at the top of the file, so slicing from the bare selector starts
+    // the search above every block and reads whichever theme is declared first. That is
+    // how this first ran green-then-red against `dark-magenta`’s value.
+    const block = tokens.slice(tokens.indexOf(`[data-theme="${carbon.id}"] {`));
+    const tokenHex = (name: string) => {
+      // Read by splitting rather than by a built regex: the value is an oklch() followed by a
+      // trailing comment holding the hex, and escaping that pattern through a string-built
+      // RegExp is how this test first shipped matching nothing at all.
+      const at = block.indexOf(`--${name}:`);
+      if (at < 0) return undefined;
+      const line = block.slice(
+        at,
+        block.indexOf(
+          `
+`,
+          at,
+        ),
+      );
+      return line.match(/#[0-9a-f]{6}/i)?.[0].toLowerCase();
+    };
+
+    const literal = (name: string) => {
+      const found = script.match(new RegExp(`const ${name} = "(#[0-9a-f]{6})";`, "i"));
+      return found?.[1].toLowerCase();
+    };
+
+    expect(literal("GROUND")).toBe(carbon.ground.toLowerCase());
+    expect(literal("ACCENT")).toBe(carbon.accent.toLowerCase());
+    expect(literal("FOREGROUND")).toBe(carbon.foreground.toLowerCase());
+    expect(literal("MUTED")).toBe(tokenHex("muted-foreground"));
+  });
+
+  it("is joined by the light accent the favicon switches to", () => {
+    const script = read("scripts/render-icons.mjs");
+    const found = script.match(/const ACCENT_LIGHT = "(#[0-9a-f]{6})";/i);
+    expect(found?.[1].toLowerCase()).toBe(themeById("light-teal")!.accent.toLowerCase());
+  });
+
   it("is not painted into the mark itself", () => {
     // The drawing must stay colourless. A `fill="#..."` or a gradient stop back in brain.svg is
     // precisely the drift D-215 removed: it would override `currentColor` and the mark would

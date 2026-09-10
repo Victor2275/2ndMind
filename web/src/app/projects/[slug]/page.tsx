@@ -17,7 +17,29 @@ export async function generateMetadata({ params }: PageProps<"/projects/[slug]">
   const { slug } = await params;
   const project = publicProjects().find((p) => p.slug === slug);
   if (!project) return {};
-  return { title: project.title, description: project.summary };
+
+  // Per-project OG card (Q44). Rendered by `scripts/render-og.mjs` and committed; see that file
+  // for why it is not `next/og`, and `lib/__tests__/og.test.ts` for the check that every
+  // published project still has one and that its title has not drifted from the vault.
+  const image = { url: `/og/project-${project.slug}.png`, width: 1200, height: 630 };
+
+  return {
+    title: project.title,
+    description: project.summary,
+    openGraph: {
+      type: "article",
+      title: project.title,
+      description: project.summary,
+      url: `/projects/${project.slug}`,
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: project.title,
+      description: project.summary,
+      images: [image],
+    },
+  };
 }
 
 const LINK_LABELS: Record<string, string> = {

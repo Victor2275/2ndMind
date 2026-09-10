@@ -75,6 +75,71 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-218 · The OG cards are rendered by Playwright, not `next/og`
+
+**Decision.** `scripts/render-og.mjs` renders eight 1200×630 cards — one generic, one per
+published project — with Chromium, and the PNGs are committed. Q43 asked for `next/og`.
+
+**Why the answer to Q43 could not be followed.** `next/og` renders through satori, which reads
+TTF, OTF and WOFF — **not WOFF2**. Every face this site owns is WOFF2 and nothing else: the
+`@fontsource` packages were emptied once the files were copied into `src/app/fonts/`, and the
+budget forbids fetching a font at build time. With no font supplied, `next/og` silently falls
+back to the Geist it bundles, which appears nowhere else on this site. On the one asset whose
+entire job is to look like Victor's, a card set in a stranger's typeface is the wrong trade.
+
+Chromium reads WOFF2 natively, is already a dev dependency, and already renders the icons. So
+the cards are made the same way the icons are, and get real Bricolage, real Instrument Sans, real
+Plex Mono and the real tokens.
+
+**What that costs, and what pays for it.** A committed image can fall behind the vault, and
+nothing about a stale PNG is visible from inside the app. So the renderer writes
+`public/og/manifest.json` saying what it drew, and `lib/__tests__/og.test.ts` compares that
+against `publicProjects()` in both directions — a project added without re-rendering has no card,
+one removed leaves an orphan, and a renamed one is caught by title.
+
+**Two things the tests caught while being written**, both of which would have shipped:
+
+- The renderer filtered on `draft`, and lost two cards. Q339 says a draft is not *marked* on the
+  public site — not that it is unpublished — and both drafts carry `public: true`. The filter is
+  `public` now, matching `publicProjects()` exactly.
+- `MUTED` was `#a1a1a1`, a grey invented while drafting rather than taken from the palette. It
+  cleared contrast and looked correct; the summary line on every link preview would simply have
+  been a colour this site does not use. All four literals in the renderer are now pinned to the
+  carbon block of `tokens.css`.
+
+**The site card carries no wordmark.** The first draft put the mark beside "2ndMind" at the top
+left of a card for victorgusev.com, so the first thing a recruiter read was the name of the tool.
+The mark now stands alone there and the card's own title carries the name. Project cards keep the
+lockup, because there the title belongs to the project.
+
+**The five-pillar lockup lives here**, which is what §8's C15 resolution promised: the mark is one
+object at 16px, and the five pillars — 3D printing, baking, robotics, dragon boat, CS — appear as
+a quiet glyph row where there is room. `waves` stands in for dragon boat until Q215's three custom
+icons are drawn in Phase 5.
+
+**How to reverse.** Delete `scripts/render-og.mjs`, `public/og/`, and the `images` keys in
+`layout.tsx` and `projects/[slug]/page.tsx`. Link previews go back to having no image, which is
+what they had from V1 until today despite `summary_large_image` being declared the whole time.
+
+### D-219 · The About copy lives in one module, because the link preview says it too
+
+**Decision.** `src/lib/profile-copy.ts` holds two strings: the positioning line (Q307) and the
+About paragraph (Q321). Drafted 2026-09-10 from the vault, for Victor to approve or replace.
+
+**Why a module rather than JSX.** The positioning line appears on the About hero *and* on the OG
+card, rendered by two different toolchains — React on one side, Chromium-in-a-script on the other.
+A headline that says one thing on the page and another in the link preview is worse than either,
+and there is no build step that would notice. `og.test.ts` asserts the renderer imports this file
+rather than restating the line.
+
+**Every number in the paragraph is one `dimaag.md`'s `confidential_scope` names as shareable** —
+the hybrid RL/classical local planner, sub-decimeter tracking above 10 mph, and the 80% reduction
+in mean tracking error. Nothing touches the paper's specifics, which stay internal until Dimaag
+clears them.
+
+**How to reverse.** Replace either string; nothing else reads them. Re-run `npm run og` after
+changing `POSITIONING`, or the card and the page disagree — which `og.test.ts` will say.
+
 ### D-217 · The favicon is generated, and it was never the mark before
 
 **Decision.** `scripts/render-icons.mjs` now also writes `src/app/icon.svg` (vector, with its

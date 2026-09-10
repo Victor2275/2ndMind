@@ -50,6 +50,16 @@ const plexMono = localFont({
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.com";
+
+/**
+ * The site-wide OG card (Q44 — generic everywhere except a project page).
+ *
+ * Rendered by `scripts/render-og.mjs` and committed, rather than generated per request. That
+ * file explains why it is not `next/og`; the short version is that satori cannot read WOFF2 and
+ * every face this site owns is WOFF2, so the alternative was a card set in a typeface that
+ * appears nowhere else here.
+ */
+const OG_IMAGE = { url: "/og/site.png", width: 1200, height: 630, alt: "Victor Gusev" };
 const DESCRIPTION =
   "Robotics and computer vision engineer. B.S. Computer Science and Engineering, UCLA.";
 
@@ -68,8 +78,16 @@ export const metadata: Metadata = {
     title: "Victor Gusev",
     description: DESCRIPTION,
     url: SITE_URL,
+    images: [OG_IMAGE],
   },
-  twitter: { card: "summary_large_image", title: "Victor Gusev", description: DESCRIPTION },
+  // `summary_large_image` had been declared since V1 with no image behind it, so every link
+  // preview fell back to whatever the platform scraped — usually nothing (Q43).
+  twitter: {
+    card: "summary_large_image",
+    title: "Victor Gusev",
+    description: DESCRIPTION,
+    images: [OG_IMAGE],
+  },
   robots: { index: true, follow: true },
 };
 
