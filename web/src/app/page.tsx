@@ -117,27 +117,15 @@ export default function AboutPage() {
               <span aria-hidden>&rarr;</span>
             </Link>
             <Link
-              href={`/projects/${featured.slug}`}
+              href="/projects"
               className="inline-flex items-center gap-2 rounded-control px-4 py-2 text-sm text-muted-foreground transition-colors duration-fast ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              {featured.title}
+              View projects
               <span aria-hidden>&rarr;</span>
             </Link>
           </div>
 
-          {/* Q346 — `/now` is reachable from the hero, not only from the nav. Deliberately a
-              text link rather than a third button: two calls to action are a choice and three
-              are a menu, and this one is for a reader who has already decided to look around. */}
-          <p className="mt-4 text-sm text-muted-foreground">
-            Or see{" "}
-            <Link
-              href="/now"
-              className="link-wipe text-foreground transition-colors hover:text-primary"
-            >
-              what I am working on now
-            </Link>
-            .
-          </p>
+
 
           {/* Reduced, per Q310 — the full set is in the footer. Email and the two profiles a
               recruiter actually clicks; the phone number stays public (Q311) but comes off the
