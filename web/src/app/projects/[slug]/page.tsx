@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import Image from "next/image";
 
+import { ImageLightbox } from "@/components/site/image-lightbox";
 import { ProjectFigure } from "@/components/site/project-figure";
 import { CaseStudy } from "@/components/site/case-study";
 import { ProjectUpdates } from "@/components/site/project-updates";
@@ -78,15 +79,24 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
           top of a detail page pushes the actual writing below the fold on a phone for no
           information gain. */}
       {project.image && (
-        <div className="relative mt-8 aspect-16/9 w-full overflow-hidden rounded-lg border border-border bg-card/70">
-          <ProjectFigure
-            slug={project.slug}
-            title={project.title}
-            image={project.image}
-            priority
-            className={project.imageFit === "contain" ? "object-contain p-3" : "object-cover"}
-          />
-        </div>
+        /* Tap to open full size (Q223). Several of these figures are diagrams — the solenoid
+           signal chain, the micromouse maze — whose labels are unreadable inside a 16:9 card at
+           this width, and there was no way to see one properly. */
+        <ImageLightbox
+          src={project.image}
+          alt={`${project.title} — figure`}
+          className="mt-8 overflow-hidden rounded-card border border-border bg-card/70 transition-colors duration-fast hover:border-primary/60"
+        >
+          <div className="relative aspect-16/9 w-full">
+            <ProjectFigure
+              slug={project.slug}
+              title={project.title}
+              image={project.image}
+              priority
+              className={project.imageFit === "contain" ? "object-contain p-3" : "object-cover"}
+            />
+          </div>
+        </ImageLightbox>
       )}
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">

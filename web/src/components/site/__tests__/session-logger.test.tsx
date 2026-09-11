@@ -20,6 +20,19 @@ import { allOps, DB_NAME, openSyncDb, type SyncDb } from "@/lib/sync/store";
  * sync at all — which is the same reason the screen works in a gym basement.
  */
 
+/**
+ * This file is genuinely slow, not hung.
+ *
+ * It renders the whole logger against a real `fake-indexeddb` per test, opens the picker, and
+ * drives multi-select through it — ~11s of test time across twelve cases on an idle machine. At
+ * vitest's 5s default it passed alone and timed out whenever the suite ran wide enough to
+ * contend for CPU, which surfaced on 2026-09-10 when V4 Phase 6 added test files and pushed the
+ * parallelism up. That is a flake in the harness, not a defect in the logger, and raising the
+ * budget for this file is the honest fix — lowering the parallelism would slow every other file
+ * to hide one slow one.
+ */
+vi.setConfig({ testTimeout: 20_000 });
+
 let db: SyncDb;
 
 beforeEach(async () => {

@@ -75,6 +75,65 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-225 · The slow logger test file gets a 20s budget instead of vitest's 5s
+
+**Decision.** `session-logger.test.tsx` sets `vi.setConfig({ testTimeout: 20_000 })`.
+
+**Why.** It renders the whole logger against a real `fake-indexeddb` per test and drives the
+picker's multi-select — about 11 seconds of test time across twelve cases on an idle machine. At
+the 5s default it passed in isolation and timed out whenever the suite ran wide enough to contend
+for CPU. Phase 6 added five test files, which raised the parallelism enough to surface it.
+
+That is a flake in the harness, not a defect in the logger. The alternatives were worse: lowering
+suite-wide parallelism slows every other file to hide one slow one, and raising the global
+timeout removes the signal everywhere else.
+
+**How to reverse.** Delete the `vi.setConfig` line. It comes back under load.
+
+### D-224 · `?sort=` is validated with `Object.hasOwn`, not `in`
+
+**Decision.** `parseSort` uses `Object.hasOwn(SORTS, value)`.
+
+**Why it is a decision and not a detail.** `in` walks the prototype chain, so `?sort=constructor`
+passed validation and resolved `SORTS[sort]` to `Object` — whose `.compare` is `undefined`, which
+`Array.prototype.sort` silently accepts as "sort lexicographically", and whose `.label` renders as
+nothing. The page did not error; it quietly reordered itself and dropped a label. Query strings
+arrive from links other people paste, so they get an own-property check.
+
+Found by a test written alongside the feature, not by anyone looking at the page.
+
+### D-223 · The projects grid stops being a Client Component
+
+**Decision.** Filter and sort move into the URL (Q324, Q325), the controls become `<Link>`s, and
+`project-grid.tsx` drops `"use client"`. `/projects` becomes a dynamic route that reads
+`searchParams`.
+
+**This also completes V4 item 7.2**, which asks for exactly this boundary to be dropped "now the
+filter is URL state". It was scheduled for Phase 7 on the assumption that the filter would stay
+stateful and the boundary would be removed separately; the two turned out to be one change.
+
+**What it buys.** A filtered view is a real URL — linkable, bookmarkable, crawlable, which was the
+whole of Q324's complaint — and the grid stops being serialised into the RSC payload and shipped
+to the browser as props.
+
+**What it costs, stated.** `/projects` is no longer prerendered. Nothing there touches a database
+— the vault is read from the filesystem — so the response is cheap, and the service worker's
+precache is driven by fetching the sitemap at runtime rather than by build output, so the page is
+still cached for offline. A *filtered* URL is not precached and falls back like any uncached page.
+
+**The hero card leads only the curated order.** Pinning the featured project above an explicit
+"Newest" or "A–Z" would break the thing the reader just asked for — the point of a sort control is
+that the first item means something.
+
+**Status badges are one badge in two states** (Q326). `default` and `outline` "read as unrelated"
+because one was a filled accent pill and the other an empty bordered one — the language of two
+different kinds of thing, not two values of one field. Both are now the same shape and size, and
+differ by a filled-versus-hollow dot as well as by colour, which keeps rule 10 (colour never
+signals alone).
+
+**How to reverse.** `git revert`. The `useState` version is in history; note that reverting also
+re-breaks linkable filters.
+
 ### D-222 · The public footer carries the phone, the build, and the theme
 
 **Decision.** The footer gains a theme toggle (Q297), the build date and short commit (Q298), a
