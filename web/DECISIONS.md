@@ -75,6 +75,44 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-229 · The resume is a document, and the PDF is the button
+
+**Decision.** The resume sheet gets `shadow-floating`, reflowing padding, and the PDF download
+becomes the primary filled action with Print demoted beside it (Q347, Q348, Q349, Q352, Q354).
+
+**The paper edge needed no theme branch.** Q354 asks for a paper edge in light mode and none in
+dark. `--elevation-floating` is already defined per theme by `build-tokens.mts` — a true drop
+shadow in light themes, a ring plus a dark spread in dark ones (DESIGN.md §6) — so one utility
+produces both answers. Writing `light:shadow-lg dark:shadow-none` would have been a second
+implementation of a rule the token system already holds.
+
+**Why the PDF leads.** It was a bordered secondary sitting to the left of Print, which made
+"print this web page" look like the headline act. A recruiter opening `/resume` came for a file.
+
+**Padding reflows** (Q349). `p-8` on a 360px screen spends 64px of a 360px viewport on margin,
+which is most of what made the phone version read as a Letter sheet scaled down.
+
+**The print block is untouched** (Q355, V4 rule 5), and `npm run shots` still reports all three
+variants at one page.
+
+### D-230 · `/now` leads with the newest thing on it
+
+**Decision.** `/now` opens with the single most recent update across every active project, named
+and quoted (Q343), and the page breathes more (Q345). The About hero links to it (Q346) as a text
+link rather than a third button — two calls to action are a choice, three are a menu.
+
+**Found while building it, and not fixable in code:** **no project in the vault has a single dated
+`## Updates` entry.** All seven are empty. The mechanism has been built since D-099, `/now` is in
+the main navigation, and the page's entire subject is motion — so today it renders two project
+summaries and stops. The lead block is correct and has nothing to lead with.
+
+That is a content gap for Victor, recorded here because it is the cheapest high-value thing he can
+do before applications: two or three dated lines turn `/now` from a stub into the page that shows
+he is currently building. Writing them is not something this commit should do — they are published
+prose in his voice, addressed to strangers.
+
+**How to reverse.** Delete the `lead` block from `now/page.tsx` and the `<p>` under the hero CTAs.
+
 ### D-226 · The case study opens with a summary lifted from its own sections
 
 **Decision.** The project page opens with a Problem / Approach / Result block (Q333), each row

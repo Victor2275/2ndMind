@@ -34,19 +34,37 @@ export default function NowPage() {
     // than jumping to the front on an empty string.
     .sort((a, b) => (b.updates[0]?.date ?? "").localeCompare(a.updates[0]?.date ?? ""));
 
-  const latest = active
-    .flatMap((p) => p.updates.slice(0, 1))
-    .map((u) => u.date)
-    .sort();
-  const mostRecent = latest[latest.length - 1];
+  // The single most recent update across every active project, with the project it belongs to
+  // (Q343). `active` is already sorted by recency, so the head of the list owns it.
+  const lead = active[0]?.updates[0] ? { project: active[0], update: active[0].updates[0] } : null;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-      <h1 className="text-4xl font-extrabold tracking-tight">Now</h1>
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-20">
+      <h1 className="font-heading text-4xl font-extrabold tracking-tight">Now</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">
-        Current active projects.
-        {mostRecent ? ` Last update ${formatUpdateDate(mostRecent)}.` : ""}
+        What I am working on at the moment.
+        {lead ? ` Last update ${formatUpdateDate(lead.update.date)}.` : ""}
       </p>
+
+      {/* Q343 — the page leads with the newest thing on it, named and quoted, rather than
+          making a reader scan three project sections to find what moved last. The same update
+          still appears in its project's own list below; that repetition is the point of a lead. */}
+      {lead && (
+        <section className="mt-12 rounded-card border border-primary/25 bg-primary/[0.05] p-6 tablet:p-7">
+          <p className="eyebrow text-primary">Latest</p>
+          <h2 className="mt-2 font-heading text-xl font-bold tracking-tight">
+            <Link
+              href={`/projects/${lead.project.slug}`}
+              className="link-wipe transition-colors hover:text-primary"
+            >
+              {lead.project.title}
+            </Link>
+          </h2>
+          <div className="mt-4 border-l border-primary/30 pl-5">
+            <ProjectUpdates updates={[lead.update]} />
+          </div>
+        </section>
+      )}
 
       {active.length === 0 ? (
         // Deliberate rather than empty: a bare page reads as broken, and "nothing active" is
@@ -59,11 +77,11 @@ export default function NowPage() {
           .
         </p>
       ) : (
-        <div className="mt-12 space-y-14">
+        <div className="mt-16 space-y-20">
           {active.map((project) => (
             <section key={project.slug}>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 className="text-xl font-bold tracking-tight">
+                <h2 className="font-heading text-xl font-bold tracking-tight">
                   <Link href={`/projects/${project.slug}`} className="link-wipe hover:text-primary">
                     {project.title}
                   </Link>

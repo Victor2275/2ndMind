@@ -1,3 +1,4 @@
+import { DownloadIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -69,22 +70,38 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
           {/* The uploaded PDF, offered beside the generated sheet rather than instead of it
               (§4.4, D-188). The size is stated because a download that starts without warning
               is a download nobody chose. */}
+          {/* The PDF is the primary action (Q352) — filled, first, and the thing a recruiter
+              came here to take away. It was a bordered secondary sitting to the left of Print,
+              which made "print this web page" look like the headline act. The size is still
+              stated, because a download that starts without warning is one nobody chose. */}
           {upload && (
             <a
               href={upload.url}
               download
-              className="rounded-md border border-border px-3.5 py-1.5 font-mono text-xs text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:text-foreground"
+              className="inline-flex items-center gap-2 rounded-control bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity duration-fast ease-standard hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              PDF · {Math.round(upload.bytes / 1024)} KB
+              <DownloadIcon className="icon-sm" aria-hidden />
+              Download PDF
+              <span className="tabular font-mono text-xs opacity-70">
+                {Math.round(upload.bytes / 1024)} KB
+              </span>
             </a>
           )}
           <PrintButton />
         </div>
       </div>
 
-      {/* The sheet. On screen it uses the site palette; @media print in globals.css
-          switches it to black on white and drops the surrounding chrome. */}
-      <article className="resume-sheet rounded-lg border border-border bg-card/70 p-8 sm:p-10">
+      {/* The sheet, as a document rather than a print preview on a dark page (Q347, Q348).
+          `shadow-floating` is doing the work Q354 asked for and needs no theme branch: elevation
+          is a real shadow in light themes and a ground-shift plus border in dark ones
+          (DESIGN.md §6), so the paper edge appears on paper and not on near-black, which is
+          exactly the rule Q354 states.
+
+          Padding reflows (Q349). `p-8` on a 360px screen spends 64px of a 360px viewport on
+          margin, which is what made the phone version a Letter sheet scaled down.
+
+          @media print in globals.css is untouched and stays frozen (Q355, V4 rule 5). */}
+      <article className="resume-sheet rounded-card border border-border bg-card p-5 shadow-floating phone:p-8 tablet:p-10 print:shadow-none">
         <header className="resume-block">
           <h1 className="text-3xl font-extrabold tracking-tight">{doc.name}</h1>
           <p className="mt-2 max-w-[70ch] text-sm text-muted-foreground">{doc.headline}</p>
