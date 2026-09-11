@@ -1,6 +1,8 @@
 import { Prose } from "@/components/site/prose";
+import { cn } from "@/lib/utils";
 import {
   isCaseStudy,
+  sectionId,
   splitCaseStudy,
   type CaseStudyRole,
   type CaseStudySection,
@@ -118,7 +120,13 @@ export function CaseStudy({ children }: { children: string }) {
         }
 
         return (
-          <section key={i} className={TREATMENT[section.role].shell}>
+          /* `scroll-mt-24` clears the sticky header. Without it, following a TOC link parks the
+             heading underneath the header and the reader lands mid-paragraph. */
+          <section
+            key={i}
+            id={sectionId(section.heading ?? "")}
+            className={cn("scroll-mt-24", TREATMENT[section.role].shell)}
+          >
             <SectionHead
               index={indices.get(i) ?? null}
               heading={section.heading ?? ""}

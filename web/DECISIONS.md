@@ -75,6 +75,70 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-226 · The case study opens with a summary lifted from its own sections
+
+**Decision.** The project page opens with a Problem / Approach / Result block (Q333), each row
+being the first sentence of the section that already says it. A row whose section is missing, or
+too short to summarise, is absent rather than empty (Q331).
+
+**Why lifted rather than authored.** A summary field maintained separately from the section it
+summarises is a summary that goes stale — and Q130's standing instruction is against adding more
+read-only prose for Victor to keep in step. Lifting means the block cannot disagree with the page.
+
+**Why it is conservative.** `firstSentence` returns `null` for anything under 20 or over 260
+characters, and the caller hides the row. A two-word stub under a heading reading "Problem" is
+worse than no row at all.
+
+**It shipped broken once, on a real page.** The list-marker filter was `/^\s*(?:[-*+]|…)/`, which
+treats a leading `**` as a bullet — and every "Design decisions" section in this vault opens
+`**Bold lead-in.** The rest…`. Vault prose is hard-wrapped, so the first physical line was dropped
+and the Approach row on the solenoid project read _"north-up and a 0 as south-up would put half
+the signal below the readable floor."_ — starting mid-sentence. A list marker now requires
+whitespace after it, and that exact string is the first case in
+`__tests__/first-sentence.test.ts`.
+
+**How to reverse.** Delete the `summary` block from `projects/[slug]/page.tsx`. `firstSentence`
+has no other caller.
+
+### D-227 · The table of contents and the reading-progress bar are one component
+
+**Decision.** `case-study-toc.tsx` renders both (Q332, Q296). It hides itself entirely on a page
+with fewer than two recognised sections.
+
+**Why together.** They are the same measurement — how far down a long page am I — and two scroll
+listeners computing it separately disagree by a frame.
+
+**Why `IntersectionObserver` for the active section.** The alternative reads
+`getBoundingClientRect()` on every scroll event, which forces layout on the main thread at 60fps
+for a decoration. The progress bar does read `scrollY`, but nothing it touches forces layout.
+
+**The topmost intersecting section wins, not the last entry fired.** Taking the last entry is the
+obvious version and is wrong on a fast scroll, where several sections enter at once and the
+winner is whichever the browser felt like reporting last.
+
+**Why it hides rather than rendering a one-item rail.** Q331 asked the page to be clean "including
+hiding missing information", and a table of contents listing one item advertises that there was
+meant to be more.
+
+**How to reverse.** Remove `<CaseStudyToc>` from the project page and drop the `laptop:` flex
+wrapper around the article.
+
+### D-228 · Repo and demo links move to the top of a project page
+
+**Decision.** `project.links` renders directly under the summary line (Q340), not three-quarters
+of the way down between the stack and the highlights, and each one is an `ExternalLink` carrying
+the leave-the-site glyph.
+
+**Why.** They were below the fold on every project. The two links an engineer reading a case study
+is most likely to want were the two hardest to find.
+
+**Also here:** a "next project" link at the foot, wrapping at the end of the list (Q336) — a reader
+who finishes the last case study should still have somewhere to go; updates get a node on their
+rule so the log reads as a different kind of thing from the argument above it (Q337); and dates
+gain a relative form in `title` while the page keeps the absolute one (Q338).
+
+**How to reverse.** Each is an independent block in `projects/[slug]/page.tsx`.
+
 ### D-225 · The slow logger test file gets a 20s budget instead of vitest's 5s
 
 **Decision.** `session-logger.test.tsx` sets `vi.setConfig({ testTimeout: 20_000 })`.
