@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-10
 domain: meta
 stability: stable
 summary: Visual identity — five palettes (Carbon is the default), typefaces, logo concept, portfolio links.
@@ -167,11 +167,28 @@ computer science.
 Designed at **16px first** and scaled up, because the favicon is the constraint that decides
 whether it works.
 
-**Open question (`V4_PLAN.md` §8):** five pillars cannot be legible in one 16px glyph. The
-mark is one object; the five-pillar lockup lives on the install splash and the OG image, where
-there is room. **Which object is the mark is not yet decided.**
+**Settled 2026-09-10 (V4 item 6.1, `web/DECISIONS.md` D-215):** the mark is **the brain**, and it
+is the drawing that has shipped since V3 — `web/public/icons/brain.svg`, now on its fifth
+revision. The V4 plan asked "which object is the mark" without noticing there already was one.
 
-Where it goes: favicon (SVG, per-theme), the maskable PWA icon (padded — the favicon's
-geometry does not survive Android's mask), the install splash, and the site header, where it
-replaces the magenta dot. The wordmark is "Victor Gusev" set in the display face, tracked
-tight; under 380px the mark stands alone.
+What changed is the colour, not the geometry. The mark is **monochrome and takes its colour from
+context**: the silhouette is `currentColor`, and the folds are knocked out of the alpha rather
+than painted, so a groove shows whatever sits behind it. Over the launcher tile that *is* the tile
+colour, and it cannot drift from it — which it had, twice.
+
+The **five-pillar lockup lives on the OG card** (D-218), which is where there is room for it.
+
+Where it goes, all of it live as of 2026-09-10: the favicon (`src/app/icon.svg`, with its own
+`prefers-color-scheme` branch, plus a real `.ico` of three raster frames), the maskable PWA icon
+(padded — the favicon's geometry does not survive Android's mask), the Apple touch icon, the
+notification badge, and the site header, where it has replaced the magenta dot. The wordmark is
+"Victor Gusev" set in the display face, tracked tight; below the `cramped` breakpoint (380px) the
+mark stands alone.
+
+**The `.ico` had never been the mark.** Until 2026-09-10 it was a 25,931-byte file dated the day
+the repo was created, which no script here had ever written — the icon pipeline was built in V3
+and never included it. `npm run icons` writes every one of these now.
+
+**One thing left to judge:** at exactly 16 device pixels the folds are widened to survive the
+raster, and read closer to a crown than a brain. Only 1x displays see that frame; HiDPI takes the
+32px one, which is unambiguous (D-217).

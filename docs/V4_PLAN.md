@@ -31,11 +31,11 @@ read-only text defeats the point"** (Q130).
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
 | **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **293 done.** |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08), pulled forward. **Phase N done** (2026-09-08) — the freeze is gone and measured. **Phase 2 done** (2026-09-09) — **Milestone B**, proven end to end against real Neon. **Phase 2+ done** (2026-09-09) — unparked the same day Victor first used Phase 2 on the phone; the diagram shipped, the clips became text. **§2.12 done** — four bugs he found, one of which had been breaking six unrelated screens. **Phase 2++ done** (2026-09-10) — the figure redrawn, the catalogue audited and renamed, an exercise browser, the logger rebuilt to Hevy standard, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10) — three things he found using it: the picker rebuilt for a phone, the search ranking fixed, and the figure replaced with licensed art.<br>Next: **Phase 3**, tags. N9 still parked. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL.<br>Next: **Phase 3**, tags. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
-| **Milestone D**  | End of Phase 6 — the portfolio is finished.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Milestone D**  | End of Phase 6 — the portfolio is finished. ✅ **Reached 2026-09-10.** |
 | **Done when**    | You open the app on a term morning and the first thing you see is the thing you have to do. And a stranger opens victorgusev.com and does not think "student project".                                                                                                                                                                                                                                                                                           |
 | **Biggest risk** | ~~Phase 2 is a feature, not a redesign, and it reverses a decision declined twice.~~ **Spent, and it held** — see §7 R3. The largest remaining risk is R1: the portfolio is untouched through peak application season. |
 
@@ -661,9 +661,28 @@ Throughout: **Q130 applies.** Where a panel is read-only prose, it becomes struc
 
 ---
 
-### Phase 6 · Brand and the public site — **36 pts**
+### Phase 6 · Brand and the public site — **36 pts** — ✅ **DONE 2026-09-10** · **Milestone D**
 
-Milestone D.
+Taken out of order. §7 R1 recorded the portfolio staying untouched through peak application
+season as an accepted risk on 2026-09-06; on 2026-09-10 Victor reversed that and asked for the
+whole phase, which is the escape hatch R1 said would stay open. Decisions **D-215 to D-231**.
+
+**Item 7.2 fell out with it** (D-223): moving the projects filter into the URL is what lets the
+grid stop being a Client Component, so the two were one change rather than two.
+
+**Found while doing it**, none of which was scoped:
+
+- `favicon.ico` was 25,931 bytes dated the day the repo was created. **The tab icon had never
+  been the mark** — it was never part of the icon pipeline, which was written in V3.
+- The mark was still a **magenta gradient** two days after D-197 made carbon the default, and
+  its folds were cut in `#140a10`, the *magenta* theme's ground. `badge-icon.test.ts` actively
+  pinned the mark magenta, so the test agreed with the bug.
+- The About hero's contact links joined their class array with `""` instead of `" "`, so
+  `transition-colors` and `text-primary` were concatenated and **both were dropped** — since V1.
+- `parseSort` used `in`, which walks the prototype chain, so `?sort=constructor` validated.
+- **No project in the vault has a single dated `## Updates` entry** (D-230). `/now` is in the
+  main navigation and its whole subject is motion; it renders two summaries and stops. Content,
+  not code, and the cheapest high-value thing Victor can do before applications.
 
 | #   | Item                                                                                                                                                                                                                                                       | Pts |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
@@ -677,7 +696,7 @@ Milestone D.
 | 6.8 | **`/now` + resume screen** — airier `/now` leading with the most recent update; resume as a document on a designed surface, variant switcher, PDF as primary action, reflowed on phone. **Print block untouched** (Q341–Q357)                              |   5 |
 | 6.9 | **Public chrome** — footer theme toggle, build date, repo link, external-link glyph, case-study reading progress, `PrivateLink` de-emphasised (Q293–Q304)                                                                                                  |   3 |
 
-**Ends with (Milestone D):** the portfolio is finished.
+**Ends with (Milestone D):** the portfolio is finished. ✅
 
 ---
 
@@ -712,17 +731,26 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
 | 3     | Tags                                                |      12 | **[FEATURE]** · next   |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
-| 5     | The private screens                                 |      50 |                        |
-| 6     | Brand and the public site                           |      36 |                        |
-| 7     | Gates, performance, review                          |      22 |                        |
-|       | **Total**                                           | **443** |                        |
+| 5     | The private screens                                 |      50 | part · 5.6 absorbed    |
+| 6     | Brand and the public site                           |      36 | ✅ done · Milestone D  |
+| 7     | Gates, performance, review                          |      22 | part · 7.2 done        |
+| 2.13  | The picker on a phone, and licensed art             |      11 | ✅ done                |
+|       | **Total**                                           | **454** |                        |
 
-**443, not 286.** Four rows were promoted out of footnotes or added after use rather than
+**454, not 286.** Five rows were promoted out of footnotes or added after use rather than
 invented: N9 is the 13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the
 diagram and the descriptions Victor asked for alongside 2.1, §2.12 is the four defects he found
-on first use, and **Phase 2++ is what he asked for after using the thing §2.12 fixed** — which is
-not scope creep either, it is the difference between a mechanism and a product becoming visible.
-**282 points are done** (0, 1, N, 2, 2+, §2.12, 2++, and 4.4).
+on first use, §2.13 is the three he found next, and **Phase 2++ is what he asked for after using
+the thing §2.12 fixed** — which is not scope creep either, it is the difference between a
+mechanism and a product becoming visible.
+
+**344 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, 4.4, 5.6, 6 and 7.2). **110 remain,
+97 of them unparked.**
+
+**The arithmetic was wrong in four places until 2026-09-10**, and is recorded here rather than
+quietly fixed: the total was stated as 316 in the frontmatter, 454 in §0 and 443 in this table
+(which was missing §2.13's row entirely), and the done figure as 293, 282, 299 and 286 in four
+different sections. Every site now derives from this table.
 
 Phase 2++ alone is larger than Phase 2 and Phase 5 combined. That is recorded rather than
 litigated: every stage boundary in it was a coherent stopping point, and none of them were taken.
@@ -775,16 +803,20 @@ Unchanged by V4 and easy to break while redesigning:
 
 ## 7. Risks, stated plainly
 
-**R1 · The portfolio stays as it is through peak application season.** `internship_pipeline.md`
-targets five applications a day during peak Fall for Summer 2027 roles. Today is 2026-09-06;
-that season is now through roughly November. Phase 6 is sixth. **You were shown this and chose
-private-first anyway** (follow-up answer), so it is recorded as accepted, not as an oversight.
-The escape hatch is cheap and stays open: items **6.4 (About)** and **6.8 (resume screen)** are
-the two pages a recruiter actually opens, cost 11 pts together, and can be lifted out of Phase 6
-and run immediately after Phase 1 without disturbing anything else.
+**R1 · The portfolio stays as it is through peak application season.** ✅ **Spent — the hatch was
+taken, and wider than it was drawn.** Recorded as accepted on 2026-09-06; on 2026-09-10 Victor
+reversed it and asked for the whole of Phase 6 rather than the 11-point 6.4 + 6.8 escape hatch.
+All nine items shipped the same day, along with 7.2.
 
-**R2 · The budget is out by ~160 points.** You said 120–140; this is **299** — it was 241 until
-Phase N was inserted on 2026-09-08. Not a padding problem: it is Phase 2 (45) plus Phase 3 (12)
+What that bought, in the terms R1 was written in: link previews exist at all (they had been
+declared since V1 with no image behind them), the tab icon is Victor's for the first time, the
+About page leads with a claim instead of an enrolment fact, the resume page offers the PDF as its
+primary action, and four case studies now show how the thing works rather than what it looked
+like. The remaining gap is content, not code — see D-230.
+
+**R2 · The budget is out by ~310 points.** You said 120–140; the total is **454** and **344 is
+done** — it was 241 until Phase N was inserted on 2026-09-08, and the four separate arithmetics
+this section used to disagree with are reconciled in §4. Not a padding problem: it is Phase 2 (45) plus Phase 3 (12)
 plus the settings screen plus Phase N (45), none of which were UI work when you set the number,
 and Phase N is not UI work at all. Three honest readings: take the 299; or move the feature
 phases to V5, leaving ~178 plus Phase N; or stop after Phase 5 with the private app finished and
@@ -833,9 +865,14 @@ Small, and none of it blocks Phase 1 or Phase N.
    move an entry _out_ of the unsorted pile, and a general edit path is a different permission.
    Phase 2 builds it; edits become ordinary sync ops, last-write-wins by HLC like every other
    write.
-2. **C15 — the mark cannot be five things at 16px.** Q31 wants all five pillars; Q32/Q33 want one
-   representational object legible at favicon size. Which single object is the mark? The five-pillar
-   lockup then lives on the splash and OG image, where it has room.
+2. ~~**C15 — the mark cannot be five things at 16px.**~~ ✅ **Answered 2026-09-10: the brain stays,
+   and goes monochrome.** The question was asked against a codebase that already had a shipped
+   mark — `brain.svg`, its fourth drawing, with D-145/D-148/D-151/D-203 behind it — which §8 did
+   not notice. So 6.1 became a re-colouring rather than a redrawing (D-215), and the five-pillar
+   lockup now lives on the OG card, which is exactly where this entry said it would (D-218).
+   **Still open, and Victor's call:** at exactly 16 device pixels the widened folds read closer to
+   a crown than a brain. Only 1x displays are affected — HiDPI takes the 32px frame, which is
+   unambiguous (D-217).
 3. **C11 — is nine private routes the right number?** Your Q258 note says the scrolling bar
    indicates "too much going on there". The sidebar fixes the presentation; it does not answer
    whether any two of Today / Now / Log / Athletics / Academics / Work / Calendar / Hobbies / Sync
@@ -852,7 +889,7 @@ Small, and none of it blocks Phase 1 or Phase N.
    Ten minutes, and it is the number V4 §1.4's redesign gets held to.
 6. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
    run, nothing else.
-7. **R2 — which reading of the budget?** The total is now **286**, not the 241 this was written
-   against, because Phase N was inserted. The three readings are unchanged: take the number; or
-   move the feature phases to V5 (~178 + N); or stop after Phase 5 with the private app finished
-   and the portfolio untouched. Answerable later — Phase 1 and Phase N are common to all three.
+7. **R2 — which reading of the budget?** The total is **454** and **344 is done**, so the question
+   has narrowed to the 97 unparked points left: Phase 3 (12), the rest of Phase 4 (22), the rest
+   of Phase 5 (44), and the rest of Phase 7 (19). "Stop after Phase 5 with the portfolio
+   untouched" is no longer one of the readings — the portfolio is finished.

@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-08
+updated: 2026-09-10
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -16,11 +16,25 @@ read_when: Always — anything about current priorities or scheduling.
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
   **V4 is under way** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  311 points, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every colour, size,
-  space and motion value comes from one place and a test fails if it does not — the settings
-  screen pulled forward, **Phase N** (the plane-wifi freeze), and **Phase 2 — Milestone B**:
-  training is logged as sessions on the phone, offline, and syncs. Proven end to end against the
-  real database rather than argued. **Phase 3 (tags) is next.**
+  **454 points, 344 done**, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every
+  colour, size, space and motion value comes from one place and a test fails if it does not — the
+  settings screen pulled forward, **Phase N** (the plane-wifi freeze), **Phase 2 — Milestone B**
+  (training logged as sessions on the phone, offline, proven end to end against the real
+  database), **Phase 2++** (the logger rebuilt to Hevy standard, routines, the dashboard), and
+  **Phase 6 — Milestone D, done 2026-09-10: the portfolio is finished.**
+
+  Phase 6 was taken out of order. The plan recorded "the portfolio stays untouched through peak
+  application season" as an accepted risk (§7 R1); that was reversed on 2026-09-10. All nine items
+  shipped, plus 7.2. The site now has link previews (declared since V1 with no image behind them),
+  a favicon that is actually Victor's mark for the first time, an About page that leads with a
+  claim rather than an enrolment fact, the resume PDF as the primary action, and four
+  hand-authored system diagrams.
+
+  **One thing left on Victor, and it is the cheapest high-value item before applications:**
+  no project in the vault has a single dated `## Updates` entry, so `/now` renders two summaries
+  and stops. Two or three dated lines turn it into the page that shows he is currently building.
+
+  **Phase 3 (tags) is next.** 110 points remain, 97 unparked.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
