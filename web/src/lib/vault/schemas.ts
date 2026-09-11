@@ -93,6 +93,22 @@ export const projectSchema = baseFrontmatter.extend({
    * PLACEHOLDER is the kind of thing that reaches a recruiter exactly once.
    */
   draft: z.boolean().default(false),
+  /**
+   * The one project that leads (V4 items 6.4 and 6.5, Q309, Q330).
+   *
+   * Explicit rather than derived. `order` decides the sequence of the grid and nothing else;
+   * before this, "the project a stranger should see first" was read off `order: 1`, which made
+   * two unrelated decisions share one field — and it showed, because `order: 1` is Proof, a
+   * finished recipe PWA, while the eyebrow on the same page says "Robotics Engineer".
+   *
+   * Deriving it from "most recently updated `active` project" was the alternative and was
+   * declined: it changes under Victor without warning, and it would currently surface the
+   * Dimaag paper, whose public page is a deliberately vague placeholder pending clearance.
+   *
+   * At most one project may set this; `lib/vault/__tests__/featured.test.ts` fails the build
+   * otherwise, because two hero cards is a layout bug and no hero card is a missing CTA.
+   */
+  featured: z.boolean().default(false),
 });
 
 export const experienceSchema = baseFrontmatter.extend({

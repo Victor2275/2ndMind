@@ -77,7 +77,9 @@ export function SiteHeader({ name }: { name: string }) {
               Last, not first: at 360px the nav wins the space fight against the name, and a
               link placed ahead of "About" sits where the site's identity belongs — the first
               thing on the page read "Private" instead of "Victor Gusev". */}
-          <PrivateLink className="rounded-md px-1.5 py-1.5 text-sm text-primary transition-colors hover:bg-accent/60 phone:px-3" />
+          {/* Q301 — styled exactly like the four links beside it. It was `text-primary`, which made
+              the one link a visitor cannot use the brightest thing in the nav. */}
+          <PrivateLink className="rounded-md px-1.5 py-1.5 text-sm text-muted-foreground transition-colors duration-fast hover:bg-accent/60 hover:text-foreground phone:px-3" />
         </nav>
       </div>
     </header>

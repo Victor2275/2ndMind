@@ -117,6 +117,7 @@ export type PublicProject = {
   figures: string[];
   groupSize?: number;
   draft: boolean;
+  featured: boolean;
   bullets: string[];
   body: string;
   /** Dated entries from the file's `## Updates` section, newest first. */
@@ -177,6 +178,7 @@ export function toPublicProject(p: Project): PublicProject {
     figures: p.image && p.figure_count ? labFigures(p.image, p.figure_count) : [],
     ...(p.group_size ? { groupSize: p.group_size } : {}),
     draft: p.draft,
+    featured: p.featured,
     bullets: p.bullets,
     body: stripInternalSections(body),
     updates,
@@ -249,6 +251,7 @@ export const PUBLIC_PROJECT_KEYS = [
   "figures",
   "groupSize",
   "draft",
+  "featured",
   "bullets",
   "body",
   "updates",
@@ -295,7 +298,7 @@ export const PUBLIC_LAB_KEYS = [
 export type ProjectCard = Pick<
   PublicProject,
   "slug" | "title" | "summary" | "order" | "status" | "year" | "category" | "stack"
-> & { image?: string; imageFit: "cover" | "contain"; draft: boolean };
+> & { image?: string; imageFit: "cover" | "contain"; draft: boolean; featured: boolean };
 
 export const PROJECT_CARD_KEYS = [
   "slug",
@@ -309,6 +312,7 @@ export const PROJECT_CARD_KEYS = [
   "image",
   "imageFit",
   "draft",
+  "featured",
 ] as const;
 
 export function toProjectCard(p: PublicProject): ProjectCard {
@@ -324,6 +328,7 @@ export function toProjectCard(p: PublicProject): ProjectCard {
     ...(p.image ? { image: p.image } : {}),
     imageFit: p.imageFit,
     draft: p.draft,
+    featured: p.featured,
   };
 }
 

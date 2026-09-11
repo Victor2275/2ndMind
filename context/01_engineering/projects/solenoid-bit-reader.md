@@ -8,6 +8,7 @@ title: Solenoid Bit Reader
 slug: solenoid-bit-reader
 order: 4
 status: done
+featured: true
 year: 2026
 category: hardware
 tags: [esp32, electromagnetism, signal-processing, instrumentation, embedded]

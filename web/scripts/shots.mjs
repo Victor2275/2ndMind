@@ -24,6 +24,21 @@ import { mintSession } from "./lib/session.mjs";
 const BASE = process.env.SHOTS_BASE ?? "http://localhost:3000";
 const OUT = process.env.SHOTS_OUT ?? ".shots";
 
+/**
+ * The `cramped` breakpoint, in pixels — below it the header drops the wordmark and shows the
+ * mark alone (V4 6.3, Q42, D-216).
+ *
+ * Read out of the generated `scale.css` rather than typed here. The value exists in exactly one
+ * place — `scripts/build-scale.mts` — and a gate that carries its own copy of a breakpoint is a
+ * gate that will one day pass for the wrong reason after someone moves the line.
+ */
+const CRAMPED_PX = (() => {
+  const css = fs.readFileSync(path.join("src", "app", "scale.css"), "utf8");
+  const found = css.match(/--breakpoint-cramped:\s*([\d.]+)rem/);
+  if (!found) throw new Error("scale.css has no --breakpoint-cramped; run `npm run scale`");
+  return Number(found[1]) * 16;
+})();
+
 /** Real device widths, not round numbers: 360 is the common Android floor, 390 is an iPhone. */
 const WIDTHS = [360, 390, 768, 1280];
 
@@ -409,21 +424,36 @@ if (process.env.SHOTS_RETURNING !== "0") {
       // name is `min-w-0` and simply collapsed. A nav that fits is not the same as a header
       // that works.
       const brand = bar.querySelector("a span:last-child");
+      // The mark (V4 6.1). Below `cramped` the wordmark is dropped on purpose and this is the
+      // only identity left in the header, so it is measured rather than assumed.
+      const mark = bar.querySelector("a svg");
       return {
         links,
         navOverflow: nav ? nav.scrollWidth - nav.clientWidth : 0,
         barOverflow: bar.scrollWidth - bar.clientWidth,
         brandWidth: brand ? Math.round(brand.getBoundingClientRect().width) : 0,
         brandText: brand?.textContent?.trim() ?? "",
+        markWidth: mark ? Math.round(mark.getBoundingClientRect().width) : 0,
       };
     });
 
     const hasPrivate = header?.links.includes("Private") ?? false;
     const squeezed = (header?.navOverflow ?? 0) > 0 || (header?.barOverflow ?? 0) > 0;
-    // 40px is about four characters — enough to tell that a name is there and being
-    // truncated, rather than gone. Below that the header has no identity on it at all.
-    const nameGone = (header?.brandWidth ?? 0) < 40;
-    if (!hasPrivate || squeezed || nameGone) returningFaults += 1;
+
+    // Below `cramped` the wordmark is dropped and the mark stands alone (V4 6.3, Q42), so what
+    // "the header still has an identity on it" means depends on the width.
+    //
+    // This check used to demand the name at every width, and it was right to until 2026-09-10:
+    // the name vanishing meant the fifth nav item had silently squeezed it out, with no overflow
+    // to show for it. That failure is still caught — it is just now only a failure *above* the
+    // breakpoint, and below it the mark has to be there instead. Dropping the check entirely
+    // would have been the easy way through and would have retired a gate that earned its place.
+    //
+    // 40px is about four characters — enough to tell that a name is there and being truncated,
+    // rather than gone.
+    const nameGone = width >= CRAMPED_PX && (header?.brandWidth ?? 0) < 40;
+    const markGone = width < CRAMPED_PX && (header?.markWidth ?? 0) < 12;
+    if (!hasPrivate || squeezed || nameGone || markGone) returningFaults += 1;
 
     console.log(
       ` ${String(width).padStart(4)}px header (signed in) ` +
@@ -432,7 +462,9 @@ if (process.env.SHOTS_RETURNING !== "0") {
         `name=${header?.brandWidth ?? 0}px ` +
         `overflow=${Math.max(header?.navOverflow ?? 0, header?.barOverflow ?? 0)}px` +
         (squeezed ? "  <-- the nav does not fit" : "") +
-        (nameGone ? "  <-- the name is squeezed out" : ""),
+        (nameGone ? "  <-- the name is squeezed out" : "") +
+        (markGone ? "  <-- no mark, and no room for the name either" : "") +
+        (width < CRAMPED_PX && !markGone ? "  (mark only, by design)" : ""),
     );
 
     await context.close();

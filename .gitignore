@@ -34,3 +34,6 @@ DARS*.html
 # (D-222, D-223).
 /Muscles-worked-in-*.png
 /*-Bench-Press.gif
+
+# Playwright MCP scratch output — review screenshots, never artefacts
+.playwright-mcp/

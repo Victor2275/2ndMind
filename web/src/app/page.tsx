@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { ABOUT_PARAGRAPH, POSITIONING } from "@/lib/profile-copy";
 import {
   publicExperience,
   publicProfile,
@@ -31,8 +32,11 @@ export default function AboutPage() {
   const experience = publicExperience().filter((e) => e.bullets.length > 0);
   const projects = publicProjects();
   const pursuits = publicPursuits();
-  // Projects are sorted tier then year, so the first entry is the strongest recent build.
-  const featured = projects[0];
+  // The one project a stranger should see first (Q309). Explicit frontmatter, not `projects[0]`
+  // — that comment used to say "sorted tier then year", which stopped being true when D-107
+  // removed tiers, and it resolved to `order: 1`: a finished recipe PWA leading a page whose
+  // eyebrow reads "Robotics Engineer". `featured.test.ts` guarantees exactly one.
+  const featured = projects.find((p) => p.featured) ?? projects[0];
 
   const facts = [
     { label: "Degree", value: profile.degree },
@@ -58,12 +62,20 @@ export default function AboutPage() {
           ~900ms on a warm load (measured 2026-09-04): opacity:0 frames don't count as painted,
           so the hero was invisible until its own animation finished. `.rise` still does real
           work further down, where it plays while the reader is elsewhere on the page. */}
-      <section className="flex flex-col gap-8 sm:flex-row sm:items-start">
-        <div className="group relative shrink-0">
-          {/* Soft teal bloom behind the portrait, brightening on hover. */}
+      <section className="flex flex-col gap-8 py-6 sm:flex-row sm:items-start sm:gap-10 sm:py-10">
+        {/* `w-fit self-start`: in the phone layout this column is a flex *item in a column*, so
+            it stretches to the full width by default and the frame below — which is positioned
+            against it — stretched with it, drawing a rounded rectangle across the whole page
+            beside the portrait. `shrink-0` alone only governs the row layout. */}
+        <div className="group relative w-fit shrink-0 self-start">
+          {/* The bloom is gone (Q218). It was `bg-primary/15` blurred behind the portrait, and it
+              read as a photo-editing glow rather than as a design element — the one piece of the
+              page that looked applied rather than drawn. What replaces it is structural: an inset
+              ring and a hairline offset frame, the same language Q221 chose for project images.
+              Nothing here animates on hover any more except the frame's colour. */}
           <div
             aria-hidden
-            className="absolute -inset-3 rounded-xl bg-primary/15 opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+            className="absolute -inset-2 rounded-xl border border-border/60 transition-colors duration-medium ease-standard group-hover:border-primary/40"
           />
           {/* The real photograph, synced from context/assets by scripts/sync-vault-assets.mjs.
               It is 2048x1365 (3:2) rendered into a square, so it needs object-cover — without
@@ -75,57 +87,84 @@ export default function AboutPage() {
             width={288}
             height={288}
             priority
-            className="relative h-32 w-32 rounded-lg border border-border object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03] sm:h-36 sm:w-36"
+            className="relative h-40 w-40 rounded-lg object-cover object-top ring-1 ring-border transition-[--tw-ring-color] duration-medium ease-standard ring-inset group-hover:ring-primary/40 sm:h-48 sm:w-48"
           />
         </div>
 
         <div className="min-w-0">
           <p className="eyebrow text-primary">{profile.persona}</p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="mt-3 font-heading text-4xl font-extrabold tracking-tight sm:text-5xl">
             {profile.name}
           </h1>
-          <p className="mt-4 max-w-[60ch] text-muted-foreground">
-            {profile.academicStage} at {profile.schoolShort}, on a three-year track. Building
-            autonomous systems using reinforcement learning, LiDAR, and vision tools.
+
+          {/* The positioning line (Q307): below the name, and larger than the sentence it
+              replaced, which was a fact about enrolment dressed as a claim. It is set from
+              `lib/profile-copy.ts` because the OG card says it too, and a headline that differs
+              between the page and its own link preview is worse than either. */}
+          <p className="mt-4 max-w-[34ch] text-xl leading-snug text-foreground sm:text-2xl">
+            {POSITIONING}
           </p>
 
-          <div className="mt-6">
+          {/* Two calls to action (Q309). The resume stays primary — it is what a recruiter came
+              for — and the featured project is the second, because the fastest way to believe a
+              positioning line is to open the thing it describes. */}
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href="/resume/robotics"
-              className="inline-flex items-center gap-2 rounded-md border border-primary/50 px-4 py-2 text-sm text-primary transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-[0_0_20px_-6px_var(--primary)]"
+              className="inline-flex items-center gap-2 rounded-control border border-primary/50 px-4 py-2 text-sm text-primary transition-colors duration-fast ease-standard hover:border-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               View resume
               <span aria-hidden>&rarr;</span>
             </Link>
+            <Link
+              href={`/projects/${featured.slug}`}
+              className="inline-flex items-center gap-2 rounded-control px-4 py-2 text-sm text-muted-foreground transition-colors duration-fast ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              {featured.title}
+              <span aria-hidden>&rarr;</span>
+            </Link>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
-            {contacts.map((c) => (
-              <a
-                key={c.label}
-                href={c.href}
-                className={[
-                  "link-wipe text-sm transition-colors",
-                  c.mono ? "font-mono" : "",
-                  c.accent ? "text-primary" : "text-muted-foreground hover:text-foreground",
-                ].join("")}
-              >
-                {c.label}
-              </a>
-            ))}
+          {/* Reduced, per Q310 — the full set is in the footer. Email and the two profiles a
+              recruiter actually clicks; the phone number stays public (Q311) but comes off the
+              hero, where four links competed with the two buttons above them. */}
+          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+            {contacts
+              .filter((c) => !c.mono)
+              .map((c) => (
+                <a
+                  key={c.label}
+                  href={c.href}
+                  className={[
+                    "link-wipe text-sm transition-colors duration-fast",
+                    c.accent ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  {c.label}
+                </a>
+              ))}
           </div>
         </div>
       </section>
 
-      {/* Facts. Still above the fold at most widths — same reasoning as the hero above. */}
-      <dl className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* One paragraph of prose (Q321). Below the hero rather than inside it: the hero is the
+          claim and this is the evidence, and a reader who wants only the claim should not have
+          to read past it. */}
+      <p className="mt-10 max-w-[62ch] text-base leading-relaxed text-muted-foreground">
+        {ABOUT_PARAGRAPH}
+      </p>
+
+      {/* Facts (Q313): a single dense line at phone width, cards from `phone` up.
+          Four bordered cards stacked two-by-two on a 360px screen cost ~180px to say four short
+          things, and pushed the first role below the fold. As a line they cost one. */}
+      <dl className="mt-10 flex flex-col gap-y-2 phone:grid phone:grid-cols-4 phone:gap-3">
         {facts.map((f) => (
           <div
             key={f.label}
-            className="rounded-lg border border-border bg-card/70 p-4 transition-colors duration-300 hover:border-primary/50"
+            className="flex items-baseline justify-between gap-3 border-b border-border/50 pb-2 last:border-b-0 phone:block phone:rounded-card phone:border phone:border-border phone:bg-card/70 phone:p-4 phone:pb-4 phone:transition-colors phone:duration-fast phone:hover:border-primary/50"
           >
             <dt className="eyebrow text-muted-foreground">{f.label}</dt>
-            <dd className="tabular mt-1.5 text-sm font-medium text-foreground">{f.value}</dd>
+            <dd className="tabular text-sm font-medium text-foreground phone:mt-1.5">{f.value}</dd>
           </div>
         ))}
       </dl>
@@ -174,35 +213,40 @@ export default function AboutPage() {
           <h2 className="text-xl font-bold tracking-tight">Previous Experience</h2>
           <div className="mt-6 space-y-8">
             {experience.slice(1).map((role) => (
+              /* Q317 — a fixed date gutter from `laptop` up. The dates used to sit at the end of
+                 the title row and wrapped under it whenever a role name was long, so the column
+                 of dates a reader scans for was not a column at all. In the gutter they line up
+                 and the titles start at one x-position. Below `laptop` there is no room for a
+                 gutter and they stay above the title, where they read as a caption. */
               <article
                 key={role.slug}
-                className="group relative border-l-2 border-border pl-5 transition-colors duration-300 hover:border-primary/70"
+                className="group relative border-l-2 border-border pl-5 transition-colors duration-fast hover:border-primary/70 laptop:grid laptop:grid-cols-[10rem_1fr] laptop:gap-x-6 laptop:border-l-0 laptop:pl-0"
               >
                 <span
                   aria-hidden
-                  className="absolute top-2 -left-[5px] size-2 rounded-full bg-border transition-all duration-300 group-hover:scale-125 group-hover:bg-primary/70"
+                  className="absolute top-2 -left-[5px] size-2 rounded-full bg-border transition-all duration-fast group-hover:scale-125 group-hover:bg-primary/70 laptop:hidden"
                 />
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h3 className="text-base font-semibold text-foreground">
+                <p className="tabular order-first font-mono text-xs text-muted-foreground laptop:pt-1 laptop:text-right">
+                  {role.dateStart} — {role.ongoing ? "Present" : role.dateEnd}
+                </p>
+                <div className="laptop:border-l-2 laptop:border-border laptop:pl-6 laptop:transition-colors laptop:duration-fast laptop:group-hover:border-primary/70">
+                  <h3 className="mt-1 text-base font-semibold text-foreground laptop:mt-0">
                     {role.title} <span className="text-muted-foreground">·</span>{" "}
                     <span className="transition-colors group-hover:text-primary/80">
                       {role.org}
                     </span>
                   </h3>
-                  <p className="tabular font-mono text-xs text-muted-foreground">
-                    {role.dateStart} — {role.ongoing ? "Present" : role.dateEnd}
-                  </p>
+                  <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                    {role.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="relative pl-4 before:absolute before:left-0 before:text-primary/40 before:content-['—']"
+                      >
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                  {role.bullets.map((b) => (
-                    <li
-                      key={b}
-                      className="relative pl-4 before:absolute before:left-0 before:text-primary/40 before:content-['—']"
-                    >
-                      {b}
-                    </li>
-                  ))}
-                </ul>
               </article>
             ))}
           </div>
@@ -234,7 +278,10 @@ export default function AboutPage() {
           href={`/projects/${featured.slug}`}
           className="group card-scan rounded-lg border border-border bg-card/70 p-6"
         >
-          <p className="eyebrow text-primary">Most recent build</p>
+          {/* Was "Most recent build", which was never checked against anything: it rendered
+              `projects[0]`, i.e. `order: 1`, which is a 2025 project marked `done`. The card now
+              renders whatever carries `featured: true` and says so honestly. */}
+          <p className="eyebrow text-primary">Featured</p>
           <h2 className="mt-2 text-base font-semibold transition-colors group-hover:text-primary">
             {featured.title}
           </h2>
@@ -258,8 +305,11 @@ export default function AboutPage() {
                 {p.title}
               </h3>
 
+              {/* Q319 — three cards, shorter. Two bullets each: the section is breadth, and a
+                  reader who wants the third line about dragon boat is not on this page. The
+                  entries themselves are untouched, so nothing is lost from the vault. */}
               <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                {p.bullets.map((b) => (
+                {p.bullets.slice(0, 2).map((b) => (
                   <li
                     key={b}
                     className="relative pl-4 before:absolute before:left-0 before:text-primary/60 before:content-['—']"

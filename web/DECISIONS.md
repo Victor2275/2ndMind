@@ -75,6 +75,83 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-222 · The public footer carries the phone, the build, and the theme
+
+**Decision.** The footer gains a theme toggle (Q297), the build date and short commit (Q298), a
+link to the site's own repository (Q299), an external-link glyph on anything that leaves the site
+(Q304), one line naming 2ndMind (Q320) — and the phone number.
+
+**Why the phone moved.** Q310 asked the About hero's contact row to be reduced and Q311 keeps the
+number public. Those only reconcile if it lands somewhere, and the footer is where a contact
+detail belongs. Removing it from the hero without adding it here would have taken it off the
+public site entirely.
+
+**`PrivateLink` is de-emphasised** (Q301). It was `text-primary`, which made the one link a
+visitor cannot use the brightest thing in the navigation.
+
+**The external-link glyph is a diagonal arrow, not the boxed convention.** The boxed glyph reads
+as a UI affordance at 12px and these sit inline in running text. The glyph is `aria-hidden` and
+the words "(opens in a new tab)" carry the meaning instead — a screen reader announcing "arrow up
+right" after every link is noise.
+
+**How to reverse.** Restore `site-footer.tsx` from git and delete `external-link.tsx`.
+
+### D-221 · The About hero states a claim, and the page proves it below
+
+**Decision.** The hero is taller (Q306), leads with the positioning line below the name (Q307),
+offers two calls to action rather than one (Q309), and carries a reduced contact row (Q310). A
+paragraph of prose sits below it (Q321). Facts become a dense line at phone width and cards above
+(Q313). Previous experience gets a fixed date gutter from `laptop` up (Q317). Hobbies show two
+bullets each (Q319).
+
+**The portrait's bloom is gone** (Q218). It was `bg-primary/15` blurred behind the photograph and
+read as a photo-editing glow rather than as a design element — the one thing on the page that
+looked applied rather than drawn. An inset ring and a hairline offset frame replace it, which is
+the language Q221 already chose for project images. The portrait is larger and stays square
+(Q219).
+
+**Three things that were wrong rather than merely dated:**
+
+- The hero's contact links used `[...].join("")` on their class array, so `transition-colors` and
+  `text-primary` were concatenated into `transition-colorstext-primary` and **both were dropped**.
+  Every link in that row has been rendering without its colour class since V1. Now `join(" ")`.
+- The paragraph under the name read "second-year at UCLA, on a three-year track. Building
+  autonomous systems using reinforcement learning, LiDAR, and vision tools" — a fact about
+  enrolment dressed as a positioning statement. It is prose below the hero now, and the hero says
+  something that distinguishes him.
+- The pointer card's eyebrow said **"Most recent build"** over `projects[0]`, which is `order: 1`
+  — a 2025 project marked `done`. It was never checked against a date. It says "Featured" now and
+  renders the project that says it is.
+
+**How to reverse.** `git revert` this commit; nothing else reads `POSITIONING` or
+`ABOUT_PARAGRAPH` except the OG renderer, which falls back to nothing gracefully.
+
+### D-220 · `featured: true` is frontmatter, because `order` was doing two jobs
+
+**Decision.** A new optional `featured` boolean on a project. Exactly one published project may
+set it; `lib/vault/__tests__/featured.test.ts` fails otherwise. It drives the About hero's second
+CTA (Q309) and will drive the projects grid's hero card (Q330).
+
+**Why not `order: 1`.** `order` decides the sequence of the grid. "The project a stranger should
+see first" is a different decision, and making one field carry both meant the answer was whatever
+happened to sort first — Proof, a finished recipe PWA, leading a page whose eyebrow reads
+"Robotics Engineer".
+
+**Why not "most recently updated active project".** It needs no maintenance and it changes under
+Victor without warning. It would also currently surface the Dimaag paper, whose public page is a
+deliberately vague placeholder pending clearance — the worst possible landing place for a lead.
+
+**Set on `solenoid-bit-reader`** for now: the only entry that is unmistakably hardware, and the
+one Victor's own diagram answer ranked first. One frontmatter line to move it.
+
+**Why a content test rather than a code test.** The failure it guards against is Victor editing
+frontmatter, not anyone editing TypeScript. Two featured projects is two hero cards spanning two
+columns each; none is a missing CTA and a missing hero card. Neither errors, and neither is the
+kind of thing anyone notices on their own site.
+
+**How to reverse.** Drop the field from `schemas.ts` and the three projections in `public.ts`,
+delete the test, and put `projects[0]` back in `page.tsx`.
+
 ### D-218 · The OG cards are rendered by Playwright, not `next/og`
 
 **Decision.** `scripts/render-og.mjs` renders eight 1200×630 cards — one generic, one per
