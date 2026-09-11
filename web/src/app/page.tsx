@@ -125,8 +125,6 @@ export default function AboutPage() {
             </Link>
           </div>
 
-
-
           {/* Reduced, per Q310 — the full set is in the footer. Email and the two profiles a
               recruiter actually clicks; the phone number stays public (Q311) but comes off the
               hero, where four links competed with the two buttons above them. */}
