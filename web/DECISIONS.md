@@ -75,6 +75,50 @@ did not happen on 2026-09-08.
 put `BADGE` back in `render-icons.mjs`, and drop the three colour tests. The mark stops
 following the theme with it.
 
+### D-231 · Four hand-authored system diagrams, themed rather than coloured
+
+**Decision.** `system-diagram.tsx` holds four inline SVGs — Solenoid Bit Reader, Proof, Micromouse
+Simulator, TaskAble — rendered above each case study under "How it works" (Q224, Q225). Victor
+chose the four.
+
+**Why these are worth the points.** Every other image on a project page is a screenshot or a
+photograph, which shows what the thing looked like. None show how it works, and an engineer
+reading a case study is trying to reconstruct the mechanism. Q224 called this the highest-value
+visual work on the public site, and that is why.
+
+**Each is drawn around the one thing its case study says is the point**, not around its box
+diagram. The solenoid's is the *shrinking bit window* — the magnets accelerate under gravity, so
+each window is shorter than the last, drawn to scale under the signal chain. Micromouse's is the
+distance field itself, with numbers in the cells, because that explains flood fill faster than a
+paragraph. This is also why they are hand-authored rather than Mermaid: a layout engine places
+boxes and does not know which part is interesting.
+
+**Themed with CSS variables, never hex** (Q225). One drawing is then correct in all five themes
+and in print.
+
+**They scroll rather than shrink.** At a 680-unit viewBox scaled into a 312px phone column, 14px
+label text renders at about 6px. The figure keeps its natural size and its container scrolls,
+which is the standing rule for wide content — a picture that is present and unreadable is worse
+than one the reader has to nudge. The container is `tabindex={0}` because a scrollable region has
+to be pannable without a pointer, and `npm run shots` confirms no page overflows as a result.
+
+**No diagram for the Dimaag paper**, deliberately, and there is a test saying so: a system diagram
+of that work would cross the `confidential_scope` boundary in `experience/dimaag.md`, which holds
+the paper's technical specifics internal until Dimaag clears them.
+
+**Two things fixed after looking at them in a browser**, neither of which any test would have
+caught: TaskAble's read and write arrows ran diagonally between Firestore and the student, where
+they crossed each other and their own labels — the picture said "these two talk" and hid which
+direction each went, which was the only thing it existed to say. And Proof's "raw HTML" label
+overlapped the next box at a 48-unit gap.
+
+**One thing a test did catch:** all four carried `aria-labelledby="title desc"`, which concatenates
+the whole description into the element's accessible *name* — a screen reader would have read a
+paragraph where a label belongs. Title is `aria-labelledby`, description is `aria-describedby`.
+
+**How to reverse.** Delete the component and the `hasSystemDiagram` block in
+`projects/[slug]/page.tsx`. Nothing else imports it.
+
 ### D-229 · The resume is a document, and the PDF is the button
 
 **Decision.** The resume sheet gets `shadow-floating`, reflowing padding, and the PDF download

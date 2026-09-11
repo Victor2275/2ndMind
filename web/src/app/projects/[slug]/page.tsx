@@ -9,6 +9,7 @@ import { CaseStudy } from "@/components/site/case-study";
 import { CaseStudyToc } from "@/components/site/case-study-toc";
 import { ExternalLink } from "@/components/site/external-link";
 import { StatusBadge } from "@/components/site/status-badge";
+import { hasSystemDiagram, SystemDiagram } from "@/components/site/system-diagram";
 import { ProjectUpdates } from "@/components/site/project-updates";
 import { Badge } from "@/components/ui/badge";
 import { firstSentence, roleFor, sectionId, splitCaseStudy } from "@/lib/vault/case-study";
@@ -220,6 +221,16 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
                 </div>
               ))}
             </dl>
+          )}
+
+          {/* The system diagram (Q224, Q225), above the prose that describes it: a reader who
+              takes the picture and leaves has still got the mechanism. A project without one
+              renders no heading at all rather than an empty section (Q331). */}
+          {hasSystemDiagram(project.slug) && (
+            <section className="mt-12">
+              <h2 className="font-heading text-lg font-bold tracking-tight">How it works</h2>
+              <SystemDiagram slug={project.slug} className="mt-4" />
+            </section>
           )}
 
           <section className="mt-12">
