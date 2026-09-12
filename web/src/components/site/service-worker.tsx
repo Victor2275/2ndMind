@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { applyUpdate, watchForUpdate } from "@/lib/pwa/register";
 
 /**
- * Registers the service worker and offers a reload when a new version is waiting
- * (V3 §1.1, D-146).
+ * Registers the service worker and reloads automatically when a new version is waiting
+ * (V3 §1.1, D-146; auto-applied without a prompt as of 2026-09-12).
+ *
+ * There is exactly one user, and he knows when he has just deployed — a "new version is
+ * ready" banner was overhead for a fact he already knows. `applyUpdate` fires the moment a
+ * worker is found waiting, with no confirmation step.
  *
  * Mounted once in the root layout so the worker is registered on the public site too. That is
  * deliberate: the install `start_url` is `/private`, but Chrome will only offer to install
@@ -16,15 +20,16 @@ import { applyUpdate, watchForUpdate } from "@/lib/pwa/register";
  * `/_next/static/chunks/` and is served without authentication.
  */
 export function ServiceWorker() {
-  const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const container = navigator.serviceWorker;
     let detach: (() => void) | undefined;
     let cancelled = false;
+
+    const onWaiting = (worker: ServiceWorker) => {
+      applyUpdate(worker, container, () => location.reload());
+    };
 
     // `updateViaCache: "none"` stops the browser serving /sw.js from its own HTTP cache. Without
     // it a worker can be pinned for up to 24 hours by a stale cache entry, which is exactly the
@@ -35,7 +40,7 @@ export function ServiceWorker() {
         if (cancelled) return;
         detach = watchForUpdate(registration, {
           isControlled: () => container.controller !== null,
-          onWaiting: setWaiting,
+          onWaiting,
         });
         return registration;
       })
@@ -72,41 +77,5 @@ export function ServiceWorker() {
     };
   }, []);
 
-  if (!waiting || dismissed) return null;
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      // Above the phone tab bar, and clear of the gesture pill. This never covers the centre
-      // of the screen and never takes focus: `context.md` requires that a log entry in progress
-      // survives anything the app decides to tell you about itself.
-      className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center gap-3 rounded-lg border border-primary/40 bg-card/95 px-4 py-3 shadow-lg backdrop-blur-md sm:bottom-6 print:hidden"
-    >
-      <p className="min-w-0 flex-1 text-sm text-foreground">
-        A new version is ready.
-        <span className="block text-xs text-muted-foreground">
-          Nothing you have typed will be lost.
-        </span>
-      </p>
-
-      <button
-        type="button"
-        onClick={() => applyUpdate(waiting, navigator.serviceWorker, () => location.reload())}
-        className="min-h-10 shrink-0 rounded-md border border-primary/50 bg-primary/15 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/25"
-      >
-        Reload
-      </button>
-
-      {/* Dismissable on purpose. The prompt reappears on the next load, because the worker is
-          still waiting — so "Later" postpones without losing the update. */}
-      <button
-        type="button"
-        onClick={() => setDismissed(true)}
-        className="min-h-10 shrink-0 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        Later
-      </button>
-    </div>
-  );
+  return null;
 }

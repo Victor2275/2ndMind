@@ -17,6 +17,33 @@ useful part.
 
 ---
 
+## 2026-09-12 · The update prompt is gone; the page just updates
+
+### D-241 · Service worker updates apply immediately, no "Reload" banner
+
+**Decision.** `ServiceWorker` no longer renders anything. The "A new version is ready" banner
+from D-146 (V3 §1.1) — a persistent bar with **Reload** and **Later** buttons — is removed.
+`applyUpdate` now fires the instant `watchForUpdate` reports a worker waiting, with no
+confirmation step: `location.reload()` happens on the same `controllerchange` event that used
+to arm the button.
+
+**Why.** There is exactly one user, and he knows when he has just deployed — a prompt asking
+"do you want the version you just shipped" was overhead for a fact already known. Victor's
+own words: *"it's ok to just update the page, since the page is only for me and I know when I
+update the page."*
+
+**What this gives up.** The banner's whole reason to exist, named in its own copy — "nothing
+you have typed will be lost" — is no longer guaranteed. An unprompted reload mid-keystroke on
+a form still reloads. Accepted deliberately: Victor is also the one deciding when to deploy,
+so the risk window is his to manage, not something the app needs to negotiate on his behalf.
+
+**How to reverse.** `git revert` this commit. `lib/pwa/register.ts` (`applyUpdate`,
+`watchForUpdate`) is unchanged and untested against this decision either way — it was already
+UI-agnostic, so reinstating the banner is purely a `ServiceWorker.tsx` change: hold the waiting
+worker in state again instead of calling `applyUpdate` from `onWaiting` directly.
+
+---
+
 ## 2026-09-12 · Self-serve device enrolment
 
 ### D-240 · Enrolled passkeys move from `PASSKEYS` to Postgres
