@@ -81,11 +81,20 @@ org management, session UI for arbitrary sign-ups — pure overhead here. Auth i
 ceremony (`@simplewebauthn/server` + `@simplewebauthn/browser`) plus a signed session cookie.
 No vendor, no recurring cost, no dashboard to configure.
 
-The registered credential lives in **environment variables, not the database** — `PASSKEYS`,
-one indivisible `label:id:publicKey` string per device (`lib/auth/config.ts`). Neither value is
-secret; the private key never leaves the authenticator. The cost is that enrolling a device
-means pasting a new value into Vercel, which for a personal tool happens roughly never, and it
-takes a database out of the auth path entirely.
+**Enrolled credentials live in Postgres** (`passkey_credentials`, `lib/db/schema.ts`), not the
+environment (D-234). They started in a `PASSKEYS` env var — one indivisible `label:id:publicKey`
+string per device — which made enrolling a device a Vercel round-trip: set a registration
+secret, register, copy the returned value, paste it back, redeploy. That was fine for a device
+that changes roughly never, but it was not self-serve. A row insert needs neither, so
+`/signin/register` now finishes enrolment the moment the ceremony does. Neither the credential
+id nor the public key is secret; the private key never leaves the authenticator.
+
+The legacy env vars (`PASSKEYS`, `PASSKEY_CREDENTIAL_ID`, `PASSKEY_PUBLIC_KEY`) are still
+folded into `storedCredentials()` alongside the table, so the device enrolled before the
+migration was never lost. New devices go straight into the table. The registration gate
+(`PASSKEY_REGISTRATION_SECRET`) is the one thing that stays a permanent env var — Victor keeps
+it somewhere durable and types it on each new device, rather than round-tripping it through
+Vercel per enrolment.
 
 **Local unlock is built and NOT mounted (V3 §1.5, D-154 → D-158).** A lock screen that
 verifies a WebAuthn assertion in the browser against a cached public key, with no server, lives

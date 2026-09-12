@@ -12,6 +12,7 @@ import {
   sessionSecret,
   storedCredentials,
 } from "@/lib/auth/config";
+import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { coseToJwk, type LocalCredential } from "@/lib/auth/cose";
 import {
   CHALLENGE_COOKIE,
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
 
 /** Step 1: challenge. */
 export async function GET(request: Request) {
-  const credentials = storedCredentials();
+  const credentials = await storedCredentials(isDatabaseConfigured() ? db() : undefined);
   if (credentials.length === 0) {
     return NextResponse.json({ error: "no passkey enrolled" }, { status: 503 });
   }
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
 
 /** Step 2: verify the assertion and mint a session. */
 export async function POST(request: Request) {
-  const credentials = storedCredentials();
+  const credentials = await storedCredentials(isDatabaseConfigured() ? db() : undefined);
   if (credentials.length === 0) {
     return NextResponse.json({ error: "no passkey enrolled" }, { status: 503 });
   }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/dal";
 import { relyingParty, storedCredentials } from "@/lib/auth/config";
 import { coseToJwk, type LocalCredential } from "@/lib/auth/cose";
+import { db, isDatabaseConfigured } from "@/lib/db/client";
 
 /**
  * The public half of every enrolled passkey, for a session that is already signed in
@@ -35,7 +36,7 @@ export async function GET() {
   const { rpID } = relyingParty();
   const credentials: LocalCredential[] = [];
 
-  for (const stored of storedCredentials()) {
+  for (const stored of await storedCredentials(isDatabaseConfigured() ? db() : undefined)) {
     try {
       const { jwk, alg } = coseToJwk(stored.publicKey);
       credentials.push({ id: stored.id, jwk, alg, rpId: rpID });

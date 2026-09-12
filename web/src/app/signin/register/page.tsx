@@ -18,11 +18,12 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-24">
       <div className="w-full max-w-md rounded-lg border border-border bg-card/70 p-7">
-        <p className="eyebrow text-primary">One-time setup</p>
+        <p className="eyebrow text-primary">New device</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">Enrol a passkey</h1>
         <p className="mt-2 mb-6 text-sm text-muted-foreground">
-          A passkey is bound to the origin it was created on, so this runs once on localhost and
-          once on the live site. Enrolling replaces any existing credential.
+          A passkey is bound to the origin it was created on, so this runs once per device, on the
+          origin that device will actually sign in to. Enrolling adds a device — it does not replace
+          any already-enrolled one.
         </p>
         <RegisterForm />
       </div>

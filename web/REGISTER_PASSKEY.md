@@ -1,99 +1,50 @@
-# Enrolling your passkeys
+# Enrolling a passkey
 
-About ten minutes per device. You do it once per origin *and* once per device, because
-**a passkey is bound to the origin it was created on**: a credential enrolled on
-`localhost` will not work on `victorgusev.com`, and the laptop's will not work on the
-phone.
+Self-serve, since D-234/D-240: visit `/signin/register`, authenticate, done. No env edit,
+no redeploy. You do it once per **origin** *and* once per **device** — a passkey is bound to
+the origin it was created on, so localhost and `victorgusev.com` need separate ceremonies,
+and the laptop's credential does not work on the phone.
 
-> **Before anything else: is the code that reads your environment actually deployed?**
-> Environment variables are read by whatever build is live, not by what is committed on
-> your machine. Setting `PASSKEYS` while the deployed build predates it means the site
-> sees **no credentials at all** — and you will not notice, because an existing session
-> cookie keeps one device working for up to seven days. This happened on 2026-08-25.
->
-> `git status -sb` must not say *ahead*. Push, let Vercel finish, then change variables.
+## One-time setup, per environment
 
-## Before you start
-
-`web/.env.local` needs `SESSION_SECRET` and `GITHUB_TOKEN`. See `.env.example`; generate the
-secret with:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-## Local
-
-1. **Open the gate.** Add to `web/.env.local`, then restart `npm run dev`:
-
-   ```
-   PASSKEY_REGISTRATION_SECRET=any-string-at-least-16-characters
-   ```
-
-2. **Enrol.** Visit <http://localhost:3000/signin/register>, paste the same string, and press
-   *Enrol this device*. Your browser prompts for Touch ID / Windows Hello / your phone.
-
-   Give the device a name first — *laptop*, *phone*. It is never used in the ceremony;
-   it exists so you can tell two base64 blobs apart months later.
-
-   The page then shows **one line, holding every enrolled device**. Copy it into
-   `web/.env.local`, replacing any previous value:
-
-   ```
-   PASSKEYS=laptop:<credentialId>:<publicKey>,phone:<credentialId>:<publicKey>
-   ```
-
-   Replace, never append by hand. The endpoint returns the complete list precisely so
-   that adding the phone cannot mean overwriting the laptop — which locks you out of the
-   machine you are sitting at.
-
-   `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are the old single-device form. They
-   are still honoured, so nothing breaks mid-migration, but delete them once `PASSKEYS`
-   is set and deployed.
-
-3. **Shut the gate.** Delete `PASSKEY_REGISTRATION_SECRET` from `.env.local` and restart.
-   Verify — both must be true:
-
-   ```bash
-   curl -s -o /dev/null -w "register page: %{http_code}\n" http://localhost:3000/signin/register  # 404
-   curl -s -o /dev/null -w "register api:  %{http_code}\n" http://localhost:3000/api/auth/register # 403
-   ```
-
-4. **Sign in** at <http://localhost:3000/signin>. You should land on `/private`.
-
-## Production
-
-In Vercel → Settings → Environment Variables, add:
+**Local** (`web/.env.local`) and **production** (Vercel → Settings → Environment Variables)
+each need:
 
 | Variable | Value |
 |---|---|
-| `SESSION_SECRET` | a **different** random 32-byte hex string from your local one |
-| `GITHUB_TOKEN` | the fine-grained PAT (repo `2ndMind`, Contents: read and write) |
-| `NEXT_PUBLIC_SITE_URL` | `https://victorgusev.com` |
-| `PASSKEYS` | set after the first production enrolment |
-| `PASSKEY_REGISTRATION_SECRET` | temporary, removed in the last step |
+| `SESSION_SECRET` | 32+ byte random hex — `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `GITHUB_TOKEN` | fine-grained PAT, repo `2ndMind`, Contents: read and write |
+| `DATABASE_URL` | Neon connection string — enrolled devices live in Postgres now |
+| `NEXT_PUBLIC_SITE_URL` | `https://victorgusev.com` in production; leave unset locally |
+| `PASSKEY_REGISTRATION_SECRET` | any 16+ character string, kept **permanently** — this is the gate, not a per-device value |
 
-`NEXT_PUBLIC_SITE_URL` matters more than it looks — it sets the WebAuthn relying-party ID. If
-it disagrees with the browser's actual origin the ceremony fails with an error that explains
-nothing.
+`PASSKEY_REGISTRATION_SECRET` is meant to stay set. Save it somewhere durable (a password
+manager) — you type the same value on every new device, and unlike the old flow there is no
+step where you unset it. Knowing it only opens the registration ceremony; a real WebAuthn
+assertion is still required to produce a credential, so it is not a password to the site.
 
-Redeploy, then repeat steps 2–4 against the live site **for each device you want signed
-in** — the phone's ceremony must be run on the phone. Finally **remove
-`PASSKEY_REGISTRATION_SECRET` and redeploy again**, and confirm `/signin/register` 404s.
+`npm run db:migrate` once, if `passkey_credentials` doesn't exist yet.
 
-### Check what the site actually accepts
+## Enrolling a device
 
-This is the only way to see the deployed truth rather than what Vercel's settings screen
-says. It should list one entry per enrolled device:
+1. Visit `/signin/register` (locally: `http://localhost:3000/signin/register`).
+2. Paste `PASSKEY_REGISTRATION_SECRET`, name the device (*laptop*, *phone* — only for you to
+   tell rows apart later; never used in the ceremony), press **Enrol this device**.
+3. Your browser prompts for Touch ID / Windows Hello / your phone's biometric.
+4. On success the page confirms the device is enrolled. Sign in immediately at `/signin` —
+   nothing else to configure, nothing to copy anywhere.
+
+Repeat per device, on the origin that device will actually sign in to.
+
+## Check what the site actually accepts
 
 ```bash
 curl -s https://victorgusev.com/api/auth/login -H "Origin: https://victorgusev.com"
 ```
 
-`{"error":"no passkey enrolled"}` means the live build can see **zero** credentials —
-either `PASSKEYS` is unset or malformed, or the build predates it. A malformed *entry* is
-skipped rather than fatal, so a count that is lower than expected means one entry did not
-parse; the server log names it.
+`{"error":"no passkey enrolled"}` means zero credentials are visible — check
+`passkey_credentials` directly, or that the legacy env vars (if you're relying on one) are
+still set correctly.
 
 ## If it fails
 
@@ -102,24 +53,32 @@ parse; the server log names it.
 | Sign-in page says "Not configured" | `SESSION_SECRET` missing or under 32 characters |
 | `/signin/register` 404s | `PASSKEY_REGISTRATION_SECRET` unset or under 16 characters |
 | "registration is disabled" | the string you pasted does not match the env var |
+| Register page/API says `DATABASE_URL is not set` | Postgres isn't configured — enrolment needs it now |
 | "challenge expired" | over five minutes between steps; start again |
 | "Cancelled, or the origin does not match" | prompt dismissed, or `NEXT_PUBLIC_SITE_URL` is wrong |
 | Sign-in works, `/private` errors on the vault | `GITHUB_TOKEN` missing, expired, or lacking Contents access |
-| `"no passkey enrolled"` | the live build sees no credentials — `PASSKEYS` unset, malformed, or not deployed yet |
-| One device works, the other does not | that device was never enrolled, or its entry did not parse — run the check above |
-| Everything worked, then stopped a week later | a session cookie was masking a broken ceremony; it lasts 7 days |
+| `"no passkey enrolled"` | nothing in `passkey_credentials` and no legacy env var set |
+| One device works, the other does not | that device was never enrolled — run it through `/signin/register` |
 
 ## Adding, removing, losing a device
 
-**Adding** is the flow above, run on the new device. `PASSKEYS` grows by one entry.
+**Adding** is the flow above, run on the new device. It costs one row.
 
-**Removing** is deleting that device's entry from `PASSKEYS` and redeploying. The label is
-there to tell you which one to delete. Keep at least one entry, and make sure it is a
-device you still have.
+**Removing** is deleting that device's row from `passkey_credentials` — no redeploy needed.
+The label is there to tell you which one. Keep at least one, and make sure it is a device you
+still have.
 
-**Losing one** of two devices costs nothing: sign in on the other and remove the entry.
-This is most of why multiple devices are worth the trouble.
+**Losing one** of several devices costs nothing: sign in on another and delete the lost one's
+row.
 
-**Losing them all** has no recovery flow, by design — see `DECISIONS.md` D-018 and D-098.
-Set `PASSKEY_REGISTRATION_SECRET` again and enrol afresh. Since you control the
-environment variables, that is always available to you and to nobody else.
+**Losing them all** has no recovery flow, by design — see `DECISIONS.md` D-018, D-098, D-240.
+`PASSKEY_REGISTRATION_SECRET` stays configured precisely so this stays recoverable: visit
+`/signin/register` again and enrol afresh. Since you control the environment variable, that is
+always available to you and to nobody else.
+
+## Migrating from the old `PASSKEYS` env var
+
+Nothing to do. `storedCredentials()` still reads `PASSKEYS` / `PASSKEY_CREDENTIAL_ID` /
+`PASSKEY_PUBLIC_KEY` alongside the table (D-240), so a device enrolled before this change keeps
+working with no action. New devices go straight into `passkey_credentials`; there is no need to
+hand-copy the old env value into the table.

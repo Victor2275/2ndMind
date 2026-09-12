@@ -47,6 +47,16 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
             <SignInForm next={next} />
           )}
         </div>
+
+        {/* Always shown rather than conditioned on the gate: that state is server-only, and
+            the register page itself 404s when the gate is shut, so this link costs nothing
+            when enrolment is off. */}
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          New device?{" "}
+          <a href="/signin/register" className="text-primary hover:underline">
+            Enrol a passkey
+          </a>
+        </p>
       </div>
     </main>
   );

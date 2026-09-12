@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-10
+updated: 2026-09-12
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,43 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-12 · Self-serve device enrolment
+
+### D-240 · Enrolled passkeys move from `PASSKEYS` to Postgres
+
+**Decision.** A new table, `passkey_credentials` (`drizzle/0012_passkey_credentials.sql`),
+replaces the environment variable as the source of truth for enrolled devices.
+`storedCredentials()` in `lib/auth/config.ts` now takes the database handle as an argument
+(like every other query module here) and reads the table, folding in whatever the legacy
+`PASSKEYS` / `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` env vars still name. The
+registration endpoint (`/api/auth/register`) writes a row directly instead of returning a
+value to paste into Vercel.
+
+**Why.** The old flow worked but was not self-serve: set `PASSKEY_REGISTRATION_SECRET` in
+Vercel, register, copy the returned `PASSKEYS` value, paste it back, redeploy. Enrolling the
+phone took a deploy. A row insert needs neither, so `/signin/register` now finishes enrolment
+the moment the WebAuthn ceremony does — visit the URL, authenticate, sign in.
+
+**What did not change.** Registration is still closed by default, gated on
+`PASSKEY_REGISTRATION_SECRET` being both set and supplied — an open endpoint with no gate would
+hand the private site to whoever found it first. What changed is that this secret is now meant
+to stay configured *permanently*, since it is what makes enrolment self-serve rather than an
+open sign-up; knowing it only opens the ceremony, and a real passkey assertion is still required
+to produce a credential. Nothing about the WebAuthn ceremony itself, `relyingParty()`, or session
+handling changed.
+
+**Why the env vars are still read.** So the device enrolled before this migration is never
+lost, and so auth still has a path — "the one device that was already working" — if the
+database is briefly unreachable. New devices always go into the table; the env vars are a
+read-only fallback from here on, not a second place to add one.
+
+**How to reverse.** Revert this commit and `drizzle/0012_passkey_credentials.sql`; the previous
+`PASSKEYS`-only `storedCredentials()` had no other dependency. Re-set `PASSKEYS` in Vercel with
+every currently-enrolled credential first, or devices enrolled since this landed will be locked
+out — read them back with `select * from passkey_credentials` before rolling back.
 
 ---
 

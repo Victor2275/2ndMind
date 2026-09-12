@@ -754,3 +754,29 @@ export const printers = pgTable("printers", {
 
 export type Printer = typeof printers.$inferSelect;
 export type NewPrinter = typeof printers.$inferInsert;
+
+/**
+ * Enrolled passkeys (self-serve device enrolment, replacing the `PASSKEYS` env var).
+ *
+ * Same shape as the old `StoredCredential` in `lib/auth/config.ts` — a credential id, a
+ * public key, and a label for the human reading the table. No user column, for the same
+ * reason `push_subscriptions` has none: there is exactly one user.
+ *
+ * Moving this out of the environment is what makes enrolment self-serve. The old design
+ * required a Vercel env edit and a redeploy per device; a row insert needs neither. The
+ * registration endpoint's gate (a long-lived secret Victor holds) is what keeps this from
+ * being an open sign-up — the table itself has no more protection than any other private
+ * table in this database.
+ */
+export const passkeyCredentials = pgTable("passkey_credentials", {
+  /** The credential id from the authenticator, base64url — already unique by construction. */
+  id: text("id").primaryKey(),
+  /** Base64url-encoded COSE public key. Not secret: the private key never leaves the device. */
+  publicKey: text("public_key").notNull(),
+  /** For the human reading the table months later deciding which row is the old phone. */
+  label: text("label").notNull().default("device"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PasskeyCredentialRow = typeof passkeyCredentials.$inferSelect;
+export type NewPasskeyCredentialRow = typeof passkeyCredentials.$inferInsert;

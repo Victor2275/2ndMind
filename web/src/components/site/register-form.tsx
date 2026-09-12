@@ -3,7 +3,7 @@
 import { startRegistration } from "@simplewebauthn/browser";
 import { useState } from "react";
 
-type Result = { PASSKEYS: string };
+type Result = { label: string };
 
 export function RegisterForm() {
   const [secret, setSecret] = useState("");
@@ -33,7 +33,7 @@ export function RegisterForm() {
       const verified = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verified.error ?? "verification failed");
 
-      setResult(verified.env as Result);
+      setResult({ label: verified.label as string });
     } catch (e) {
       setError(
         e instanceof Error && e.name === "NotAllowedError"
@@ -48,27 +48,17 @@ export function RegisterForm() {
   }
 
   if (result) {
-    const env = `PASSKEYS=${result.PASSKEYS}`;
     return (
       <div className="space-y-4">
         <p className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-foreground">
-          Passkey enrolled. This line holds <em>every</em> enrolled device, so replace PASSKEYS
-          entirely — and delete PASSKEY_CREDENTIAL_ID and PASSKEY_PUBLIC_KEY if they are still set.
+          Passkey enrolled as “{result.label}”. This device can sign in now — nothing else to do.
         </p>
-        <pre className="overflow-x-auto rounded-md border border-border bg-background/60 p-3 font-mono text-[0.68rem] text-muted-foreground">
-          {env}
-        </pre>
-        <button
-          type="button"
-          onClick={() => navigator.clipboard?.writeText(env)}
-          className="rounded-md border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+        <a
+          href="/signin"
+          className="inline-block rounded-md border border-primary/50 px-4 py-2 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10"
         >
-          Copy
-        </button>
-        <p className="text-xs text-muted-foreground">
-          Then <span className="text-foreground">remove PASSKEY_REGISTRATION_SECRET</span> and
-          restart. This page must 404 afterwards, and /api/auth/register must return 403.
-        </p>
+          Sign in
+        </a>
       </div>
     );
   }

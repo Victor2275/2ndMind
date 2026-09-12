@@ -8,17 +8,21 @@ import {
   registrationSecret,
   relyingParty,
   relyingPartyProblem,
-  serialiseCredentials,
+  saveCredential,
   sessionSecret,
   storedCredentials,
 } from "@/lib/auth/config";
 import { CHALLENGE_COOKIE, signSession, verifySession } from "@/lib/auth/session";
+import { db, isDatabaseConfigured } from "@/lib/db/client";
 
 /**
- * Passkey enrolment. Runs once per device, then should be switched off again.
+ * Passkey enrolment. Self-serve: a new device can enrol and sign in immediately, with no env
+ * edit and no redeploy, because the credential is written straight to Postgres.
  *
- * Gated on PASSKEY_REGISTRATION_SECRET being both set and supplied. With no credential
- * configured and no gate, this endpoint would hand the private site to whoever found it.
+ * Gated on PASSKEY_REGISTRATION_SECRET being both set and supplied. Unlike the credential
+ * itself, this secret is meant to stay configured permanently — it is what makes enrolment
+ * self-serve rather than an open sign-up. With no credential configured and no gate, this
+ * endpoint would hand the private site to whoever found it.
  */
 
 export const dynamic = "force-dynamic";
@@ -34,6 +38,14 @@ export async function GET(request: Request) {
   if (!gateOpen(supplied)) {
     return NextResponse.json({ error: "registration is disabled" }, { status: 403 });
   }
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      { error: "DATABASE_URL is not set — see web/.env.example" },
+      {
+        status: 500,
+      },
+    );
+  }
 
   // Before the ceremony, not after: enrolling against the wrong relying party produces a
   // credential bound to a hostname that will never serve the site, and the only symptom is a
@@ -42,7 +54,7 @@ export async function GET(request: Request) {
   if (problem) return NextResponse.json({ error: problem }, { status: 500 });
 
   const { rpID, rpName } = relyingParty();
-  const existing = storedCredentials();
+  const existing = await storedCredentials(db());
 
   const options = await generateRegistrationOptions({
     rpName,
@@ -79,7 +91,7 @@ export async function GET(request: Request) {
   return NextResponse.json(options);
 }
 
-/** Step 2: verify the attestation and print what to paste into the environment. */
+/** Step 2: verify the attestation and persist the credential. */
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     secret?: string;
@@ -88,6 +100,14 @@ export async function POST(request: Request) {
   };
   if (!gateOpen(body.secret ?? null)) {
     return NextResponse.json({ error: "registration is disabled" }, { status: 403 });
+  }
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      { error: "DATABASE_URL is not set — see web/.env.example" },
+      {
+        status: 500,
+      },
+    );
   }
   if (!body.response) {
     return NextResponse.json({ error: "missing response" }, { status: 400 });
@@ -115,30 +135,19 @@ export async function POST(request: Request) {
 
   const { credential } = verification.registrationInfo;
 
-  // Colons and commas are the separators, so a label containing either would split into
-  // something that no longer parses back. Stripped here rather than rejected: the label is a
-  // convenience, and failing an otherwise-good enrolment over punctuation would be absurd.
+  // A label is a convenience for whoever reads the table later, not part of the ceremony, so
+  // punctuation is stripped rather than rejected — failing an otherwise-good enrolment over it
+  // would be absurd. No separator characters to protect here (unlike the old PASSKEYS string):
+  // each field is its own column.
   const label = (body.label ?? "").replace(/[:,\n]/g, " ").trim() || "device";
 
-  // The whole list, not just the new device. Enrolment returns one variable to paste, so the
-  // phone cannot be added by overwriting the laptop — which is exactly the mistake the old
-  // two-variable output invited, and it locks you out of the machine you are sitting at.
-  const all = serialiseCredentials([
-    ...storedCredentials().map((c) => ({
-      id: c.id,
-      publicKey: bytesToBase64url(c.publicKey),
-      label: c.label,
-    })),
-    { id: credential.id, publicKey: bytesToBase64url(credential.publicKey), label },
-  ]);
-
-  // Returned, not persisted: there is no database. The value goes into .env.local and Vercel
-  // by hand, which is also what keeps enrolment a deliberate act.
-  return NextResponse.json({
-    verified: true,
-    env: { PASSKEYS: all },
-    next:
-      "Set PASSKEYS to this value in .env.local and Vercel, remove PASSKEY_CREDENTIAL_ID and " +
-      "PASSKEY_PUBLIC_KEY, then unset PASSKEY_REGISTRATION_SECRET and redeploy.",
+  // Persisted immediately — this is the whole point of moving off PASSKEYS. No value to copy
+  // anywhere, no redeploy: the device can sign in the moment this returns.
+  await saveCredential(db(), {
+    id: credential.id,
+    publicKey: bytesToBase64url(credential.publicKey),
+    label,
   });
+
+  return NextResponse.json({ verified: true, label });
 }

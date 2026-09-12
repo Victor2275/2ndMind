@@ -85,6 +85,13 @@
       "when": 1789006016713,
       "tag": "0011_exercise_before_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789241723984,
+      "tag": "0012_passkey_credentials",
+      "breakpoints": true
     }
   ]
 }

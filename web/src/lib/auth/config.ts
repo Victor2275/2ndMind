@@ -1,15 +1,24 @@
 import "server-only";
 
+import { passkeyCredentials } from "@/lib/db/schema";
+import type { Db } from "@/lib/tasks/queries";
+
 /**
- * Auth configuration, read from the environment.
+ * Auth configuration.
  *
- * There is no user table. The registered passkey lives in environment variables, which is
- * viable precisely because there is exactly one user and the stored values are not secret:
- * a credential ID and a public key. The private key never leaves the authenticator.
+ * There is no user table. There is exactly one user, which is what makes storing credentials
+ * this simply viable at all: a credential ID and a public key, neither secret — the private
+ * key never leaves the authenticator.
  *
- * The consequence worth stating: rotating or adding a device means re-running registration
- * and pasting new values into Vercel. For a personal tool that happens roughly never, and it
- * buys the removal of an entire database from the auth path.
+ * **Credentials live in Postgres (`passkey_credentials`), not the environment.** They used to
+ * live entirely in a `PASSKEYS` env var, which made enrolling a device a Vercel round-trip: set
+ * a secret, register, copy the returned value, paste it back, redeploy. That was fine for a
+ * device that changes roughly never, but it is not self-serve. A row insert needs neither an
+ * env edit nor a redeploy, so enrolment finishes the moment the ceremony does.
+ *
+ * `PASSKEYS` / `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are still honoured, folded in
+ * alongside whatever is in the table, so the currently-enrolled device is never lost mid-
+ * migration and auth still has a path if the database is briefly unreachable.
  */
 
 export type StoredCredential = {
@@ -31,25 +40,24 @@ export function sessionSecret(): string {
 }
 
 /**
- * Every registered passkey. Empty when none has been configured yet.
+ * Every credential configured via the legacy environment variables. Empty when neither is set.
  *
- * Two devices means two credentials, and the shape of the environment decides how badly that
- * can go wrong. Two parallel lists — ids in one variable, keys in another — would pair by
+ * Two devices meant two credentials, and the shape of the environment decided how badly that
+ * could go wrong. Two parallel lists — ids in one variable, keys in another — would pair by
  * position, so deleting one retired device from one list and forgetting the other silently
- * binds the wrong key to the wrong id. So a credential is one indivisible string:
+ * bound the wrong key to the wrong id. So a credential was one indivisible string:
  *
  *     PASSKEYS=laptop:<id>:<publicKey>,phone:<id>:<publicKey>
  *
  * Entries are separated by commas or newlines, fields by colons — safe as a separator because
  * base64url is `A-Za-z0-9-_` and contains no colon. The id and key are the last two fields, so
- * a label may contain colons without ambiguity. The label is for whoever is reading the
- * variable months later deciding which line is the old phone; it never enters the ceremony.
+ * a label may contain colons without ambiguity.
  *
  * `PASSKEY_CREDENTIAL_ID` / `PASSKEY_PUBLIC_KEY` are still honoured as a single unlabelled
- * credential. That pair is what is currently deployed and working, and this change must not be
- * the thing that logs Victor out of his own site.
+ * credential, folded in by `storedCredentials()` below. Kept only so the device enrolled under
+ * the old scheme is never lost; new devices enrol straight into the database.
  */
-export function storedCredentials(): StoredCredential[] {
+export function legacyEnvCredentials(): StoredCredential[] {
   const found: StoredCredential[] = [];
 
   const legacyId = process.env.PASSKEY_CREDENTIAL_ID;
@@ -83,18 +91,56 @@ export function storedCredentials(): StoredCredential[] {
   return found;
 }
 
-/** Serialises credentials back into a `PASSKEYS` value, for the enrolment page to hand over. */
-export function serialiseCredentials(
-  credentials: { id: string; publicKey: string; label: string }[],
-): string {
-  return credentials.map((c) => `${c.label}:${c.id}:${c.publicKey}`).join(",");
+/**
+ * Every registered passkey: the database table plus whatever the legacy env vars still name.
+ *
+ * The table is the source of truth for anything enrolled through `/signin/register` from here
+ * on. The env vars are folded in on every call rather than migrated once, so a device enrolled
+ * under the old scheme keeps working with no migration step, and auth degrades to "the one
+ * device that was already working" rather than failing outright if the database is briefly
+ * unreachable or unconfigured — callers simply omit `db` in that case.
+ *
+ * Takes the handle as its first argument, like every other query module in this codebase
+ * (`lib/ai/summaries.ts` et al.), so the suite can run it against real Postgres in PGlite
+ * rather than a mock. `db` is omitted when the database is not configured at all — callers
+ * check `isDatabaseConfigured()` themselves, the same way every other database-optional
+ * feature in this app does, rather than this function re-deriving that from the environment.
+ */
+export async function storedCredentials(db?: Db): Promise<StoredCredential[]> {
+  const found = legacyEnvCredentials();
+
+  if (db) {
+    const rows = await db.select().from(passkeyCredentials);
+    for (const row of rows) {
+      // First wins: an id already known from the environment keeps its env-sourced label
+      // rather than being listed twice.
+      if (found.some((c) => c.id === row.id)) continue;
+      found.push({ id: row.id, publicKey: base64urlToBytes(row.publicKey), label: row.label });
+    }
+  }
+
+  return found;
+}
+
+/** Persists a newly-enrolled credential. The registration endpoint's only write. */
+export async function saveCredential(
+  db: Db,
+  credential: { id: string; publicKey: string; label: string },
+): Promise<void> {
+  await db.insert(passkeyCredentials).values(credential);
 }
 
 /**
  * Registration is disabled unless `PASSKEY_REGISTRATION_SECRET` is set *and* the caller
  * supplies it. Closed by default is the only safe posture here: an open registration
  * endpoint on a deployment with no credential configured would hand the private site to
- * whoever found it first. To enrol a device, set the variable, register, then unset it.
+ * whoever found it first.
+ *
+ * Unlike the old one-shot flow, this secret is meant to stay set permanently — it is what
+ * makes enrolment self-serve. Victor keeps it somewhere durable (a password manager) and
+ * types it on each new device; nothing about enrolling one needs an env edit or a redeploy.
+ * It is not a per-user password: knowing it only opens the *registration* ceremony, and a
+ * WebAuthn assertion is still required to actually produce a credential.
  */
 export function registrationSecret(): string | null {
   const secret = process.env.PASSKEY_REGISTRATION_SECRET;
