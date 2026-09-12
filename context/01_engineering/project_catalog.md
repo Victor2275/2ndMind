@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-10
+updated: 2026-09-12
 domain: engineering
 stability: volatile
 summary: Generated index of all projects. Canonical data lives in projects/.
@@ -20,6 +20,7 @@ read_when: Portfolio, resume bullets, or "what have you built" questions.
 | 5 | [TaskAble](projects/taskable.md) | done | 2026 | software | React, Firebase Firestore, Gemini API | [GitHub](https://github.com/Victor2275/HOTHproject) |
 | 6 | [Smart Bottle](projects/smart-bottle.md) | active | 2026 | hardware | - | — |
 | 7 | [Research Paper — RL for Autonomous Navigation](projects/dimaag-paper.md) | active | 2026 | robotics | NVIDIA Isaac Lab, ROS 2, Python | — |
+| 8 | [2ndMind](projects/2ndmind.md) | active | 2026 | software | Next.js, TypeScript, React, Tailwind, Postgres, Drizzle, WebAuthn | [GitHub](https://github.com/Victor2275/2ndMind) · [Live](https://victorgusev.com) |
 
 ## Confidentiality Notes
 

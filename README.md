@@ -3,6 +3,16 @@
 A structured personal-context vault. Its purpose is to give AI assistants accurate context
 about Victor quickly, so sessions start informed instead of starting with twenty questions.
 
+The vault renders itself as **[victorgusev.com](https://victorgusev.com)** — a public
+portfolio built from a whitelisted subset of this repository, plus an authenticated private
+app (training log, task tracker, resume tooling) that only Victor can reach. See
+`web/context.md` for how the two surfaces stay separate from one source of truth.
+
+This repository is public so the code is visible; the private surface and Victor's own data
+are still gated behind passkey authentication regardless of repo visibility — nothing under
+`context/` besides project/experience/lab write-ups is served publicly, and `.env.example`
+never carries a real secret. See `web/DECISIONS.md` D-240 and the repo's `LICENSE`.
+
 ## For AI agents
 
 Read **`CLAUDE.md`** (or the identical `AGENTS.md`) first. It contains the load order and
