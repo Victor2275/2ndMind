@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-10
+updated: 2026-09-12
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -30,9 +30,11 @@ read_when: Always — anything about current priorities or scheduling.
   claim rather than an enrolment fact, the resume PDF as the primary action, and four
   hand-authored system diagrams.
 
-  **One thing left on Victor, and it is the cheapest high-value item before applications:**
-  no project in the vault has a single dated `## Updates` entry, so `/now` renders two summaries
-  and stops. Two or three dated lines turn it into the page that shows he is currently building.
+  **Closed 2026-09-12:** 2ndMind itself is now a project in the vault (`status: active`, dated
+  `## Updates`), so `/now` leads with the site's own build instead of stopping at two summaries.
+  Same day: self-serve passkey enrolment (credentials moved from `PASSKEYS` to Postgres, D-240),
+  the GitHub repository went public with an MIT `LICENSE`, and a cover letter generator was
+  added as a third panel on `/private/work/tailor`.
 
   **Phase 3 (tags) is next.** 110 points remain, 97 unparked.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.

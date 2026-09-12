@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-10
+updated: 2026-09-12
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -232,14 +232,15 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,644 tests across 110 files** as of
-2026-09-10, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,755 tests across 120 files** as of
+2026-09-12, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
-2++. The suite more than doubled during V3 and the floor was never re-stated, so for a week the
-number that is supposed to catch a regression would have accepted losing half the suite.
-Re-state it whenever it moves.)
+2++, then "1,644 across 110" until self-serve enrolment and the cover letter generator added
+their own. The suite more than doubled during V3 and the floor was never re-stated, so for a
+week the number that is supposed to catch a regression would have accepted losing half the
+suite. Re-state it whenever it moves.)
 
 ### Two end-to-end suites, and they stage opposite failures
 
