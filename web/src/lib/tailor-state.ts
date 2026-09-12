@@ -1,3 +1,4 @@
+import type { CoverLetterDraft } from "@/lib/ai/cover-letter";
 import type { BulletRef, QuestionAnswer, TailorAdvice } from "@/lib/ai/tailor";
 
 /**
@@ -13,6 +14,8 @@ export type TailorState = {
   advice?: TailorAdvice;
   /** Set by the posting-question mode instead of `advice`. */
   answer?: QuestionAnswer;
+  /** Set by the cover letter mode instead of `advice` or `answer`. */
+  letter?: CoverLetterDraft;
   /** Only the bullets the advice refers to, resolved from the vault rather than the model. */
   bullets?: BulletRef[];
 };

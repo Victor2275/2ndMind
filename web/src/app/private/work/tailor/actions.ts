@@ -1,10 +1,14 @@
 "use server";
 
 import { requireSession } from "@/lib/auth/dal";
+import { generateCoverLetter } from "@/lib/ai/cover-letter";
 import { answerQuestion, bulletId, tailorResume, type BulletRef } from "@/lib/ai/tailor";
 import { RESUME_VARIANTS } from "@/lib/resume";
 import { publicExperience, publicProjects, publicPursuits } from "@/lib/vault/public";
+import { readVaultFileCached } from "@/lib/vault/write";
 import type { TailorState } from "@/lib/tailor-state";
+
+const COVER_LETTER_TEMPLATE_PATH = "context/04_operations/cover_letter_template.md";
 
 /**
  * Resume tailoring. Reads the vault, writes nothing.
@@ -97,6 +101,39 @@ export async function answerPostingQuestion(
     const result = await answerQuestion(bullets, question);
     if (!result.ok) return { ok: false, message: result.message };
     return { ok: true, answer: result.answer, bullets };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Drafts a real cover letter from `cover_letter_template.md`, citing only bullets that
+ * actually exist. See `lib/ai/cover-letter.ts` for the guardrail: unlike the two actions
+ * above, this one lets the model write real prose, so the check is on each paragraph's
+ * citations rather than on the model returning ids and nothing else.
+ */
+export async function generateCoverLetterAction(
+  _prev: TailorState | null,
+  formData: FormData,
+): Promise<TailorState> {
+  await requireSession();
+
+  const posting = String(formData.get("posting") ?? "").trim();
+  if (posting === "") {
+    return { ok: false, message: "Paste the job posting first." };
+  }
+
+  try {
+    const [bullets, template] = await Promise.all([
+      collectBullets(),
+      readVaultFileCached(COVER_LETTER_TEMPLATE_PATH).then((f) => f.content),
+    ]);
+    const result = await generateCoverLetter(bullets, template, posting);
+    if (!result.ok) return { ok: false, message: result.message };
+    return { ok: true, letter: result.draft, bullets };
   } catch (error) {
     return {
       ok: false,

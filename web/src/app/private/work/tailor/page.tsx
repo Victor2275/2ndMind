@@ -1,4 +1,5 @@
 import { WorkTabs } from "@/components/site/work-tabs";
+import { CoverLetterForm } from "@/components/site/cover-letter-form";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { QuestionForm } from "@/components/site/question-form";
 import { TailorForm } from "@/components/site/tailor-form";
@@ -29,7 +30,7 @@ export default async function TailorPage() {
       <PageHeader
         eyebrow="Career"
         title="Tailor"
-        lede="Paste a posting for a variant and an order to lead with, or an application question for what to build the answer from. Both select from material that already exists and can never write anything new."
+        lede="Paste a posting for a variant and an order to lead with, an application question for what to build the answer from, or a full cover letter draft. All three are checkable against the same material — nothing is claimed that is not already in the vault."
       />
 
       <WorkTabs />
@@ -46,13 +47,20 @@ export default async function TailorPage() {
           <QuestionForm />
         </Panel>
 
+        {/* Its own panel for the same reason as the question tool above — different input
+            shape, different output, and it is the one tool here that drafts real prose rather
+            than only selecting ids (see lib/ai/cover-letter.ts for what that changes). */}
+        <Panel title="Draft a cover letter" collapsible defaultOpen={false}>
+          <CoverLetterForm />
+        </Panel>
+
         <Panel
-          title={`What both can choose from · ${bullets.length}`}
+          title={`What all three can choose from · ${bullets.length}`}
           collapsible
           defaultOpen={false}
         >
-          {/* Shown so the advice is checkable: if a bullet is not in this list, no suggestion
-              can mention it, and the parser rejects any response that tries. */}
+          {/* Shown so every tool above is checkable: if a bullet is not in this list, nothing
+              can cite it or mention it, and the parser rejects any response that tries. */}
           <ul className="space-y-1.5">
             {bullets.map((b) => (
               <li key={b.id} className="text-sm text-muted-foreground">
