@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { Empty, PageHeader, Panel } from "@/components/site/page-shell";
@@ -69,9 +70,12 @@ async function History() {
                 <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
                   {DAY.format(session.performedAt)}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                <Link
+                  href={`/private/athletics/sessions/${session.clientId}`}
+                  className="min-w-0 flex-1 truncate text-sm text-foreground underline-offset-4 hover:text-primary hover:underline"
+                >
                   {session.title || "Untitled session"}
-                </span>
+                </Link>
                 {session.source === "hevy" && (
                   <span className="rounded border border-border/70 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
                     hevy
