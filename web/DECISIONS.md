@@ -51,24 +51,28 @@ are actually in `public/assets/resumes/` at request time, so the fix is the file
 to target one resume variant, anything else to serve as the general fallback) and run
 `node scripts/sync-vault-assets.mjs` (or let `predev`/`prebuild` do it).
 
-### D-247 · The 2ndMind project card shows `/private/kitchen-sink`, not `/now`
+### D-247 · The 2ndMind project card shows `/private/today`, not `/now`
 
 **Decision.** `context/assets/2ndmind.png` — previously a screenshot of the public `/now` page —
-is replaced with a screenshot of `/private/kitchen-sink` (D-201's all-themes component gallery),
-scrolled to the top: private nav, the "Kitchen sink" header, and the type-scale panel. No code
-change; `image: /assets/2ndmind.png` in `2ndmind.md` frontmatter is unchanged.
+is replaced with a screenshot of the private `Today` dashboard (task list, quick-capture, the
+day's stats). No code change; `image: /assets/2ndmind.png` in `2ndmind.md` frontmatter is
+unchanged. (An intermediate version briefly used `/private/kitchen-sink`, D-201's all-themes
+component gallery, before Victor supplied this one instead.)
 
 **Why.** Victor's ask — the project's own screenshot was the *public* half of the site, which
-told a visitor nothing about the private app the project description is actually about. Kitchen
-sink is real private-app UI (behind the same WebAuthn gate as everything else under `/private`)
-but is deliberately a component/theme showcase with no personal data on it — no training log, no
-tasks, no health metrics — so it demonstrates the private app exists and is designed with the
-same care, without revealing what Victor actually logs in it.
+told a visitor nothing about the private app the project description is actually about. The
+capture used shows only placeholder content (a generic "Work on Project" task, zeroed stats), so
+it demonstrates the private app's actual daily-use surface without revealing what Victor actually
+logs in it.
 
 **How to reverse.** Drop a different screenshot in at `context/assets/2ndmind.png` (any private
 route works equally well now that D-247 has established the precedent) and run
-`node scripts/sync-vault-assets.mjs`. Note for next time: the Next.js dev server appears to hold
-`public/` image bytes in memory independent of `.next/cache/images/` — a `predev` re-sync is not
+`node scripts/sync-vault-assets.mjs`. Note for next time: what looked like the Next.js dev server
+holding `public/` image bytes in memory (surviving both a `.next/cache/images` clear and a full
+process restart) turned out to be the *verification browser's* own disk cache, not the app —
+`curl` against the same `/_next/image` URL returned the new bytes immediately every time. A
+one-off tool like Playwright reused across a long session can go stale in ways a real visitor's
+browser won't; when a swapped image "won't update," check with `curl` before suspecting the app.
 enough to see a replaced asset while the dev server keeps running; restart it.
 
 ### D-242 · Duration is typed as m:ss everywhere it's logged or edited; `RecentSessions` gained the fields it never had
