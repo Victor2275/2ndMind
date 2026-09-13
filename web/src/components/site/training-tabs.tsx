@@ -25,6 +25,7 @@ const TABS = [
   { href: "/private/athletics/exercises", label: "Exercises" },
   { href: "/private/athletics", label: "Records" },
   { href: "/private/athletics/history", label: "History" },
+  { href: "/private/athletics/time-trials", label: "Time Trials" },
 ];
 
 export function TrainingTabs() {

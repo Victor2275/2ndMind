@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-12
+updated: 2026-09-13
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,78 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-13 · Erg logging fixed, a session gets its own page, and Time Trials
+
+### D-242 · Duration is typed as m:ss everywhere it's logged or edited; `RecentSessions` gained the fields it never had
+
+**Decision.** The session logger (`ExerciseBlock`/`DurationField` in `session-logger.tsx`), the
+recent-sessions list (`recent-sessions.tsx`), and the new session-edit page all parse and format
+duration through the existing `parseTimeToSeconds` (`lib/athletics/forms.ts`) and `formatDuration`
+(`lib/athletics/prs.ts`) — both of which already existed, wired only to the retired manual-entry
+path. Nobody had connected them to the live form. `COLUMN_LABEL.durationS` changes from
+`"seconds"` to `"time (m:ss)"`. `FIELDS_FOR`/`COLUMN_LABEL` move out of `session-logger.tsx` into
+a new shared `lib/athletics/fields.ts` so the logger and `RecentSessions` can't drift apart again.
+
+**Why.** Victor's report: logging an erg piece typed a bare seconds count, and results didn't
+show up properly afterward. The second half turned out to be the real bug —
+`RecentSessions`/`SetRow` only ever had weight/reps inputs, so an erg or water set's actual
+results (distance, time, stroke rate) had no fields to appear in at all; the card showed two
+permanently-blank boxes irrelevant to rowing. Fixed by reading each set's modality (via the
+catalogue) and rendering the same `FIELDS_FOR` columns the logger uses.
+
+**Also added:** `incompleteErgSets()` (`prs.ts`) — a set logged with only a distance or only a
+time has half of what a split needs and `ergRecords()` correctly excludes it, but previously did
+so silently. The Records page now says how many sets are affected rather than leaving them to
+look like they vanished.
+
+**How to reverse.** Revert the commit. `parseTimeToSeconds`/`formatDuration` are unaffected either
+way — they're unchanged, just newly connected.
+
+### D-243 · A session is editable at its own URL, not only inline in `RecentSessions`
+
+**Decision.** `/private/athletics/sessions/[clientId]` (`session-edit.tsx`) — session-level
+title/date/notes wired to `updateSession()` (existed since the aggregate op, never called from
+any UI until now), plus a labeled per-set editor, replacing nothing: `RecentSessions`' inline
+save-on-blur boxes stay, for the same quick fix they were built for. The new page is linked from
+each `SessionCard` (a pencil icon) and from `/private/athletics/history`'s rows.
+
+**Why.** Victor's ask — session editing should be "more professional," on its own page. Per
+D-216, a session is written to the outbox only, never a Server Action, so this is a client
+component reading IndexedDB by `clientId` (like `SessionLogger`/`RecentSessions`), not a
+server-rendered form — there's no server round trip to give it.
+
+**How to reverse.** Delete the route and `session-edit.tsx`; drop the Edit links from
+`SessionCard` and the history rows. `updateSession()`, `WorkoutSummary.clientId` (added to
+`recentWorkouts()` so history rows have something to link to) can stay — harmless if unused.
+
+### D-244 · Time Trials is its own tab, keyed off `piece_type = "race"`
+
+**Decision.** New route `/private/athletics/time-trials`, fifth tab in `TrainingTabs`. Tags a set
+as a time trial with a checkbox-role toggle next to the erg/water set-type radiogroup (mobile:
+spelled out; desktop table: compact "TT" column) — writes `pieceType: "race"`, the value D-230
+already reserved for exactly this, not a new mechanism. `timeTrialRecords()` (`prs.ts`) groups
+tagged pieces by exercise and nearest-100m bucket (same bucketing `ergRecords()` already uses),
+keeping every result, not only the best, so the page can show history per preset. Three
+categories, one catalogue exercise each: Erg → "Row (Erg)" (2k/5k/10k), Perg → "Paddle Erg (Erg)"
+— **a new catalogue entry**, since no paddling-ergometer exercise existed — (200m/500m/2km), OC →
+"Race Piece (Boat)" (150m/400m/1 mile).
+
+**Why it's separate from `ergRecords()`.** That function ranks every logged erg piece by split,
+training included — right for tracking the vault's continuously-trained split goal. A time trial
+answers a narrower question, what did the actual test say, and a fast training piece must not
+stand in for a test that wasn't taken.
+
+**Not done.** No cross-reference to the hand-kept PR lines in
+`context/02_physical_performance/benchmarks_and_logs.md` ("Raw PERG 500m: 2:17", etc.) — that
+file has no stable per-line parse target the way the split goal section does, and building one
+was out of scope for what was asked. The page is DB-only for now.
+
+**How to reverse.** Drop the route, the tab, `timeTrialRecords()`, the TT toggle, and the
+"Paddle Erg (Erg)" catalogue entry. `pieceType` stays on `Effort`/`allEfforts()` either way — D-230
+already put the column in the database and the sync protocol; this only added a reader.
 
 ---
 
