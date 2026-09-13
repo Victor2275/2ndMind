@@ -23,6 +23,7 @@ import {
   ergRecords,
   formatDuration,
   formatSplit,
+  incompleteErgSets,
   strengthRecords,
   type ErgRecord,
   type StrengthRecord,
@@ -263,6 +264,7 @@ async function Training() {
 
   const strength = strengthRecords(efforts);
   const erg = ergRecords(efforts);
+  const incompleteErg = incompleteErgSets(efforts);
   const empty = !failure && history.length === 0;
 
   // The database wins over the vault line, which is hand-maintained and goes stale — but the
@@ -532,6 +534,16 @@ async function Training() {
           </p>
           <ErgTable records={erg} readings={readings} />
         </section>
+      )}
+
+      {/* A set with only a distance or only a time has half of what a split needs, so it never
+          appears in the table above — silently, before this existed. Named here rather than left
+          to look like the set vanished. */}
+      {incompleteErg.length > 0 && (
+        <p className="mt-4 rounded-md border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm text-muted-foreground">
+          {incompleteErg.length} {incompleteErg.length === 1 ? "set" : "sets"} logged with only a
+          distance or only a time — add the missing value on its session for it to count above.
+        </p>
       )}
 
       {history.length > 0 && (

@@ -16,6 +16,9 @@ export type Effort = {
   durationS: number | null;
   /** Strokes per minute, erg work only. Checked against the vault's per-distance targets. */
   spm: number | null;
+  /** What the piece *was*, orthogonal to `setType` — see the column's doc in `db/schema.ts`.
+   *  `"race"` is what marks a set as a time trial rather than ordinary training. */
+  pieceType: string | null;
 };
 
 export type StrengthRecord = {
@@ -59,6 +62,21 @@ function isStrength(e: Effort): boolean {
 
 function isErg(e: Effort): boolean {
   return e.distanceM !== null && e.distanceM > 0 && e.durationS !== null && e.durationS > 0;
+}
+
+/**
+ * Sets logged with only a distance or only a time — half of what a split needs.
+ *
+ * `ergRecords` silently skips these via `isErg`, which is correct for ranking (a split needs
+ * both numbers) but was previously the whole story: a set missing one field simply never
+ * appeared anywhere, with nothing on screen explaining why. This is what lets a caller say so.
+ */
+export function incompleteErgSets(efforts: Effort[]): Effort[] {
+  return efforts.filter(
+    (e) =>
+      isWorkingSet(e) &&
+      (e.distanceM !== null && e.distanceM > 0) !== (e.durationS !== null && e.durationS > 0),
+  );
 }
 
 export function strengthRecords(efforts: Effort[]): StrengthRecord[] {
@@ -151,6 +169,60 @@ export function ergRecords(efforts: Effort[]): ErgRecord[] {
   return [...best.values()].sort(
     (a, b) => a.exercise.localeCompare(b.exercise) || a.distanceM - b.distanceM,
   );
+}
+
+export type TimeTrialPreset = {
+  /** The catalogue exercise this preset is logged under — e.g. "Row (Erg)". */
+  exercise: string;
+  /** Metres, for grouping and for the split column; a mile is converted going in. */
+  distanceM: number;
+  /** The distance as shown on screen — "2k", "500m", "1 mile" — since a rounded metre figure
+   *  reads worse than the name the piece is actually called by. */
+  label: string;
+};
+
+export type TimeTrialResult = { durationS: number; performedAt: Date };
+
+export type TimeTrialRecord = {
+  preset: TimeTrialPreset;
+  best: TimeTrialResult | null;
+  /** Every tagged piece at this preset, newest first — the Time Trials page shows this as the
+   *  per-preset history, not only the single best. */
+  history: TimeTrialResult[];
+};
+
+/**
+ * Best (and every) time trial per preset distance.
+ *
+ * Distinct from `ergRecords`: that function ranks *every* erg piece by split, training included,
+ * because the vault's split goal is trained toward continuously. This one only ever looks at
+ * sets tagged `pieceType: "race"` (D-230's word for a benchmark test, not a new one) — a Time
+ * Trials page is asking "what did the actual test say", and a fast technical piece must not
+ * stand in for a test nobody took.
+ */
+export function timeTrialRecords(efforts: Effort[], presets: TimeTrialPreset[]): TimeTrialRecord[] {
+  return presets.map((preset) => {
+    const matches = efforts
+      .filter(
+        (e) =>
+          e.exercise === preset.exercise &&
+          e.pieceType === "race" &&
+          e.durationS !== null &&
+          e.durationS > 0 &&
+          // Distance is optional on a tagged piece (a 500m test logged without the metres typed
+          // in should still count if it's the only preset for that exercise), but when it *is*
+          // present it must match this preset's bucket — otherwise a 2k and a 5k test on the same
+          // machine would collide into one preset.
+          (e.distanceM === null || Math.round(e.distanceM / 100) * 100 === preset.distanceM),
+      )
+      .map((e) => ({ durationS: e.durationS!, performedAt: e.performedAt }))
+      .sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime());
+
+    const best =
+      matches.length === 0 ? null : matches.reduce((a, b) => (b.durationS < a.durationS ? b : a));
+
+    return { preset, best, history: matches };
+  });
 }
 
 /** Seconds as m:ss.t — the form an erg monitor shows. */

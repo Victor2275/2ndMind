@@ -1169,6 +1169,13 @@ export const CATALOGUE: CatalogueEntry[] = [
     ["calves"],
     "Cadence moderate to high, resistance set for the piece you're doing. Short pieces are anaerobic and the legs fail before the lungs; long ones are the low-impact aerobic option when the back or shoulders need a day off.",
   ),
+  erg(
+    "paddle-erg",
+    "Paddle Erg (Erg)",
+    ["lats", "back"],
+    ["abs", "shoulders"],
+    "The paddling-specific ergometer — same discipline as the boat, indoors: full rotation through the trunk, pick a rate and pressure for the piece and hold it. Time trials on this machine (200m, 500m, 2km) are what the Time Trials page tracks separately from a training piece.",
+  ),
 
   // ---------------------------------------------------------------- water: 9 rows -> 4.
   water(

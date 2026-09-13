@@ -34,6 +34,7 @@ function effort(over: Partial<Effort> = {}): Effort {
     distanceM: null,
     durationS: null,
     spm: null,
+    pieceType: null,
     ...over,
   };
 }
@@ -331,6 +332,7 @@ describe("weeklyMuscleVolume", () => {
     distanceM: null,
     durationS: null,
     spm: null,
+    pieceType: null,
     ...over,
   });
 
@@ -389,6 +391,7 @@ describe("sessionHeat", () => {
     distanceM: null,
     durationS: null,
     spm: null,
+    pieceType: null,
   });
 
   it("returns every day in the window, empty ones included", () => {

@@ -15,6 +15,9 @@ import { MuscleMap } from "@/components/site/muscle-map";
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { howTo, type Modality } from "@/lib/athletics/catalogue";
+import { COLUMN_LABEL, FIELDS_FOR } from "@/lib/athletics/fields";
+import { parseTimeToSeconds } from "@/lib/athletics/forms";
+import { formatDuration } from "@/lib/athletics/prs";
 import {
   localCatalogue,
   localRoutines,
@@ -91,22 +94,6 @@ const CONTROL =
   "rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
 const FIELD = `${CONTROL} w-full`;
 const LABEL = "eyebrow text-muted-foreground";
-
-/** Which columns a modality asks for. The whole point of the catalogue carrying one. */
-const FIELDS_FOR: Record<Modality, (keyof SetInput)[]> = {
-  lift: ["weightLbs", "reps"],
-  erg: ["distanceM", "durationS", "spm"],
-  water: ["distanceM", "durationS", "spm"],
-  conditioning: ["distanceM", "durationS"],
-};
-
-const COLUMN_LABEL: Partial<Record<keyof SetInput, string>> = {
-  weightLbs: "lbs",
-  reps: "reps",
-  distanceM: "metres",
-  durationS: "seconds",
-  spm: "spm",
-};
 
 const SET_TYPES: SetInput["setType"][] = ["normal", "warmup", "drop", "failure"];
 
@@ -199,6 +186,68 @@ function RestTimer({
   );
 }
 
+/**
+ * A duration typed as m:ss, the shape an erg monitor shows — not raw seconds.
+ *
+ * Holds its own draft text rather than reformatting on every keystroke: parsing "2:1" toward
+ * "2:17" as it's typed would fight the person typing it. `parseTimeToSeconds` (already used by
+ * the legacy manual-entry form) runs once, on blur, and the field snaps back to the canonical
+ * `formatDuration` spelling of whatever committed — including rejecting back to the last good
+ * value if what's on screen doesn't parse.
+ */
+function DurationField({
+  id,
+  "aria-label": ariaLabel,
+  seconds,
+  onCommit,
+  placeholder,
+  className,
+}: {
+  id?: string;
+  "aria-label"?: string;
+  seconds: number | null;
+  onCommit: (seconds: number | null) => void;
+  placeholder: number | null;
+  className: string;
+}) {
+  const [draft, setDraft] = useState(seconds === null ? "" : formatDuration(seconds));
+
+  // The committed value can change from outside (ghost fill, routine start, a fresh block) —
+  // follow it whenever this field isn't the one being actively typed into.
+  useEffect(() => {
+    setDraft(seconds === null ? "" : formatDuration(seconds));
+  }, [seconds]);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      onCommit(null);
+      return;
+    }
+    const parsed = parseTimeToSeconds(trimmed);
+    if (parsed === null) {
+      // Didn't parse — snap back to the last good value rather than keeping an invalid string.
+      setDraft(seconds === null ? "" : formatDuration(seconds));
+      return;
+    }
+    setDraft(formatDuration(parsed));
+    onCommit(parsed);
+  }
+
+  return (
+    <input
+      id={id}
+      aria-label={ariaLabel}
+      inputMode="text"
+      placeholder={placeholder !== null ? formatDuration(placeholder) : "m:ss"}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      className={className}
+    />
+  );
+}
+
 export function SessionLogger() {
   const [mirrored, setMirrored] = useState<LocalExercise[]>([]);
   const [sessions, setSessions] = useState<LocalSession[]>([]);
@@ -276,6 +325,7 @@ export function SessionLogger() {
           distanceM: set.distanceM,
           durationS: set.durationS,
           spm: set.spm,
+          pieceType: set.pieceType,
         })),
       ),
     [sessions],
@@ -680,6 +730,15 @@ function ExerciseBlock({
     });
   };
 
+  /** Duration is typed as m:ss, same shape an erg monitor shows, and parsed on blur rather than
+   *  on every keystroke — reformatting mid-type would fight a person typing "2:1" toward "2:17". */
+  const setDuration = (index: number, seconds: number | null) => {
+    onChange({
+      ...block,
+      sets: block.sets.map((set, i) => (i === index ? { ...set, durationS: seconds } : set)),
+    });
+  };
+
   /**
    * Tick to complete (V4 Phase 2++ Stage 5). Ticking on starts the rest timer and dims the row;
    * ticking back off — a mis-tap — clears both the mark and, silently, nothing else: the numbers
@@ -867,19 +926,29 @@ function ExerciseBlock({
                     <label className={LABEL} htmlFor={`s-${block.id}-${index}-${String(column)}`}>
                       {COLUMN_LABEL[column]}
                     </label>
-                    <input
-                      id={`s-${block.id}-${index}-${String(column)}`}
-                      inputMode="decimal"
-                      value={set[column] === null ? "" : String(set[column])}
-                      onChange={(event) => setField(index, column, event.target.value)}
-                      // Previous-set ghost (V4 Phase 2++ Stage 5) — Hevy's single best feature,
-                      // by Victor's account. Shown only where this set has nothing typed yet, so
-                      // it never hides a real, deliberately-cleared value.
-                      placeholder={
-                        ghost && ghost[column] !== null ? String(ghost[column]) : undefined
-                      }
-                      className={`${FIELD} mt-1 font-mono`}
-                    />
+                    {column === "durationS" ? (
+                      <DurationField
+                        id={`s-${block.id}-${index}-${String(column)}`}
+                        seconds={set.durationS}
+                        onCommit={(seconds) => setDuration(index, seconds)}
+                        placeholder={ghost?.durationS ?? null}
+                        className={`${FIELD} mt-1 font-mono`}
+                      />
+                    ) : (
+                      <input
+                        id={`s-${block.id}-${index}-${String(column)}`}
+                        inputMode="decimal"
+                        value={set[column] === null ? "" : String(set[column])}
+                        onChange={(event) => setField(index, column, event.target.value)}
+                        // Previous-set ghost (V4 Phase 2++ Stage 5) — Hevy's single best feature,
+                        // by Victor's account. Shown only where this set has nothing typed yet, so
+                        // it never hides a real, deliberately-cleared value.
+                        placeholder={
+                          ghost && ghost[column] !== null ? String(ghost[column]) : undefined
+                        }
+                        className={`${FIELD} mt-1 font-mono`}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -915,6 +984,35 @@ function ExerciseBlock({
                 ))}
               </div>
 
+              {/* Time trial tag (erg/water only) — writes `pieceType`, orthogonal to `setType`
+                  above (D-230): a technical paddle and a race piece both "count", but only one
+                  of them is a benchmark test. One tap, not a free-text field, since "was this a
+                  time trial" is the only distinction this screen needs to make. */}
+              {(block.modality === "erg" || block.modality === "water") && (
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={set.pieceType === "race"}
+                  onClick={() =>
+                    onChange({
+                      ...block,
+                      sets: block.sets.map((s, i) =>
+                        i === index
+                          ? { ...s, pieceType: s.pieceType === "race" ? null : "race" }
+                          : s,
+                      ),
+                    })
+                  }
+                  className={`mt-2 min-h-9 rounded-md border px-2.5 font-mono text-[0.65rem] transition-colors ${
+                    set.pieceType === "race"
+                      ? "border-highlight/50 bg-highlight/10 text-highlight"
+                      : "border-border text-muted-foreground hover:border-highlight/40"
+                  }`}
+                >
+                  Time trial
+                </button>
+              )}
+
               <input
                 value={set.notes}
                 onChange={(event) =>
@@ -946,6 +1044,9 @@ function ExerciseBlock({
                 </th>
               ))}
               <th className="py-1.5 font-mono">Type</th>
+              {(block.modality === "erg" || block.modality === "water") && (
+                <th className="py-1.5 font-mono">TT</th>
+              )}
               <th className="py-1.5 font-mono">Note</th>
               <th className="w-10 py-1.5"></th>
             </tr>
@@ -980,16 +1081,26 @@ function ExerciseBlock({
                   </td>
                   {columns.map((column) => (
                     <td key={String(column)} className="py-1.5 pr-2">
-                      <input
-                        aria-label={`Set ${index + 1} ${COLUMN_LABEL[column]}`}
-                        inputMode="decimal"
-                        value={set[column] === null ? "" : String(set[column])}
-                        onChange={(event) => setField(index, column, event.target.value)}
-                        placeholder={
-                          ghost && ghost[column] !== null ? String(ghost[column]) : undefined
-                        }
-                        className="w-20 rounded-md border border-border bg-card/60 px-2 py-1 font-mono text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
-                      />
+                      {column === "durationS" ? (
+                        <DurationField
+                          aria-label={`Set ${index + 1} ${COLUMN_LABEL[column]}`}
+                          seconds={set.durationS}
+                          onCommit={(seconds) => setDuration(index, seconds)}
+                          placeholder={ghost?.durationS ?? null}
+                          className="w-20 rounded-md border border-border bg-card/60 px-2 py-1 font-mono text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
+                        />
+                      ) : (
+                        <input
+                          aria-label={`Set ${index + 1} ${COLUMN_LABEL[column]}`}
+                          inputMode="decimal"
+                          value={set[column] === null ? "" : String(set[column])}
+                          onChange={(event) => setField(index, column, event.target.value)}
+                          placeholder={
+                            ghost && ghost[column] !== null ? String(ghost[column]) : undefined
+                          }
+                          className="w-20 rounded-md border border-border bg-card/60 px-2 py-1 font-mono text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="py-1.5 pr-2">
@@ -1015,6 +1126,33 @@ function ExerciseBlock({
                       ))}
                     </select>
                   </td>
+                  {(block.modality === "erg" || block.modality === "water") && (
+                    <td className="py-1.5 pr-2">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={set.pieceType === "race"}
+                        aria-label={`Set ${index + 1} time trial`}
+                        onClick={() =>
+                          onChange({
+                            ...block,
+                            sets: block.sets.map((s, i) =>
+                              i === index
+                                ? { ...s, pieceType: s.pieceType === "race" ? null : "race" }
+                                : s,
+                            ),
+                          })
+                        }
+                        className={`flex size-8 items-center justify-center rounded-md border font-mono text-[0.6rem] transition-colors ${
+                          set.pieceType === "race"
+                            ? "border-highlight/50 bg-highlight/10 text-highlight"
+                            : "border-border text-muted-foreground hover:border-highlight/40"
+                        }`}
+                      >
+                        TT
+                      </button>
+                    </td>
+                  )}
                   <td className="py-1.5 pr-2">
                     <input
                       aria-label={`Set ${index + 1} note`}

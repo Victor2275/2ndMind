@@ -152,6 +152,7 @@ describe("PR display", () => {
             distanceM: null,
             durationS: null,
             spm: null,
+            pieceType: null,
           },
         ]}
       />,
@@ -234,6 +235,7 @@ describe("search ranking", () => {
             distanceM: null,
             durationS: null,
             spm: null,
+            pieceType: null,
           },
         ]}
       />,

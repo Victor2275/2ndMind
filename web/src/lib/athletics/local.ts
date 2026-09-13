@@ -282,6 +282,7 @@ export async function localEfforts(db: SyncDb): Promise<Effort[]> {
       distanceM: set.distanceM,
       durationS: set.durationS,
       spm: set.spm,
+      pieceType: set.pieceType,
     })),
   );
 }

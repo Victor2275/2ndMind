@@ -153,6 +153,7 @@ async function workoutSetEfforts(db: Db): Promise<Effort[]> {
       distanceM: workoutSets.distanceM,
       durationS: workoutSets.durationS,
       spm: workoutSets.spm,
+      pieceType: workoutSets.pieceType,
     })
     .from(workoutSets)
     .innerJoin(workouts, eq(workoutSets.workoutId, workouts.id))
@@ -165,6 +166,7 @@ async function workoutSetEfforts(db: Db): Promise<Effort[]> {
 
 export type WorkoutSummary = {
   id: number;
+  clientId: string;
   performedAt: Date;
   title: string;
   source: string;
@@ -176,6 +178,7 @@ export async function recentWorkouts(db: Db, limit = 20): Promise<WorkoutSummary
   const rows = await db
     .select({
       id: workouts.id,
+      clientId: workouts.clientId,
       performedAt: workouts.performedAt,
       title: workouts.title,
       source: workouts.source,
