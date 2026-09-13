@@ -15,8 +15,10 @@ import path from "node:path";
  * would drift further every time a project changed, with nothing on screen saying so.
  *
  * So the generated resume stays primary — current, matching the site, and gated at one page by
- * `npm run shots` — and the PDF is offered next to it as a download. A recruiter who wants a
- * file still gets one; nothing goes stale silently.
+ * `npm run shots` — and the PDF is the one download action offered on the page (a second
+ * "Print / Save as PDF" button was dropped once there was an uploaded file to point at
+ * instead; two ways to leave with a PDF was one too many). A recruiter who wants a file still
+ * gets one; nothing goes stale silently.
  *
  * ## Why it reads the filesystem
  *

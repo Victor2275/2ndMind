@@ -17,7 +17,59 @@ useful part.
 
 ---
 
-## 2026-09-13 · Erg logging fixed, a session gets its own page, and Time Trials
+## 2026-09-13 · Resume PDF refreshed, one download button, and the 2ndMind card stops showing `/now`
+
+### D-245 · The resume page has one download action, not two
+
+**Decision.** Dropped the "Print / Save as PDF" button (`PrintButton`, `print-button.tsx`,
+deleted) from `/resume/[variant]`. The uploaded-PDF "Download PDF" button (D-229, D-188) is now
+the page's only download action. The footer line that said "Use Print to save as PDF" is cut to
+just the generated-from-the-vault sentence.
+
+**Why.** Two ways to leave the page with a PDF read as one too many once there was a real
+uploaded file to point at — D-229 already made the PDF primary, which left Print looking like a
+leftover secondary path rather than a reason of its own to exist. Victor asked for exactly one
+download button.
+
+**How to reverse.** Restore `print-button.tsx` (a `window.print()` button, trivial to rewrite —
+see git history), re-import `PrintButton` in the resume page, and put it back next to the
+Download PDF link. `@media print` in `globals.css` was never touched and still works either way.
+
+### D-246 · The vault resume PDF is renamed to drop the `(1)`, and the sync sees it as an update, not a new file
+
+**Decision.** `context/assets/resumes/Victor_Gusev_Resume (1).pdf` — Victor's latest export,
+previously sitting unsynced next to the stale committed copy — replaces
+`context/assets/resumes/Victor_Gusev_Resume.pdf` in place (renamed, not added alongside), so
+`sync-vault-assets.mjs`'s single-general-PDF convention (D-notes in `resume-pdf.ts`) picks it up
+as the one file in the folder rather than needing a variant-specific name.
+
+**Why.** The committed PDF was from August 20; downloading "Download PDF" on the site was handing
+out a resume older than the vault's own generated content. `resume-pdf.ts` reads whatever PDF(s)
+are actually in `public/assets/resumes/` at request time, so the fix is the file, not the code.
+
+**How to reverse.** Drop a new PDF into `context/assets/resumes/` under any name (variant-specific
+to target one resume variant, anything else to serve as the general fallback) and run
+`node scripts/sync-vault-assets.mjs` (or let `predev`/`prebuild` do it).
+
+### D-247 · The 2ndMind project card shows `/private/kitchen-sink`, not `/now`
+
+**Decision.** `context/assets/2ndmind.png` — previously a screenshot of the public `/now` page —
+is replaced with a screenshot of `/private/kitchen-sink` (D-201's all-themes component gallery),
+scrolled to the top: private nav, the "Kitchen sink" header, and the type-scale panel. No code
+change; `image: /assets/2ndmind.png` in `2ndmind.md` frontmatter is unchanged.
+
+**Why.** Victor's ask — the project's own screenshot was the *public* half of the site, which
+told a visitor nothing about the private app the project description is actually about. Kitchen
+sink is real private-app UI (behind the same WebAuthn gate as everything else under `/private`)
+but is deliberately a component/theme showcase with no personal data on it — no training log, no
+tasks, no health metrics — so it demonstrates the private app exists and is designed with the
+same care, without revealing what Victor actually logs in it.
+
+**How to reverse.** Drop a different screenshot in at `context/assets/2ndmind.png` (any private
+route works equally well now that D-247 has established the precedent) and run
+`node scripts/sync-vault-assets.mjs`. Note for next time: the Next.js dev server appears to hold
+`public/` image bytes in memory independent of `.next/cache/images/` — a `predev` re-sync is not
+enough to see a replaced asset while the dev server keeps running; restart it.
 
 ### D-242 · Duration is typed as m:ss everywhere it's logged or edited; `RecentSessions` gained the fields it never had
 

@@ -2,7 +2,6 @@ import { DownloadIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PrintButton } from "@/components/site/print-button";
 import { resumeUpload } from "@/lib/resume-pdf";
 import { buildResume, RESUME_VARIANTS } from "@/lib/resume";
 import type { ResumeVariant } from "@/lib/vault/schemas";
@@ -67,13 +66,11 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* The uploaded PDF, offered beside the generated sheet rather than instead of it
-              (§4.4, D-188). The size is stated because a download that starts without warning
-              is a download nobody chose. */}
-          {/* The PDF is the primary action (Q352) — filled, first, and the thing a recruiter
-              came here to take away. It was a bordered secondary sitting to the left of Print,
-              which made "print this web page" look like the headline act. The size is still
-              stated, because a download that starts without warning is one nobody chose. */}
+          {/* The single download action (Q352). Was a "Download PDF" upload button sitting
+              beside a "Print / Save as PDF" button — two ways to get a PDF read as one too
+              many, so Print was dropped and this is now the only download on the page. The
+              size is still stated, because a download that starts without warning is one
+              nobody chose. */}
           {upload && (
             <a
               href={upload.url}
@@ -87,7 +84,6 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
               </span>
             </a>
           )}
-          <PrintButton />
         </div>
       </div>
 
@@ -191,7 +187,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
 
       <p className="mt-6 text-xs text-muted-foreground print:hidden">
         Generated from the vault — every bullet above is the same text that feeds the project and
-        experience pages. Use Print to save as PDF.
+        experience pages.
       </p>
     </main>
   );
