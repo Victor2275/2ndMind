@@ -422,6 +422,17 @@ export const tasks = pgTable(
     dueAt: timestamp("due_at", { withTimezone: true }),
     doneAt: timestamp("done_at", { withTimezone: true }),
     notes: text("notes").notNull().default(""),
+    /**
+     * Free tags (V4 Phase 3, §2.3). The answer to "a recipe I want to try has nowhere to go" —
+     * a plain array column rather than a join table or a new sync entity, the same shape as
+     * `exercises.aliases`/`muscles`: read whole, filtered in memory, never queried across rows
+     * on its own (tag search unnests it in SQL instead — see `lib/tasks/queries.ts`). Caps on
+     * count and length live on the wire in `PAYLOADS.task`, `sync/protocol.ts`.
+     */
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     /** Two tasks may legitimately share a title and a due date, so there is no natural key. */
     clientId: clientId(),
@@ -460,6 +471,17 @@ export const logEntries = pgTable(
     /** Category-specific fields, shaped by `lib/log/categories.ts`. */
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
     searchText: text("search_text").notNull().default(""),
+    /**
+     * Free tags (V4 Phase 3, §2.3). The fix for "a recipe I want to try has nowhere to go":
+     * a category is a fixed, code-level list (`categories.ts`), and a tag is not. Same column
+     * shape as `tasks.tags` and `exercises.aliases`/`muscles` — a plain array, read whole,
+     * never joined. `fileEntry` (below, in `queries.ts`) can attach tags in the same call that
+     * files a note out of the unsorted pile, without touching its one-way-door guard.
+     */
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     /** Logging "Bench Press 185x5" twice in one session is a real thing to do, so two
      *  identical rows are legitimate and there is no natural key. */
