@@ -8,7 +8,15 @@ import { describeDbError } from "@/lib/db/describe";
 import { recordBodyweight } from "@/lib/athletics/queries";
 import { categoryByKey, UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
 import { readField, readRows, takeBodyweight } from "@/lib/log/form";
-import { createEntry, deleteEntry, editEntry, fileEntry, restoreEntry } from "@/lib/log/queries";
+import { readTags } from "@/lib/log/tags";
+import {
+  createEntry,
+  deleteEntry,
+  editEntry,
+  fileEntry,
+  restoreEntry,
+  tagEntry,
+} from "@/lib/log/queries";
 import { createTask } from "@/lib/tasks/queries";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -48,12 +56,21 @@ export async function createLogEntry(
   const rows = category.rows ? readRows(formData, category.rows) : [];
   if (category.rows && rows.length > 0) data[category.rows.name] = rows;
 
+  const tags = readTags(formData);
+
   // Lifted out of `data` before the entry is written — it belongs in `bodyweight_entries`.
   const { weight, problem } = takeBodyweight(data);
 
   // An entry with neither fields nor rows nor a note is a mis-tap, not a log. A weight on its
-  // own is a real thing to log, though, so it counts.
-  if (Object.keys(data).length === 0 && note === "" && weight === null && problem === null) {
+  // own is a real thing to log, though, so it counts. A tag with nothing else attached is rare
+  // but not a mistake — the form does not otherwise let you tag nothing.
+  if (
+    Object.keys(data).length === 0 &&
+    note === "" &&
+    tags.length === 0 &&
+    weight === null &&
+    problem === null
+  ) {
     return { ok: false, message: "Nothing to log — fill in a field or write a note." };
   }
 
@@ -65,8 +82,8 @@ export async function createLogEntry(
 
   try {
     const handle = db();
-    const wrote = Object.keys(data).length > 0 || note !== "";
-    if (wrote) await createEntry(handle, { category: key, note, data, occurredAt });
+    const wrote = Object.keys(data).length > 0 || note !== "" || tags.length > 0;
+    if (wrote) await createEntry(handle, { category: key, note, data, tags, occurredAt });
 
     let weighed = "";
     if (weight !== null) {
@@ -143,7 +160,14 @@ export async function captureQuick(
   }
 }
 
-/** Move an unsorted note into a real category. */
+/**
+ * Move an unsorted note into a real category — and tag it in the same tap, if the sheet that
+ * called this also collected tags (V4 Phase 3, §3.3).
+ *
+ * Tags are additive here, never a substitute for the guard: `fileEntry` still requires the row
+ * to be sitting in the unsorted pile, so this cannot be used to retag an already-filed entry —
+ * `tagLogEntry` below is the door for that, and it deliberately cannot change a category.
+ */
 export async function fileLogEntry(
   _prev: ActionState | null,
   formData: FormData,
@@ -157,12 +181,47 @@ export async function fileLogEntry(
   const category = writableCategoryByKey(String(formData.get("category") ?? ""));
   if (!category || category.capture) return { ok: false, message: "Unknown category." };
 
+  const tags = readTags(formData);
+
   try {
-    const row = await fileEntry(db(), id, category.key);
+    const row = await fileEntry(db(), id, category.key, tags);
     if (!row) return { ok: false, message: "That note is not waiting to be sorted." };
     revalidatePath("/private/log");
     revalidatePath("/private");
     return { ok: true, message: `Filed under ${category.label}.` };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/**
+ * Tag an entry without moving it — the other half of §3.3.
+ *
+ * `category = "note"` was hard to organise before this because tagging *was* filing, and
+ * filing meant choosing one of five fixed tabs (§2.3). Tags fix that without touching the
+ * one-way door: this never writes `category`, so a note tagged `#recipe` stays in the unsorted
+ * pile exactly as filing left it, findable by the tag rather than by which tab it landed in.
+ * It also works on an already-filed entry, which `fileEntry`'s guard refuses on purpose.
+ */
+export async function tagLogEntry(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+  if (!isDatabaseConfigured()) return { ok: false, message: "DATABASE_URL is not set." };
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown entry." };
+
+  const tags = readTags(formData);
+  if (tags.length === 0) return { ok: false, message: "Add at least one tag." };
+
+  try {
+    const row = await tagEntry(db(), id, tags);
+    if (!row) return { ok: false, message: "That entry is gone." };
+    revalidatePath("/private/log");
+    revalidatePath("/private");
+    return { ok: true, message: "Tagged." };
   } catch (error) {
     return { ok: false, message: describe(error) };
   }

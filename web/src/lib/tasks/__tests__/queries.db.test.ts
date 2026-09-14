@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { resetTestDb } from "@/test/pg";
 import {
+  allTaskTags,
   countOpen,
   createTask,
   currentGoals,
@@ -327,5 +328,66 @@ describe("zoneOffsetMinutes", () => {
     // Some ICU builds format midnight as "24" under hour12:false, which would put the
     // offset a day out. `hourCycle: "h23"` is what prevents it.
     expect(zoneOffsetMinutes(new Date("2026-08-22T07:00:00Z"))).toBe(420);
+  });
+});
+
+describe("tags on tasks (V4 Phase 3, §2.3)", () => {
+  it("stores tags, normalised, even if the caller did not", async () => {
+    const task = await createTask(db, {
+      title: "email the coach",
+      source: "manual",
+      tags: ["Athletics", "athletics"],
+    });
+    expect(task.tags).toEqual(["athletics"]);
+  });
+
+  it("defaults to no tags when none are given", async () => {
+    const task = await createTask(db, { title: "plain", source: "manual" });
+    expect(task.tags).toEqual([]);
+  });
+
+  describe("listTasks filtered by tag", () => {
+    it("returns only tasks carrying that tag", async () => {
+      await createTask(db, { title: "one", source: "manual", tags: ["athletics"] });
+      await createTask(db, { title: "two", source: "manual", tags: ["academics"] });
+
+      expect((await listTasks(db, { tag: "athletics" })).map((t) => t.title)).toEqual(["one"]);
+    });
+
+    it("matches case-insensitively", async () => {
+      await createTask(db, { title: "one", source: "manual", tags: ["Athletics"] });
+      expect((await listTasks(db, { tag: "ATHLETICS" })).map((t) => t.title)).toEqual(["one"]);
+    });
+
+    it("still respects includeDone", async () => {
+      const task = await createTask(db, { title: "done", source: "manual", tags: ["x"] });
+      await setTaskDone(db, task.id, true);
+
+      expect(await listTasks(db, { tag: "x" })).toEqual([]);
+      expect((await listTasks(db, { tag: "x", includeDone: true })).map((t) => t.title)).toEqual([
+        "done",
+      ]);
+    });
+  });
+
+  describe("allTaskTags", () => {
+    it("returns the distinct tags in use, most frequent first", async () => {
+      await createTask(db, { title: "a", source: "manual", tags: ["athletics"] });
+      await createTask(db, { title: "b", source: "manual", tags: ["athletics", "academics"] });
+      await createTask(db, { title: "c", source: "manual", tags: ["athletics"] });
+
+      expect(await allTaskTags(db)).toEqual(["athletics", "academics"]);
+    });
+
+    it("returns nothing when no task has ever been tagged", async () => {
+      await createTask(db, { title: "plain", source: "manual" });
+      expect(await allTaskTags(db)).toEqual([]);
+    });
+
+    it("excludes tags that only live on a deleted task", async () => {
+      const gone = await createTask(db, { title: "gone", source: "manual", tags: ["gone-tag"] });
+      await deleteTask(db, gone.id);
+      expect(await allTaskTags(db)).not.toContain("gone-tag");
+    });
   });
 });

@@ -4,6 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { logEntries, type LogEntry } from "@/lib/db/schema";
 import type * as schema from "@/lib/db/schema";
 import { searchTextFor, UNSORTED_CATEGORY } from "./categories";
+import { normalizeTag, normalizeTags } from "./tags";
 
 /**
  * Log entry reads and writes. Handle passed in, so the tests run against real Postgres.
@@ -17,6 +18,10 @@ export type NewEntry = {
   note?: string;
   data?: Record<string, unknown>;
   occurredAt?: Date;
+  /** Free tags (V4 Phase 3). Normalised again here, not only at the form boundary — a Server
+   *  Action is a POST endpoint with a guessable id, so a caller that skipped `readTags` must
+   *  not be able to smuggle in an oversized or duplicated list. */
+  tags?: string[];
 };
 
 export async function createEntry(db: Db, input: NewEntry): Promise<LogEntry> {
@@ -32,6 +37,7 @@ export async function createEntry(db: Db, input: NewEntry): Promise<LogEntry> {
       // Denormalised here, so every write path gets it — a caller that forgot would produce
       // an entry that exists but can never be found again.
       searchText: searchTextFor(input.category, data, note),
+      tags: normalizeTags(input.tags ?? []),
       ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
     })
     .returning();
@@ -63,7 +69,7 @@ export async function countUnsorted(db: Db): Promise<number> {
 }
 
 /**
- * File an unsorted note into a real category.
+ * File an unsorted note into a real category — and, since V4 Phase 3, tag it in the same call.
  *
  * The note text moves across unchanged and `search_text` is recomputed, because it carries the
  * category label — leaving it would make a filed entry findable under "Note" and not under
@@ -73,17 +79,67 @@ export async function countUnsorted(db: Db): Promise<number> {
  * Without that, a mistyped id could recategorise a real training entry into something else,
  * silently, with no undo — the log has no edit path anywhere else, and this is not the place
  * to introduce one by accident.
+ *
+ * **`tags` is additive, deliberately not the one-way-door guard's business.** D-164's rule is
+ * about `category` — a note may be filed exactly once, out of the pile — and tagging is a
+ * different axis: a filed entry can still be tagged again later through `editEntry`, the way
+ * any of its other fields can. This just lets the one screen that already asks "where does
+ * this go" also ask "what does this have on it", instead of two taps where one would do.
+ * Omitted or empty leaves whatever tags the note already carried (normally none, since capture
+ * has no tag input) untouched — the parameter adds tags, it does not replace the list.
  */
-export async function fileEntry(db: Db, id: number, category: string): Promise<LogEntry | null> {
+export async function fileEntry(
+  db: Db,
+  id: number,
+  category: string,
+  tags?: string[],
+): Promise<LogEntry | null> {
   const [existing] = await db
     .select()
     .from(logEntries)
     .where(and(eq(logEntries.id, id), eq(logEntries.category, UNSORTED_CATEGORY), alive));
   if (!existing) return null;
 
+  const nextTags =
+    tags && tags.length > 0
+      ? normalizeTags([...(existing.tags ?? []), ...tags])
+      : (existing.tags ?? []);
+
   const [row] = await db
     .update(logEntries)
-    .set({ category, searchText: searchTextFor(category, existing.data, existing.note) })
+    .set({
+      category,
+      tags: nextTags,
+      searchText: searchTextFor(category, existing.data, existing.note),
+    })
+    .where(eq(logEntries.id, id))
+    .returning();
+
+  return row ?? null;
+}
+
+/**
+ * Add tags to an entry, wherever it lives — no category change, no unsorted-pile requirement
+ * (V4 Phase 3, §3.3).
+ *
+ * This is what lets a note stay in the unsorted pile and still be tagged `#recipe`, and what
+ * lets an already-filed entry pick up a tag later. It is deliberately a different door from
+ * `fileEntry`'s: that one is one-way *because* it changes `category`; this one never touches
+ * `category` at all, so there is nothing here for the one-way-door guard to protect.
+ *
+ * Additive, like `fileEntry`'s tag parameter — it merges into whatever tags the row already
+ * has rather than replacing them, so tagging twice cannot lose the first tag.
+ */
+export async function tagEntry(db: Db, id: number, tags: string[]): Promise<LogEntry | null> {
+  const [existing] = await db
+    .select()
+    .from(logEntries)
+    .where(and(eq(logEntries.id, id), alive));
+  if (!existing) return null;
+
+  const [row] = await db
+    .update(logEntries)
+    .set({ tags: normalizeTags([...(existing.tags ?? []), ...tags]) })
     .where(eq(logEntries.id, id))
     .returning();
 
@@ -136,16 +192,43 @@ export async function editEntry(
 
 export async function listEntries(
   db: Db,
-  options: { category?: string; limit?: number } = {},
+  options: { category?: string; tag?: string; limit?: number } = {},
 ): Promise<LogEntry[]> {
-  const where = options.category ? and(alive, eq(logEntries.category, options.category)) : alive;
+  const clauses = [alive];
+  if (options.category) clauses.push(eq(logEntries.category, options.category));
+  // `@>` (array contains) rather than `= ANY`: reads as "this row's tags include that one",
+  // which is the question a filter actually asks, and it is what the tag already went through
+  // `normalizeTag` to match — a raw form value would miss on case alone.
+  if (options.tag)
+    clauses.push(sql`${logEntries.tags} @> ARRAY[${normalizeTag(options.tag)}]::text[]`);
 
   return db
     .select()
     .from(logEntries)
-    .where(where)
+    .where(and(...clauses))
     .orderBy(desc(logEntries.occurredAt), desc(logEntries.id))
     .limit(options.limit ?? 50);
+}
+
+/**
+ * Every tag in use, for the suggestion list `TagInput` autocompletes from.
+ *
+ * Sorted by frequency, not alphabetically: the tags worth suggesting are the ones already
+ * reused, and a frequency order surfaces "reading" and "recipe" before a one-off typo — which
+ * an alphabetical list would give equal billing. `unnest` rather than reading every row's array
+ * into JS and flattening it there — this is one aggregate query instead of pulling every log
+ * entry over the wire to throw away everything but its tags.
+ */
+export async function allTags(db: Db, limit = 100): Promise<string[]> {
+  const rows = await db
+    .select({ tag: sql<string>`t.tag`, n: sql<number>`count(*)::int` })
+    .from(sql`${logEntries}, unnest(${logEntries.tags}) as t(tag)`)
+    .where(alive)
+    .groupBy(sql`t.tag`)
+    .orderBy(sql`count(*) desc`, sql`t.tag asc`)
+    .limit(limit);
+
+  return rows.map((r) => r.tag);
 }
 
 /**

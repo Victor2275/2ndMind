@@ -3,6 +3,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import { tasks, type NewTask, type Task } from "@/lib/db/schema";
 import type * as schema from "@/lib/db/schema";
+import { normalizeTag, normalizeTags } from "@/lib/log/tags";
 
 /**
  * Task reads and writes.
@@ -83,14 +84,19 @@ export function dayBounds(now: Date, offsetMinutes: number): { start: Date; end:
 
 export async function listTasks(
   db: Db,
-  options: { includeDone?: boolean; limit?: number } = {},
+  options: { includeDone?: boolean; tag?: string; limit?: number } = {},
 ): Promise<Task[]> {
-  const where = options.includeDone ? alive : and(alive, isNull(tasks.doneAt));
+  const clauses = [options.includeDone ? alive : and(alive, isNull(tasks.doneAt))];
+  // Same `@>` shape as `listEntries` in `lib/log/queries.ts` — a tag has already gone through
+  // `normalizeTag` on write, so the filter normalises the same way rather than trusting the
+  // caller to have matched the stored case.
+  if (options.tag) clauses.push(sql`${tasks.tags} @> ARRAY[${normalizeTag(options.tag)}]::text[]`);
+
   return (
     db
       .select()
       .from(tasks)
-      .where(where)
+      .where(and(...clauses))
       // Undated tasks sort last rather than first: `NULLS LAST` is not the default in Postgres
       // for ascending order, and without it every undated task would sit above today's work.
       .orderBy(sql`${tasks.dueAt} asc nulls last`, asc(tasks.id))
@@ -147,8 +153,36 @@ export function staleDays(items: Task[], now: Date): number {
 }
 
 export async function createTask(db: Db, input: NewTask): Promise<Task> {
-  const [row] = await db.insert(tasks).values(input).returning();
+  // Normalised again here, not only at the form boundary — `NewTask` is Drizzle's inferred
+  // insert type, so nothing stops a caller from handing this an un-normalised list, and a
+  // Server Action is a POST endpoint with a guessable id.
+  const tags = input.tags ? normalizeTags(input.tags) : undefined;
+  const [row] = await db
+    .insert(tasks)
+    .values(tags ? { ...input, tags } : input)
+    .returning();
   return row;
+}
+
+/**
+ * Every tag in use on a task, for `TagInput`'s suggestions.
+ *
+ * Same shape as `allTags` in `lib/log/queries.ts` — frequency order, `unnest` rather than
+ * pulling every row into JS to flatten there. **Not merged with the log's tags here**: the two
+ * query modules do not import each other, so the UI combines both lists into one suggestion
+ * set (`lib/log/tags.ts`'s vocabulary is shared in *meaning*, not in a shared query) — see
+ * D-241 for why one vocabulary across two tables did not need a shared table to get it.
+ */
+export async function allTaskTags(db: Db, limit = 100): Promise<string[]> {
+  const rows = await db
+    .select({ tag: sql<string>`t.tag`, n: sql<number>`count(*)::int` })
+    .from(sql`${tasks}, unnest(${tasks.tags}) as t(tag)`)
+    .where(alive)
+    .groupBy(sql`t.tag`)
+    .orderBy(sql`count(*) desc`, sql`t.tag asc`)
+    .limit(limit);
+
+  return rows.map((r) => r.tag);
 }
 
 export async function setTaskDone(db: Db, id: number, done: boolean): Promise<Task | null> {

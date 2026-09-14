@@ -14,6 +14,7 @@ import {
 } from "../categories";
 import { readField, readRows, takeBodyweight } from "../form";
 import {
+  allTags,
   categoriesLoggedBetween,
   countEntries,
   countUnsorted,
@@ -26,10 +27,12 @@ import {
   recentForChips,
   restoreEntry,
   searchEntries,
+  tagEntry,
   unsortedEntries,
   type Db,
 } from "../queries";
 import { allChipSets } from "../chips";
+import { normalizeTag, normalizeTags, readTags } from "../tags";
 
 let db: Db;
 
@@ -880,5 +883,171 @@ describe("editing an entry after it is saved (Q402)", () => {
 
     expect(edited?.note).toBe("typo fixed");
     expect(edited?.category).toBe("athletics");
+  });
+});
+
+describe("tags (V4 Phase 3, §2.3)", () => {
+  describe("normalizeTags", () => {
+    it("trims, lowercases and collapses whitespace", () => {
+      expect(normalizeTag("  Reading  Group ")).toBe("reading group");
+    });
+
+    it("drops duplicates, case-insensitively", () => {
+      expect(normalizeTags(["Recipe", "recipe", "RECIPE "])).toEqual(["recipe"]);
+    });
+
+    it("drops empty tags rather than storing a blank", () => {
+      expect(normalizeTags(["", "  ", "real"])).toEqual(["real"]);
+    });
+
+    it("caps at 20 tags", () => {
+      const many = Array.from({ length: 30 }, (_, i) => `tag${i}`);
+      expect(normalizeTags(many)).toHaveLength(20);
+    });
+
+    it("caps each tag at 40 characters", () => {
+      const long = "a".repeat(60);
+      expect(normalizeTags([long])[0]).toHaveLength(40);
+    });
+  });
+
+  describe("readTags", () => {
+    it("reads every hidden input named tags, in order", () => {
+      const data = new FormData();
+      data.append("tags", "recipe");
+      data.append("tags", "reading");
+      expect(readTags(data)).toEqual(["recipe", "reading"]);
+    });
+
+    it("returns nothing when the form has no tags", () => {
+      expect(readTags(new FormData())).toEqual([]);
+    });
+  });
+
+  describe("createEntry with tags", () => {
+    it("stores tags on the entry, normalised", async () => {
+      const entry = await createEntry(db, {
+        category: "note",
+        note: "try this",
+        tags: ["Recipe", "recipe"],
+      });
+      expect(entry.tags).toEqual(["recipe"]);
+    });
+
+    it("defaults to no tags when none are given", async () => {
+      const entry = await createEntry(db, { category: "day", note: "fine" });
+      expect(entry.tags).toEqual([]);
+    });
+  });
+
+  describe("listEntries filtered by tag", () => {
+    it("returns only entries carrying that tag", async () => {
+      await createEntry(db, { category: "reading", note: "one", tags: ["recipe"] });
+      await createEntry(db, { category: "reading", note: "two", tags: ["reading"] });
+
+      const hits = await listEntries(db, { tag: "recipe" });
+      expect(hits.map((e) => e.note)).toEqual(["one"]);
+    });
+
+    it("matches case-insensitively, since the stored tag is already lowercase", async () => {
+      await createEntry(db, { category: "note", note: "x", tags: ["Recipe"] });
+      expect((await listEntries(db, { tag: "RECIPE" })).map((e) => e.note)).toEqual(["x"]);
+    });
+
+    it("combines with the category filter", async () => {
+      await createEntry(db, { category: "reading", note: "matches", tags: ["recipe"] });
+      await createEntry(db, { category: "people", note: "wrong category", tags: ["recipe"] });
+
+      const hits = await listEntries(db, { category: "reading", tag: "recipe" });
+      expect(hits.map((e) => e.note)).toEqual(["matches"]);
+    });
+
+    it("excludes a deleted entry", async () => {
+      const gone = await createEntry(db, { category: "note", note: "x", tags: ["recipe"] });
+      await deleteEntry(db, gone.id);
+      expect(await listEntries(db, { tag: "recipe" })).toEqual([]);
+    });
+  });
+
+  describe("allTags", () => {
+    it("returns the distinct tags in use, most frequent first", async () => {
+      await createEntry(db, { category: "note", tags: ["recipe"] });
+      await createEntry(db, { category: "note", tags: ["recipe", "reading"] });
+      await createEntry(db, { category: "note", tags: ["recipe"] });
+
+      expect(await allTags(db)).toEqual(["recipe", "reading"]);
+    });
+
+    it("returns nothing when no entry has ever been tagged", async () => {
+      await createEntry(db, { category: "note", note: "untagged" });
+      expect(await allTags(db)).toEqual([]);
+    });
+
+    it("excludes tags that only live on a deleted entry", async () => {
+      const gone = await createEntry(db, { category: "note", tags: ["gone-tag"] });
+      await deleteEntry(db, gone.id);
+      expect(await allTags(db)).not.toContain("gone-tag");
+    });
+  });
+
+  describe("fileEntry with tags (§3.3)", () => {
+    it("attaches tags in the same call that files the note", async () => {
+      const captured = await createEntry(db, { category: "note", note: "try this recipe" });
+      const filed = await fileEntry(db, captured.id, "reading", ["recipe"]);
+
+      expect(filed?.category).toBe("reading");
+      expect(filed?.tags).toEqual(["recipe"]);
+    });
+
+    it("still requires the row to be unsorted, even when tagging", async () => {
+      const real = await createEntry(db, { category: "academics", data: { course: "M51A" } });
+      expect(await fileEntry(db, real.id, "reading", ["recipe"])).toBeNull();
+    });
+
+    it("merges with any tags already on the entry rather than replacing them", async () => {
+      // Capture has no tag input today, but the guard should hold even if that changes.
+      const captured = await createEntry(db, { category: "note", tags: ["draft"] });
+      const filed = await fileEntry(db, captured.id, "reading", ["recipe"]);
+      expect(filed?.tags?.sort()).toEqual(["draft", "recipe"]);
+    });
+
+    it("leaves tags alone when none are given while filing", async () => {
+      const captured = await createEntry(db, { category: "note", note: "plain" });
+      const filed = await fileEntry(db, captured.id, "reading");
+      expect(filed?.tags).toEqual([]);
+    });
+  });
+
+  describe("tagEntry (§3.3)", () => {
+    it("tags an entry without moving its category", async () => {
+      const captured = await createEntry(db, { category: "note", note: "try this recipe" });
+      const tagged = await tagEntry(db, captured.id, ["recipe"]);
+
+      expect(tagged?.category).toBe("note");
+      expect(tagged?.tags).toEqual(["recipe"]);
+      expect(await countUnsorted(db)).toBe(1);
+    });
+
+    it("works on an entry that has already been filed", async () => {
+      const entry = await createEntry(db, { category: "reading", data: { title: "Wagenmakers" } });
+      const tagged = await tagEntry(db, entry.id, ["stats"]);
+      expect(tagged?.tags).toEqual(["stats"]);
+    });
+
+    it("merges rather than replaces on a second call", async () => {
+      const entry = await createEntry(db, { category: "note", tags: ["one"] });
+      const tagged = await tagEntry(db, entry.id, ["two"]);
+      expect(tagged?.tags?.sort()).toEqual(["one", "two"]);
+    });
+
+    it("refuses a deleted entry rather than resurrecting it", async () => {
+      const entry = await createEntry(db, { category: "note" });
+      await deleteEntry(db, entry.id);
+      expect(await tagEntry(db, entry.id, ["x"])).toBeNull();
+    });
+
+    it("refuses an id that is not there", async () => {
+      expect(await tagEntry(db, 999_999, ["x"])).toBeNull();
+    });
   });
 });

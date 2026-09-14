@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { describeDbError } from "@/lib/db/describe";
 import { resolveError } from "@/lib/errors/queries";
+import { readTags } from "@/lib/log/tags";
 import type { ActionState } from "@/lib/sprint-goals";
 import {
   createTask,
@@ -60,6 +61,7 @@ export async function addTask(_prev: ActionState | null, formData: FormData): Pr
       domain: String(formData.get("domain") ?? "").trim() || null,
       courseCode: String(formData.get("courseCode") ?? "").trim() || null,
       dueAt,
+      tags: readTags(formData),
     });
     refresh();
     return { ok: true, message: "Added." };
