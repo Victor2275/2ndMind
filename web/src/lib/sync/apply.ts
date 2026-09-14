@@ -55,6 +55,7 @@ const WRITERS = {
       note: p.note as string,
       data: p.data as Record<string, unknown>,
       searchText: p.searchText as string,
+      tags: (p.tags ?? []) as string[],
     }),
   },
   task: {
@@ -70,6 +71,7 @@ const WRITERS = {
       dueAt: p.dueAt ? new Date(p.dueAt as string) : null,
       doneAt: p.doneAt ? new Date(p.doneAt as string) : null,
       notes: p.notes as string,
+      tags: (p.tags ?? []) as string[],
     }),
   },
   bodyweight: {

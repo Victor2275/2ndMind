@@ -149,6 +149,52 @@ describe("applying a batch", () => {
     const [row] = await db.select().from(logEntries);
     expect(row.deletedAt).not.toBeNull();
   });
+
+  /** V4 Phase 3, §3.5 — tags round-trip through an op like every other `log_entry` column. */
+  it("writes tags on a log entry", async () => {
+    const clientId = uuid(915);
+    const [result] = await applyOps(db, [
+      op({
+        ...entry(clientId, "recipe"),
+        payload: { ...entry(clientId).payload, tags: ["recipe", "reading"] },
+      }),
+    ]);
+
+    expect(result.status).toBe("applied");
+    const [row] = await db.select().from(logEntries);
+    expect(row.tags).toEqual(["recipe", "reading"]);
+  });
+
+  it("defaults to no tags when the payload omits them", async () => {
+    await applyOps(db, [op(entry(uuid(916)))]);
+    const [row] = await db.select().from(logEntries);
+    expect(row.tags).toEqual([]);
+  });
+
+  it("caps tags at 20 and each tag at 40 characters, rejecting an oversized payload", async () => {
+    const clientId = uuid(917);
+    const tooMany = Array.from({ length: 21 }, (_, i) => `t${i}`);
+    const [result] = await applyOps(db, [
+      op({ ...entry(clientId), payload: { ...entry(clientId).payload, tags: tooMany } }),
+    ]);
+
+    expect(result.status).toBe("rejected");
+  });
+
+  it("writes tags on a task", async () => {
+    const clientId = uuid(918);
+    const [result] = await applyOps(db, [
+      op({
+        entity: "task",
+        clientId,
+        payload: { clientId, title: "email the coach", tags: ["athletics"] },
+      }),
+    ]);
+
+    expect(result.status).toBe("applied");
+    const [row] = await db.select().from(tasks);
+    expect(row.tags).toEqual(["athletics"]);
+  });
 });
 
 describe("natural-key entities", () => {

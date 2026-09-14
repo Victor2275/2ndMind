@@ -52,6 +52,10 @@ export const PAYLOADS = {
     note: z.string().max(20_000).default(""),
     data: z.record(z.string(), z.unknown()).default({}),
     searchText: z.string().max(40_000).default(""),
+    // V4 Phase 3, §2.3. Same cap shape as `exercises.aliases`/`muscles` below: bounded so an
+    // op stays one small row on the wire, not because 20 is a considered ceiling on how many
+    // tags a thought could ever need.
+    tags: z.array(z.string().max(40)).max(20).default([]),
   }),
   task: z.object({
     clientId: z.uuid(),
@@ -62,6 +66,7 @@ export const PAYLOADS = {
     dueAt: isoDate.nullable().default(null),
     doneAt: isoDate.nullable().default(null),
     notes: z.string().max(20_000).default(""),
+    tags: z.array(z.string().max(40)).max(20).default([]),
   }),
   bodyweight: z.object({
     measuredOn: z.iso.date(),

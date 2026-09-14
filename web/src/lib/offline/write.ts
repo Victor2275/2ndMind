@@ -1,5 +1,6 @@
 import { searchTextFor, UNSORTED_CATEGORY, writableCategoryByKey } from "@/lib/log/categories";
 import { readField, readRows, takeBodyweight } from "@/lib/log/form";
+import { readTags } from "@/lib/log/tags";
 import { HlcClock } from "@/lib/sync/hlc";
 import { deviceId, enqueue, loadClock, openSyncDb, saveClock } from "@/lib/sync/store";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -48,9 +49,17 @@ export function localLogWriter(onWritten?: () => void): LocalWrite {
     const rows = category.rows ? readRows(formData, category.rows) : [];
     if (category.rows && rows.length > 0) data[category.rows.name] = rows;
 
+    const tags = readTags(formData);
+
     const { weight, problem } = takeBodyweight(data);
 
-    if (Object.keys(data).length === 0 && note === "" && weight === null && problem === null) {
+    if (
+      Object.keys(data).length === 0 &&
+      note === "" &&
+      tags.length === 0 &&
+      weight === null &&
+      problem === null
+    ) {
       return { ok: false, message: "Nothing to log — fill in a field or write a note." };
     }
 
@@ -72,7 +81,7 @@ export function localLogWriter(onWritten?: () => void): LocalWrite {
          */
         const clock = new HlcClock(await deviceId(db), Date.now, await loadClock(db));
 
-        const wrote = Object.keys(data).length > 0 || note !== "";
+        const wrote = Object.keys(data).length > 0 || note !== "" || tags.length > 0;
         if (wrote) {
           await enqueue(db, {
             entity: "log_entry",
@@ -84,6 +93,7 @@ export function localLogWriter(onWritten?: () => void): LocalWrite {
               note,
               data,
               searchText: searchTextFor(key, data, note),
+              tags,
             },
             hlc: clock.tick(),
           });
