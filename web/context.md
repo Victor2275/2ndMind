@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-12
+updated: 2026-09-13
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -232,15 +232,17 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,755 tests across 120 files** as of
-2026-09-12, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,805 tests across 121 files** as of
+2026-09-13, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
 2++, then "1,644 across 110" until self-serve enrolment and the cover letter generator added
-their own. The suite more than doubled during V3 and the floor was never re-stated, so for a
-week the number that is supposed to catch a regression would have accepted losing half the
-suite. Re-state it whenever it moves.)
+their own, then "1,755 across 120" until V4 Phase 3 added tag tests to `log.db.test.ts`,
+`tasks/queries.db.test.ts`, and `apply.db.test.ts`, plus a new `tag-input.test.tsx`. The suite
+more than doubled during V3 and the floor was never re-stated, so for a week the number that is
+supposed to catch a regression would have accepted losing half the suite. Re-state it whenever
+it moves.)
 
 ### Two end-to-end suites, and they stage opposite failures
 
@@ -316,12 +318,18 @@ committed under `drizzle/` and applied with `npm run db:migrate`:
   the phone since V4 Phase 2**: a session and all its sets travel as one aggregate op and the
   server assigns the foreign key (`SYNC_DESIGN.md` §4a, D-211).
 - `exercises` — the movement catalogue behind the session form (D-213).
-- `tasks` — one model for everything actionable (D-037).
+- `tasks` — one model for everything actionable (D-037). Carries a `tags: text[]` column since
+  V4 Phase 3 (D-248) — free tags, filtered with `@>` in `listTasks`, suggested from
+  `allTaskTags`.
 - `log_entries` — structured daily logging, per-category fields in JSONB. The form's
   shortcuts are declared per field in `lib/log/categories.ts` and nowhere else: `sticky`,
   `chips`, `carries`, `keypad`, `clipboard` (D-155). One rule is load-bearing —
   **`sticky` is for context, never for a measurement.** A category may also declare `rows`,
-  a repeated group; Training uses it for sets (D-159).
+  a repeated group; Training uses it for sets (D-159). Also carries `tags: text[]` (V4 Phase 3,
+  D-248) — the answer to "a recipe I want to try has nowhere to go" (§2.3): free tags, not a new
+  category, filtered with `@>` in `listEntries` and suggested from `allTags`. `fileEntry` and the
+  new `tagEntry` (`lib/log/queries.ts`) can attach tags without touching the one-way-door guard
+  on `category`.
 - `bodyweight_entries` / `rehab_completions` — feature 5 (D-058, D-059).
 - `ai_summaries` — daily and weekly summaries, kept after they are shown (D-124). Fallback
   text is never stored: "nothing logged yet" is indistinguishable, months on, from a day when
@@ -402,6 +410,13 @@ the tab row renders and `CATEGORIES` is everything writable. Notes are captured 
 above the tabs and wait in the unsorted pile until filed. `fileEntry` only ever moves a row *out*
 of that pile — the log has no edit path anywhere else, and that guard is what stops a mistyped id
 silently recategorising a real entry.
+
+**Filing gained a second, additive door: tagging** (V4 Phase 3, D-248). `fileEntry` now takes an
+optional `tags` argument, so the same sheet that files a note into a category can tag it in one
+call — but `tagEntry` is the one that answers §2.3's actual complaint, because it works with *no*
+category change at all: a note can stay in the unsorted pile and still be found by `#recipe`. The
+one-way-door guard is untouched either way — it was always about `category`, and neither function
+gives a caller a new way to move a row *into* the unsorted pile or recategorise a filed one.
 
 Rules that hold the athletics side together, each with a decision entry:
 

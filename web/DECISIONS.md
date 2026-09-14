@@ -17,6 +17,74 @@ useful part.
 
 ---
 
+## 2026-09-13 · V4 Phase 3 — free tags on log entries and tasks
+
+### D-248 · Tags are a `text[]` column on `logEntries`/`tasks`, not a new sync entity or a join table
+
+**Decision.** `tags` is added directly to `logEntries` and `tasks` in `schema.ts` — same shape
+as `exercises.aliases`/`muscles`: a plain Postgres array, read whole, never queried across rows
+on its own (a tag filter uses `@>`, not a join). `log_entry` and `task` are already writable
+`ENTITIES`; no new entry was added to `ENTITIES`/`WRITABLE` in `sync/entities.ts`. `tags` was
+added to `PAYLOADS.log_entry`/`PAYLOADS.task` in `protocol.ts` and to `WRITERS.log_entry.columns`/
+`WRITERS.task.columns` in `apply.ts`; `pullChanges` already selects `*` for both tables, so the
+new column reaches the phone with no change there.
+
+**Why.** V4_PLAN.md §2.3 is explicit: "one column, one input, one filter — and it never needs
+code again to hold a new kind of thing." A join table or a new entity would have been the
+opposite of that — real relational machinery (aggregate ops, atomic transactions) for something
+that is, structurally, just another field on a row that already syncs. The aggregate-op pattern
+(`SYNC_DESIGN.md` §4a) exists for genuinely parent-child data — a session and its sets, a
+routine and its lines — where a child cannot exist before its parent's server-assigned id. A tag
+list has no such problem: it lives on the row it describes and travels with it in the same op.
+
+**How to reverse.** Drop the `tags` column from both tables (a migration), remove `tags` from
+`PAYLOADS.log_entry`/`task` and `WRITERS.log_entry.columns`/`task.columns`, delete
+`lib/log/tags.ts`, and remove `TagInput` from `LogForm`, `TaskList`, and the unsorted-pile row.
+Nothing else in sync changes — there was never a second entity to unregister.
+
+### D-249 · The tag vocabulary is shared in meaning, kept in two queries
+
+**Decision.** `allTags` (in `lib/log/queries.ts`) and `allTaskTags` (in `lib/tasks/queries.ts`)
+are two separate functions, each `unnest`-ing its own table's `tags` column, sorted by frequency
+then alphabetically. There is no shared `tags` table and no single query spanning both — the UI
+(`LogConsole`, `TaskList` on the Today page) calls whichever function matches the form it is
+feeding, and a caller that wants one combined suggestion list concatenates the two results
+itself. Normalisation (`normalizeTag`/`normalizeTags` in `lib/log/tags.ts`) is shared: `#reading`
+on a note and `#reading` on a task are the same string after normalisation, so the vocabulary
+converges even though the storage does not.
+
+**Why.** `lib/log/queries.ts` and `lib/tasks/queries.ts` do not import each other today, and nothing
+about tags required changing that. A real shared table would have meant either a join (the thing
+§2.3 explicitly avoided) or a third table just to hold tag strings, which is exactly the kind of
+new machinery a "one column" feature should not need. Frequency order, not alphabetical: the tags
+worth suggesting are the ones already reused, and frequency surfaces "reading" before a one-off
+typo, which an alphabetical list gives equal billing.
+
+**How to reverse.** If a single cross-table vocabulary turns out to matter (e.g. once tag volume
+is high enough that two separate autocomplete lists feel wrong), add one `SELECT ... UNION ...`
+query in a shared module, or introduce a `tag_stats` materialised view. Nothing about the column
+choice (D-248) needs to change either way.
+
+### D-250 · Tag caps: 20 tags per row, 40 characters per tag
+
+**Decision.** `PAYLOADS.log_entry.tags` and `PAYLOADS.task.tags` are
+`z.array(z.string().max(40)).max(20)`; `lib/log/tags.ts`'s `normalizeTags`/`normalizeTag` enforce
+the same caps client- and server-side, silently dropping anything past the limit rather than
+rejecting the whole write.
+
+**Why.** Mirrors `exercises.aliases` (20 items, 100 chars each) and `exercises.muscles`/
+`primaryMuscles` (12/6 items, 40 chars each) — the existing precedent for "bounded so one op
+stays one small row on the wire," not a considered ceiling on how many tags a thought could ever
+need. 40 characters fits a real short phrase ("weekend project") with room to spare; 20 tags is
+far more than one entry has ever needed in practice, and the cap exists so a client bug cannot
+turn one row into an unbounded array on the wire.
+
+**How to reverse.** Raise the two numbers in `protocol.ts` and `lib/log/tags.ts`'s `MAX_TAGS`/
+`MAX_TAG_LENGTH` together — they have to move in step, or the server will reject a payload the
+client happily built.
+
+---
+
 ## 2026-09-13 · Resume PDF refreshed, one download button, and the 2ndMind card stops showing `/now`
 
 ### D-245 · The resume page has one download action, not two

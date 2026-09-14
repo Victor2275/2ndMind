@@ -1,8 +1,8 @@
 ---
-updated: 2026-09-10
+updated: 2026-09-13
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2, 2+ and 2++ done (Milestones A and B); 4.4 and §2.13 done; Phase 3 is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 316 points. Phases 0, 1, N, 2, 2+, 2++ and 3 done (Milestones A and B); 4.4 and §2.13 done; Phase 4 is next.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **293 done.** |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL.<br>Next: **Phase 3**, tags. N9 still parked. |
+| **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **356 done** — §4 has the authoritative table. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags.<br>Next: **Phase 4**, the private shell. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -605,19 +605,28 @@ from the catalogue. D-226 — that a careful hand could reach reference fidelity
 
 ---
 
-### Phase 3 · Tags — **12 pts** **[FEATURE]**
+### Phase 3 · Tags — **12 pts** **[FEATURE]** — ✅ **done 2026-09-13**
 
 The answer to Q3. Small, and it fixes the complaint you led with.
 
-| #   | Item                                                                                                                                      | Pts |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------- | --: |
-| 3.1 | Tags on log entries, notes and tasks. One migration                                                                                       |   3 |
-| 3.2 | Tag input with existing-tag suggestions; tags render as tokens, matching the chip language (Q255)                                         |   3 |
-| 3.3 | **Filing from the unsorted pile becomes tagging** — swipe right, choose from a sheet (Q396), no longer limited to the fixed category list |   3 |
-| 3.4 | Browse and filter by tag                                                                                                                  |   2 |
-| 3.5 | Sync entity registration + tests                                                                                                          |   1 |
+| #   | Item                                                                                                                                      | Pts | Result |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- | --: | ------ |
+| 3.1 | Tags on log entries, notes and tasks. One migration                                                                                       |   3 | ✅ `tags: text[]` on both `logEntries` and `tasks` (D-248), `drizzle/0013_tags.sql`. "Notes" needed nothing separate — a note is `log_entries` with `category = "note"` |
+| 3.2 | Tag input with existing-tag suggestions; tags render as tokens, matching the chip language (Q255)                                         |   3 | ✅ `components/site/tag-input.tsx` — same pill shape as `ChipRow`'s recent-value chips in `log-form.tsx`, one hidden `<input name="tags">` per committed tag, a `<datalist>` for suggestions |
+| 3.3 | **Filing from the unsorted pile becomes tagging** — swipe right, choose from a sheet (Q396), no longer limited to the fixed category list |   3 | ✅ Two doors, not one: `fileEntry` gained an optional `tags` argument (files *and* tags in one call), and a new `tagEntry`/`tagLogEntry` tags with **no category change at all** — the actual fix for "fits none of the five tabs," since it needs no category to be chosen at all. Both are additive; D-164's one-way-door guard on `category` is untouched |
+| 3.4 | Browse and filter by tag                                                                                                                  |   2 | ✅ `?tag=` on `/private/log` (mirrors `?q=` search), a tag browser listing every distinct tag, tag chips on log entries and tasks linking into it. `listEntries`/`listTasks` take a `tag` option (`@>` on the array column) |
+| 3.5 | Sync entity registration + tests                                                                                                          |   1 | ✅ **No entity registered — there wasn't one to add.** `log_entry`/`task` are already writable; `tags` went on their existing `PAYLOADS`/`WRITERS` entries in `protocol.ts`/`apply.ts` (D-248). 50 new tests |
 
-**Ends with:** a recipe you want to try has somewhere to go without a commit.
+**Two things worth reading twice.** First, §3.3 as scoped described one door (filing gains a
+tag option); building it surfaced that the *other* door — tagging with no filing at all — is
+what actually answers Q3, since "a recipe I want to try" has nowhere to go precisely because
+every existing path demands a category first. Second, the vocabulary is intentionally **not**
+one shared table: `allTags` and `allTaskTags` are two separate `unnest` queries because
+`lib/log/queries.ts` and `lib/tasks/queries.ts` do not import each other, and normalising tag
+text the same way (`lib/log/tags.ts`) buys the convergence a shared table would, for a tenth
+the machinery (D-249).
+
+**Ends with:** a recipe you want to try has somewhere to go without a commit. ✅
 
 ---
 
@@ -729,8 +738,8 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 2.12  | Four bugs Victor found — one older than Phase 2      |      13 | ✅ done                |
 | 2++   | **Training, properly** — the figure, the audit, the browser, the logger, routines, the dashboard | **119** | ✅ done |
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
-| 3     | Tags                                                |      12 | **[FEATURE]** · next   |
-| 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done        |
+| 3     | Tags                                                |      12 | ✅ done **[FEATURE]**  |
+| 4     | The private shell — sidebar, settings, tab bar      |      28 | part · 4.4 done · next |
 | 5     | The private screens                                 |      50 | part · 5.6 absorbed    |
 | 6     | Brand and the public site                           |      36 | ✅ done · Milestone D  |
 | 7     | Gates, performance, review                          |      22 | part · 7.2 done        |
@@ -744,8 +753,8 @@ on first use, §2.13 is the three he found next, and **Phase 2++ is what he aske
 the thing §2.12 fixed** — which is not scope creep either, it is the difference between a
 mechanism and a product becoming visible.
 
-**344 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, 4.4, 5.6, 6 and 7.2). **110 remain,
-97 of them unparked.**
+**356 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, 3, 4.4, 5.6, 6 and 7.2). **98 remain,
+85 of them unparked** (N9's 13 points are still parked, §7 R5).
 
 **The arithmetic was wrong in four places until 2026-09-10**, and is recorded here rather than
 quietly fixed: the total was stated as 316 in the frontmatter, 454 in §0 and 443 in this table
@@ -776,7 +785,7 @@ Unchanged by V4 and easy to break while redesigning:
 4. **`/cached` stays static and holds no server data.** Making it dynamic silently kills offline.
 5. **The print stylesheet is frozen** (Q123, Q355). The resume page-count gate stays (Q468).
 6. **`local-lock.tsx` is built and unmounted** (D-158). Do not delete it while tidying.
-7. **1,452 tests is a floor, not a target** (Q470). It was recorded as 582 until Phase 0 re-measured it, 1,240 until Phase 1, and 1,409 until Phase N — re-state the number whenever it moves, or the floor stops being one.
+7. **1,805 tests is a floor, not a target** (Q470). It was recorded as 582 until Phase 0 re-measured it, 1,240 until Phase 1, 1,409 until Phase N, and 1,755 until Phase 3 added tag tests — re-state the number whenever it moves, or the floor stops being one.
 8. **Every decision gets a `DECISIONS.md` entry**, continuing from D-190 (Q477, Q478).
 9. **Lands on main, screen by screen** (Q25, Q479). Inconsistency is acceptable on private only (Q26).
 10. **Colour never signals alone** (Q72).
@@ -814,7 +823,7 @@ About page leads with a claim instead of an enrolment fact, the resume page offe
 primary action, and four case studies now show how the thing works rather than what it looked
 like. The remaining gap is content, not code — see D-230.
 
-**R2 · The budget is out by ~310 points.** You said 120–140; the total is **454** and **344 is
+**R2 · The budget is out by ~310 points.** You said 120–140; the total is **454** and **356 is
 done** — it was 241 until Phase N was inserted on 2026-09-08, and the four separate arithmetics
 this section used to disagree with are reconciled in §4. Not a padding problem: it is Phase 2 (45) plus Phase 3 (12)
 plus the settings screen plus Phase N (45), none of which were UI work when you set the number,
@@ -889,7 +898,7 @@ Small, and none of it blocks Phase 1 or Phase N.
    Ten minutes, and it is the number V4 §1.4's redesign gets held to.
 6. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
    run, nothing else.
-7. **R2 — which reading of the budget?** The total is **454** and **344 is done**, so the question
-   has narrowed to the 97 unparked points left: Phase 3 (12), the rest of Phase 4 (22), the rest
+7. **R2 — which reading of the budget?** The total is **454** and **356 is done**, so the question
+   has narrowed to the 85 unparked points left: the rest of Phase 4 (22), the rest
    of Phase 5 (44), and the rest of Phase 7 (19). "Stop after Phase 5 with the portfolio
    untouched" is no longer one of the readings — the portfolio is finished.
