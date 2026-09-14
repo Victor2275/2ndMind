@@ -20,6 +20,7 @@ const toView = (task: Task): TaskView => ({
   courseCode: task.courseCode,
   dueAt: task.dueAt ? task.dueAt.toISOString() : null,
   done: task.doneAt !== null,
+  tags: task.tags,
 });
 
 /**

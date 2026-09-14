@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
+import { TagInput } from "@/components/site/tag-input";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -23,6 +24,7 @@ export type TaskView = {
   courseCode: string | null;
   dueAt: string | null;
   done: boolean;
+  tags: string[];
 };
 
 /** Days until due. Negative is overdue. Both sides floored to UTC midnight. */
@@ -131,6 +133,25 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
           </span>
         )}
 
+        {/*
+          Free tags (V4 Phase 3, §3.4) — shown, not linked.
+
+          The log page has a real `?tag=` browse (`listEntries`'s tag filter), because Today is
+          explicitly fold-sensitive (D-083, D-132, D-182 all measured the first task's pixel
+          position) and is not the screen to add a new filtered view to for one field. `#tag`
+          here is a label a task carries, findable if you already know what you are looking
+          for; a tappable filter for tasks specifically is future work, not this phase's.
+        */}
+        {task.tags.length > 0 && (
+          <span className="hidden shrink-0 items-center gap-1 sm:flex">
+            {task.tags.map((t) => (
+              <span key={t} className="font-mono text-[0.6rem] text-muted-foreground">
+                #{t}
+              </span>
+            ))}
+          </span>
+        )}
+
         <form action={remove} className="shrink-0">
           <input type="hidden" name="id" value={task.id} />
           <button
@@ -167,6 +188,7 @@ export function TaskList({
   emptyMessage,
   showAdd = true,
   firstAction = false,
+  tagSuggestions = [],
 }: {
   tasks: TaskView[];
   emptyMessage: string;
@@ -180,6 +202,8 @@ export function TaskList({
    * first in the document, which changed the moment anything was added above it (D-182).
    */
   firstAction?: boolean;
+  /** The distinct-tags vocabulary, for `TagInput`'s autocomplete (V4 Phase 3, §3.2). */
+  tagSuggestions?: readonly string[];
 }) {
   const [addState, add] = useActionState<ActionState | null, FormData>(addTask, null);
   const [, undo] = useActionState<ActionState | null, FormData>(undoTask, null);
@@ -222,20 +246,23 @@ export function TaskList({
       )}
 
       {showAdd && (
-        <form action={add} className="mt-3 flex flex-wrap items-center gap-2">
-          <input
-            name="title"
-            required
-            placeholder="Add a task"
-            className="min-w-0 flex-1 rounded-md border border-border bg-card/60 px-3 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
-          />
-          <input
-            type="date"
-            name="dueAt"
-            aria-label="Due date"
-            className="shrink-0 rounded-md border border-border bg-card/60 px-2 py-1.5 font-mono text-xs text-muted-foreground focus:border-primary/60 focus:outline-none"
-          />
-          <AddButton />
+        <form action={add} className="mt-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              name="title"
+              required
+              placeholder="Add a task"
+              className="min-w-0 flex-1 rounded-md border border-border bg-card/60 px-3 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none"
+            />
+            <input
+              type="date"
+              name="dueAt"
+              aria-label="Due date"
+              className="shrink-0 rounded-md border border-border bg-card/60 px-2 py-1.5 font-mono text-xs text-muted-foreground focus:border-primary/60 focus:outline-none"
+            />
+            <AddButton />
+          </div>
+          <TagInput suggestions={tagSuggestions} />
         </form>
       )}
 

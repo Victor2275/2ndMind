@@ -34,6 +34,7 @@ vi.mock("@/app/private/log/actions", () => ({
     filed = data;
     return file(prev, data);
   },
+  tagLogEntry: vi.fn(async () => ({ ok: true, message: "Tagged." })),
 }));
 
 const { LogConsole } = await import("../log-console");
@@ -44,6 +45,7 @@ const note = (id: number, text: string): EntryView => ({
   occurredAt: "2026-09-05T18:00:00.000Z",
   note: text,
   data: {},
+  tags: [],
 });
 
 beforeEach(() => {

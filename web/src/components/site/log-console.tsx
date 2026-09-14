@@ -2,10 +2,11 @@
 
 import { useActionState, useEffect, useState } from "react";
 
-import { fileLogEntry, removeLogEntry, undoLogEntry } from "@/app/private/log/actions";
+import { fileLogEntry, removeLogEntry, tagLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
 import { LogForm } from "@/components/site/log-form";
 import { QuickCapture } from "@/components/site/quick-capture";
+import { TagInput } from "@/components/site/tag-input";
 import { categoryByKey, summarise, TAB_CATEGORIES } from "@/lib/log/categories";
 import type { ChipSets } from "@/lib/log/chips";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -24,6 +25,7 @@ export type EntryView = {
   occurredAt: string;
   note: string;
   data: Record<string, unknown>;
+  tags: string[];
 };
 
 const TIME = new Intl.DateTimeFormat("en-US", {
@@ -71,7 +73,22 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
         <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
           {category?.label ?? entry.category}
         </span>
-        <span className="min-w-0 flex-1 text-sm text-foreground">{line}</span>
+        <span className="min-w-0 flex-1 text-sm text-foreground">
+          {line}
+          {entry.tags.length > 0 && (
+            <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
+              {entry.tags.map((t) => (
+                <a
+                  key={t}
+                  href={`/private/log?tag=${encodeURIComponent(t)}`}
+                  className="font-mono text-[0.6rem] text-muted-foreground hover:text-primary"
+                >
+                  #{t}
+                </a>
+              ))}
+            </span>
+          )}
+        </span>
 
         <form action={remove} className="shrink-0">
           <input type="hidden" name="id" value={entry.id} />
@@ -91,19 +108,33 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
 }
 
 /**
- * One captured note, and the categories it can be filed into (D-164).
+ * One captured note, and the ways it can be organised (D-164, V4 Phase 3 §3.3).
  *
- * A row of one-tap targets rather than a dropdown: filing is meant to cost less than writing
- * the thing did, and a select on a phone is a modal wheel. Filing keeps the text and moves the
- * category, so a note becomes an ordinary entry in the timeline.
+ * A row of one-tap category buttons rather than a dropdown: filing is meant to cost less than
+ * writing the thing did, and a select on a phone is a modal wheel. Filing keeps the text and
+ * moves the category, so a note becomes an ordinary entry in the timeline.
+ *
+ * **Tags are the second, additive way in.** §2.3's whole complaint was that filing was the
+ * *only* way to organise a note, and it only reaches five fixed categories — "a recipe I want
+ * to try" fits none of them. `TagInput` sits beside the category row rather than replacing it:
+ * tapping a category still files (moving the row out of this pile), and typing a tag still
+ * tags without filing (`tagLogEntry` — the entry stays right here, findable by tag instead).
+ * They can be combined in the same visit, but neither requires the other.
  *
  * **It does not open the form to add fields.** The log has no edit path anywhere — a mistake is
  * deleted and re-logged — and inventing one here would be a second way to change a stored entry
  * with different rules from the first. If a note needs numbers on it, delete it and log it
  * properly; the pile exists so the thought survives until then, not to become an editor.
  */
-function UnsortedRow({ entry }: { entry: EntryView }) {
+function UnsortedRow({
+  entry,
+  tagSuggestions,
+}: {
+  entry: EntryView;
+  tagSuggestions: readonly string[];
+}) {
   const [state, file] = useActionState<ActionState | null, FormData>(fileLogEntry, null);
+  const [tagState, tag] = useActionState<ActionState | null, FormData>(tagLogEntry, null);
 
   return (
     <li className="px-4 py-3">
@@ -127,6 +158,24 @@ function UnsortedRow({ entry }: { entry: EntryView }) {
 
         {state && !state.ok && <span className="text-xs text-destructive">{state.message}</span>}
       </div>
+
+      <form action={tag} className="mt-2 flex items-end gap-2">
+        <input type="hidden" name="id" value={entry.id} />
+        <div className="min-w-0 flex-1 rounded-md border border-border bg-background/40 px-2 py-1">
+          <TagInput label="Tag without filing" suggestions={tagSuggestions} />
+        </div>
+        <button
+          type="submit"
+          className="min-h-8 shrink-0 rounded-md border border-border px-2.5 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        >
+          Tag
+        </button>
+      </form>
+      {tagState && (
+        <p className={`mt-1 text-xs ${tagState.ok ? "text-primary" : "text-destructive"}`}>
+          {tagState.message}
+        </p>
+      )}
     </li>
   );
 }
@@ -138,7 +187,13 @@ function UnsortedRow({ entry }: { entry: EntryView }) {
  * cost — it is another list that can silently fill up — so it earns its place by disappearing
  * completely the moment it is empty, and by never nagging when it is not.
  */
-function Unsorted({ entries }: { entries: EntryView[] }) {
+function Unsorted({
+  entries,
+  tagSuggestions,
+}: {
+  entries: EntryView[];
+  tagSuggestions: readonly string[];
+}) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -149,7 +204,7 @@ function Unsorted({ entries }: { entries: EntryView[] }) {
       </div>
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
         {entries.map((entry) => (
-          <UnsortedRow key={entry.id} entry={entry} />
+          <UnsortedRow key={entry.id} entry={entry} tagSuggestions={tagSuggestions} />
         ))}
       </ul>
     </div>
@@ -161,6 +216,7 @@ export function LogConsole({
   unsorted = [],
   loggedToday,
   chips = {},
+  tagSuggestions = [],
   initialCategory,
 }: {
   entries: EntryView[];
@@ -169,6 +225,8 @@ export function LogConsole({
   loggedToday: string[];
   /** Recent values per category, for the one-tap chips (§1.6, D-155). */
   chips?: Record<string, ChipSets>;
+  /** The distinct-tags vocabulary, for `TagInput`'s autocomplete (V4 Phase 3, §3.2). */
+  tagSuggestions?: readonly string[];
   /** Which tab to open on, from `?category=` — already validated by the page (§3.5). */
   initialCategory?: string;
 }) {
@@ -190,7 +248,7 @@ export function LogConsole({
       {/* The action this page exists for, and what the fold gate measures here (§3.2). */}
       <QuickCapture firstAction />
 
-      {unsorted.length > 0 && <Unsorted entries={unsorted} />}
+      {unsorted.length > 0 && <Unsorted entries={unsorted} tagSuggestions={tagSuggestions} />}
 
       <div>
         {/*
@@ -232,7 +290,7 @@ export function LogConsole({
       </div>
 
       <div className="rounded-xl border border-border bg-card/60 p-5">
-        <LogForm category={category} chips={chips[category.key]} />
+        <LogForm category={category} chips={chips[category.key]} tagSuggestions={tagSuggestions} />
       </div>
 
       {/* The daily prompt: quiet, and only names what is actually missing. */}

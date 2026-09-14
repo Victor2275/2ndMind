@@ -11,8 +11,10 @@ import type { LogEntry } from "@/lib/db/schema";
 import { categoryByKey, summarise, TAB_CATEGORIES, UNSORTED_CATEGORY } from "@/lib/log/categories";
 import { allChipSets } from "@/lib/log/chips";
 import {
+  allTags,
   categoriesLoggedBetween,
   entriesBetween,
+  listEntries,
   recentForChips,
   searchEntries,
   unsortedEntries,
@@ -34,6 +36,7 @@ function toView(entry: LogEntry): EntryView {
     occurredAt: entry.occurredAt.toISOString(),
     note: entry.note,
     data: entry.data,
+    tags: entry.tags,
   };
 }
 
@@ -60,9 +63,10 @@ async function Console({ initialCategory }: { initialCategory?: string }) {
   let logged: string[];
   let recent: { category: string; data: Record<string, unknown> }[];
   let unsorted: LogEntry[];
+  let tags: string[];
   try {
     const handle = db();
-    [today, logged, recent, unsorted] = await Promise.all([
+    [today, logged, recent, unsorted, tags] = await Promise.all([
       entriesBetween(handle, start, end),
       categoriesLoggedBetween(handle, start, end),
       // Recent values for the one-tap chips (§1.6, D-155). In parallel with the other two,
@@ -71,6 +75,8 @@ async function Console({ initialCategory }: { initialCategory?: string }) {
       // Captured and not yet filed (D-164). Not limited to today: an unfiled note from last
       // week is exactly the one worth surfacing.
       unsortedEntries(handle),
+      // The distinct-tags vocabulary, for `TagInput`'s autocomplete (§3.2).
+      allTags(handle),
     ]);
   } catch (error) {
     return (
@@ -92,6 +98,7 @@ async function Console({ initialCategory }: { initialCategory?: string }) {
       unsorted={unsorted.map(toView)}
       loggedToday={logged}
       chips={allChipSets(recent)}
+      tagSuggestions={tags}
       initialCategory={initialCategory}
     />
   );
@@ -139,9 +146,93 @@ async function Results({ query }: { query: string }) {
   );
 }
 
+/**
+ * Everything tagged `#tag`, across all history (V4 Phase 3, §3.4).
+ *
+ * A separate view from `Console`'s "Today", the same way `Results` is separate from it: a tag
+ * browse is a question about the whole log, not about today, and squeezing it into the daily
+ * list would either limit it to today (useless — the point of a tag is finding something from
+ * weeks ago) or make "Today" secretly mean something else depending on the URL.
+ */
+async function TagResults({ tag }: { tag: string }) {
+  if (!isDatabaseConfigured()) return null;
+
+  let hits: LogEntry[] = [];
+  try {
+    hits = await listEntries(db(), { tag, limit: 100 });
+  } catch {
+    return null;
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="mb-3 text-xs text-muted-foreground">
+        {hits.length} {hits.length === 1 ? "entry" : "entries"} tagged{" "}
+        <span className="text-foreground">#{tag}</span>
+      </p>
+
+      {hits.length > 0 ? (
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
+          {hits.map((entry) => (
+            <li key={entry.id} className="flex items-baseline gap-3 px-4 py-2.5">
+              <span className="tabular shrink-0 font-mono text-[0.6rem] text-muted-foreground">
+                {DAY.format(entry.occurredAt)}
+              </span>
+              <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+                {categoryByKey(entry.category)?.label ?? entry.category}
+              </span>
+              <span className="min-w-0 flex-1 text-sm text-foreground">
+                {summarise(entry.category, entry.data, entry.note)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          Nothing tagged #{tag}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Every tag in use, as tap targets into `TagResults` (§3.4). Hidden entirely once nothing has
+ *  ever been tagged, the same "earns its place by disappearing" rule `Unsorted` follows. */
+async function TagBrowser() {
+  if (!isDatabaseConfigured()) return null;
+
+  let tags: string[] = [];
+  try {
+    tags = await allTags(db());
+  } catch {
+    return null;
+  }
+  if (tags.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-2 text-base font-semibold tracking-tight">Tags</h2>
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <Link
+            key={tag}
+            href={`/private/log?tag=${encodeURIComponent(tag)}`}
+            className="min-h-8 rounded-full border border-border bg-card/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          >
+            #{tag}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default async function LogPage({ searchParams }: PageProps<"/private/log">) {
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
+  // `?tag=` browses every entry with one tag (§3.4) — a link target from `TagBrowser` and from
+  // any tag chip elsewhere, not a control this page renders itself.
+  const tag = typeof params.tag === "string" ? params.tag.trim() : "";
 
   /**
    * `?category=training` opens the form on that category (§3.5, D-178).
@@ -158,9 +249,9 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
     <main className="pb-16">
       <PageHeader
         eyebrow="Log"
-        title={query ? "Search" : "Log"}
+        title={query ? "Search" : tag ? "Tagged" : "Log"}
         lede={
-          query
+          query || tag
             ? undefined
             : "One tab per kind of thing, each with its own fields. Saves immediately — no commit, no deploy."
         }
@@ -189,6 +280,24 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
             }
           >
             <Results query={query} />
+          </Suspense>
+          <Link
+            href="/private/log"
+            className="mt-4 inline-block font-mono text-xs text-primary hover:underline"
+          >
+            ← back to logging
+          </Link>
+        </>
+      ) : tag ? (
+        <>
+          <Suspense
+            fallback={
+              <div className="mt-4">
+                <SkeletonPanel rows={4} title={false} />
+              </div>
+            }
+          >
+            <TagResults tag={tag} />
           </Suspense>
           <Link
             href="/private/log"
@@ -226,6 +335,10 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
               <Console initialCategory={initialCategory} />
             </Suspense>
           </div>
+
+          <Suspense fallback={null}>
+            <TagBrowser />
+          </Suspense>
         </>
       )}
     </main>

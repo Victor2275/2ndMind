@@ -18,6 +18,7 @@ import type { Task } from "@/lib/db/schema";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { GOAL_DOMAINS } from "@/lib/sprint-goals";
 import {
+  allTaskTags,
   currentGoals,
   dayBounds,
   listDoneBetween,
@@ -62,6 +63,7 @@ function toView(task: Task): TaskView {
     courseCode: task.courseCode,
     dueAt: task.dueAt ? task.dueAt.toISOString() : null,
     done: task.doneAt !== null,
+    tags: task.tags,
   };
 }
 
@@ -72,6 +74,7 @@ type Loaded = {
   doneToday: Task[];
   inbox: Task[];
   overdue: number;
+  tags: string[];
   failure: string | null;
 };
 
@@ -83,6 +86,7 @@ async function load(): Promise<Loaded> {
     doneToday: [],
     inbox: [],
     overdue: 0,
+    tags: [],
     failure: null,
   };
 
@@ -95,12 +99,14 @@ async function load(): Promise<Loaded> {
 
   try {
     const handle = db();
-    const [due, goals, backlog, doneToday, inbox] = await Promise.all([
+    const [due, goals, backlog, doneToday, inbox, tags] = await Promise.all([
       listDueBy(handle, end),
       currentGoals(handle),
       listTasks(handle, { limit: 50 }),
       listDoneBetween(handle, start, end),
       listInbox(handle),
+      // The distinct-tags vocabulary, for `TagInput`'s autocomplete (V4 Phase 3, §3.2).
+      allTaskTags(handle),
     ]);
 
     return {
@@ -114,6 +120,7 @@ async function load(): Promise<Loaded> {
       doneToday,
       inbox,
       overdue: due.filter((t) => t.dueAt && t.dueAt < start).length,
+      tags,
       failure: null,
     };
   } catch (error) {
@@ -167,7 +174,7 @@ async function Broken() {
 }
 
 async function Tasks({ focusCapture }: { focusCapture: boolean }) {
-  const { due, goals, someday, doneToday, inbox, overdue, failure } = await load();
+  const { due, goals, someday, doneToday, inbox, overdue, tags, failure } = await load();
 
   const goalValues = Object.fromEntries(
     GOAL_DOMAINS.map((d) => [d.key, goals.find((g) => g.domain === d.key)?.title ?? ""]),
@@ -198,6 +205,7 @@ async function Tasks({ focusCapture }: { focusCapture: boolean }) {
             firstAction
             tasks={due.map(toView)}
             emptyMessage="Nothing due. Add something below, or enjoy it."
+            tagSuggestions={tags}
           />
         </Panel>
 

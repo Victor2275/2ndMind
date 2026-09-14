@@ -14,6 +14,7 @@ import { useFormStatus } from "react-dom";
 import { createLogEntry } from "@/app/private/log/actions";
 import { DictateButton } from "@/components/site/dictate-button";
 import { SlowSaveNotice } from "@/components/site/slow-save";
+import { TagInput } from "@/components/site/tag-input";
 import {
   keypadFor,
   rowFieldsFor,
@@ -450,10 +451,13 @@ function SaveButton({ label }: { label: string }) {
 export function LogForm({
   category,
   chips = {},
+  tagSuggestions = [],
   write = createLogEntry,
 }: {
   category: Category;
   chips?: ChipSets;
+  /** The distinct-tags vocabulary, for `TagInput`'s autocomplete (V4 Phase 3, §3.2). */
+  tagSuggestions?: readonly string[];
   /**
    * Where a submitted entry goes (V3 §2.2).
    *
@@ -620,6 +624,11 @@ export function LogForm({
       {/* Only where a sentence maps onto fields (§4.3). Training is the category with numbers
           worth dictating; a note is already one text box and a microphone on the keyboard. */}
       {category.key === "athletics" && <VoiceEntry onParsed={fillSpoken} />}
+
+      {/* Free tags, orthogonal to the category (V4 Phase 3, §2.3) — not declared per category
+          like `chips`/`sticky`, because every category can take them and a category-scoped
+          version would be the fixed-list problem tags exist to solve, one level down. */}
+      <TagInput suggestions={tagSuggestions} />
 
       <div>
         <div className="flex items-center justify-between gap-2">
