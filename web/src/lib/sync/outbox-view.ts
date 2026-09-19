@@ -2,6 +2,7 @@ import { summarise, type Category } from "@/lib/log/categories";
 import { categoryByKey } from "@/lib/log/categories";
 import type { Entity } from "@/lib/sync/entities";
 import type { OutboxOp } from "@/lib/sync/store";
+import { approximateAge, STALE_MS } from "@/lib/ui/staleness";
 
 /**
  * What the outbox looks like to a person (V3 §1.7).
@@ -16,8 +17,14 @@ import type { OutboxOp } from "@/lib/sync/store";
  * week is louder than one stuck for an hour rather than quieter.
  */
 
-/** Past this, a waiting entry stops being "syncing" and starts being a problem. */
-export const STALE_MS = 24 * 60 * 60 * 1000;
+/**
+ * Past this, a waiting entry stops being "syncing" and starts being a problem.
+ *
+ * Re-exported from `lib/ui/staleness.ts` rather than declared here (V4 §5.1). The "as of"
+ * badge draws its stale line at the same number, and two constants spelling one threshold is
+ * how a badge and the screen it links to come to disagree.
+ */
+export { STALE_MS };
 
 /** Past this, it is not a problem, it is a thing that is not going to fix itself. */
 export const VERY_STALE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -71,17 +78,14 @@ function badgeLabel(pending: number, failed: number, oldestMs: number | null): s
 }
 
 /**
- * An age a person reads without arithmetic. Rounded down and deliberately coarse — the
- * difference between 26 and 31 hours changes nothing anyone would do about it.
+ * An age a person reads without arithmetic.
+ *
+ * **Moved to `lib/ui/staleness.ts` in §5.1** and re-exported here so this module's callers are
+ * unchanged. It moved because the shared "as of" badge needs it and this file imports
+ * `lib/log/categories` — a badge on the academics page should not pull the log's field
+ * definitions into its chunk to format "3h".
  */
-export function approximateAge(ms: number): string {
-  const minutes = Math.floor(ms / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 48) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
+export { approximateAge };
 
 /** What a stuck op is, said plainly. */
 export type OpView = {

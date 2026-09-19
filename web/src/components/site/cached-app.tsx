@@ -11,12 +11,12 @@ import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
 import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
 import { reportError } from "@/lib/errors/client";
-import { approximateAge } from "@/lib/sync/outbox-view";
+import { AsOf } from "@/components/site/states";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { localCaptureWriter, localLogWriter } from "@/lib/offline/write";
 import { readCachedView, searchCachedLog, type CachedView } from "@/lib/offline/read";
 import { queryFrom } from "@/lib/offline/search";
-import type { CachedEntry, CachedTask } from "@/lib/offline/panels";
+import { AGING_MS, STALE_MS, type CachedEntry, type CachedTask } from "@/lib/offline/panels";
 
 /**
  * The app with no signal (V3 §2.1).
@@ -226,7 +226,7 @@ export function CachedApp() {
 
   return (
     <div className="mt-6 space-y-4">
-      <AsOf view={view} />
+      <SnapshotAge view={view} />
 
       {/* The same capture box as the live page, writing into the outbox. It is above
           everything and on every view, because the thing most likely to be needed with no
@@ -280,8 +280,21 @@ function slugFrom(path: string): string {
  *
  * Above the panels rather than inside each one: it is one number for the whole snapshot, and
  * repeating it per panel would imply the panels could disagree.
+ *
+ * **The age itself is the shared `AsOf` badge** (§5.1, Q285/Q286), given this surface's own
+ * thresholds. It was a bare sentence — *"As of 4h ago."* — with the grade carried only by the
+ * panel's border colour, which is colour signalling alone (DESIGN.md §2 rule 1) and is the one
+ * screen in the app where the reader may be looking at it in daylight on a plane.
+ *
+ * The thresholds stay `panels.ts`'s 6h/48h rather than the outbox's 24h, and that difference is
+ * the reason `AsOf` takes them as arguments: this is judging a whole mirror of a database,
+ * which is fine for a morning and worrying after two days, not one queued write.
+ *
+ * Renamed from `AsOf` so the local panel and the shared badge are not two things under one
+ * name. The paragraph below the badge is what makes this a panel rather than a marker, and it
+ * is the part worth keeping local: it is offline-specific copy, not a general staleness idea.
  */
-function AsOf({ view }: { view: CachedView }) {
+function SnapshotAge({ view }: { view: CachedView }) {
   const { freshness } = view;
 
   const tone =
@@ -293,11 +306,11 @@ function AsOf({ view }: { view: CachedView }) {
 
   return (
     <div className={`rounded-lg border px-4 py-3 ${tone}`}>
-      <p className="text-sm text-foreground">
-        {freshness.level === "never"
-          ? "This device has never synced."
-          : `As of ${approximateAge(freshness.ageMs ?? 0)} ago.`}
-      </p>
+      {freshness.level === "never" || freshness.lastSyncAt === null ? (
+        <p className="text-sm text-foreground">This device has never synced.</p>
+      ) : (
+        <AsOf at={freshness.lastSyncAt} aging={AGING_MS} stale={STALE_MS} className="text-sm" />
+      )}
       <p className="mt-1 text-sm text-muted-foreground">
         {freshness.level === "stale"
           ? "That is old enough that things have almost certainly changed. Treat it as a record of what was, not of what is."

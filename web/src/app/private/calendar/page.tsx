@@ -1,4 +1,5 @@
 import { describeDbError } from "@/lib/db/describe";
+import { Unavailable } from "@/components/site/states";
 import { Suspense } from "react";
 
 import { Agenda, AgendaDayBlock } from "@/components/site/agenda";
@@ -120,7 +121,7 @@ async function Rules() {
   return (
     <Panel title="Operating rules" collapsible defaultOpen={false}>
       {failure ? (
-        <p className="text-sm text-muted-foreground">{failure}</p>
+        <Unavailable subject="Operating rules" detail={failure} />
       ) : rules ? (
         <Prose>{rules}</Prose>
       ) : (
@@ -146,7 +147,7 @@ export default function CalendarPage() {
         <Suspense fallback={<SkeletonPanel rows={4} />}>
           <Schedule />
         </Suspense>
-        <Suspense fallback={<SkeletonPanel rows={1} />}>
+        <Suspense fallback={<SkeletonPanel rows={3} shape="text" />}>
           <Rules />
         </Suspense>
       </div>

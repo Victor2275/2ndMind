@@ -1,4 +1,5 @@
-import { Empty, Stat } from "@/components/site/page-shell";
+import { Stat } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
 import type { GoalProgress } from "@/lib/athletics/adjusted";
 import { formatSplit } from "@/lib/athletics/prs";
 import type { SplitGoal, SpmTarget } from "@/lib/athletics/protocol";

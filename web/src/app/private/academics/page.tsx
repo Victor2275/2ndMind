@@ -1,4 +1,5 @@
 import { describeDbError } from "@/lib/db/describe";
+import { Unavailable } from "@/components/site/states";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -57,10 +58,7 @@ async function Outstanding() {
       <div className="mt-6">
         <Panel title="Outstanding">
           {failure ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
-              <p className="text-sm font-medium text-foreground">Tasks are unavailable.</p>
-              <p className="mt-1 text-xs text-muted-foreground">{failure}</p>
-            </div>
+            <Unavailable subject="Tasks" detail={failure} />
           ) : (
             <TaskList
               firstAction
@@ -176,7 +174,8 @@ export default function AcademicsPage() {
           <Suspense
             fallback={
               <div className="mt-8 laptop:mt-6">
-                <SkeletonPanel rows={4} />
+                {/* The audit is a requirements structure, not a list of controls. */}
+                <SkeletonPanel rows={4} shape="table" />
               </div>
             }
           >
@@ -186,7 +185,8 @@ export default function AcademicsPage() {
           <Suspense
             fallback={
               <div className="mt-4">
-                <SkeletonPanel rows={1} />
+                {/* The academic record is prose plus a GPA line. */}
+                <SkeletonPanel rows={2} shape="text" />
               </div>
             }
           >

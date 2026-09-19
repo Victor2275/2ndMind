@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { Empty, PageHeader, Panel } from "@/components/site/page-shell";
+import { PageHeader, Panel } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
+import { Unavailable } from "@/components/site/states";
 import { SkeletonPanel } from "@/components/site/skeleton";
 import { TrainingTabs } from "@/components/site/training-tabs";
 import { SessionHeatmap } from "@/components/site/week-panels";
@@ -46,12 +48,7 @@ async function History() {
   }
 
   if (failure) {
-    return (
-      <div className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
-        <p className="font-medium text-foreground">The database is unreachable.</p>
-        <p className="mt-1 text-muted-foreground">{failure}</p>
-      </div>
-    );
+    return <Unavailable subject="History" detail={failure} className="mt-6" />;
   }
 
   return (

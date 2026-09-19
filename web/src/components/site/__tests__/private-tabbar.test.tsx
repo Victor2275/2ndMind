@@ -61,10 +61,25 @@ function grabber() {
   return screen.getByRole("dialog").firstElementChild as HTMLElement;
 }
 
+/**
+ * A drag from `from` to `to`, taking `ms`.
+ *
+ * **Every event carries an explicit `timeStamp`, and that is load-bearing.** Only the
+ * `pointerup` did until 2026-09-19, so the other two took jsdom's default —
+ * `performance.now()` at fire time — while the release claimed to be at 300ms. The velocity
+ * the component computes is therefore `dy / (300 - however long this worker had been alive)`,
+ * which is fine for the first 300ms of a process and inverts after that: the elapsed time goes
+ * negative, the velocity goes past `FLICK_VELOCITY`, and a two-pixel tap is read as a flick
+ * that closes the sheet.
+ *
+ * It passed for anyone running this file alone and failed intermittently in a full parallel
+ * run, which is the worst shape a test can have — it accuses whatever change happened to
+ * reorder the suite. Found while adding two unrelated files in V4 §5.1.
+ */
 function drag(from: number, to: number, ms = 300) {
   const handle = grabber();
-  fireEvent.pointerDown(handle, { clientY: from, button: 0, pointerId: 1 });
-  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1 });
+  fireEvent.pointerDown(handle, { clientY: from, button: 0, pointerId: 1, timeStamp: 0 });
+  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1, timeStamp: ms });
   fireEvent.pointerUp(handle, { clientY: to, pointerId: 1, timeStamp: ms });
 }
 

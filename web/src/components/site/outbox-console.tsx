@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { requestSync } from "@/components/site/sync-runner";
+import { AsOf, SaveState } from "@/components/site/states";
 import {
   approximateAge,
   describeOp,
@@ -35,14 +36,19 @@ const PANEL = "rounded-lg border border-border bg-card/60 p-4";
 type Loaded = {
   views: OpView[];
   summary: OutboxSummary;
+  /** When the last successful flush was, or null if this device has never synced. */
+  lastSyncAt: number | null;
   /**
-   * How long ago the last successful flush was, measured when the outbox was read.
+   * The clock reading taken when the outbox was read, and the only `now` this component uses.
    *
-   * Held as an age rather than a timestamp so nothing calls `Date.now()` during render — an
-   * impure read that makes two renders of the same state disagree. It goes stale between the
-   * ten-second refreshes, by up to ten seconds, on a line that is deliberately coarse.
+   * The age used to be stored pre-computed, for a reason worth keeping: nothing may call
+   * `Date.now()` during render, because an impure read makes two renders of the same state
+   * disagree. Storing the pair rather than the difference preserves that — the subtraction is
+   * still over two fixed numbers — and lets the shared `AsOf` badge take the timestamp it wants
+   * for its `<time dateTime>` (§5.1). Both go stale between the ten-second refreshes, by up to
+   * ten seconds, on a line that is deliberately coarse.
    */
-  lastSyncAgeMs: number | null;
+  readAt: number;
 };
 
 export function OutboxConsole() {
@@ -56,7 +62,8 @@ export function OutboxConsole() {
     setState({
       views: orderForReview(ops.map((op) => describeOp(op, now))),
       summary: summariseOutbox(ops, now),
-      lastSyncAgeMs: lastSyncAt === null ? null : Math.max(0, now - lastSyncAt),
+      lastSyncAt,
+      readAt: now,
     });
   }, []);
 
@@ -129,7 +136,7 @@ export function OutboxConsole() {
     );
   }
 
-  const { views, summary, lastSyncAgeMs } = state;
+  const { views, summary, lastSyncAt, readAt } = state;
 
   return (
     <div className="mt-6 space-y-4">
@@ -142,11 +149,16 @@ export function OutboxConsole() {
                 ? `${summary.failed} ${summary.failed === 1 ? "entry needs" : "entries need"} you. ${summary.pending} still waiting.`
                 : `${summary.pending} waiting to send.`}
           </p>
-          <p className="font-mono text-[0.65rem] text-muted-foreground">
-            {lastSyncAgeMs === null
-              ? "never synced on this device"
-              : `last synced ${approximateAge(lastSyncAgeMs)} ago`}
-          </p>
+          {/* The one staleness marker (§5.1, Q285/Q286). It was a mono sentence with no grade —
+              identical at four minutes and at four weeks, on the screen whose entire subject is
+              how long something has been waiting. */}
+          {lastSyncAt === null ? (
+            <p className="font-mono text-[0.65rem] text-muted-foreground">
+              never synced on this device
+            </p>
+          ) : (
+            <AsOf at={lastSyncAt} now={readAt} label="last synced" />
+          )}
         </div>
 
         {views.length > 0 && (
@@ -189,9 +201,16 @@ function OpRow({
       className={`${PANEL} ${view.needsYou ? "border-destructive/40 bg-destructive/5" : ""}`}
       data-state={view.state}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="eyebrow text-muted-foreground">
-          {view.verb} · {view.kind}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2">
+          {/* Q289: queued and failed must be unmissable apart, and they differed only by the
+              panel's border colour — which DESIGN.md §2 rule 1 forbids on its own, and which
+              on this screen is the single fact the reader came for. `SaveState` carries the
+              icon, the word and the weight; the border stays as the third signal. */}
+          <SaveState
+            state={view.state === "failed" ? "failed" : "queued"}
+            message={`${view.verb.toLowerCase()} · ${view.kind.toLowerCase()}`}
+          />
         </span>
         <span className="font-mono text-[0.65rem] text-muted-foreground tabular-nums">
           {approximateAge(view.ageMs)} old

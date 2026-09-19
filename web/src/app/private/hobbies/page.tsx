@@ -119,8 +119,9 @@ export default function HobbiesPage() {
       <Suspense
         fallback={
           <div className="mt-8 space-y-4">
-            <SkeletonPanel rows={1} />
-            <SkeletonPanel rows={1} />
+            {/* Vault documents — prose, not a list of controls. */}
+            <SkeletonPanel rows={3} shape="text" />
+            <SkeletonPanel rows={3} shape="text" />
           </div>
         }
       >

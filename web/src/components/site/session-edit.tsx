@@ -4,7 +4,7 @@ import { Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { requestSync } from "@/components/site/sync-runner";
-import { Empty } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
 import type { Modality } from "@/lib/athletics/catalogue";
 import { COLUMN_LABEL, FIELDS_FOR } from "@/lib/athletics/fields";
 import { parseTimeToSeconds } from "@/lib/athletics/forms";

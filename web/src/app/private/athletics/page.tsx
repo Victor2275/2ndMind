@@ -5,7 +5,9 @@ import { Suspense } from "react";
 import { BodyweightForm } from "@/components/site/bodyweight-form";
 import { BarChart, TrendChart, type ChartSeries } from "@/components/site/chart";
 import { HevyImportForm } from "@/components/site/hevy-import-form";
-import { Empty, PageHeader, Panel } from "@/components/site/page-shell";
+import { PageHeader, Panel } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
+import { Unavailable } from "@/components/site/states";
 import { PrTable } from "@/components/site/pr-table";
 import { RehabChecklist } from "@/components/site/rehab-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
@@ -320,12 +322,7 @@ async function Training() {
 
   return (
     <>
-      {failure && (
-        <div className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
-          <p className="font-medium text-foreground">The database is unreachable.</p>
-          <p className="mt-1 text-muted-foreground">{failure}</p>
-        </div>
-      )}
+      {failure && <Unavailable subject="Athletics" detail={failure} className="mt-6" />}
 
       {vaultFailure && (
         <div className="mt-6 rounded-md border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
@@ -627,8 +624,10 @@ export default function AthleticsPage() {
           <>
             <SkeletonStats />
             <div className="mt-8 space-y-4">
-              <SkeletonPanel rows={3} />
-              <SkeletonPanel rows={3} />
+              {/* Both are charts. A `rows` skeleton reserves ~90px where a 16:9 plot plus
+                  its headline number takes ~300px, so the page jumped when they landed. */}
+              <SkeletonPanel shape="chart" />
+              <SkeletonPanel shape="chart" />
             </div>
           </>
         }

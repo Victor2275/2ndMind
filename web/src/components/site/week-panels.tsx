@@ -1,5 +1,5 @@
 import { MuscleMap } from "@/components/site/muscle-map";
-import { Empty } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
 import { HAMMERED_AT, TRAINED_AT, type HeatDay, type MuscleWeek } from "@/lib/athletics/trends";
 
 /**

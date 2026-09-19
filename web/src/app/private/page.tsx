@@ -8,7 +8,9 @@ import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { GoalsEditor } from "@/components/site/goals-editor";
 import { InboxPanel } from "@/components/site/inbox-panel";
 import { ErrorPanel } from "@/components/site/error-panel";
-import { Empty, PageHeader, Panel, Stat } from "@/components/site/page-shell";
+import { PageHeader, Panel, Stat } from "@/components/site/page-shell";
+import { Empty } from "@/components/site/states";
+import { Unavailable } from "@/components/site/states";
 import { ProposalReview } from "@/components/site/proposal-review";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { RehabChecklist } from "@/components/site/rehab-checklist";
@@ -182,12 +184,7 @@ async function Tasks({ focusCapture }: { focusCapture: boolean }) {
 
   return (
     <>
-      {failure && (
-        <div className="mt-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
-          <p className="text-sm font-medium text-foreground">Tasks are unavailable.</p>
-          <p className="mt-1 text-xs text-muted-foreground">{failure}</p>
-        </div>
-      )}
+      {failure && <Unavailable subject="Tasks" detail={failure} className="mt-6" />}
 
       {/* The task list comes first, before the numbers that describe it.
           Measured at 390px before this change: the first task sat 791px down the page, past

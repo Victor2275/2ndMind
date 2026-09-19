@@ -166,11 +166,12 @@ export function Stat({
   );
 }
 
-/** Shown when a section has nothing in it. Says what would put something here. */
-export function Empty({ children }: { children: ReactNode }) {
-  return (
-    <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-      {children}
-    </p>
-  );
-}
+/**
+ * `Empty` used to live here and now lives in `components/site/states.tsx` (V4 §5.1).
+ *
+ * It moved because Q275 turned it from a sentence into a *state* — one that names the action
+ * that fills it, offers it, and distinguishes "nothing yet" from "nothing matched" (Q277). That
+ * puts it with the other three states a screen can be in rather than with the furniture it
+ * happens to sit inside. This note is here so the next person to look for it looks in one
+ * place; the seven call sites already import it from its new home.
+ */
