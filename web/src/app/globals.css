@@ -181,6 +181,61 @@
   .skip-link:focus-visible {
     transform: translateY(0);
   }
+
+  /* -------------------------------------------------------------------------
+     Toasts — V4 §5.2 (Q266, Q268), styled for the first time
+
+     `ui/sonner.tsx` has named this class since V1 and **nothing defined it**, which was
+     invisible because D-192 found the `Toaster` was mounted nowhere and `toast()` was called
+     nowhere: a class with no rules on an element that is never rendered. §5.2 mounts the
+     thing, so the rules have to exist.
+
+     The inline `style` in `ui/sonner.tsx` already points sonner's own variables at our
+     tokens — ground, text, border, radius, elevation. What is left is the part a variable
+     cannot say: the type, the tap target on the action, and the one rule below that matters.
+
+     **The action button is a real tap target.** Q268 puts undo on the toast, and Q265 makes
+     undo the *whole* safety story for destructive actions in this app — there is no
+     confirmation dialog anywhere. Sonner's default action is a 24px pill. DESIGN.md §9 wants
+     44px, and an undo that is missed is a deletion that stands. This is the one place in the
+     app where a small tap target costs data rather than a second attempt. */
+  .cn-toast {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+  }
+
+  .cn-toast [data-button] {
+    min-height: 2.75rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-control);
+    font-weight: 500;
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  /* The close button is dismissal, not an action, and must not compete with the undo beside
+     it — a toast with two equally weighted buttons is a toast where the wrong one gets tapped. */
+  .cn-toast [data-close-button] {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--muted-foreground);
+  }
+
+  /* An error toast keeps the ground of every other toast and marks itself with its icon and
+     its border, per DESIGN.md §2 rule 1. A fully red toast over a dark ground reads as the
+     page having failed rather than one action having failed. */
+  .cn-toast[data-type="error"] {
+    border-color: color-mix(in oklab, var(--destructive) 45%, transparent);
+  }
+
+  .cn-toast[data-type="error"] [data-icon] {
+    color: var(--destructive);
+  }
+
+  .cn-toast[data-type="success"] [data-icon] {
+    color: var(--success);
+  }
 }
 
 @layer base {

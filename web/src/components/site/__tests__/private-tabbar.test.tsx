@@ -61,26 +61,46 @@ function grabber() {
   return screen.getByRole("dialog").firstElementChild as HTMLElement;
 }
 
+/** An arbitrary fixed instant. Only the differences matter. */
+const EPOCH = 1_760_000_000_000;
+
 /**
  * A drag from `from` to `to`, taking `ms`.
  *
- * **Every event carries an explicit `timeStamp`, and that is load-bearing.** Only the
- * `pointerup` did until 2026-09-19, so the other two took jsdom's default —
- * `performance.now()` at fire time — while the release claimed to be at 300ms. The velocity
- * the component computes is therefore `dy / (300 - however long this worker had been alive)`,
- * which is fine for the first 300ms of a process and inverts after that: the elapsed time goes
- * negative, the velocity goes past `FLICK_VELOCITY`, and a two-pixel tap is read as a flick
- * that closes the sheet.
+ * **The clock is driven, not declared, and that is load-bearing.** `timeStamp` is a readonly
+ * property of `Event` and is **not** a member of `EventInit`, so passing it to `fireEvent` does
+ * nothing at all: jsdom stamps the event itself at construction and discards whatever was in
+ * the init dict. This helper passed `timeStamp: ms` on the `pointerup` from the
+ * day it was written and it was never once read.
  *
- * It passed for anyone running this file alone and failed intermittently in a full parallel
- * run, which is the worst shape a test can have — it accuses whatever change happened to
- * reorder the suite. Found while adding two unrelated files in V4 §5.1.
+ * What the component actually measured, therefore, was the wall-clock gap between two
+ * synchronous `fireEvent` calls — microseconds, sometimes zero. `Velocity.get()` divides by
+ * that, so a two-pixel tap computed a velocity of tens of px/ms, sailed past `FLICK_VELOCITY`,
+ * and dismissed the sheet. It came out as an intermittent failure that depended on how busy the
+ * machine was, which is the worst shape a test can have: it accuses whatever change happened to
+ * reorder the suite.
+ *
+ * Stubbing the clock is what makes the timing real. It has to be `Date.now`: jsdom stamps events
+ * with a wall-clock epoch millisecond, not with `performance.now()`. The difference is invisible
+ * until you try to control it, and stubbing the wrong one leaves the flake exactly where it was.
+ * Found in V4 §5.1, properly diagnosed in §5.2.
  */
 function drag(from: number, to: number, ms = 300) {
   const handle = grabber();
-  fireEvent.pointerDown(handle, { clientY: from, button: 0, pointerId: 1, timeStamp: 0 });
-  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1, timeStamp: ms });
-  fireEvent.pointerUp(handle, { clientY: to, pointerId: 1, timeStamp: ms });
+  // `Date.now`, **not** `performance.now`: jsdom stamps an event with a wall-clock epoch
+  // millisecond, which is why `timeStamp` reads as 1789834289954 rather than as milliseconds
+  // since the page loaded. Probed rather than assumed.
+  const clock = vi.spyOn(Date, "now");
+
+  try {
+    clock.mockReturnValue(EPOCH);
+    fireEvent.pointerDown(handle, { clientY: from, button: 0, pointerId: 1 });
+    clock.mockReturnValue(EPOCH + ms);
+    fireEvent.pointerMove(handle, { clientY: to, pointerId: 1 });
+    fireEvent.pointerUp(handle, { clientY: to, pointerId: 1 });
+  } finally {
+    clock.mockRestore();
+  }
 }
 
 /** Every link the bar rendered through `<Link>`, ignoring the plain anchors. */

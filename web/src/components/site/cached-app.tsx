@@ -9,6 +9,7 @@ import { SessionLogger } from "@/components/site/session-logger";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { OutboxConsole } from "@/components/site/outbox-console";
 import { requestSync } from "@/components/site/sync-runner";
+import { PrivateToaster } from "@/components/site/toasts";
 import { CATEGORIES, categoryByKey } from "@/lib/log/categories";
 import { reportError } from "@/lib/errors/client";
 import { AsOf } from "@/components/site/states";
@@ -180,7 +181,17 @@ export function CachedApp() {
   // app's navigation, and a screen that cannot show its content is exactly when a way off it
   // matters most. `path` rather than the live pathname, because the live one is `/cached`
   // everywhere here and no tab would ever light up (D-174).
-  const bar = <PrivateTabBar path={path || "/private"} offline />;
+  const bar = (
+    <>
+      <PrivateTabBar path={path || "/private"} offline />
+      {/* Its own `Toaster` (§5.2): this shell renders *outside* `app/private/layout.tsx`, which
+          is the whole point of `/cached` being a static route, so the one mounted there is not
+          in this tree. Without this, an undo offered on the offline shell would have nowhere to
+          appear — and offline is where a mis-tap is least recoverable, because the undo would
+          have to travel through the outbox too. */}
+      <PrivateToaster />
+    </>
+  );
 
   if (failed) {
     return (
@@ -309,7 +320,17 @@ function SnapshotAge({ view }: { view: CachedView }) {
       {freshness.level === "never" || freshness.lastSyncAt === null ? (
         <p className="text-sm text-foreground">This device has never synced.</p>
       ) : (
-        <AsOf at={freshness.lastSyncAt} aging={AGING_MS} stale={STALE_MS} className="text-sm" />
+        <AsOf
+          at={freshness.lastSyncAt}
+          // `lastSyncAt + ageMs` is exactly the instant `freshnessOf` measured against, so the
+          // badge and the `level` that tints the panel around it cannot disagree. Calling
+          // `Date.now()` here instead would measure against a *different* instant on every
+          // render, which is what `react-hooks/purity` is pointing at.
+          now={freshness.lastSyncAt + (freshness.ageMs ?? 0)}
+          aging={AGING_MS}
+          stale={STALE_MS}
+          className="text-sm"
+        />
       )}
       <p className="mt-1 text-sm text-muted-foreground">
         {freshness.level === "stale"

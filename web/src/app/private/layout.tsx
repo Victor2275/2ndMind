@@ -3,6 +3,7 @@ import { PrivateSidebar } from "@/components/site/private-sidebar";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
 import { PullToRefresh } from "@/components/site/pull-to-refresh";
 import { SyncRunner } from "@/components/site/sync-runner";
+import { PrivateToaster } from "@/components/site/toasts";
 import { requireSession } from "@/lib/auth/dal";
 import { PREPAINT } from "@/lib/nav/sidebar";
 
@@ -73,6 +74,12 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
       <PullToRefresh />
 
       <PrivateTabBar />
+
+      {/* Mounted here rather than at the root (§5.2, D-192). The public site has nothing that
+          writes, so a `Toaster` there would be a client boundary and a portal on every
+          statically generated page for a function that can never fire. The offline shell
+          mounts its own, because it renders outside this layout. */}
+      <PrivateToaster />
     </>
   );
 }

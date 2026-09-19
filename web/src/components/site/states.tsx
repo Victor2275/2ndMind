@@ -54,7 +54,7 @@ import { approximateAge, exactMoment, gradeAge, type AgeGrade } from "@/lib/ui/s
  */
 export function AsOf({
   at,
-  now = Date.now(),
+  now,
   label = "as of",
   aging,
   stale,
@@ -62,8 +62,20 @@ export function AsOf({
 }: {
   /** When the data was read. A timestamp, not a duration — the caller should not do the maths. */
   at: Date | number;
-  /** Injected so a test can fix the clock, and so one page renders one consistent age. */
-  now?: number;
+  /**
+   * The clock reading to measure `at` against. **Required.**
+   *
+   * It was `now = Date.now()`, which is an impure call during render — `react-hooks/purity`
+   * catches it, and the rule is right for a reason beyond React's own: two badges on one page
+   * would be measured against two different instants, so a snapshot read once could render as
+   * "3h ago" beside "3h ago" that disagree by a second and flip across a rounding boundary.
+   *
+   * Requiring it is not a burden on any real caller, because every one of them already has the
+   * instant it read at: the outbox keeps `readAt`, the offline mirror keeps it inside
+   * `freshness`, and a Server Component may simply call `Date.now()` in its own body, where
+   * nothing is being rendered.
+   */
+  now: number;
   /** "as of", "last synced", "read". The verb differs; the badge does not. */
   label?: string;
   /** Per-subject thresholds. A vault file marked `stable` is fine for months; an outbox op is not. */

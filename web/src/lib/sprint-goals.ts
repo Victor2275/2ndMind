@@ -27,4 +27,18 @@ export type ActionState = {
   url?: string;
   /** Set by a soft delete, so the UI can offer undo without another query. */
   undoId?: number;
+  /**
+   * Set by a writer that put the entry in the outbox rather than on the server (V4 §5.2).
+   *
+   * `ok: true` and `queued: true` together are the offline success: the entry **is** safe —
+   * it is on the phone and the outbox will not discard it (§1.7) — and it is not on the
+   * server. Q289 requires those two outcomes to be unmissably different, and they cannot be
+   * unless something says which one happened.
+   *
+   * It is a field rather than something the UI infers from the message because the alternative
+   * was a regex over a human sentence: the offline writer happens to say *"It will send when
+   * you reconnect"*, and any rewording of that copy would silently relabel a queued save as a
+   * completed one. Absent means "on the server", so every existing writer is correct unchanged.
+   */
+  queued?: boolean;
 };

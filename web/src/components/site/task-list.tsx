@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
+import { notify } from "@/components/site/toasts";
 import { TagInput } from "@/components/site/tag-input";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -57,10 +58,18 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
   const [, toggle] = useActionState<ActionState | null, FormData>(toggleTask, null);
   const [removeState, remove] = useActionState<ActionState | null, FormData>(removeTask, null);
 
-  // In an effect, not during render: calling a parent's setState while rendering is a
-  // React error and would re-render this subtree on a loop.
+  // In an effect, not during render: raising a toast during render is a setState on another
+  // component's store, which React reports as an error and which would loop this subtree.
+  //
+  // The guard is `settled`, not `removeState?.ok`. Removing two tasks in a row can produce two
+  // states that compare equal field by field, and an effect keyed on the object alone fires
+  // again on any unrelated re-render — which would put a second undo toast on screen pointing
+  // at a row that is already gone.
+  const settled = useRef<ActionState | null>(null);
   useEffect(() => {
-    if (removeState?.ok && removeState.undoId) onUndo(removeState.undoId);
+    if (!removeState || removeState === settled.current) return;
+    settled.current = removeState;
+    if (removeState.ok && removeState.undoId) onUndo(removeState.undoId);
   }, [removeState, onUndo]);
 
   const due = task.dueAt ? dueLabel(task.dueAt) : null;
@@ -71,7 +80,7 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
    *
    * `useActionState`'s dispatch takes a `FormData` directly, so the gesture goes through
    * exactly the code path the buttons go through — including `onUndo`, which is why a swiped
-   * delete gets the same undo row a tapped one does. Building a second path for the gesture
+   * delete gets the same undo toast a tapped one does. Building a second path for the gesture
    * would have been a second place for a delete to go wrong.
    */
   const submit = (action: (data: FormData) => void, fields: Record<string, string>) => () => {
@@ -207,7 +216,36 @@ export function TaskList({
 }) {
   const [addState, add] = useActionState<ActionState | null, FormData>(addTask, null);
   const [, undo] = useActionState<ActionState | null, FormData>(undoTask, null);
-  const [undoId, setUndoId] = useState<number | null>(null);
+
+  /**
+   * A removal offers its undo in a toast (§5.2, Q265, Q268).
+   *
+   * It was an inline row under the list — *"Removed. Undo"* — which had two problems on the
+   * device this app is for. It appeared **below** the list, so on Today, where the list is
+   * long, the confirmation for a row you just swiped rendered off screen. And it was permanent
+   * until dismissed by using it, so the last removal's undo sat there indefinitely, which is
+   * how the wrong thing gets restored.
+   *
+   * The toast is bottom-anchored, so it is in the same place whatever the list is doing, and
+   * it expires — after eight seconds the removal is simply done, which is the honest state.
+   *
+   * `undo` is the same Server Action the row used. This is a different affordance for the same
+   * operation, not a second delete path.
+   */
+  const offerUndo = useCallback(
+    (id: number) => {
+      notify.undoable("Task removed.", () => {
+        const data = new FormData();
+        data.set("id", String(id));
+        // `startTransition`, because this dispatch does not come from a `<form action>`. React
+        // warns otherwise — *"an async function with useActionState was called outside of a
+        // transition"* — and the consequence is not cosmetic: outside a transition `isPending`
+        // never updates, so nothing downstream could ever show the undo as in flight.
+        startTransition(() => undo(data));
+      });
+    },
+    [undo],
+  );
 
   return (
     // `data-first-action` is read by scripts/shots.mjs to measure how far down the page the
@@ -222,27 +260,13 @@ export function TaskList({
       {tasks.length > 0 ? (
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} onUndo={setUndoId} />
+            <TaskRow key={task.id} task={task} onUndo={offerUndo} />
           ))}
         </ul>
       ) : (
         <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
           {emptyMessage}
         </p>
-      )}
-
-      {undoId !== null && (
-        <form
-          action={undo}
-          onSubmit={() => setUndoId(null)}
-          className="mt-2 flex items-center gap-2"
-        >
-          <input type="hidden" name="id" value={undoId} />
-          <span className="text-xs text-muted-foreground">Removed.</span>
-          <button type="submit" className="font-mono text-xs text-primary hover:underline">
-            Undo
-          </button>
-        </form>
       )}
 
       {showAdd && (

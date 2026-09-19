@@ -125,11 +125,17 @@ describe("sticky values", () => {
     await userEvent.type(field("sets.0.distance"), "2000");
     await userEvent.click(screen.getByRole("button", { name: /log training/i }));
 
-    await waitFor(() =>
-      expect((document.getElementById("f-kind") as HTMLSelectElement).value).toBe("erg"),
-    );
-    // The safety property, end to end: the kind came back, the distance did not.
-    expect(field("sets.0.distance").value).toBe("");
+    // **Wait on the measurement, not on the kind.** Waiting for `kind` to read "erg" waited for
+    // nothing: it reads "erg" the moment it is selected, before any save, so the condition was
+    // already true on the first poll and the assertion below raced the remount that clears the
+    // form. It passed on a fast machine and failed under load, which is the shape of a test
+    // that is not testing what it says. Clearing is the half that only happens after the save.
+    await waitFor(() => expect(field("sets.0.distance").value).toBe(""));
+
+    // The safety property, end to end: the kind came back, the distance did not. A stale `kind`
+    // is obvious at a glance and harmless; a stale distance silently pre-filled is a corrupted
+    // record that reads as real (D-155).
+    expect((document.getElementById("f-kind") as HTMLSelectElement).value).toBe("erg");
   });
 
   it("keeps nothing from a category that has no sticky fields", async () => {
@@ -302,7 +308,42 @@ describe("when the save fails", () => {
     await userEvent.type(field("exercise"), "Romanian Deadlift");
     await userEvent.click(screen.getByRole("button", { name: /log training/i }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("DATABASE_URL");
+    // `alert`, not `status` — changed in V4 §5.2 (Q289). A queued save resolves itself and
+    // costs nothing to miss; a failed one never resolves and costs the entry. The two are not
+    // symmetric, so the announcement is not either: a failure interrupts what a screen reader
+    // is saying rather than waiting its turn.
+    expect(await screen.findByRole("alert")).toHaveTextContent("DATABASE_URL");
     await waitFor(() => expect(field("exercise").value).toBe("Romanian Deadlift"));
+  });
+
+  it("says 'Not saved' in a word, not only in a colour", () => {
+    // DESIGN.md §2 rule 1. This line used to be one mono sentence tinted two ways, on the
+    // surface where "did that land?" is the only question the reader has.
+    createLogEntry.mockResolvedValue({ ok: false, message: "DATABASE_URL is not set." });
+    render(<LogForm category={athletics} />);
+
+    return userEvent.click(screen.getByRole("button", { name: /log training/i })).then(async () => {
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Not saved");
+    });
+  });
+
+  it("calls a queued save queued rather than saved", async () => {
+    // The offline writer returns `ok: true` with `queued`, because the entry *is* safe — it is
+    // on the phone and the outbox will not discard it — and it is not on the server. Saying
+    // "Saved" about a row the server has never seen is the lie §1.7 exists to stop telling.
+    createLogEntry.mockResolvedValue({
+      ok: true,
+      queued: true,
+      message: "Logged. It will send when you reconnect.",
+    });
+    render(<LogForm category={athletics} />);
+
+    await userEvent.type(field("exercise"), "Romanian Deadlift");
+    await userEvent.click(screen.getByRole("button", { name: /log training/i }));
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Waiting");
+    expect(status).not.toHaveTextContent("Saved");
   });
 });

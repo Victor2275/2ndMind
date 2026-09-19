@@ -116,6 +116,8 @@ export function localLogWriter(onWritten?: () => void): LocalWrite {
         const saved = wrote ? `Saved to ${category.label} on this phone.` : "Weighed in.";
         return {
           ok: true,
+          // §5.2: the entry is safe and it is not on the server, and those are different.
+          queued: true,
           message: problem ? `${saved} ${problem}` : `${saved} It will send when you reconnect.`,
         };
       } finally {
@@ -187,6 +189,7 @@ export function localCaptureWriter(onWritten?: () => void): LocalWrite {
         onWritten?.();
         return {
           ok: true,
+          queued: true,
           message: asTask ? "Held as a task. It will send." : "Noted. It will send.",
         };
       } finally {

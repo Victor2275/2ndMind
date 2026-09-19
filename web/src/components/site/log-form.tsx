@@ -24,6 +24,23 @@ import {
   type Field,
   type RowGroup,
 } from "@/lib/log/categories";
+import {
+  Chip as Token,
+  ChipRow as TokenRow,
+  CONTROL as FIELD_CONTROL,
+  CONTROL_FULL,
+  ErrorSummary,
+  // `Field` is already the *data* type for a log field (`lib/log/categories`). The shell
+  // that draws one takes the longer name rather than shadowing it.
+  Field as FieldShell,
+  FIELD_LABEL,
+  PasteAction,
+  StickySave,
+  useBlurValidation,
+  useDirty,
+  type ShortcutKind,
+} from "@/components/site/field";
+import { SaveState } from "@/components/site/states";
 import { buzzSaved } from "@/lib/haptics";
 import type { Chip, ChipSets } from "@/lib/log/chips";
 import { stickyStore, submittedValues, writeSticky } from "@/lib/log/sticky";
@@ -44,21 +61,19 @@ import type { SpokenEntry } from "@/lib/voice/parse";
  */
 
 /**
- * The look of a control, with no width in it (D-219).
+ * The control look now comes from `components/site/field.tsx` (V4 §5.2).
  *
- * `w-full` used to be part of this string, and every call site that wanted a *narrower* control
- * wrote `${INPUT} w-16`. Those two utilities have identical specificity, so which one applies is
- * decided by the order Tailwind happens to emit them in — not by the order they are written in
- * the class attribute, which is what it looks like. `w-full` won, so the unit select below took
- * the whole row and squashed the number input beside it to nothing.
+ * It was declared here, and the three rules that matter travelled with it: the width stays out
+ * of the base string (D-219 — two width utilities on one element resolve by Tailwind's emit
+ * order, not by the order they are written), the height is Q245's 48px, and the size is 16px on
+ * a phone so iOS Safari does not zoom the viewport on focus.
  *
- * Keeping the width out of the base is the fix that cannot come back: a call site now says how
- * wide it is exactly once.
+ * The aliases below are kept so the ~30 call sites in this file read as they did. `LABEL` is
+ * now only used where a `<legend>` or a group caption is the label — `Field` owns the real ones.
  */
-const CONTROL =
-  "rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
-const INPUT = `${CONTROL} w-full`;
-const LABEL = "eyebrow text-muted-foreground";
+const CONTROL = FIELD_CONTROL;
+const INPUT = CONTROL_FULL;
+const LABEL = FIELD_LABEL;
 
 /** Local date as YYYY-MM-DD. `toISOString` would shift to UTC and, in the evening in
  *  California, default the form to tomorrow. */
@@ -142,10 +157,14 @@ function ScaleField({ field }: { field: Field }) {
 function PasteButton({ targetId }: { targetId: string }) {
   const [state, setState] = useState<"idle" | "empty">("idle");
 
+  // §5.2 moved the look into `PasteAction`: this was the word "paste" at `text-[0.55rem]`,
+  // which is a 7px tap target beside a 48px field and is under the 11px floor §7.1 turns into
+  // a gate. Q253 also wanted the two shortcuts you can *act on* to look like controls; this is
+  // one of the two. The behaviour below is unchanged.
   return (
-    <button
-      type="button"
-      onClick={async () => {
+    <PasteAction
+      empty={state === "empty"}
+      onPaste={async () => {
         try {
           const text = (await navigator.clipboard.readText()).trim();
           const input = document.getElementById(targetId) as HTMLInputElement | null;
@@ -163,14 +182,24 @@ function PasteButton({ targetId }: { targetId: string }) {
           setState("empty");
         }
       }}
-      className="font-mono text-[0.55rem] text-muted-foreground transition-colors hover:text-foreground"
-    >
-      {state === "empty" ? "nothing to paste" : "paste"}
-    </button>
+    />
   );
 }
 
-/** Recent values for one field, newest first. */
+/**
+ * Recent values for one field, newest first — tokens now (§5.2, Q255, Q256).
+ *
+ * The shape moved to `field.tsx`: a token rather than a button (Q255), filled when chosen
+ * (Q256), and 44px rather than 32px. The old comment here said "a 24px chip is a miss", which
+ * was right about the direction and stopped 12px short of DESIGN.md §9's number.
+ *
+ * **Selection is tracked, and that is new.** A chip fills several fields at once and then
+ * looked exactly as it had before the tap, so on a phone there was no way to tell a chip you
+ * had pressed from one you had not — which for `carries` fields means no way to tell whether
+ * last time's weight went in. It is local state rather than derived from the inputs because the
+ * inputs are uncontrolled on purpose, and comparing their values back would light a chip up
+ * whenever the same number was typed by hand.
+ */
 function ChipRow({
   chips,
   onPick,
@@ -178,21 +207,40 @@ function ChipRow({
   chips: Chip[];
   onPick: (fills: Record<string, string>) => void;
 }) {
+  const [chosen, setChosen] = useState<string | null>(null);
+
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1">
+    <TokenRow>
       {chips.map((chip) => (
-        <button
+        <Token
           key={chip.value}
-          type="button"
-          onClick={() => onPick(chip.fills)}
-          // `min-h-8` keeps every chip a real tap target on a phone; a 24px chip is a miss.
-          className="min-h-8 rounded-full border border-border bg-card/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          selected={chosen === chip.value}
+          onClick={() => {
+            setChosen(chip.value);
+            onPick(chip.fills);
+          }}
         >
           {chip.label}
-        </button>
+        </Token>
       ))}
-    </div>
+    </TokenRow>
   );
+}
+
+/**
+ * The passive shortcuts this field has, for Q253's annotation row.
+ *
+ * `sticky` is read off the field definition. `keypad` is read off `keypadFor` rather than off
+ * `field.keypad`, because the keypad a field raises is partly derived from its type — a
+ * `number` gets `decimal` without saying so — and the mark has to describe what will actually
+ * happen, not what was declared. A `text` keypad is no keypad and is not marked: the mark
+ * exists to say *this one is different*, and marking every field says nothing.
+ */
+function marksFor(field: Field): ShortcutKind[] {
+  const marks: ShortcutKind[] = [];
+  if (field.sticky) marks.push("sticky");
+  if (keypadFor(field) !== "text") marks.push("keypad");
+  return marks;
 }
 
 function FieldInput({
@@ -203,6 +251,7 @@ function FieldInput({
   prefix = "",
   compact = false,
   onValueChange,
+  error,
 }: {
   field: Field;
   defaultValue?: string;
@@ -214,17 +263,22 @@ function FieldInput({
   compact?: boolean;
   /** Only for the field a row group's shape keys off (D-162). */
   onValueChange?: (value: string) => void;
+  /** From `useBlurValidation`, shown under the control (§5.2, Q249, Q250). */
+  error?: string | null;
 }) {
   if (field.type === "scale") return <ScaleField field={field} />;
 
   if (field.type === "bool") {
     return (
-      <label className="flex items-center gap-2 pt-5">
+      // A checkbox, not a switch (Q263: checkboxes for lists, switches for settings). The whole
+      // row is the label, and `min-h-12` makes the row — not the 16px box — the tap target,
+      // which is Q245's 48px on the control that was previously the smallest thing in the form.
+      <label className="flex min-h-12 items-center gap-2.5">
         <input
           type="checkbox"
           name={`${prefix}${field.name}`}
           defaultChecked={defaultValue === "on"}
-          className="size-4 rounded border-border accent-[var(--primary)]"
+          className="size-5 rounded border-border accent-[var(--primary)]"
         />
         <span className="text-sm text-foreground">{field.label}</span>
       </label>
@@ -235,21 +289,22 @@ function FieldInput({
   const name = `${prefix}${field.name}`;
 
   return (
-    <div className={!compact && field.wide ? "col-span-2 sm:col-span-3" : ""}>
-      <div className="flex items-baseline justify-between gap-2">
-        <label className={LABEL} htmlFor={id}>
-          {field.label}
-        </label>
-        {field.clipboard && <PasteButton targetId={id} />}
-      </div>
-
+    <FieldShell
+      label={field.label}
+      htmlFor={id}
+      marks={marksFor(field)}
+      action={field.clipboard ? <PasteButton targetId={id} /> : undefined}
+      error={error}
+      chips={chips && chips.length > 0 ? <ChipRow chips={chips} onPick={onPick} /> : undefined}
+      className={!compact && field.wide ? "col-span-2 sm:col-span-3" : ""}
+    >
       {field.type === "select" ? (
         <select
           id={id}
           name={name}
           defaultValue={defaultValue ?? ""}
           onChange={onValueChange ? (event) => onValueChange(event.target.value) : undefined}
-          className={`${INPUT} mt-1`}
+          className={INPUT}
         >
           <option value="">—</option>
           {field.options?.map((option) => (
@@ -259,7 +314,7 @@ function FieldInput({
           ))}
         </select>
       ) : field.type === "distance" ? (
-        <div className="mt-1 flex gap-1">
+        <div className="flex gap-1">
           <input
             id={id}
             name={name}
@@ -287,12 +342,10 @@ function FieldInput({
           autoCorrect={field.capitalise === "none" ? "off" : undefined}
           spellCheck={field.capitalise === "none" ? false : undefined}
           placeholder={field.placeholder}
-          className={`${INPUT} mt-1`}
+          className={INPUT}
         />
       )}
-
-      {chips && chips.length > 0 && <ChipRow chips={chips} onPick={onPick} />}
-    </div>
+    </FieldShell>
   );
 }
 
@@ -435,17 +488,74 @@ function RowFields({
   );
 }
 
-function SaveButton({ label }: { label: string }) {
+/**
+ * The save.
+ *
+ * `min-h-12` is Q245's 48px, on the control that decides whether the whole form was worth
+ * filling in. It was `py-2` on `text-sm`, which measured about 34px.
+ *
+ * Rendered in two places at once on a phone — here, in the flow, and inside `StickySave` at the
+ * bottom of the viewport (Q251). Two submit buttons in one form is correct and deliberate:
+ * they submit the same form, so there is no second path to keep in step, and the alternative
+ * (moving the button into the bar) would take it off the desktop layout, which has no bar.
+ *
+ * **They must not share an accessible name.** "Log training" rendered twice is two identical
+ * answers to "what can I do here" — for a screen reader, and for `getByRole`, which is how this
+ * was caught. `compact` is the bar's: it says **Save**, which is also the right word for a 56px
+ * strip, and it is filled rather than outlined because inside the bar it is the only control.
+ */
+function SaveButton({ label, compact = false }: { label: string; compact?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md border border-primary/50 px-4 py-2 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
+      className={`inline-flex min-h-12 press items-center rounded-control px-4 text-sm transition-colors duration-fast ease-standard disabled:opacity-60 ${
+        compact
+          ? "bg-primary font-medium text-primary-foreground hover:bg-primary/80"
+          : "border border-primary/50 text-primary hover:border-primary hover:bg-primary/10"
+      }`}
     >
-      {pending ? "Saving…" : `Log ${label.toLowerCase()}`}
+      {pending ? "Saving…" : compact ? "Save" : `Log ${label.toLowerCase()}`}
     </button>
   );
+}
+
+/**
+ * What a field has to look like to be worth saving (§5.2, Q249).
+ *
+ * Deliberately thin. Every field in this form is **optional** (D-155's governing constraint),
+ * so there is nothing to require — what is left is catching the two shapes that are silently
+ * wrong rather than empty, both of which produce a row whose numbers cannot be trusted, which
+ * is the one thing the log promises.
+ *
+ * The server re-validates with zod regardless (`log/actions.ts`); this exists so the answer
+ * arrives while the field is still under the thumb rather than after a round trip.
+ */
+function validatorsFor(category: Category): Record<string, (value: string) => string | null> {
+  const rules: Record<string, (value: string) => string | null> = {};
+
+  const walk = (fields: readonly Field[], prefix = "") => {
+    for (const field of fields) {
+      if (field.type === "duration") {
+        rules[`${prefix}${field.name}`] = (value) =>
+          value === "" || /^\d{1,2}:[0-5]\d(\.\d+)?$/.test(value) || /^\d+(\.\d+)?$/.test(value)
+            ? null
+            : "Use m:ss, like 2:17.";
+      } else if (field.type === "number" || field.type === "distance") {
+        rules[`${prefix}${field.name}`] = (value) =>
+          value === "" || Number.isFinite(Number(value)) ? null : "Numbers only.";
+      }
+    }
+  };
+
+  walk(category.fields);
+  // Row fields are prefixed per row (`sets.0.weightLbs`), and the row ids are generated at
+  // runtime — so the rules are registered under the bare name and looked up by it. That is why
+  // `useBlurValidation` keys on `name` and this strips the prefix rather than enumerating rows.
+  if (category.rows) walk(category.rows.fields);
+
+  return rules;
 }
 
 export function LogForm({
@@ -498,6 +608,20 @@ export function LogForm({
   const [shape, setShape] = useState<string | undefined>(
     shapeName ? sticky.values[shapeName] : undefined,
   );
+
+  /**
+   * Blur validation, the error summary and the dirty indicator (§5.2, Q249, Q250, Q252).
+   *
+   * All three listen at the **form**, not per field, which is what keeps every input in here
+   * uncontrolled — the property the failed-save recovery below depends on, and the reason this
+   * form can put back exactly what was typed. Lifting every value into React to answer one
+   * boolean would trade that for a dot.
+   *
+   * `validatorsFor` walks the field definitions, so it is rebuilt only when the category is.
+   */
+  const rules = useMemo(() => validatorsFor(category), [category]);
+  const { errors, handlers, summary, clear: clearErrors } = useBlurValidation(rules);
+  const { dirty, clear: clearDirty } = useDirty(form);
 
   /** A chip tap, or anything else that fills several fields at once. */
   const fill = useCallback((values: Record<string, string>) => {
@@ -575,14 +699,19 @@ export function LogForm({
     if (!state || state === settled.current) return;
     settled.current = state;
 
-    // Both branches write to something outside React — the sticky store, or the DOM — and
-    // neither calls `setState`. The re-render that clears the form comes from the store
-    // notifying its subscribers, which is the whole reason the store exists.
     if (state.ok) {
       // The confirmation you get without looking (§3.3). This is the form used at a rack, one
-      // hand, eyes elsewhere — a toast only answers "did that save?" if you read it.
+      // hand, eyes elsewhere — a toast only answers "did that save?" if you read it. §5.2
+      // mounted the toast system and this is deliberately **not** one of its call sites:
+      // `notify` is for an action worth taking back and for a failure you were not watching
+      // for, and a completed log entry is neither.
       buzzSaved();
       writeSticky(storage(), category, submitted.current);
+      // React has reset the form, so nothing is unsaved and nothing is invalid any more.
+      // Neither state clears itself: `useDirty` listens for `input` and a reset fires none,
+      // and a blur error outlives the value that produced it (§5.2).
+      clearDirty();
+      clearErrors();
       return;
     }
 
@@ -590,7 +719,7 @@ export function LogForm({
     // so put back what was typed — the message says what went wrong, and everything is still
     // there to fix and send again.
     fill(submitted.current);
-  }, [state, category, fill]);
+  }, [state, category, fill, clearDirty, clearErrors]);
 
   return (
     <form
@@ -600,6 +729,12 @@ export function LogForm({
       // instead of leaving them to be submitted by accident. The generation does the same
       // after a successful save.
       key={`${category.key}-${sticky.version}`}
+      // Delegated, not per input (§5.2). `blur` does not bubble, but React's synthetic `onBlur`
+      // is `focusout` underneath and does — which is the whole reason one handler here can
+      // validate ~30 fields, including the ones inside generated row groups that do not exist
+      // when this renders.
+      onBlur={handlers.onBlur}
+      onInput={handlers.onInput}
       className="space-y-4"
     >
       <input type="hidden" name="category" value={category.key} />
@@ -614,6 +749,7 @@ export function LogForm({
               chips={chips[field.name]}
               onPick={fill}
               onValueChange={field.name === shapeName ? setShape : undefined}
+              error={errors[field.name]}
             />
           ))}
         </div>
@@ -630,26 +766,32 @@ export function LogForm({
           version would be the fixed-list problem tags exist to solve, one level down. */}
       <TagInput suggestions={tagSuggestions} />
 
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <label className={LABEL} htmlFor={noteId}>
-            Note
-          </label>
-          <DictateButton targetId={noteId} />
-        </div>
+      {/* The same shell every other field uses, so the label row is not a fourth spelling of
+          one idea. `optional` is marked and required is not (Q248) — and here that is not a
+          formality: the note is the field most often left empty. */}
+      <FieldShell
+        label="Note"
+        htmlFor={noteId}
+        optional
+        action={<DictateButton targetId={noteId} />}
+      >
         <textarea
           id={noteId}
           name="note"
           rows={2}
+          // An example, never a label (Q247). The label is above and is a real `<label>`.
           placeholder="Anything worth remembering"
-          className={`${INPUT} mt-1 resize-y`}
+          className={`${INPUT} resize-y`}
         />
-      </div>
+      </FieldShell>
 
       {/* Phase N5. Silent until a save has been running for six seconds, at which point the
           difference between "slow" and "crashed" is the difference between waiting and closing
           the app on an entry that has not landed. */}
       <SlowSaveNotice />
+
+      {/* Silent at two or fewer, which is what makes it safe to mount unconditionally (Q250). */}
+      <ErrorSummary errors={summary} />
 
       <div className="flex flex-wrap items-center gap-3">
         <SaveButton label={category.label} />
@@ -672,15 +814,27 @@ export function LogForm({
           </button>
         )}
 
+        {/* Q289 — saved, queued and failed differ in icon, word and weight rather than in
+            colour alone. This was one mono sentence tinted two ways, on the surface where
+            "did that land?" is the only question the reader has.
+
+            `state.queued` is set by the offline writer and by nothing else. Saying "Saved"
+            about a row the server has never seen is the lie §1.7 exists to stop telling, and
+            the flag is what makes the distinction a fact rather than a guess at the copy. */}
         {state && (
-          <p
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
-            {state.message}
-          </p>
+          <SaveState
+            state={!state.ok ? "failed" : state.queued ? "queued" : "saved"}
+            message={state.message}
+          />
         )}
       </div>
+
+      {/* Pinned to the bottom of the viewport, on a phone, only while there is something to
+          save (Q251, Q252). It carries a second `SaveButton` submitting this same form rather
+          than moving the first one, because the desktop layout has no bar to move it into. */}
+      <StickySave dirty={dirty}>
+        <SaveButton label={category.label} compact />
+      </StickySave>
     </form>
   );
 }
