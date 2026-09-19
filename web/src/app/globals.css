@@ -13,6 +13,27 @@
    thing a new theme has to change outside its own block. See `scripts/build-tokens.mts`. */
 
 /* ---------------------------------------------------------------------------
+   `can-hover:` — V4 §5.3 (Q193, Q194)
+
+   **Tailwind v4 already answers Q193 on its own.** Every `hover:` it generates is wrapped in
+   `@media (hover:hover)`, verified in `.next/static/chunks/*.css` rather than assumed, so all
+   246 `hover:` call sites in this app are already inert on a touch device and none of them
+   needed editing. That is worth writing down, because "strip hover on touch" reads like a
+   246-file change and is a zero-file one.
+
+   What Tailwind cannot do is the *other* half — the pattern where something is **hidden until
+   hovered**. There, `hover:` being inert is exactly the problem: the reveal never fires and the
+   control is unreachable. Two delete buttons were written as `sm:opacity-0
+   sm:group-hover:opacity-100`, using a 640px width as a proxy for "has a mouse". A touch tablet
+   is over 640px and has no mouse, so on one the button was invisible with no way to reveal it,
+   and `log-console` has no swipe to fall back on.
+
+   This variant is the capability itself rather than a proxy for it, so the rule inverts
+   correctly: visible by default, hidden only where a pointer can bring it back.
+   --------------------------------------------------------------------------- */
+@custom-variant can-hover (@media (hover: hover));
+
+/* ---------------------------------------------------------------------------
    Colour lives in `tokens.css` (generated). This block only maps the raw custom properties
    onto Tailwind's `--color-*` names so `bg-primary`, `text-muted-foreground` and friends
    resolve. Adding a token means adding it in `scripts/build-tokens.mts` *and* here.
@@ -331,6 +352,46 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* -------------------------------------------------------------------------
+     Every control answers a tap — V4 §5.3 (Q195, Q196)
+
+     Q195 marked the missing pressed state as the **biggest single miss on the phone**, and
+     Q196 requires a visible press within 100ms *even when the action is slow*. §1.8 built the
+     `press` utility for it and §5.3 is the item that was supposed to "put it on every
+     control".
+
+     An audit found **66 hand-rolled buttons across 40 files** with no pressed state, against
+     21 call sites that had remembered `press`. Editing 66 of them would have fixed the 66 and
+     left the 67th — the next one anybody writes — exactly as it was. So this is a base rule,
+     the same move `.lucide { stroke-width }` makes for icons: one declaration that reaches
+     every button in the app, including the ones not written yet.
+
+     Three details, each load-bearing:
+
+     - **`:active`, not React state.** The requirement is 100ms and the slow path being
+       compensated for is a Server Action round trip — a state update cannot be faster than the
+       thing it is reporting on.
+     - **Not on `:disabled`.** A control that cannot act must not look like it did.
+     - **`data-no-press` opts out**, for the rare control where a scale is wrong — something
+       already carrying a transform it animates, or a full-bleed surface where 3% reads as the
+       layout shifting rather than as a button moving.
+
+     The `press` utility stays, and its call sites are now redundant rather than wrong: it is
+     still the right thing to put on a `<label>`, an `<a>` or a `<summary>` acting as a control,
+     none of which this selector reaches. `scale.test.ts` still pins it.
+     ------------------------------------------------------------------------- */
+  button:not(:disabled):not([data-no-press]):active,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]):active {
+    transform: scale(0.97);
+  }
+
+  button:not([data-no-press]),
+  [role="button"]:not([data-no-press]) {
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+
   h1,
   h2,
   h3,
@@ -618,7 +679,9 @@
      feedback becomes a ground shift instead. This is the pattern Q207 asks for across the
      board — a designed opacity/colour alternative rather than the blanket collapse above —
      and it lands here first because `press` is the utility §1.8 adds. */
-  .press:active {
+  .press:active,
+  button:not(:disabled):not([data-no-press]):active,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]):active {
     transform: none;
     background-color: color-mix(in oklab, var(--foreground) 8%, transparent);
   }

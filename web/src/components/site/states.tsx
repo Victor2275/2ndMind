@@ -245,9 +245,7 @@ export function Unavailable({
         {behind ? "The database is behind this build." : `${subject} is unavailable.`}
       </p>
 
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-        {command ? detail.replace(`\`${command}\``, "") : detail}
-      </p>
+      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{prose(detail)}</p>
 
       {/* The fix, as a thing rather than as words in a sentence. Mono because it is a path you
           type, which is what DESIGN.md §2 rule 2 reserves mono for. */}
@@ -275,6 +273,30 @@ function isSchemaBehind(detail: string): boolean {
 /** The backticked command inside D-156's sentence, if there is one. */
 function commandIn(detail: string): string | null {
   return /`([^`]+)`/.exec(detail)?.[1] ?? null;
+}
+
+/**
+ * The message with the instruction sentence removed, because the instruction is rendered as a
+ * thing rather than as words.
+ *
+ * **Whole sentences, not the backticked token.** Lifting just the command out left *"Run ,
+ * then reload."* on screen — caught in `.shots/private-today-390.png` rather than by reasoning,
+ * which is the argument for the screenshot sweep. The instruction is a sentence, so removing it
+ * has to be a sentence-level operation.
+ *
+ * Splitting on ". " keeps D-156's trailing parenthetical — *(column "tags" does not exist)* —
+ * which is the part that says *which* column, and is the only thing in the message a person
+ * cannot reconstruct from the heading.
+ */
+function prose(detail: string): string {
+  const command = commandIn(detail);
+  if (!command) return detail;
+
+  return detail
+    .split(/(?<=\.)\s+/)
+    .filter((sentence) => !sentence.includes("`"))
+    .join(" ")
+    .trim();
 }
 
 /* ------------------------------------------------------------------------------------------

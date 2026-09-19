@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
+import { Empty } from "@/components/site/states";
 import { notify } from "@/components/site/toasts";
 import { TagInput } from "@/components/site/tag-input";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -167,7 +168,14 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
             type="submit"
             aria-label={`Remove ${task.title}`}
             // Visible on hover for a mouse, always visible on touch where hover does not exist.
-            className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+            //
+            // `can-hover:` rather than `sm:` (§5.3, Q194). The width was a proxy for "has a
+            // mouse" and a touch tablet breaks it: over 640px, no hover, so the button was
+            // invisible and had no way to be revealed. The variant is the capability itself.
+            //
+            // `size-11` is DESIGN.md §9's 44px. It was a bare 14px glyph with no padding —
+            // the smallest tap target in the app, on a destructive action.
+            className="-mr-2 inline-flex size-11 press items-center justify-center rounded-control text-muted-foreground opacity-100 transition-colors duration-fast ease-standard hover:text-destructive can-hover:opacity-0 can-hover:group-focus-within:opacity-100 can-hover:group-hover:opacity-100"
           >
             <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
               <path d="M3 3l8 8M11 3l-8 8" />
@@ -264,9 +272,9 @@ export function TaskList({
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          {emptyMessage}
-        </p>
+        // The shared state (§5.1). This was a copy of the dashed box `Empty` used to be, so
+        // Q275's rework reached every list in the app except the one on Today.
+        <Empty>{emptyMessage}</Empty>
       )}
 
       {showAdd && (

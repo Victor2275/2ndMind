@@ -117,7 +117,11 @@ function ScaleField({ field }: { field: Field }) {
         {steps.map((step) => (
           <label
             key={step}
-            className={`flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-md border text-sm transition-colors ${
+            // `press` explicitly: §5.3's base rule reaches `button` and `[role=button]`, and
+            // this is a `<label>` wrapping a radio — the pattern the base selector cannot see.
+            // `min-h-12` is Q245's 48px, up from 40px, on the control whose own comment says it
+            // is filled one-handed in bed.
+            className={`flex min-h-12 flex-1 press cursor-pointer items-center justify-center rounded-control border text-sm transition-colors duration-fast ease-standard ${
               value === step
                 ? "border-primary bg-primary/15 text-primary"
                 : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"

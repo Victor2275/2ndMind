@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowUpIcon, Loader2Icon } from "lucide-react";
 
 import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
 
@@ -30,6 +31,17 @@ import { requestSync, SYNC_DONE_EVENT } from "@/components/site/sync-runner";
 
 /** How far down before the pull counts. Roughly a thumb's comfortable travel. */
 const THRESHOLD = 72;
+
+/**
+ * The distance at which letting go actually sends — and the number the ring fills to.
+ *
+ * `THRESHOLD * 0.5` was written out at both places that needed it and named at neither, which
+ * hid a real disagreement the moment §5.3 drew progress: the release fires at 36px and the ring
+ * would have completed at 72, so the indicator would have said "keep pulling" through the
+ * entire second half of a gesture that was already going to work. Naming it is what makes the
+ * drawing and the behaviour the same fact.
+ */
+const RELEASE = THRESHOLD * 0.5;
 
 /** Past this the indicator stops following, so a hard pull does not drag the page apart. */
 const MAX = 96;
@@ -92,7 +104,7 @@ export function PullToRefresh() {
       pullRef.current = 0;
       setPull(0);
 
-      if (!wasArmed || travelled < THRESHOLD * 0.5) return;
+      if (!wasArmed || travelled < RELEASE) return;
       setSyncing(true);
       // The same event §1.7's retry screen uses. Nothing here knows how to sync, and nothing
       // here should — this is a trigger, and `SyncRunner` owns what a trigger means.
@@ -111,8 +123,30 @@ export function PullToRefresh() {
     };
   }, []);
 
-  const ready = pull >= THRESHOLD * 0.5;
+  const ready = pull >= RELEASE;
   if (pull === 0 && !syncing) return null;
+
+  /**
+   * The indicator, designed (§5.3, Q200).
+   *
+   * What it was: a pill with a 9.6px mono sentence in it — under the 11px floor §7.1 turns
+   * into a gate — that changed its wording twice and its colour once, and said nothing at all
+   * about *how far there is left to pull*. A pull gesture with no progress is a guess, and the
+   * way a guess fails is that you let go early, nothing happens, and you conclude the gesture
+   * does not exist.
+   *
+   * So the progress is now the drawing rather than the words: a ring that fills as the finger
+   * travels, completing exactly at the release point. Three states, distinguished by shape as
+   * well as colour (DESIGN.md §2 rule 1) — an arrow that points down while there is further to
+   * go, the same arrow rotated to point up once releasing would send, and a spinner while it
+   * sends.
+   *
+   * The ring is an SVG `stroke-dasharray` rather than a `conic-gradient`, because a conic
+   * gradient cannot be a ring without a second element masking its middle, and because this
+   * needs to work under `forced-colors`, which §7.4 audits for.
+   */
+  const progress = Math.min(1, pull / RELEASE);
+  const CIRCUMFERENCE = 2 * Math.PI * 9;
 
   return (
     <div
@@ -126,12 +160,44 @@ export function PullToRefresh() {
       <span
         role="status"
         aria-live="polite"
-        className={`rounded-full border bg-card/95 px-3 py-1 font-mono text-[0.6rem] shadow-lg backdrop-blur-md transition-colors ${
+        className={`flex items-center gap-2 rounded-full border bg-card/95 py-1 pr-3 pl-1.5 text-xs shadow-lg backdrop-blur-md transition-colors duration-fast ease-standard ${
           syncing || ready
             ? "border-primary/50 text-primary"
             : "border-border text-muted-foreground"
         }`}
       >
+        <span className="relative grid size-5 place-items-center">
+          <svg viewBox="0 0 22 22" className="absolute size-5 -rotate-90">
+            {/* The track. Faint, so the ring reads as filling rather than as changing colour. */}
+            <circle cx="11" cy="11" r="9" className="fill-none stroke-border stroke-2" />
+            <circle
+              cx="11"
+              cy="11"
+              r="9"
+              className="fill-none stroke-current stroke-2"
+              strokeLinecap="round"
+              strokeDasharray={CIRCUMFERENCE}
+              // Full circle at `RELEASE`, not at `MAX` and not at `THRESHOLD`: the ring
+              // completing is the signal that letting go will do something, so it has to
+              // complete exactly where that becomes true.
+              strokeDashoffset={CIRCUMFERENCE * (1 - (syncing ? 1 : progress))}
+            />
+          </svg>
+
+          {syncing ? (
+            <Loader2Icon aria-hidden className="size-3 animate-spin" />
+          ) : (
+            // One arrow, rotated. Down while there is further to pull, up once releasing sends
+            // — the shape carries the state, so the colour is not doing it alone.
+            <ArrowUpIcon
+              aria-hidden
+              className={`size-3 transition-transform duration-fast ease-standard ${
+                ready ? "" : "rotate-180"
+              }`}
+            />
+          )}
+        </span>
+
         {syncing ? "Sending…" : ready ? "Release to send" : "Pull to send"}
       </span>
     </div>

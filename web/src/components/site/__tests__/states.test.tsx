@@ -105,6 +105,22 @@ describe("Unavailable", () => {
     expect(screen.getByText("npm run db:migrate").tagName).toBe("CODE");
   });
 
+  it("does not leave 'Run , then reload.' behind when it lifts the command out", () => {
+    // Caught in `.shots/private-today-390.png`, not by reasoning — the first version removed
+    // the backticked token and left the sentence around it, so the panel read "Run , then
+    // reload." The instruction is a sentence, so removing it has to be a sentence-level
+    // operation. This is the argument for the screenshot sweep in one assertion.
+    render(<Unavailable subject="Tasks" detail={BEHIND} />);
+    expect(screen.queryByText(/Run\s*,/)).toBeNull();
+    expect(screen.queryByText(/then reload/)).toBeNull();
+  });
+
+  it("keeps the parenthetical that names the column", () => {
+    // The only part of D-156's message a person cannot reconstruct from the heading.
+    render(<Unavailable subject="Tasks" detail={BEHIND} />);
+    expect(screen.getByText(/column x does not exist/)).toBeInTheDocument();
+  });
+
   it("falls back to the plain failure for anything else", () => {
     render(<Unavailable subject="Tasks" detail="Connection terminated unexpectedly" />);
     const panel = screen.getByRole("status");

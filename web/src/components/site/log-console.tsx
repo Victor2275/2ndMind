@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 
 import { fileLogEntry, removeLogEntry, tagLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
+import { Empty } from "@/components/site/states";
 import { LogForm } from "@/components/site/log-form";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { TagInput } from "@/components/site/tag-input";
@@ -95,7 +96,15 @@ function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) =>
           <button
             type="submit"
             aria-label="Remove entry"
-            className="text-muted-foreground opacity-100 transition-colors hover:text-destructive sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+            // Visible on hover for a mouse, always visible on touch where hover does not exist.
+            //
+            // `can-hover:` rather than `sm:` (§5.3, Q194). The width was a proxy for "has a
+            // mouse" and a touch tablet breaks it: over 640px, no hover, so the button was
+            // invisible with no way to reveal it — and unlike the task list, this row has no
+            // swipe to fall back on, so the entry could not be removed at all.
+            //
+            // `size-11` is DESIGN.md §9's 44px. It was a bare 14px glyph with no padding.
+            className="-mr-2 inline-flex size-11 press items-center justify-center rounded-control text-muted-foreground opacity-100 transition-colors duration-fast ease-standard hover:text-destructive can-hover:opacity-0 can-hover:group-focus-within:opacity-100 can-hover:group-hover:opacity-100"
           >
             <svg viewBox="0 0 14 14" className="size-3.5 fill-none stroke-current stroke-[1.6]">
               <path d="M3 3l8 8M11 3l-8 8" />
@@ -328,9 +337,7 @@ export function LogConsole({
             ))}
           </ul>
         ) : (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            Nothing logged yet today.
-          </p>
+          <Empty>Nothing logged yet today.</Empty>
         )}
 
         {undoId !== null && (

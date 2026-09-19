@@ -84,8 +84,11 @@ function isActive(pathname: string, href: string, section?: string): boolean {
   return prefix === "/private" ? pathname === "/private" : pathname.startsWith(prefix);
 }
 
+// `press` explicitly (§5.3): the tab bar's items are `<a>` elements, which §5.3's base rule
+// cannot reach — it selects `button` and `[role=button]`. This is the most-tapped surface in the
+// app, so it is the last place a tap should look like it did nothing.
 const ITEM =
-  "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors";
+  "press flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors";
 
 /**
  * How the bar's own links navigate.
@@ -372,7 +375,7 @@ export function PrivateTabBar({
             href="/private/log"
             hard={offline}
             aria-current={isActive(pathname, "/private/log") ? "page" : undefined}
-            className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+            className="flex min-h-12 flex-1 press flex-col items-center justify-center gap-0.5 rounded-md border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
           >
             <PlusIcon className="icon-md" aria-hidden />
             <span className="text-xs">Log</span>

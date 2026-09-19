@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { CheckIcon, Trash2Icon } from "lucide-react";
 
 import { buzzSaved } from "@/lib/haptics";
 
@@ -118,7 +119,31 @@ export function SwipeRow({
   }
 
   const revealed = dx > 0 ? rightLabel : dx < 0 ? leftLabel : undefined;
-  const committing = Math.abs(dx) >= THRESHOLD && handlerFor(dx) !== undefined;
+  const travelled = Math.abs(dx);
+  const committing = travelled >= THRESHOLD && handlerFor(dx) !== undefined;
+  const destructive = dx < 0;
+  const Icon = destructive ? Trash2Icon : CheckIcon;
+
+  /**
+   * Colour arrives before the icon (§5.3, Q199).
+   *
+   * Q199 asked for **both**, with the colour first, and the order is the whole point: the
+   * colour is the answer to *what will this do*, which a thumb needs while the row is still
+   * moving, and the icon is the confirmation, which is only worth the width once the gesture
+   * has committed to a direction. A reveal that shows both at once says the same thing twice
+   * at 10% opacity and neither legibly.
+   *
+   * So the ground ramps in over the first `SLOP`–`THRESHOLD` of travel and the icon fades in
+   * over the second half of it. The label follows the icon, because a word at 40px of travel
+   * is being read while the finger is still deciding.
+   *
+   * Written as an inline `style` rather than a class per state for the reason the tab bar's
+   * sheet gives: this changes at 60fps and there is no set of classes that can express it.
+   * `motion-reduce` is not needed here — nothing below animates on its own, it tracks a
+   * finger, and a gesture that ignored the finger under reduced motion would simply be broken.
+   */
+  const ramp = Math.min(1, Math.max(0, (travelled - SLOP) / (THRESHOLD - SLOP)));
+  const iconOpacity = Math.min(1, Math.max(0, (ramp - 0.5) * 2));
 
   return (
     <div className="relative overflow-hidden">
@@ -127,19 +152,28 @@ export function SwipeRow({
       {revealed && (
         <div
           aria-hidden
-          className={`absolute inset-0 flex items-center px-4 font-mono text-[0.65rem] tracking-wide ${
+          style={{
+            // `0.08 → 0.28` rather than `0 → 1`: this sits *behind* a row that stays opaque, so
+            // what is visible is the strip either side of it. At full strength the strip reads
+            // as a second row rather than as the row's own backing.
+            backgroundColor: `color-mix(in oklab, var(${
+              destructive ? "--destructive" : "--primary"
+            }) ${(8 + ramp * 20).toFixed(1)}%, transparent)`,
+          }}
+          className={`absolute inset-0 flex items-center gap-2 px-4 ${
             dx > 0 ? "justify-start" : "justify-end"
-          } ${
-            dx < 0
-              ? committing
-                ? "bg-destructive/25 text-destructive"
-                : "bg-destructive/10 text-destructive/70"
-              : committing
-                ? "bg-primary/25 text-primary"
-                : "bg-primary/10 text-primary/70"
-          }`}
+          } ${destructive ? "text-destructive" : "text-primary"}`}
         >
-          {revealed}
+          <span
+            style={{ opacity: iconOpacity }}
+            className={`flex items-center gap-2 ${committing ? "font-semibold" : ""}`}
+          >
+            <Icon className="icon-md" />
+            {/* The label keeps the body face: it is a word, and DESIGN.md §2 rule 2 reserves
+                mono for real data. It was `font-mono text-[0.65rem]`, which is 10.4px and under
+                the 11px floor §7.1 turns into a gate. */}
+            <span className="text-sm">{revealed}</span>
+          </span>
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import { Empty } from "@/components/site/states";
 import type { CalendarEvent } from "@/lib/calendar/ics";
 
 /**
@@ -76,12 +77,12 @@ export function Agenda({
 }) {
   if (events.length === 0) {
     return (
-      <p
-        data-first-action={firstAction || undefined}
-        className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground"
-      >
-        Nothing scheduled.
-      </p>
+      // The shared state (§5.1), and `data-first-action` has to survive the empty branch: a
+      // gated page that drops the marker fails the sweep by name rather than passing quietly
+      // (D-166). It rides the sentence, which is what the sweep measures the top of.
+      <Empty>
+        <span data-first-action={firstAction || undefined}>Nothing scheduled.</span>
+      </Empty>
     );
   }
 
