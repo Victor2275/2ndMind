@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-09
+updated: 2026-09-18
 domain: engineering
 stability: volatile
 summary: The design system of record — tokens, type, space, motion, and the rules that govern them.
@@ -331,8 +331,13 @@ of the two literals is changed and the other is not.
 
 Settled now:
 
-- **Three content widths**, named: prose / content / wide. The private app is narrower than
-  the public site; a form at 64rem is unreadable. *(Still to build.)*
+- **Three content widths** — **done (V4 §4.1, D-252)**. `--width-prose` 42rem, `--width-content`
+  64rem, `--width-wide` 80rem, generated into `scale.css` with a `width-*` utility each, and
+  assigned per route by the table in `components/site/content-width.tsx` (longest prefix wins).
+  `content` is the default and is what every private page had before. They live in `:root` and
+  **not** in `@theme`, for D-219's reason: `--container-*` is the namespace `max-w-*` reads, so a
+  step named `prose` there would replace Tailwind's own `max-w-prose` app-wide. The utilities are
+  `width-*` rather than `w-*`/`max-w-*` so the names cannot collide with a Tailwind utility.
 - **Card size vocabulary** — `sm` / `md` / `lg`, done in `ui/card.tsx` (§1.10). `md` is the
   default and its padding is `--spacing-sm`. The app's own `p-6` / `p-5` / `p-4` call sites
   migrate in Phases 4–6.

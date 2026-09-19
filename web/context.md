@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-13
+updated: 2026-09-18
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -214,6 +214,35 @@ a scope refreshes), `link-wipe` (underline growing from the leading edge), and `
 staggered reveal). All three, and the ambient drift, collapse under `prefers-reduced-motion`.
 V4 §1.8 drops `card-scan`'s lift and moves `rise`'s stagger out of inline `animationDelay`.
 
+## The private shell — V4 Phase 4 (2026-09-18, D-251 to D-258)
+
+**Navigation is two components over one route set, and that is deliberate** (D-132, reconfirmed
+by Q358). `PrivateSidebar` owns `sm` and above; `PrivateTabBar` owns below it. The switch is the
+unlayered `.nav-desktop` / `.nav-mobile` pair in `globals.css` — Tailwind's own `hidden sm:flex`
+does not work here, and the comment there says why.
+
+Four things in the shell are easy to break by accident:
+
+1. **The sidebar's collapsed rail is the CSS base state; expanding is the exception.** One block
+   of declarations, applied only at `laptop` and up and only when `data-nav` is absent. Writing
+   it the other way round means the collapsed look appears twice — once in a media query, once
+   under the attribute — and the two drift. The attribute is set **before first paint** by the
+   inline script in `app/private/layout.tsx`, from `lib/nav/sidebar.ts`; React holds no layout
+   state for it.
+2. **The layout owns the only `<main>`**, rendered by `ContentWidth` with `id="main"` for the
+   skip link. Private pages render a `<div>`. A page that reintroduces `<main>` nests two
+   landmarks.
+3. **How wide a private screen is comes from one table**, `CONTENT_WIDTH` in
+   `components/site/content-width.tsx`, longest prefix wins (D-252). Not from a class on the
+   page.
+4. **`SyncRunner` is the only writer of the outbox summary** (`lib/sync/status.ts`), and it
+   publishes *before* flushing as well as after. The glyph, the sidebar badge and the tab-bar
+   badge are all readers. A second component summarising the outbox for itself is how the three
+   start disagreeing.
+
+`PageHeader` is a one-row title bar below `phone` — no eyebrow, no lede, actions kept (D-253).
+The actions stay because on several screens the header action *is* `data-first-action`.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit
@@ -232,14 +261,16 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,805 tests across 121 files** as of
-2026-09-13, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,848 tests across 125 files** as of
+2026-09-18, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
 2++, then "1,644 across 110" until self-serve enrolment and the cover letter generator added
 their own, then "1,755 across 120" until V4 Phase 3 added tag tests to `log.db.test.ts`,
-`tasks/queries.db.test.ts`, and `apply.db.test.ts`, plus a new `tag-input.test.tsx`. The suite
+`tasks/queries.db.test.ts`, and `apply.db.test.ts`, plus a new `tag-input.test.tsx`, and
+"1,805 across 121" until V4 Phase 4 added `private-sidebar`, `connection-glyph`,
+`content-width` and `sheet-drag` suites. The suite
 more than doubled during V3 and the floor was never re-stated, so for a week the number that is
 supposed to catch a regression would have accepted losing half the suite. Re-state it whenever
 it moves.)

@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-13
+updated: 2026-09-18
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,234 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-18 · V4 Phase 4 — the private shell
+
+### D-251 · The desktop nav is a sidebar, and the collapsed rail is the base state in CSS
+
+**Decision.** `private-nav.tsx` is gone; `private-sidebar.tsx` replaces it with a vertical rail
+carrying the same eight sections under two headings (**Daily**: Today, Now, Log — **Areas**:
+Training, Academics, Work, Calendar, Hobbies), plus Not sent and Settings below a rule, plus the
+connection glyph. It appears at the **same 40rem line** the nav already switched at, and is
+icon-only below `laptop` (64rem) whatever the stored preference says. `PrivateTabBar` still owns
+everything below 40rem and is unchanged in that respect — D-132's two-component split stands,
+reconfirmed by Q358.
+
+The collapse is **not React state**. `lib/nav/sidebar.ts` exports a `PREPAINT` script that the
+private layout inlines; it sets `data-nav="collapsed"` on `<html>` before the first paint, and
+`globals.css` does the rest. The component subscribes to a store only so the toggle's
+`aria-expanded` is honest.
+
+**Why.** Q359 is a measurement, not a taste: eight items in a horizontally scrolling mono row on
+a 1440px screen, which is what Q258 was complaining about. The sidebar is Q360; collapsible is
+Q361; persisted is Q362.
+
+State-in-React was tried in the design and rejected before it was written: reading `localStorage`
+in an effect collapses the rail *after* the first paint, so every load of every private page
+would show 208px of labels sliding away — the same flash `next-themes` exists to prevent, with
+the same fix.
+
+**The collapsed look is the base state and expanding is the exception**, which is the part worth
+remembering. A rail is collapsed in two unrelated situations — the viewport is under `laptop`, or
+Victor collapsed it — and CSS cannot express "a media query OR a selector" in one rule. Written
+the obvious way round, the collapsed declarations have to appear twice and drift the first time
+one of them is edited. Inverted, there is exactly one condition under which the sidebar is wide,
+so exactly one block can be wrong. It also fails in the right direction: anything going wrong
+with the attribute, the script or the stylesheet leaves a working icon rail, where the other
+order leaves a 208px column of labels on a 700px screen.
+
+**How to reverse.** Restore `private-nav.tsx` from git and swap the import in
+`app/private/layout.tsx`; delete `lib/nav/sidebar.ts`, the `<script>` in the layout, and the
+`.nav-sidebar` block in `globals.css`. The tab bar is untouched by this and needs no change.
+
+---
+
+### D-252 · Three named content widths, declared in `:root` and assigned by a route table
+
+**Decision.** `--width-prose` (42rem), `--width-content` (64rem) and `--width-wide` (80rem) are
+generated into `scale.css` by `build-scale.mts`, with a `width-*` utility each.
+`components/site/content-width.tsx` owns the private `<main>`, holds the route → width table, and
+picks the **longest matching prefix**. Default is `content` — what every private page had before.
+`wide` goes to Academics, Athletics, Calendar and Work; `prose` to `/private/now` alone.
+
+**Why.** Q363 asks for the content to get wider now that navigation has left the top of the page,
+and Q149 says a form at 64rem is unreadable. Both are right, about different screens: one number
+cannot serve a log form and a record board, so the answer is a vocabulary. DESIGN.md §5 has
+specified these three since §1.7 and marked them "still to build"; the shell is where they get
+built, because the shell is what owns the column.
+
+**In `:root`, not `@theme`, and that is D-219 again.** `--container-*` is the namespace `max-w-*`
+resolves, so a step named `prose` there would silently replace Tailwind's own `max-w-prose` for
+the whole app — the same failure that put `/private/settings` in a 64-pixel column. The utilities
+are spelled `width-*` rather than `w-*` or `max-w-*` for the same reason: there is no `width-`
+utility in Tailwind, so the name cannot collide.
+
+**A table rather than a prop on each page**, because a Next layout cannot be told anything by the
+page inside it — `children` is already rendered when it arrives, and there is no route segment
+config for "how wide am I". The alternatives were a wrapper element in all nineteen pages, or
+this. Longest-prefix matching is not decoration: `/private/athletics` and
+`/private/athletics/exercises` are both in the table and agree today, so source order would
+decide it silently on the day they stop agreeing.
+
+**How to reverse.** Delete the `WIDTHS` block from `build-scale.mts`, run `npm run scale`, and
+replace `<ContentWidth>` in the private layout with the old `mx-auto w-full max-w-5xl` wrapper.
+
+---
+
+### D-253 · On a phone the page header is a title bar; the eyebrow and lede are dropped, the actions are not
+
+**Decision.** `PageHeader` renders one 44px row below `phone`: title at `xl`, the connection
+glyph, and whatever `actions` the page passes. The eyebrow and the lede are hidden by
+`phone-hidden`, a second name on the existing nav-switch rules in `globals.css`. Above 40rem it
+is exactly what it was.
+
+**Why.** Q132 measured the old header at ~110px above the first action on every screen, on the
+device where D-083 spent a whole feature reclaiming vertical space; Q133 asked for it to
+collapse. Measured with `npm run shots` at 390px, before → after: Today 334 → 297, Athletics
+392 → 235, Calendar 293 → 179. Athletics and Calendar save more than Today because they have
+ledes and Today does not.
+
+**The actions stay**, which is the part that was nearly got wrong. On several screens the action
+in the header *is* the first thing you can do on the page — it carries `data-first-action` and
+the sweep gates how far down it sits — so moving it into the body to save a row would have
+demoted the very thing the saving is for.
+
+Q134 was explicit that this must not stick on scroll, and it does not.
+
+**Also fixed here:** `Stat`'s hint was `hidden … sm:block`, which is the exact pattern the nav
+switch was hand-written to avoid — a base utility and its own variant both setting `display`
+resolve to the base at every width, so that hint was most likely invisible on desktop too. It is
+`phone-hidden` now. **Five call sites still spell it the broken way** (`agenda.tsx`,
+`case-study-toc.tsx`, `private-link.tsx`, `session-logger.tsx`, `task-list.tsx`); they need a
+`laptop` equivalent of the utility and belong to §7.4's audit.
+
+**How to reverse.** Drop the `phone-hidden` classes and the `sm:` prefixes in `page-shell.tsx`.
+
+---
+
+### D-254 · One glyph owns the quiet sync state; the pill keeps only the states that need a person
+
+**Decision.** `connection-glyph.tsx` is a dot plus a label, rendered in the sidebar footer on
+desktop and in the phone title bar, always. `SyncRunner`'s floating pill no longer renders for a
+`quiet` queue — only for `stale`, `failed`, or a degraded connection. The summary itself moved
+out of the runner's `useState` into a published store, `lib/sync/status.ts`, which the glyph, the
+sidebar badge and the tab-bar badge all read.
+
+**Why.** Q375 asks for a persistent indicator. The app already had a good one and it was not
+persistent: the pill appears when something is wrong and is absent otherwise, so a quiet screen
+is ambiguous between "no queue, good connection" and "the indicator is broken". A glyph answers
+that by existing.
+
+Three components summarising the outbox independently would be three reads of the same table and
+— worse — three answers that drift apart for however long their timers are out of step. One
+writer, many readers.
+
+**What the glyph says is ordered by what needs a person, not by severity**: a rejected op
+outranks being offline, because it is the only state still there tomorrow without someone; below
+that the connection leads, because "3 waiting" on a phone in a tunnel invites a hunt for a fault
+that is not there.
+
+**The summary is now published before the flush, not after.** That was invisible while the pill
+was the only reader — a pill that says nothing and a pill that has not been computed look the
+same — but the glyph is on screen always, so a flush that throws would have left it reading
+"Checking sync" for the life of the page. Reading the outbox needs no network; only sending it
+does.
+
+**How to reverse.** Restore the `urgency !== "none"` condition in `sync-runner.tsx` and remove
+the two `<ConnectionGlyph>` mounts. The store can stay; it costs nothing and the badges use it.
+
+---
+
+### D-255 · The More sheet gets a grabber and a real drag, with two snap points
+
+**Decision.** The sheet has a grabber, and dragging it moves the sheet: released, it settles to
+`partial` (its own content height), `full` (85dvh with the list scrolling), or closed. The
+arithmetic is `lib/ui/sheet-drag.ts` — a pure `settle()` plus a `Velocity` sampler — and the
+component only wires pointers to it. The drag starts on the grabber only, never on the list.
+
+**Why.** Q172 asked for partial-height dragged to full; Q173 asked for the grabber. A grabber
+that is not draggable is a small lie, and tap-to-expand was the cheaper option Victor was offered
+and declined.
+
+Three details are load-bearing. **A flick beats distance**, because the gesture people actually
+make to dismiss a sheet is short and fast, and a quarter-of-the-height threshold rejects exactly
+that. **From `full`, down means `partial`, not closed** — a sheet that vanishes when you meant to
+shrink it has thrown away whatever you were about to tap. **Velocity is sampled over ~80ms**, not
+between the last two events, which can be a fraction of a millisecond apart and make every drag a
+flick.
+
+Putting the arithmetic in a module is what lets the thresholds be tested as arithmetic: jsdom
+reports every element as 0px tall, so a component test cannot check a rule expressed as a share
+of the sheet's height.
+
+**How to reverse.** Delete the grabber `<div>` and the three pointer handlers in
+`private-tabbar.tsx`; the sheet returns to content height. `lib/ui/sheet-drag.ts` is
+self-contained and Phase 5's sheets will want it.
+
+---
+
+### D-256 · Active tab icons are filled at 20%, not solid
+
+**Decision.** `TabLink` adds `fill-primary/20` when active, keeping the stroke.
+
+**Why.** Q367: "colour alone is currently the only active signal", and a signal carried by hue
+alone is the one a colour-blind eye and a bright pavement both lose first.
+
+A solid fill was tried first and is wrong for *this* icon set: lucide draws outlines, so filling
+`CalendarDaysIcon` turns it into a rectangle — the dots that make it a calendar are strokes
+inside the shape being filled. At 20% the interior survives and the tab still reads as filled at
+arm's length. Checked in the built CSS, per §1.5's standing rule: Tailwind emits both a
+`var(--primary)` fallback and the real `color-mix` rule, so the alpha does survive.
+
+**How to reverse.** One class in `private-tabbar.tsx`.
+
+---
+
+### D-257 · Two columns on Today and Academics; Athletics gets the width and keeps its layout
+
+**Decision.** Today is `1fr + 22rem` at `laptop` — act on the left (errors, tasks, rehab), read on
+the right (schedule, summaries). Academics is an even two — the work in front of you on the left,
+where you stand on the right. **Athletics is not re-gridded**: it takes the wider column from
+D-252 and nothing else.
+
+**Why.** Q150 names all three. Two of them needed a grid; the third already had one — Phase 2++
+Stage 7 built the record board as `lg:grid-cols-2` throughout, eight days ago, with Victor
+reviewing it. Re-composing a screen he has just signed off, to satisfy a line item that screen
+already satisfies, is churn dressed as progress. What §4.6 actually gives it is 80rem instead of
+64rem, which widens every one of those existing pairs.
+
+**The phone order is the constraint, not a side effect.** Both grids are two blocks in source
+order, so stacked they preserve exactly the order V3 §3.1 measured and the sweep gates. A grid
+with panels interleaved would read correctly at 1280 and silently reorder the phone.
+
+**How to reverse.** Remove the two wrapper `<div>`s in each page; the children are unchanged.
+
+---
+
+### D-258 · One `<main>` per page, one skip link per layout, and a focus ring floor
+
+**Decision.** Nineteen private pages rendered their own `<main>`; the private layout now renders
+the only one, and those became `<div>`. Public pages keep theirs and gained `id="main"`. Skip
+links: one in `PublicChrome`, one in the private layout, one in `/cached` — which is the private
+app (D-174) but sits outside its layout. `globals.css` gains a `:where(...)` focus-visible rule
+and the `.skip-link` class.
+
+**Why.** Q444 (skip links), Q445 (landmarks), Q443 and Q447 (visible focus everywhere, keyboard
+usable throughout). The nested-`<main>` problem was created by moving the column into the layout
+and had to be fixed in the same change, so the landmark audit happened here rather than in §7.4.
+
+The focus rule is `:where()` so its specificity is zero: it is a floor that anything with a
+designed focus state — `card-scan`, `link-wipe`, the inputs — still beats without `!important`.
+Before it, `* { outline-ring/50 }` set a focus *colour* and never a width, so the actual
+indicator was whatever the browser drew, which on a `<div role="button">` is nothing.
+
+**Still open for §7.4:** heading-order was not audited mechanically, and there is no test for
+focus order. Q442 asks for one on the log form.
+
+**How to reverse.** Everything here is additive except the `<main>` → `<div>` change, which is
+required as long as the layout owns the landmark.
 
 ---
 

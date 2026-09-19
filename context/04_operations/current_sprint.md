@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-12
+updated: 2026-09-18
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -16,12 +16,13 @@ read_when: Always — anything about current priorities or scheduling.
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
   **V4 is under way** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  **454 points, 344 done**, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every
+  **454 points, 378 done**, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every
   colour, size, space and motion value comes from one place and a test fails if it does not — the
   settings screen pulled forward, **Phase N** (the plane-wifi freeze), **Phase 2 — Milestone B**
   (training logged as sessions on the phone, offline, proven end to end against the real
-  database), **Phase 2++** (the logger rebuilt to Hevy standard, routines, the dashboard), and
-  **Phase 6 — Milestone D, done 2026-09-10: the portfolio is finished.**
+  database), **Phase 2++** (the logger rebuilt to Hevy standard, routines, the dashboard),
+  **Phase 6 — Milestone D, done 2026-09-10: the portfolio is finished**, **Phase 3** (tags,
+  2026-09-13) and **Phase 4** (the private shell, 2026-09-18).
 
   Phase 6 was taken out of order. The plan recorded "the portfolio stays untouched through peak
   application season" as an accepted risk (§7 R1); that was reversed on 2026-09-10. All nine items
@@ -36,7 +37,18 @@ read_when: Always — anything about current priorities or scheduling.
   the GitHub repository went public with an MIT `LICENSE`, and a cover letter generator was
   added as a third panel on `/private/work/tailor`.
 
-  **Phase 3 (tags) is next.** 110 points remain, 97 unparked.
+  **Phase 4 closed 2026-09-18.** The desktop nav became a collapsible sidebar grouped into Daily
+  and Areas, the page header became a one-row title bar on a phone (the first action on Athletics
+  moved from 392px to 235px), the tab bar gained filled active icons, an outbox badge and a
+  draggable sheet, a connection glyph is now on screen always, Today and Academics went
+  two-column on a laptop, and the app gained skip links, single `<main>` landmarks and a visible
+  focus ring everywhere. Decisions D-251 to D-258.
+
+  **Phase 5 — the private screens, Milestone C — is next.** 76 points remain, 63 unparked.
+
+  **One thing on Victor:** the local database is behind the Phase 3 migration, so `/private/log`
+  and `/private/academics` render their failure branch locally and `npm run shots` reports eight
+  faults that are not real. `npm run db:migrate` clears it.
 - **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
