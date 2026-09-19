@@ -176,7 +176,7 @@ async function TimeTrials() {
 
 export default function TimeTrialsPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Training"
         title="Time Trials"
@@ -193,6 +193,6 @@ export default function TimeTrialsPage() {
           <TimeTrials />
         </Suspense>
       )}
-    </main>
+    </div>
   );
 }

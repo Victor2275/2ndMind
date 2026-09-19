@@ -37,7 +37,7 @@ export default function LogSessionPage() {
     // The cap lifts at `lg` (V4 Phase 2++ Stage 5), which is the same breakpoint the set list
     // becomes a table at: a table of six columns wants more than 42rem, and squeezing it into
     // the phone's width would have made the table worse than the cards it replaced.
-    <main className="max-w-2xl pb-16 lg:max-w-4xl">
+    <div className="max-w-2xl pb-16 lg:max-w-4xl">
       <PageHeader eyebrow="Training" title="Log a session" />
       <TrainingTabs />
 
@@ -57,6 +57,6 @@ export default function LogSessionPage() {
         </p>
         <RecentSessions />
       </section>
-    </main>
+    </div>
   );
 }

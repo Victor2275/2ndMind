@@ -246,7 +246,7 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
   const initialCategory = TAB_CATEGORIES.some((c) => c.key === requested) ? requested : undefined;
 
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Log"
         title={query ? "Search" : tag ? "Tagged" : "Log"}
@@ -341,6 +341,6 @@ export default async function LogPage({ searchParams }: PageProps<"/private/log"
           </Suspense>
         </>
       )}
-    </main>
+    </div>
   );
 }

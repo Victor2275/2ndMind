@@ -9,13 +9,13 @@ import { SkeletonHeader, SkeletonPanel, SkeletonStats } from "@/components/site/
  */
 export default function PrivateLoading() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <SkeletonHeader />
       <SkeletonStats />
       <div className="mt-8 space-y-4">
         <SkeletonPanel rows={4} />
         <SkeletonPanel rows={2} />
       </div>
-    </main>
+    </div>
   );
 }

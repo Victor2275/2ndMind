@@ -57,7 +57,7 @@ export default function AboutPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
       {/* Hero. No `rise` — this is the first thing on screen, and the fade delayed FCP by
           ~900ms on a warm load (measured 2026-09-04): opacity:0 frames don't count as painted,
           so the hero was invisible until its own animation finished. `.rise` still does real

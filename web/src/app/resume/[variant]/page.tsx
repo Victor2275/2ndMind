@@ -40,7 +40,7 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
   }));
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
+    <main id="main" className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
       {/* Controls — screen only. */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex flex-wrap items-center gap-2">

@@ -16,7 +16,7 @@ export default function NewExercisePage() {
   const router = useRouter();
 
   return (
-    <main className="max-w-2xl pb-16">
+    <div className="max-w-2xl pb-16">
       <PageHeader eyebrow="Athletics" title="New exercise" />
       <div className="mt-6">
         <ExerciseEditForm
@@ -28,6 +28,6 @@ export default function NewExercisePage() {
           }
         />
       </div>
-    </main>
+    </div>
   );
 }

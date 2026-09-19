@@ -99,7 +99,7 @@ async function Documents() {
 
 export default function HobbiesPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Craft"
         title="Hobbies"
@@ -126,6 +126,6 @@ export default function HobbiesPage() {
       >
         <Documents />
       </Suspense>
-    </main>
+    </div>
   );
 }

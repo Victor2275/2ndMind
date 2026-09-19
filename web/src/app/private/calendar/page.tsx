@@ -134,7 +134,7 @@ async function Rules() {
 
 export default function CalendarPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Time"
         title="Calendar"
@@ -150,6 +150,6 @@ export default function CalendarPage() {
           <Rules />
         </Suspense>
       </div>
-    </main>
+    </div>
   );
 }

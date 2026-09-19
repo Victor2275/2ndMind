@@ -60,7 +60,7 @@ async function Documents() {
 
 export default function WorkPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Career"
         title="Work"
@@ -79,6 +79,6 @@ export default function WorkPage() {
       >
         <Documents />
       </Suspense>
-    </main>
+    </div>
   );
 }

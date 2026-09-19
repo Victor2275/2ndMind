@@ -32,25 +32,32 @@ export const dynamic = "force-static";
 
 export default function CachedPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-5 pt-8 pb-24 sm:px-6">
-      <header className="border-b border-border pb-6">
-        <p className="eyebrow text-primary">No signal</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-          What is on this phone
-        </h1>
-        <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
-          The live app needs the network. This is the copy the phone keeps — read-only, as of the
-          last time it synced.
-        </p>
-      </header>
+    <>
+      {/* `/cached` is the private app (D-174) but sits outside its layout, so it carries its
+          own skip link — §4.7, Q444: one per layout, and this route is one. */}
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+      <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-5 pt-8 pb-24 sm:px-6">
+        <header className="border-b border-border pb-6">
+          <p className="eyebrow text-primary">No signal</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+            What is on this phone
+          </h1>
+          <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
+            The live app needs the network. This is the copy the phone keeps — read-only, as of the
+            last time it synced.
+          </p>
+        </header>
 
-      <CachedApp />
+        <CachedApp />
 
-      {/* Sends what was written with the radio off, the moment signal returns, without waiting
+        {/* Sends what was written with the radio off, the moment signal returns, without waiting
           for the live app to be opened (D-175). `offline` gates it on there being something
           queued: this route is static and reachable without a session, and an unguarded flush
           posts even when the outbox is empty. */}
-      <SyncRunner offline />
-    </main>
+        <SyncRunner offline />
+      </main>
+    </>
   );
 }

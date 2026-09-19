@@ -21,7 +21,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
   const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
       <h1 className="font-heading text-4xl font-extrabold tracking-tight">Projects</h1>
 
       <div className="mt-10">

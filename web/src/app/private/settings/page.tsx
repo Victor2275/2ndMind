@@ -47,7 +47,7 @@ function deployedCommit(): string {
 
 export default function SettingsPage() {
   return (
-    <main className="max-w-2xl pb-16">
+    <div className="max-w-2xl pb-16">
       <PageHeader
         eyebrow="Settings"
         title="Settings"
@@ -144,6 +144,6 @@ export default function SettingsPage() {
           />
         </SettingsGroup>
       </div>
-    </main>
+    </div>
   );
 }

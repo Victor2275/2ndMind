@@ -33,6 +33,17 @@ export function PublicChrome({
 
   return (
     <>
+      {/* One skip link per layout (V4 §4.7, Q444). Rendered with the chrome, because the
+          private app and `/cached` carry their own — and a second one would mean the first
+          `Tab` on a private page offered a choice of two identical links.
+
+          It is the first focusable thing in the document on purpose: a skip link that is not
+          first has already been skipped. */}
+      {show && (
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
+      )}
       {show && header}
       <div className="flex flex-1 flex-col">{children}</div>
       {show && footer}

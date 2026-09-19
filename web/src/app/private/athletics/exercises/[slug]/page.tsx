@@ -24,11 +24,11 @@ export default async function ExerciseDetailPage({
   const { slug } = await params;
 
   return (
-    <main className="max-w-3xl pb-16">
+    <div className="max-w-3xl pb-16">
       <PageHeader eyebrow="Athletics" title="Exercise" />
       <div className="mt-6">
         <ExerciseDetail slug={slug} />
       </div>
-    </main>
+    </div>
   );
 }

@@ -97,7 +97,7 @@ async function History() {
 
 export default function TrainingHistoryPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Training"
         title="History"
@@ -114,6 +114,6 @@ export default function TrainingHistoryPage() {
           <History />
         </Suspense>
       )}
-    </main>
+    </div>
   );
 }

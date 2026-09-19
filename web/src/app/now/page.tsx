@@ -39,7 +39,7 @@ export default function NowPage() {
   const lead = active[0]?.updates[0] ? { project: active[0], update: active[0].updates[0] } : null;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-20">
+    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-6 py-20">
       <h1 className="font-heading text-4xl font-extrabold tracking-tight">Now</h1>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">
         What I am working on at the moment.

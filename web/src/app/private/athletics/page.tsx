@@ -73,7 +73,7 @@ const VOLUME_WEEKS = 10;
 
 function Unconfigured() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader eyebrow="Athletics" title="Training" />
 
       <div className="mt-6 rounded-lg border border-highlight/40 bg-highlight/10 px-4 py-3 text-sm">
@@ -88,7 +88,7 @@ function Unconfigured() {
           Everything else on this site keeps working without it.
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -593,7 +593,7 @@ async function Training() {
             , on a phone or here — an exercise, a row per set, saved on the device and synced when
             there is signal. Those sets are what the records and charts above are computed from.
           </p>
-          {/* V4 Phase 2++ Stage 4. A sub-page of Athletics rather than a tenth `PrivateNav`
+          {/* V4 Phase 2++ Stage 4. A sub-page of Athletics rather than a tenth `PrivateSidebar`
               entry — C-11 has been asking for fewer top-level items since 2026-09-06. */}
           <p className="mt-3 text-sm text-muted-foreground">
             Browse, edit or add a movement at{" "}
@@ -615,7 +615,7 @@ export default function AthleticsPage() {
   if (!isDatabaseConfigured()) return <Unconfigured />;
 
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Training"
         title="Records"
@@ -635,6 +635,6 @@ export default function AthleticsPage() {
       >
         <Training />
       </Suspense>
-    </main>
+    </div>
   );
 }

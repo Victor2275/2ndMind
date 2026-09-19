@@ -27,7 +27,7 @@ export default async function SessionEditPage({
   const { clientId } = await params;
 
   return (
-    <main className="max-w-2xl pb-16 lg:max-w-4xl">
+    <div className="max-w-2xl pb-16 lg:max-w-4xl">
       <PageHeader
         eyebrow="Training"
         title="Edit session"
@@ -43,6 +43,6 @@ export default async function SessionEditPage({
       <div className="mt-6">
         <SessionEdit clientId={clientId} />
       </div>
-    </main>
+    </div>
   );
 }

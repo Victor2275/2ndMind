@@ -96,7 +96,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     /* The page is wider than its prose. The article stays at `max-w-3xl` — Q334 keeps the
        reading measure narrow — and the extra width exists only so the table of contents has
        somewhere to sit at `laptop` and up, rather than pushing the text off-centre. */
-    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
       <div className="mx-auto flex w-full max-w-3xl gap-12 laptop:max-w-none laptop:justify-center">
         <article className="w-full max-w-3xl min-w-0">
           <Link

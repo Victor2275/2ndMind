@@ -41,7 +41,7 @@ export default async function CoursePlanPage() {
   const plan = planText ? parsePlan(planText) : emptyPlan();
 
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Academics"
         title="Course plan"
@@ -56,6 +56,6 @@ export default async function CoursePlanPage() {
       ) : (
         <CoursePlanner requirements={requirements} initial={plan} />
       )}
-    </main>
+    </div>
   );
 }

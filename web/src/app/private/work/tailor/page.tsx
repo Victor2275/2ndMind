@@ -26,7 +26,7 @@ export default async function TailorPage() {
   const bullets = await collectBullets();
 
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Career"
         title="Tailor"
@@ -70,6 +70,6 @@ export default async function TailorPage() {
           </ul>
         </Panel>
       </div>
-    </main>
+    </div>
   );
 }
