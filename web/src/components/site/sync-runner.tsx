@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { reportError } from "@/lib/errors/client";
 import { alertIfStuck } from "@/lib/push/local-alert";
@@ -9,7 +9,8 @@ import { buzzFailed } from "@/lib/haptics";
 import { BUDGET } from "@/lib/net/deadline";
 import { reachabilityStore, startWatching } from "@/lib/net/reachability";
 import { backoffMs, flush, httpPoster } from "@/lib/sync/engine";
-import { summariseOutbox, type OutboxSummary } from "@/lib/sync/outbox-view";
+import { summariseOutbox } from "@/lib/sync/outbox-view";
+import { outboxStore, publishOutbox } from "@/lib/sync/status";
 import { allOps, openSyncDb, pendingBatch, pendingCount, type SyncDb } from "@/lib/sync/store";
 
 /**
@@ -89,7 +90,21 @@ const MAX_PAGES = 20;
 const MAX_RUN_MS = MAX_PAGES * BUDGET.sync + 30_000;
 
 export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
-  const [outbox, setOutbox] = useState<OutboxSummary | null>(null);
+  /**
+   * The summary is **published**, not held (V4 §4.5).
+   *
+   * It used to be this component's `useState`, which was right while this pill was the only
+   * thing that showed it. The persistent glyph now renders the same number in the sidebar and
+   * in the phone title bar, and three components summarising the outbox independently is three
+   * chances to disagree about how many entries are waiting. So the runner — the one component
+   * that knows when the answer changed — writes it to `lib/sync/status.ts`, and everything
+   * that displays it subscribes there, this pill included.
+   */
+  const outbox = useSyncExternalStore(
+    outboxStore.subscribe,
+    outboxStore.getSnapshot,
+    outboxStore.getServerSnapshot,
+  );
 
   /**
    * What the connection is actually doing (Phase N7).
@@ -135,12 +150,24 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
         dbRef.current ??= await openSyncDb();
         const db = dbRef.current;
 
+        /**
+         * Say what the outbox holds **before** trying to send it (V4 §4.5).
+         *
+         * The summary used to be published only after a run finished, which was invisible
+         * while this component was the only thing showing it — a pill that says nothing and a
+         * pill that has not been computed look the same. The glyph is on screen always, so the
+         * difference is now visible: a flush that throws would leave it reading "Checking
+         * sync" for the life of the page, which is precisely the ambiguity a persistent
+         * indicator exists to remove.
+         *
+         * Reading the outbox needs no network. Publishing here means the count is honest from
+         * the moment IndexedDB opens, whatever the connection then does with it.
+         */
+        publishOutbox(summariseOutbox(await allOps(db)));
+
         // On the shell, nothing queued means nothing to do — not even the empty POST that
         // pulls, because this page is reachable without a session. See the note above.
-        if (offline && (await pendingCount(db)) === 0) {
-          setOutbox(summariseOutbox(await allOps(db)));
-          return;
-        }
+        if (offline && (await pendingCount(db)) === 0) return;
 
         for (let page = 0; page < MAX_PAGES; page++) {
           const outcome = await flush(db, httpPoster, { online: navigator.onLine });
@@ -174,7 +201,7 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
 
         if (!cancelled) {
           const summary = summariseOutbox(await allOps(db));
-          setOutbox(summary);
+          publishOutbox(summary);
           // Raised by the app about itself, not pushed by the server — which could not know
           // (§4.1, D-185). Only for ops that have actually failed, and only when the count
           // rises, so one unchanged problem does not fire on every flush.
@@ -234,7 +261,19 @@ export function SyncRunner({ offline = false }: { offline?: boolean } = {}) {
     };
   }, [offline]);
 
-  const queued = outbox && outbox.urgency !== "none";
+  /**
+   * The pill speaks for the **loud** states only (V4 §4.5).
+   *
+   * It used to appear for any non-empty outbox, including `quiet` — a couple of entries on
+   * their way, which is the ordinary state of a phone that has been in a pocket and resolves
+   * itself within seconds. That is now the glyph's job: it is always on screen, it costs no
+   * layout, and it says the same count.
+   *
+   * What stays here is what a glyph cannot carry: `stale` and `failed`, which need a person and
+   * a sentence, and are worth the fixed pill under the thumb precisely because they do not
+   * resolve on their own.
+   */
+  const queued = outbox !== null && (outbox.urgency === "stale" || outbox.urgency === "failed");
 
   /**
    * What the connection is doing, when it is worth saying (Phase N7).

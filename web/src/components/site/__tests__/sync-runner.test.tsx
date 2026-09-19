@@ -42,10 +42,14 @@ vi.mock("@/lib/sync/store", () => ({
 }));
 
 import { record, resetReachability } from "@/lib/net/reachability";
+import { outboxStore, resetOutboxStatus } from "@/lib/sync/status";
 
 const { SyncRunner } = await import("../sync-runner");
 
 beforeEach(() => {
+  // The summary is published to a module-level store since §4.5, so it outlives a render and
+  // would otherwise carry a previous test's queue into the next one.
+  resetOutboxStatus();
   flush.mockReset();
   flush.mockResolvedValue({ status: "synced", hasMore: false });
   pendingCount.mockReset();
@@ -78,8 +82,8 @@ describe("the shell's runner stays quiet unless it has something to send", () =>
 });
 
 /** One pending op, which is all any of these need to make the badge render. */
-const QUEUED = [
-  {
+function op(over: Record<string, unknown> = {}) {
+  return {
     opId: "a",
     entity: "log_entry",
     op: "create",
@@ -90,13 +94,29 @@ const QUEUED = [
     attempts: 0,
     lastError: null,
     createdAt: Date.now(),
-  },
-];
+    ...over,
+  };
+}
+
+/** One op on its way. Ordinary, resolves itself — and since §4.5 the pill says nothing. */
+const QUEUED = [op()];
+
+/**
+ * One op the server refused.
+ *
+ * The pill speaks for the loud states only since §4.5 (the glyph took the quiet count), so a
+ * test about *the pill itself* — how it navigates, what it says — has to stage a state the
+ * pill still has an opinion about. `failed` is the clearest: it never resolves on its own.
+ */
+const FAILED = [op({ state: "failed", lastError: { status: 422, message: "nope" } })];
+
+/** Queued, and old enough that waiting has become a problem rather than a process. */
+const STALE = [op({ createdAt: Date.now() - 48 * 60 * 60 * 1000 })];
 
 describe("the badge", () => {
   it("navigates by document on the shell, where there is no server to ask", async () => {
     pendingCount.mockResolvedValue(1);
-    allOps.mockResolvedValue(QUEUED);
+    allOps.mockResolvedValue(FAILED);
     render(<SyncRunner offline />);
 
     const link = await screen.findByRole("link");
@@ -108,7 +128,7 @@ describe("the badge", () => {
   it("uses the router in the live app, where a client transition is the right thing", async () => {
     // The counterpart, so the assertion above cannot pass merely because the mock never
     // applied. Inside /private there is a server, and a client transition is faster.
-    allOps.mockResolvedValue(QUEUED);
+    allOps.mockResolvedValue(FAILED);
     render(<SyncRunner />);
 
     const link = await screen.findByRole("link");
@@ -233,8 +253,10 @@ describe("what the badge says about the connection (Phase N7)", () => {
 
   it("lets the queue lead when there is one, and keeps the connection as context", async () => {
     // The queue is the more specific thing to say. A poor connection explains it rather than
-    // replacing it.
-    allOps.mockResolvedValue(QUEUED);
+    // replacing it. Staged `stale` rather than merely queued: since §4.5 the pill no longer
+    // speaks for a quiet queue, so a quiet one would leave nothing for the connection to be
+    // context *for*.
+    allOps.mockResolvedValue(STALE);
     render(<SyncRunner />);
     const link = await screen.findByRole("link");
 
@@ -242,6 +264,38 @@ describe("what the badge says about the connection (Phase N7)", () => {
 
     await waitFor(() => expect(link.textContent).toContain("Connection is poor"));
     expect(link.textContent).toContain("1 waiting");
+  });
+
+  it("says nothing about an ordinary queue on a good connection (§4.5)", async () => {
+    // The change §4.5 made, stated as a test. A couple of entries on their way is the normal
+    // state of a phone that has been in a pocket; it resolves itself in seconds, and the
+    // persistent glyph is already showing the count. A fixed pill for it is noise that trains
+    // the eye to skip the corner where the failures appear.
+    allOps.mockResolvedValue(QUEUED);
+    render(<SyncRunner />);
+    await waitFor(() => expect(flush).toHaveBeenCalled());
+
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("publishes what is queued even when the run itself fails (§4.5)", async () => {
+    // The glyph is on screen always, so "no summary yet" is a state someone can sit looking
+    // at. Reading the outbox needs no network; only sending it does.
+    allOps.mockResolvedValue(QUEUED);
+    flush.mockRejectedValue(new Error("no"));
+    render(<SyncRunner />);
+
+    await waitFor(() => expect(outboxStore.getSnapshot()?.pending).toBe(1));
+  });
+
+  it("publishes the summary whether or not it renders anything (§4.5)", async () => {
+    // The pill going quiet must not take the glyph's number with it: the sidebar and the tab
+    // bar read this store, and they are the ones showing the quiet state now.
+    allOps.mockResolvedValue(QUEUED);
+    render(<SyncRunner />);
+
+    await waitFor(() => expect(outboxStore.getSnapshot()?.pending).toBe(1));
+    expect(outboxStore.getSnapshot()?.urgency).toBe("quiet");
   });
 
   it("goes quiet again as soon as something answers", async () => {
