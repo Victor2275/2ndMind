@@ -9,7 +9,7 @@ import { TrainingTabs } from "@/components/site/training-tabs";
  * for the server to fetch. The catalogue lives in IndexedDB and the client bundle, same reason
  * `/private/athletics/log` fetches nothing: see `ExerciseBrowser`'s doc.
  *
- * Reached from the Athletics page rather than added as a tenth item in `PrivateNav` — C-11 in
+ * Reached from the Athletics page rather than added as a tenth item in `PrivateSidebar` — C-11 in
  * the V4 plan has been asking for *fewer* top-level entries since 2026-09-06, and this is a
  * sub-page of Athletics the way `/log` already is.
  */
@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export default function ExercisesPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Training"
         title="Exercises"
@@ -34,6 +34,6 @@ export default function ExercisesPage() {
       <div className="mt-6">
         <ExerciseBrowser />
       </div>
-    </main>
+    </div>
   );
 }

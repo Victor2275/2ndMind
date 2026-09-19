@@ -6,7 +6,7 @@
  *
  * `npm run scale:check` fails if this file is stale, and the test suite runs that check.
  *
- * Written 2026-09-13.
+ * Written 2026-09-19.
  */
 
 @theme {
@@ -135,6 +135,28 @@
   --spacing-lg: 2rem;  /* 32px — inside a large card, and between a heading and its content */
   --spacing-xl: 3rem;  /* 48px — between sections on a private screen */
   --spacing-2xl: 4rem;  /* 64px — between sections on the public site, which breathes more */
+}
+
+/* ---- Content widths · three named columns (V4 §4.1, Q149/Q363) ----
+ *
+ * Not in `@theme`, for D-219's reason: `--container-*` backs `max-w-*`, and a step named
+ * `prose` there would overwrite Tailwind's own `max-w-prose` for the whole app. */
+:root {
+  --width-prose: 42rem;  /* 672px — a screen you read; roughly 70 characters of Instrument Sans */
+  --width-content: 64rem;  /* 1024px — the default, and what every private page was before §4.1 */
+  --width-wide: 80rem;  /* 1280px — boards, tables and the two-column screens of §4.6 */
+}
+
+@utility width-prose {
+  max-width: var(--width-prose);
+}
+
+@utility width-content {
+  max-width: var(--width-content);
+}
+
+@utility width-wide {
+  max-width: var(--width-wide);
 }
 
 @utility icon-sm {

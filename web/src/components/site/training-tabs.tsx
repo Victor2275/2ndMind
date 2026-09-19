@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
  *
  * ## Why this replaces two navigation entries
  *
- * `PrivateNav` carried **Train** and **Athletics** as separate top-level items, which was two of
+ * The desktop nav carried **Train** and **Athletics** as separate top-level items, which was two of
  * its nine entries spent on one subject — and C-11 in the V4 plan has been asking whether nine
  * is too many since 2026-09-06. They are one area: you log a session, you look at what the
  * sessions add up to, and you edit the catalogue those sessions are written in. So the nav
@@ -34,7 +34,7 @@ export function TrainingTabs() {
   return (
     <nav
       aria-label="Training"
-      // No negative margin, unlike `PrivateNav`'s otherwise-identical row. That one is hidden
+      // No negative margin, unlike the old desktop nav row this echoes. That one was hidden
       // below the desktop breakpoint, so it is never measured at phone width; this one is
       // always on screen, and `scripts/diag-widths.mjs` counts an element wider than its parent
       // as a containment fault whether or not the page ends up scrolling. A gate that reports

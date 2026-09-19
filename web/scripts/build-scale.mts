@@ -313,6 +313,35 @@ const ICONS: Array<[name: string, rem: number, why: string]> = [
 const ICON_STROKE = 1.75;
 
 /* ===========================================================================================
+   CONTENT WIDTHS — V4 §4.1 (Q149, Q363)
+   =========================================================================================== */
+
+/**
+ * Three named widths, which DESIGN.md §5 has specified and marked "still to build" since §1.7.
+ *
+ * Q363 asks for the private content to get **wider** once navigation moves into a sidebar, and
+ * Q149 says the private app must stay **narrower than the public site** because "a form at 64rem
+ * is unreadable". Both are true and they are not about the same screens: a log form wants a
+ * column, a record board wants a table. One number cannot serve both, which is why the answer is
+ * a vocabulary rather than a bigger `max-w-*`.
+ *
+ * Which width a route takes is declared in one table — `CONTENT_WIDTH` in
+ * `components/site/content-width.tsx` — rather than at nineteen call sites, so the answer to
+ * "how wide is Academics" is in one place and can be changed without opening a page.
+ *
+ * **These are deliberately not in `@theme`, and the reason is D-219 exactly.** `--container-*`
+ * is the namespace `max-w-*` reads, so `--container-wide` would redefine nothing today but
+ * `--container-prose` would quietly replace Tailwind's own `max-w-prose` (65ch) for the whole
+ * app. The names here are the design vocabulary; a Tailwind namespace is a different thing that
+ * happens to overlap, and §1.7 has already paid for that lesson once.
+ */
+const WIDTHS: Array<[name: string, rem: number, why: string]> = [
+  ["prose", 42, "672px — a screen you read; roughly 70 characters of Instrument Sans"],
+  ["content", 64, "1024px — the default, and what every private page was before §4.1"],
+  ["wide", 80, "1280px — boards, tables and the two-column screens of §4.6"],
+];
+
+/* ===========================================================================================
    EMIT
    =========================================================================================== */
 
@@ -471,6 +500,30 @@ for (const [name, px, why] of SPACE) {
   lines.push(`  --spacing-${name}: ${r(px / 16)}rem;  /* ${px}px — ${why} */`);
 }
 lines.push("}", "");
+
+/**
+ * The three content widths, and one utility each.
+ *
+ * Same reasoning as the spacing block above: `:root`, not `@theme`, because `--container-*` is
+ * the namespace `max-w-*` resolves and `--container-prose` would silently replace Tailwind's
+ * built-in `max-w-prose` app-wide. The utilities are named `width-*` rather than `w-*` or
+ * `max-w-*` so they cannot collide with a Tailwind utility of the same name — there is no
+ * `width-` utility in Tailwind, which is the point.
+ */
+lines.push(
+  "/* ---- Content widths · three named columns (V4 §4.1, Q149/Q363) ----",
+  " *",
+  " * Not in `@theme`, for D-219's reason: `--container-*` backs `max-w-*`, and a step named",
+  " * `prose` there would overwrite Tailwind's own `max-w-prose` for the whole app. */",
+  ":root {",
+);
+for (const [name, rem, why] of WIDTHS) {
+  lines.push(`  --width-${name}: ${rem}rem;  /* ${why} */`);
+}
+lines.push("}", "");
+for (const [name] of WIDTHS) {
+  lines.push(`@utility width-${name} {`, `  max-width: var(--width-${name});`, "}", "");
+}
 
 /**
  * Icon size utilities.

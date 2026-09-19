@@ -120,6 +120,70 @@
     @apply border-border outline-ring/50;
   }
 
+  /* A visible focus ring on everything that takes focus — V4 §4.7 (Q443, Q447).
+
+     `*` above sets an outline *colour* and never a width, so until now the focus indicator on
+     most of this app was whatever the browser drew by default, which on a dark ground in
+     Chrome is a white ring on some elements and nothing at all on a `<div role="button">`.
+     Q447 asks for the whole desktop app to be usable from the keyboard, and a keyboard is
+     unusable when you cannot see where you are.
+
+     `:where()` keeps the specificity at zero, so this is a floor rather than a rule: anything
+     with a designed focus state of its own — `card-scan`, `link-wipe`, the inputs — still wins
+     without needing `!important`. `:focus-visible` rather than `:focus`, so a mouse click on a
+     button does not leave a ring behind it.
+
+     The list is explicit rather than `*:focus-visible` because a `tabindex="-1"` scroll
+     container that is focused programmatically should not flash a ring at someone who never
+     pressed a key — and `[tabindex]` here deliberately does not match negative values. */
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [tabindex="0"]
+  ):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The skip link — V4 §4.7 (Q444).
+
+     Off-screen until focused rather than `display: none`, because a hidden element is not
+     focusable and a skip link that cannot be focused is decoration. It comes back at the top
+     left of the viewport, over everything, which is where a screen reader user expects the
+     first `Tab` of a page to land.
+
+     `position: fixed` rather than `absolute`: the private layout's first child is a flex row,
+     and an absolutely positioned link inside it would be placed against whichever ancestor
+     happened to be positioned. */
+  .skip-link {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    transform: translateY(-200%);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--card);
+    color: var(--foreground);
+    font-size: var(--text-sm);
+    box-shadow: var(--elevation-overlay);
+    transition: transform var(--duration-fast) var(--ease-entrance);
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+}
+
+@layer base {
   /* The ground lives on <html> so body's ::before/::after can paint above the
      canvas background but below content. Giving body its own opaque background
      would bury both layers. */
@@ -699,14 +763,89 @@
    The `40rem` here is `--breakpoint-phone` (V4 §1.7). It is written as a literal because a
    media condition cannot read a custom property; `scale.test.ts` pins the two together.
    --------------------------------------------------------------------------- */
+/* `.phone-hidden` / `.phone-only` are the same switch under a name that is about content
+   rather than navigation — §4.2 needs it for the page header's eyebrow and lede, which are
+   dropped on a phone. They are extra selectors on these two rules, not a second pair of rules,
+   so the two spellings cannot drift onto different breakpoints.
+
+   They exist at all because Tailwind's own `hidden sm:block` is the one thing that does not
+   work here — see the note above: a base utility and its own variant both setting `display`
+   resolve to the base at every width, which is how this switch came to be hand-written. */
 @media (width < 40rem) {
-  .nav-desktop {
+  .nav-desktop,
+  .phone-hidden {
     display: none;
   }
 }
 
 @media (width >= 40rem) {
-  .nav-mobile {
+  .nav-mobile,
+  .phone-only {
     display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The sidebar rail — V4 §4.1 (Q360–Q363).
+
+   **The collapsed rail is the base state, and expanding is the exception.** That is not a
+   stylistic choice; it is what makes this a single block of declarations instead of two.
+
+   The rail is collapsed in two unrelated situations — the viewport is under `laptop`, or Victor
+   has collapsed it — and CSS cannot express "a media query OR a selector" in one rule. Written
+   the obvious way round, the collapsed look has to be spelled out twice, once in a media block
+   and once under `:root[data-nav="collapsed"]`, and the two drift the first time a declaration
+   is added to one of them. Inverted, there is exactly one condition under which the sidebar is
+   wide — `laptop` and up, and not collapsed — so exactly one block can ever be wrong.
+
+   It also fails in the right direction. Anything that goes wrong with the attribute, the script
+   or the stylesheet leaves an icon rail, which works; the alternative leaves a 208px column of
+   labels on a 700px screen.
+
+   The `64rem` is `--breakpoint-laptop`, spelled out for the same reason `40rem` is above, and
+   pinned by the same test.
+   --------------------------------------------------------------------------- */
+.nav-sidebar {
+  width: 3.5rem;
+  flex-shrink: 0;
+  transition: width var(--duration-fast) var(--ease-standard);
+}
+
+/* Unlayered, so these beat the `hidden` and layout utilities on the elements themselves. */
+.nav-sidebar .nav-label {
+  display: none;
+}
+
+.nav-sidebar .nav-rule,
+.nav-sidebar .nav-dot {
+  display: block;
+}
+
+/* Symmetric padding only while collapsed: with the labels gone, the icons are the column, and
+   the asymmetric padding that reads correctly beside text puts them visibly off-centre. */
+.nav-sidebar > nav {
+  padding-right: 0.5rem;
+}
+
+@media (width >= 64rem) {
+  :root:not([data-nav="collapsed"]) {
+    .nav-sidebar {
+      width: 13rem;
+    }
+
+    /* `revert`, not `block`: these are spans, paragraphs and one flex child, and hard-coding a
+       display value here would quietly restyle three different kinds of element to the same one. */
+    .nav-sidebar .nav-label {
+      display: revert;
+    }
+
+    .nav-sidebar .nav-rule,
+    .nav-sidebar .nav-dot {
+      display: none;
+    }
+
+    .nav-sidebar > nav {
+      padding-right: 0.75rem;
+    }
   }
 }

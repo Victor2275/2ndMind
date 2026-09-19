@@ -53,7 +53,7 @@ export const metadata = {
  *
  * ## Why it is not in the navigation
  *
- * `PrivateNav` is already eight items and a scrolling row at 1440px (§4.1), and C11 — whether
+ * `PrivateSidebar` carries eight sections in two groups since §4.1, and C11 — whether
  * nine private routes is the right number — is still open in the plan's §8. A review tool used
  * a handful of times per phase does not get to be the ninth. It is reachable by URL, and
  * `npm run shots` sweeps it so it cannot rot silently.

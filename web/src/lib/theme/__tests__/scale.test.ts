@@ -261,18 +261,50 @@ describe("breakpoints", () => {
     expect(TOKENS[`breakpoint-${name}`]).toBe(TOKENS[`breakpoint-${alias}`]);
   });
 
-  it("matches every hand-written media query in globals.css to the phone token", () => {
+  it("matches every hand-written media query in globals.css to a named breakpoint", () => {
     // CSS does not allow a custom property in a media condition, so `globals.css` has to spell
-    // `40rem` out — for the nav switch and for the ambient drift. This is the only thing that
-    // can notice if one of them is changed and the other is not.
-    const phone = TOKENS["breakpoint-phone"];
+    // these out by hand — `40rem` for the nav switch and the ambient drift, `64rem` for the
+    // sidebar rail (§4.1). This is the only thing that can notice if one of them is changed
+    // and the token it stands for is not.
+    //
+    // It was pinned to `phone` alone until §4.1, which was right while every literal in the
+    // file meant the same line. Asserting membership rather than equality keeps the property
+    // that matters — **no unnamed breakpoint in this stylesheet** — while letting a second
+    // named one exist.
+    const named = new Set(
+      Object.entries(TOKENS)
+        .filter(([token]) => token.startsWith("breakpoint-"))
+        .map(([, value]) => value),
+    );
     const queries = [...GLOBALS.matchAll(/@media\s*\(width\s*[<>]=?\s*([\d.]+rem)\)/g)].map(
       (m) => m[1],
     );
     expect(queries.length, "globals.css should still carry the nav-switch queries").toBeGreaterThan(
       0,
     );
-    for (const value of queries) expect(value).toBe(phone);
+    for (const value of queries) expect([value, named.has(value)]).toEqual([value, true]);
+
+    // Both lines the file is known to need, named explicitly so deleting one is a failure
+    // rather than a silently smaller set.
+    expect(queries).toContain(TOKENS["breakpoint-phone"]);
+    expect(queries).toContain(TOKENS["breakpoint-laptop"]);
+  });
+
+  it("publishes the three content widths and a utility for each (§4.1)", () => {
+    // DESIGN.md §5 has specified prose / content / wide since §1.7 and marked them "still to
+    // build". They are deliberately in `:root` rather than `@theme`, for D-219's reason:
+    // `--container-*` is the namespace `max-w-*` reads, and a step named `prose` there would
+    // replace Tailwind's own `max-w-prose` for the whole app.
+    for (const [name, rem] of [
+      ["prose", "42rem"],
+      ["content", "64rem"],
+      ["wide", "80rem"],
+    ]) {
+      expect(CSS).toContain(`--width-${name}: ${rem};`);
+      expect(CSS).toContain(`@utility width-${name} {`);
+    }
+    const theme = CSS.slice(CSS.indexOf("@theme"), CSS.indexOf("/* ---- Space"));
+    expect(theme).not.toContain("--width-");
   });
 });
 
