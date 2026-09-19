@@ -95,7 +95,9 @@ async function Outstanding() {
 async function Degree() {
   const doc = await loadVaultDoc("context/01_engineering/degree_audit.md");
   return (
-    <div className="mt-8">
+    // `mt-6` at `laptop`: this is the top of the second column there, so it aligns with the
+    // first panel of the left column rather than hanging 8 units below it.
+    <div className="mt-8 laptop:mt-6">
       <Panel
         title="Outstanding requirements"
         meta={doc.updated ? `audit ${doc.updated}` : undefined}
@@ -127,7 +129,7 @@ async function Record() {
 
 export default function AcademicsPage() {
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow="Academics"
         title="Coursework"
@@ -144,39 +146,54 @@ export default function AcademicsPage() {
         }
       />
 
-      <Suspense
-        fallback={
-          <>
-            {/* Same order as the real thing, or the list jumps when it arrives. */}
-            <div className="mt-6">
-              <SkeletonPanel rows={3} />
-            </div>
-            <SkeletonStats />
-          </>
-        }
-      >
-        <Outstanding />
-      </Suspense>
+      {/* Two columns on a laptop (V4 §4.6, Q150), split by tense rather than by size.
+          Left is the work in front of you — the tasks, and the numbers that describe them.
+          Right is where you stand — the audit and the coursework record, both of which are
+          vault documents you consult rather than act on.
 
-      <Suspense
-        fallback={
-          <div className="mt-8">
-            <SkeletonPanel rows={4} />
-          </div>
-        }
-      >
-        <Degree />
-      </Suspense>
+          Even columns here, unlike Today's 1fr + 22rem: both sides are substantial, and a
+          degree audit squeezed into a 22rem rail is the "wall of read-only text" Q130
+          complains about, only narrower. Source order is preserved when they stack, so a
+          phone still gets tasks → audit → record. */}
+      <div className="grid gap-8 laptop:grid-cols-2 laptop:gap-6">
+        <div className="min-w-0">
+          <Suspense
+            fallback={
+              <>
+                {/* Same order as the real thing, or the list jumps when it arrives. */}
+                <div className="mt-6">
+                  <SkeletonPanel rows={3} />
+                </div>
+                <SkeletonStats />
+              </>
+            }
+          >
+            <Outstanding />
+          </Suspense>
+        </div>
 
-      <Suspense
-        fallback={
-          <div className="mt-4">
-            <SkeletonPanel rows={1} />
-          </div>
-        }
-      >
-        <Record />
-      </Suspense>
-    </main>
+        <div className="min-w-0">
+          <Suspense
+            fallback={
+              <div className="mt-8 laptop:mt-6">
+                <SkeletonPanel rows={4} />
+              </div>
+            }
+          >
+            <Degree />
+          </Suspense>
+
+          <Suspense
+            fallback={
+              <div className="mt-4">
+                <SkeletonPanel rows={1} />
+              </div>
+            }
+          >
+            <Record />
+          </Suspense>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -617,7 +617,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
   const focusCapture = (await searchParams).capture === "1";
 
   return (
-    <main className="pb-16">
+    <div className="pb-16">
       <PageHeader
         eyebrow={new Intl.DateTimeFormat("en-US", {
           weekday: "long",
@@ -629,33 +629,49 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
         actions={<Freshness />}
       />
 
-      {/* First, and only when there is something. A panel that is always on screen saying
+      {/* Two columns on a laptop (V4 §4.6, Q150), and the split is act / read.
+          Left: the things you do something about — errors, tasks, rehab. Right: the things that
+          are true whether or not you read them — the schedule, and the summaries that describe
+          a day already spent.
+
+          The order on a phone is unchanged, and that is the constraint this layout had to meet
+          rather than a happy accident: the columns are two blocks in source order, so stacked
+          they are still errors → tasks → rehab → schedule → summaries, which is the order V3
+          §3.1 measured and `npm run shots` gates. A grid with the panels interleaved would read
+          correctly at 1280 and silently reorder the phone. */}
+      <div className="grid gap-8 laptop:grid-cols-[minmax(0,1fr)_22rem] laptop:gap-6">
+        <div className="min-w-0">
+          {/* First, and only when there is something. A panel that is always on screen saying
           "0 errors" stops being read within a week, and then the one time it says something
           the eye goes past it (D-165). */}
-      <Suspense fallback={null}>
-        <Broken />
-      </Suspense>
+          <Suspense fallback={null}>
+            <Broken />
+          </Suspense>
 
-      <Suspense
-        fallback={
-          <>
-            <div className="mt-6">
-              <SkeletonPanel rows={3} />
-            </div>
-            <SkeletonStats />
-          </>
-        }
-      >
-        <Tasks focusCapture={focusCapture} />
-      </Suspense>
+          <Suspense
+            fallback={
+              <>
+                <div className="mt-6">
+                  <SkeletonPanel rows={3} />
+                </div>
+                <SkeletonStats />
+              </>
+            }
+          >
+            <Tasks focusCapture={focusCapture} />
+          </Suspense>
 
-      {/* Under the tasks and above the schedule: it is a thing to *do*, like the tasks, and it
+          {/* Under the tasks and above the schedule: it is a thing to *do*, like the tasks, and it
           vanishes entirely once the day's items are ticked. */}
-      <Suspense fallback={null}>
-        <RehabToday />
-      </Suspense>
+          <Suspense fallback={null}>
+            <RehabToday />
+          </Suspense>
+        </div>
 
-      {/* Below the tasks, not above them (V3 §3.1).
+        {/* The second column. Its first child drops its `mt-8` at `laptop`, because stacked it
+            needs the separation and side by side the grid's gap already provides it. */}
+        <div className="min-w-0">
+          {/* Below the tasks, not above them (V3 §3.1).
           D-132 measured the first task at 265px and the gate has passed ever since — on days
           with nothing in the calendar. On a term day the schedule panel is six or seven rows,
           and the first task was measured at **936px**: further down than the 791px D-083 was
@@ -665,32 +681,34 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
           The schedule is also the wrong kind of content for the top: you cannot act on it.
           It says where you have to be, and being somewhere at a fixed time is the one thing
           on this page that happens whether or not you read about it. */}
-      <Suspense fallback={null}>
-        <div className="mt-8">
-          <Today />
-        </div>
-      </Suspense>
+          <Suspense fallback={null}>
+            <div className="mt-8 laptop:mt-0">
+              <Today />
+            </div>
+          </Suspense>
 
-      {/* Last, and after the tasks it describes.
+          {/* Last, and after the tasks it describes.
           This is a reflection on the day, not an instruction for the next hour — it answers
           "how did today go", where everything above answers "what do I do now". It also
           depends on a network round trip to Google, so putting it last means the slowest
           thing on the page is the thing nobody is waiting for. `fallback={null}`, since a
           skeleton at the very bottom reserves space for something nobody is looking at. */}
-      <Suspense fallback={null}>
-        <div className="mt-8">
-          <AiSummary />
-        </div>
-      </Suspense>
+          <Suspense fallback={null}>
+            <div className="mt-8">
+              <AiSummary />
+            </div>
+          </Suspense>
 
-      {/* Its own boundary, so the week does not wait on the day. They are two independent
+          {/* Its own boundary, so the week does not wait on the day. They are two independent
           model calls against two independent caches, and one being slow or unavailable must
           not hold the other back. */}
-      <Suspense fallback={null}>
-        <div className="mt-4">
-          <WeeklySummary />
+          <Suspense fallback={null}>
+            <div className="mt-4">
+              <WeeklySummary />
+            </div>
+          </Suspense>
         </div>
-      </Suspense>
-    </main>
+      </div>
+    </div>
   );
 }
