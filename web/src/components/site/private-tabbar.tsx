@@ -10,19 +10,22 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { InstallButton } from "@/components/site/install-button";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { reachabilityStore } from "@/lib/net/reachability";
+import { outboxStore } from "@/lib/sync/status";
+import { settle, Velocity, type Snap } from "@/lib/ui/sheet-drag";
 
 /**
  * The private app's bottom navigation, phone only (V3 §0.5, D-132).
  *
- * `PrivateNav` still owns every width at `sm` and above and is untouched — two components over
- * one set of routes, which is deliberate duplication. Unifying them into one adaptive
- * component was the alternative and was declined: it means editing a desktop layout that works,
- * three weeks before term, to gain a file.
+ * `PrivateSidebar` owns every width at `sm` and above — two components over one set of routes,
+ * which is deliberate duplication (D-132, reconfirmed by Q358). Unifying them into one adaptive
+ * component was the alternative and was declined twice: a phone's navigation belongs under the
+ * thumb and a desktop's belongs in a column, and one component doing both is two layouts in one
+ * file with no shared behaviour.
  *
  * Why the bottom: `context.md` requires every write path to sit under three interactions from
  * the dashboard, and D-083 established that vertical distance on a phone is what kills this
@@ -155,6 +158,70 @@ export function PrivateTabBar({
   const moreOpen = openedAt === pathname;
   const setMoreOpen = (open: boolean) => setOpenedAt(open ? pathname : null);
 
+  /**
+   * What is waiting to be sent (V4 §4.3, Q287).
+   *
+   * Read from the store `SyncRunner` publishes rather than from IndexedDB, so this badge, the
+   * sidebar's and the glyph's are the same number by construction — `lib/sync/status.ts`.
+   * `null` means nothing has looked yet, which renders no badge at all: a zero would be a
+   * claim, and an empty outbox is not something this bar should assert on first paint.
+   */
+  const outbox = useSyncExternalStore(
+    outboxStore.subscribe,
+    outboxStore.getSnapshot,
+    outboxStore.getServerSnapshot,
+  );
+  const waiting = outbox ? outbox.pending + outbox.failed : 0;
+
+  /**
+   * The sheet's drag (§4.3, Q172/Q173).
+   *
+   * `snap` is where it rests, `drag` is the live finger offset in pixels, and they are separate
+   * because only the second changes at 60fps. The transform is applied inline for the same
+   * reason — a class per pixel is not a thing Tailwind can generate, and this is the one place
+   * in the app where an inline style is the cheap option rather than the lazy one.
+   */
+  const [snap, setSnap] = useState<Snap>("partial");
+  const [drag, setDrag] = useState(0);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const gesture = useRef<{ startY: number; velocity: Velocity } | null>(null);
+
+  function onPointerDown(event: React.PointerEvent) {
+    // Left button or touch only: a right-click on the grabber should open a context menu, not
+    // start a drag that never ends because no `pointerup` follows.
+    if (event.button !== 0) return;
+    gesture.current = { startY: event.clientY, velocity: new Velocity() };
+    gesture.current.velocity.push(event.clientY, event.timeStamp);
+    // Guarded because jsdom has no pointer capture, and neither do the tests that drive this.
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
+  function onPointerMove(event: React.PointerEvent) {
+    const active = gesture.current;
+    if (!active) return;
+    active.velocity.push(event.clientY, event.timeStamp);
+    const dy = event.clientY - active.startY;
+    // Upward drag moves nothing: there is no sheet above the top of the sheet, and letting it
+    // follow the finger produces a gap between the sheet and the bottom of the screen.
+    setDrag(Math.max(0, dy));
+  }
+
+  function onPointerUp(event: React.PointerEvent) {
+    const active = gesture.current;
+    if (!active) return;
+    gesture.current = null;
+    const dy = event.clientY - active.startY;
+    const landing = settle({
+      dy,
+      velocity: active.velocity.get(),
+      height: sheetRef.current?.offsetHeight || 1,
+      from: snap,
+    });
+    setDrag(0);
+    if (landing === "closed") setMoreOpen(false);
+    else setSnap(landing);
+  }
+
   // A fixed overlay does not stop the page behind it scrolling, which on a phone reads as the
   // sheet being broken rather than the page being alive.
   useEffect(() => {
@@ -180,12 +247,42 @@ export function PrivateTabBar({
           />
 
           <div
+            ref={sheetRef}
             role="dialog"
             aria-label="More pages"
             // Sits above the bar rather than over it, so the close control and the More tab
             // are never the same pixels.
-            className="absolute inset-x-0 bottom-0 rounded-t-xl border-t border-border bg-card px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
+            //
+            // `partial` is the sheet's own height, which is what it has always been and is
+            // enough for the ten items in it today. `full` caps at 85dvh and lets the list
+            // scroll, so the same sheet still works when §5 adds to `MORE` — the snap point
+            // exists for the sheet's future, and for the flick people already expect.
+            style={{
+              transform: drag ? `translateY(${drag}px)` : undefined,
+              // No transition while the finger is down: a 250ms ease between every pointer
+              // move is what makes a dragged sheet feel like it is on a rubber band.
+              transition: drag ? "none" : undefined,
+              height: snap === "full" ? "85dvh" : undefined,
+            }}
+            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-sheet border-t border-border bg-card px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] duration-medium ease-standard"
           >
+            {/* The grabber, and the drag surface (Q173). Dragging starts here rather than
+                anywhere on the sheet so that a list which has grown past the screen can still
+                be scrolled with a finger — the two gestures are the same gesture, and the only
+                reliable way to tell them apart is where they begin.
+
+                `touch-action: none` stops the browser treating the same movement as a page
+                scroll and stealing the pointer stream halfway through. */}
+            <div
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              className="-mx-4 flex cursor-grab touch-none justify-center px-4 pt-3 pb-1 active:cursor-grabbing"
+            >
+              <span aria-hidden className="h-1 w-9 rounded-pill bg-border" />
+            </div>
+
             <div className="mb-3 flex items-center justify-between">
               <span className="eyebrow text-muted-foreground">More</span>
               <button
@@ -198,20 +295,30 @@ export function PrivateTabBar({
               </button>
             </div>
 
-            <nav className="grid grid-cols-2 gap-2">
+            {/* Scrolls only when expanded past what fits; `min-h-0` is what allows a flex child
+                to be shorter than its content and therefore to scroll at all. */}
+            <nav className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto">
               {MORE.map((item) => (
                 <NavLink
                   key={item.href}
                   href={item.href}
                   hard={offline}
                   aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                  className={`flex min-h-12 items-center rounded-md border px-3 text-sm transition-colors ${
+                  className={`flex min-h-12 items-center gap-2 rounded-md border px-3 text-sm transition-colors ${
                     isActive(pathname, item.href)
                       ? "border-primary/50 bg-primary/10 text-primary"
                       : "border-border text-foreground hover:border-primary/40"
                   }`}
                 >
-                  {item.label}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {/* The count is on the row it belongs to as well as on the tab: the badge on
+                      More says *something* is waiting, and this says which screen to open. */}
+                  {item.href === "/private/sync" && waiting > 0 && (
+                    <Count
+                      value={waiting}
+                      tone={outbox?.urgency === "failed" ? "fault" : "quiet"}
+                    />
+                  )}
                 </NavLink>
               ))}
             </nav>
@@ -292,8 +399,31 @@ export function PrivateTabBar({
               moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <EllipsisIcon className="icon-md" aria-hidden />
+            {/* The outbox badge (Q287). It rides More because "Not sent" is inside More — a
+                badge on a tab that does not lead to the thing it is counting would be a riddle.
+
+                It is a dot with no number on purpose: the exact count is on the row inside and
+                on the screen itself, and what this has to carry at 20px is *whether* rather
+                than *how many*. The failed state is the one that changes colour, because that
+                is the one that will still be here tomorrow without a person. */}
+            <span className="relative flex items-center">
+              <EllipsisIcon className="icon-md" aria-hidden />
+              {waiting > 0 && (
+                <span
+                  aria-hidden
+                  className={`absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-background ${
+                    outbox?.urgency === "failed" ? "bg-destructive" : "bg-primary"
+                  }`}
+                />
+              )}
+            </span>
             <span className="text-xs">More</span>
+            {/* The dot is decorative; this is what a screen reader gets. */}
+            {waiting > 0 && (
+              <span className="sr-only">
+                {waiting === 1 ? "1 entry not sent" : `${waiting} entries not sent`}
+              </span>
+            )}
           </button>
         </div>
       </nav>
@@ -327,8 +457,30 @@ function TabLink({
         active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      <Icon className="icon-md" aria-hidden />
+      {/* Filled when active (Q367): "colour alone is currently the only active signal", and a
+          signal carried by hue alone is the one a colour-blind eye and a bright pavement both
+          lose first.
+
+          lucide draws outlines, so "filled" here is the same outline over a wash of its own
+          colour rather than a second icon set. A solid fill was tried first and is wrong for
+          this set specifically — `CalendarDaysIcon` becomes a black rectangle, because the
+          dots that make it a calendar are strokes inside the shape being filled. At 20% the
+          interior detail survives and the tab still reads as filled at arm's length. */}
+      <Icon className={`icon-md ${active ? "fill-primary/20" : "fill-none"}`} aria-hidden />
       <span className="text-xs">{label}</span>
     </NavLink>
+  );
+}
+
+/** The count on a row inside the sheet. A pill, because it is a quantity, not a status. */
+function Count({ value, tone }: { value: number; tone: "quiet" | "fault" }) {
+  return (
+    <span
+      className={`tabular shrink-0 rounded-pill px-1.5 text-xs ${
+        tone === "fault" ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"
+      }`}
+    >
+      {value}
+    </span>
   );
 }

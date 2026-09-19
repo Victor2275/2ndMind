@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -37,15 +37,36 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/private" }));
 
 const { PrivateTabBar } = await import("../private-tabbar");
 const { record, resetReachability } = await import("@/lib/net/reachability");
+const { publishOutbox, resetOutboxStatus } = await import("@/lib/sync/status");
 
 beforeEach(() => {
   resetReachability();
+  resetOutboxStatus();
 });
 
 afterEach(() => {
   resetReachability();
+  resetOutboxStatus();
   vi.unstubAllGlobals();
 });
+
+/** Opens the More sheet and hands back its dialog. */
+function openSheet() {
+  fireEvent.click(screen.getByRole("button", { name: /More/ }));
+  return screen.getByRole("dialog");
+}
+
+/** The grabber is the drag surface; the sheet is what it moves. */
+function grabber() {
+  return screen.getByRole("dialog").firstElementChild as HTMLElement;
+}
+
+function drag(from: number, to: number, ms = 300) {
+  const handle = grabber();
+  fireEvent.pointerDown(handle, { clientY: from, button: 0, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1 });
+  fireEvent.pointerUp(handle, { clientY: to, pointerId: 1, timeStamp: ms });
+}
 
 /** Every link the bar rendered through `<Link>`, ignoring the plain anchors. */
 function clientLinks() {
@@ -94,5 +115,77 @@ describe("prefetching", () => {
 
     expect(clientLinks()).toHaveLength(0);
     expect(screen.getAllByRole("link").length).toBeGreaterThan(0);
+  });
+});
+
+describe("the outbox badge (§4.3, Q287)", () => {
+  it("says nothing until the runner has actually looked", () => {
+    // `null` is not zero. A badge painted on first render would be asserting something about a
+    // device's queue that nothing has read yet.
+    render(<PrivateTabBar />);
+    expect(screen.queryByText(/not sent/)).toBeNull();
+  });
+
+  it("marks More, because More is where the sync screen lives", () => {
+    publishOutbox({ pending: 2, failed: 0, oldestMs: 500, urgency: "quiet", label: "2 waiting" });
+    render(<PrivateTabBar />);
+
+    // The dot is `aria-hidden`; this is what a screen reader is given instead.
+    expect(screen.getByText("2 entries not sent")).toBeTruthy();
+  });
+
+  it("puts the count on the row inside as well, so it names the screen to open", () => {
+    publishOutbox({ pending: 3, failed: 0, oldestMs: 500, urgency: "quiet", label: "3 waiting" });
+    render(<PrivateTabBar />);
+    openSheet();
+
+    const row = screen.getAllByRole("link").find((a) => a.getAttribute("href") === "/private/sync");
+    expect(row?.textContent).toContain("3");
+  });
+});
+
+describe("the sheet (§4.3, Q172/Q173)", () => {
+  it("dismisses on a drag down that goes far enough", () => {
+    render(<PrivateTabBar />);
+    openSheet();
+
+    // jsdom reports every element as 0px tall, so the component's `|| 1` fallback makes any
+    // real distance "far". That is fine for this assertion — what is being checked is that the
+    // gesture is wired to `settle` at all; the thresholds themselves are tested as arithmetic
+    // in `lib/ui/__tests__/sheet-drag.test.ts`, where they are not at jsdom's mercy.
+    drag(100, 400);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("expands rather than closing when the drag goes up", () => {
+    render(<PrivateTabBar />);
+    openSheet();
+
+    drag(400, 100);
+
+    const sheet = screen.getByRole("dialog");
+    expect(sheet.style.height).toBe("85dvh");
+  });
+
+  it("leaves a tap on the grabber alone", () => {
+    render(<PrivateTabBar />);
+    openSheet();
+
+    drag(200, 202);
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("ignores a secondary button, so a right-click cannot start a drag nothing ends", () => {
+    render(<PrivateTabBar />);
+    openSheet();
+
+    const handle = grabber();
+    fireEvent.pointerDown(handle, { clientY: 100, button: 2, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientY: 500, pointerId: 1 });
+    fireEvent.pointerUp(handle, { clientY: 500, pointerId: 1 });
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });
