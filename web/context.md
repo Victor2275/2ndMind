@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-18
+updated: 2026-09-20
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -243,6 +243,61 @@ Four things in the shell are easy to break by accident:
 `PageHeader` is a one-row title bar below `phone` — no eyebrow, no lede, actions kept (D-253).
 The actions stay because on several screens the header action *is* `data-first-action`.
 
+## The private screens — V4 Phase 5 foundations (2026-09-19, D-259 to D-270)
+
+**5.1–5.3 are done; 5.4–5.9, the screens themselves, are not.** What landed is the vocabulary
+every one of those screens will speak, so it is worth knowing before touching any of them.
+
+**Four states, in two files.** `components/site/states.tsx` holds `AsOf`, `Empty`,
+`Unavailable` and `SaveState`; `components/site/skeleton.tsx` holds the loading shapes.
+Before this each screen invented its own, and six of them carried a hand-written copy of the same
+red failure box. Five things here are easy to break by accident:
+
+1. **`AsOf` takes `now` as a required prop.** Defaulting it to `Date.now()` is an impure
+   read during render, and two badges on one page would then be measured against two different
+   instants. Every caller already has the instant it read at.
+2. **Its thresholds are arguments, and that is the design.** An outbox op is stale after a day;
+   the offline mirror after two. The *grades* are shared, the numbers are not. `STALE_MS` lives
+   in `lib/ui/staleness.ts` and `lib/sync/outbox-view.ts` re-exports it rather than
+   redeclaring it.
+3. **Amber means `stale` and nothing else** (D-196). `fresh` and `aging` are muted.
+4. **`SaveState` has three values.** `queued` comes from `ActionState.queued`, set only by
+   `lib/offline/write.ts`. Do not infer it from the message text — the copy is prose and will
+   be reworded.
+5. **Skeletons are static** (D-259, reversing §1.10 in favour of Q204), and `SkeletonPanel`
+   takes the `shape` it stands in for. A `rows` skeleton in front of a chart reserves about
+   90px where 300px is coming.
+
+**Forms speak one vocabulary** (`components/site/field.tsx`): labels above and really
+associated, placeholders that are never names, optional marked rather than required, 48px
+controls, blur validation that clears on input, a dirty indicator and a sticky save. `LogForm`
+uses all of it; the other forms migrate screen by screen, the way the mono audit does.
+
+**The toast system is mounted for the first time.** D-192 found it was dead code that looked
+alive — mounted nowhere, called nowhere, styled by a class name with no CSS behind it. Three
+things about it are load-bearing:
+
+- **A toast is not how a save is confirmed.** That is `buzzSaved()`, because the log form is
+  used at a rack with eyes elsewhere. `notify` is for an action worth taking back (Q265) and a
+  failure you were not watching for.
+- **It is mounted twice**, because `/cached` renders outside the private layout. A second
+  `Toaster` there is not a duplicate; without it an undo offered offline has nowhere to appear.
+- **Its action button is 44px.** Destructive actions in this app are undoable rather than
+  confirmed, so there is no confirmation dialog anywhere and the toast is the whole safety story
+  for a delete.
+
+**The pressed state is a base rule in `globals.css`, not a utility call** (D-267). It reaches
+every `button` and `[role="button"]`, so a new button gets it for free; `data-no-press` opts
+out. The `press` utility is still needed for `<label>`, `<a>` and `<summary>` controls,
+which that selector cannot see — do not delete it as redundant.
+
+**Two things about hover, and they point opposite ways.** Tailwind v4 already wraps every
+`hover:` in `@media (hover:hover)`, so stripping hover on touch (Q193) required no changes at
+all. But that is exactly why **a reveal must never be gated on `hover:` alone or on a screen
+width**: a touch tablet is over 640px and has no mouse. `can-hover:` is the variant for
+hidden-until-hovered, and `touch.test.ts` fails if a `sm:opacity-0 sm:group-hover:` pair
+reappears.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit
@@ -261,8 +316,8 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,848 tests across 125 files** as of
-2026-09-18, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,891 tests across 130 files** as of
+2026-09-19, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
@@ -270,7 +325,8 @@ Run with `npm test`. Typecheck with `npm run typecheck`. **1,848 tests across 12
 their own, then "1,755 across 120" until V4 Phase 3 added tag tests to `log.db.test.ts`,
 `tasks/queries.db.test.ts`, and `apply.db.test.ts`, plus a new `tag-input.test.tsx`, and
 "1,805 across 121" until V4 Phase 4 added `private-sidebar`, `connection-glyph`,
-`content-width` and `sheet-drag` suites. The suite
+`content-width` and `sheet-drag` suites, and "1,848 across 125" until V4 Phase 5.1–5.3 added
+`states`, `staleness`, `field`, `task-list` and `touch`. The suite
 more than doubled during V3 and the floor was never re-stated, so for a week the number that is
 supposed to catch a regression would have accepted losing half the suite. Re-state it whenever
 it moves.)

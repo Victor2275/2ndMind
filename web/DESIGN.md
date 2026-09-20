@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-18
+updated: 2026-09-20
 domain: engineering
 stability: volatile
 summary: The design system of record — tokens, type, space, motion, and the rules that govern them.
@@ -421,7 +421,21 @@ Tables and the resume sheet are square, and there is deliberately no token for t
 **`press` is the one that matters.** §9 calls the missing pressed state the single biggest gap
 in the app on a phone, and the requirement — visible feedback inside 100ms — is why it is driven
 by `:active` rather than React state: a state round-trip through a server action is exactly the
-slow path it compensates for. §5.3 is what puts it on every control.
+slow path it compensates for.
+
+**§5.3 put it on every control by making it a base rule rather than a utility call** (D-267).
+An audit found 66 hand-rolled buttons across 40 files with no pressed state, against 21 that
+had remembered `press`. `globals.css` now gives every `button` and `[role="button"]` the
+scale, excluding `:disabled` and `[data-no-press]`, so the rule reaches code nobody has
+written yet — the same move `.lucide { stroke-width }` makes for icons.
+
+The `press` utility is therefore **not** redundant and must not be deleted: it is what a
+`<label>`, an `<a>` or a `<summary>` acting as a control takes, and the selector above
+reaches none of those. The tab bar and the log form's scale field are the current call sites.
+
+**`shimmer` has no call site, on purpose** (D-259). Q204 is a [FORK] and it was answered
+*static*; §1.10 had changed the skeletons the other way. The utility stays defined and pinned
+by `scale.test.ts`, because reversing is one class.
 
 **The stagger moved out of inline styles** (Q180). Six call sites set `style={{ animationDelay }}`
 by hand, four computing it from a map index. Now the container declares the sequence and the
@@ -496,14 +510,32 @@ Migration of the app's own `size-4` / `size-5` call sites happens screen by scre
 The private app is used one-handed, on a phone, sometimes with wet hands. That is the design
 constraint, not an accessibility footnote.
 
-- **44px minimum tap target** (V4 raises the gate from 40).
-- **A visible press within 100ms of every tap**, even when the action is slow. This is the
-  single biggest gap in the app today.
-- Hover states stripped entirely on touch via `@media (hover: hover)`.
+- **44px minimum tap target** (V4 raises the gate from 40). Form controls take 48px (§12).
+- **A visible press within 100ms of every tap** — **done in §5.3** as a base rule (D-267).
+- **Hover on touch was already handled by Tailwind v4** and needed no call-site changes at all:
+  every `hover:` it generates is wrapped in `@media (hover:hover)`. Verified in
+  `.next/static/chunks/*.css`, per §1.5's standing rule about trusting a utility. Worth stating
+  plainly, because "strip hover on touch" reads like a 246-file change and is a zero-file one.
+- **Hidden-until-hovered is the case Tailwind cannot fix, and `can-hover:` is for it**
+  (D-268). There, `hover:` being inert is precisely the bug — the reveal never fires and the
+  control is unreachable. Never gate a reveal on a *width*: a touch tablet is over 640px and has
+  no mouse, which is how two delete buttons became invisible with no way to reach them.
 - Haptics on swipe-complete and save only.
 - **Nothing may be reachable only by hover.** The audit of current violations is in
   `DECISIONS.md` D-191; the `title` attribute is the main offender, because on a phone it is
-  invisible.
+  invisible. Where a `title` carries meaning, pair it with an `aria-label` — `ShortcutMark`
+  in `field.tsx` is the pattern.
+
+### Gestures — **done (V4 §5.3, D-269, D-270)**
+
+- **A swipe reveals colour first, then the icon** (Q199). The colour answers *what will this
+  do* while the thumb is still moving; the icon confirms it once the direction is committed.
+  Both at once is the same thing said twice, at 10% opacity, neither legibly.
+- **A pull shows how far is left.** A pull gesture with no progress is a guess, and it fails by
+  you letting go early, nothing happening, and concluding the gesture does not exist.
+- **A distance that decides something gets a name.** `THRESHOLD * 0.5` was written out twice
+  and named nowhere, which hid the fact that the release point and the drawn progress disagreed
+  by a factor of two the moment progress was drawn.
 
 ---
 
@@ -563,3 +595,74 @@ rejects `var()` — "it would be annoying to change" is explicitly not a reason.
 
 `PENDING §7.1` — the extended sweep: 44px targets, an 11px text floor with a data-attribute
 allowlist, a contrast sweep, a theme sweep, and the 1440 / 1920 widths.
+
+---
+
+## 11. States — **done (V4 §5.1, D-259 to D-262)**
+
+Every private screen is in one of four states, and before Phase 5 each screen invented its own.
+They live together in `components/site/states.tsx` and `components/site/skeleton.tsx`.
+
+| State | Component | The rule |
+|---|---|---|
+| Stale | `AsOf` | A graded badge plus a tabular `<time>`. **Thresholds are arguments** — an outbox op is stale after a day, the offline mirror after two. |
+| Empty | `Empty` | Names the action that fills it and offers it (Q275). `reason` distinguishes *nothing yet* from *nothing matched* (Q277). |
+| Loading | `SkeletonPanel` | Declares the `shape` it stands in for — `rows`, `text`, `table`, `chart`, `board`. **Static**, per Q204. |
+| Broken | `Unavailable` | The schema case is amber with a copyable command, not destructive red (Q292). |
+
+Three rules that are easy to break by accident:
+
+1. **Amber is earned, not decorative.** `AsOf` is muted at `fresh` and `aging` and amber only at
+   `stale` — D-196 spends `--highlight` on attention and nothing else, and a badge that is amber
+   at every age teaches the eye to skip it by the time it means something.
+2. **Every state says its condition in a word**, not only in a colour (§2 rule 1). `stale`, `Not
+   saved`, `Waiting` — all present in greyscale.
+3. **`SaveState` has three values, not two.** `queued` is an offline write: `ok: true`, and not
+   on the server. It reads `ActionState.queued` (D-266), never the message text.
+
+---
+
+## 12. Forms — **done (V4 §5.2, D-265, D-266)**
+
+`components/site/field.tsx` is the vocabulary. `LogForm` — the most-used surface in the app —
+speaks all of it; the rest migrate screen by screen the way the mono audit and the opacity
+utilities do.
+
+- **Labels above and really associated.** `Field` requires `htmlFor`; a placeholder is an
+  example and is never a name (Q246, Q247).
+- **Optional is marked, required is not** (Q248). Every field in the quick log is optional by
+  design, so marking required would mark nothing.
+- **48px controls** (Q245) — larger than §9's 44px floor, because a field aimed at one-handed
+  between sets gets the bigger number. `text-base` below `tablet` is not a size preference: 16px
+  is the threshold under which iOS Safari zooms the viewport on focus.
+- **Validation on blur, cleared on input** (Q249). The second half is what makes the first
+  bearable — a message that outlives the value it was about contradicts what is on screen.
+- **Errors below the field; a summary past two** (Q250). Silent at two or fewer, so it is safe
+  to mount unconditionally.
+- **The width never goes in a shared class string** (D-219). Two width utilities on one element
+  resolve by Tailwind's emit order, not by the order they are written.
+
+### The four shortcut kinds — **the axis is whether you act on them** (Q253)
+
+D-155 declares `sticky`, `chips`, `keypad` and `clipboard` per field. Two of the four used to
+render nothing at all.
+
+| | | |
+|---|---|---|
+| `sticky` | passive | a pin on the label row |
+| `keypad` | passive | a hash on the label row |
+| `chips` | active | tokens under the control, filled when chosen (Q255, Q256) |
+| `clipboard` | active | a bordered button on the label row |
+
+Passive marks are `--faint-foreground`, carry an `aria-label` as well as a `title` (a `title` is
+invisible on a phone — D-191), and are not tappable. Active ones are controls at a real size.
+
+### Toasts — **mounted for the first time** (D-263)
+
+A toast is for an action worth taking back and for a failure you were not watching. **It is not
+how a save is confirmed** — that is `buzzSaved()`, because the log form is used at a rack with
+eyes elsewhere. Destructive actions are undoable rather than confirmed (Q265), so there is no
+confirmation dialog anywhere in this app and the toast's action button is 44px: it is the one
+control whose miss costs data rather than a second attempt.
+
+---

@@ -1,8 +1,8 @@
 ---
-updated: 2026-09-18
+updated: 2026-09-20
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 454 points, 378 done. Phases 0, 1, N, 2, 2+, 2++, 3, 4 and 6 done (Milestones A, B and D); Phase 5 is next.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 454 points, 402 done. Phases 0, 1, N, 2, 2+, 2++, 3, 4 and 6 done (Milestones A, B and D); Phase 5's foundations (5.1–5.3) done, screens 5.4–5.9 remain.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,8 +30,8 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **378 done** — §4 has the authoritative table. |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor.<br>Next: **Phase 5**, the private screens — **Milestone C**. N9 still parked. |
+| **Budget**       | **454 points** (311 + Phase 2++'s 119, plus §2.12's 13 and §2.13's 11). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. **402 done** — §4 has the authoritative table. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor. **Phase 5's foundations done** (2026-09-19) — the four shared states, the form vocabulary, the toast system mounted for the first time since V1, and the pressed state as a base rule.<br>Next: **Phase 5.4–5.9**, the screens themselves — **Milestone C**. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily.                                                                                                                                                                                                                                                                                                                                                                                |
@@ -272,6 +272,7 @@ and the PDF as the primary action (Q347–Q356). **The print block is frozen** (
 | C14 | Q373 defers search to V5 vs Q448 wanting a search shortcut            | Shortcut waits for the feature                                                                                                                  |
 | C15 | Q31 five pillars vs Q32/Q33 representational at 16px                  | Five objects cannot read at 16px. One object is the mark; the five-pillar lockup lives on the splash and OG image. §8 confirms which object     |
 | C16 | Q465 no pixel-diff vs Q29 before/after shots                          | Compatible: record, do not gate                                                                                                                 |
+| C17 | Q204 "skeletons are static" vs §1.10 shipping `shimmer` into them     | **Closed 2026-09-19.** Q204 is a [FORK] Victor answered; a component comment does not outrank it. §1.10's objection — a static block is indistinguishable from a panel that failed to render — is answered by *shape* instead (D-259, D-260) |
 
 ---
 
@@ -669,21 +670,59 @@ his answers are recorded inside the items below rather than as a separate list.
 
 ---
 
-### Phase 5 · The private screens — **50 pts**
+### Phase 5 · The private screens — **50 pts** — 🟡 **5.1–5.3 done 2026-09-19** (24 pts)
 
 Milestone C. The phase that changes your day.
 
 | #   | Item                                                                                                                                                                                                                                                                                                                                                                                            | Pts |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
-| 5.1 | **Shared states** — one "as of" staleness component used everywhere (Q285, Q286, Q241); empty states that name and offer the action that fills them (Q275, Q277); exact-shape skeletons (Q279); designed error boundary, 404, and the "database is behind this build" state (Q283, Q291, Q292); queued vs failed made unmissable (Q289)                                                         |   8 |
-| 5.2 | **Forms pass** — 48px touch targets, labels above, never placeholder-as-label, blur validation, sticky save on long forms, dirty indicator, chips as tokens, the four shortcut kinds made visually distinct (Q245–Q256).<br>**Includes building the toast system** (D-192): mount a `Toaster`, wire the first `toast()`, then style it. Q265–Q268 were scoped as a styling pass and are a build |  10 |
-| 5.3 | **Motion and touch pass** — pressed states within 100ms everywhere, redesigned swipe reveals (colour then icon), designed pull-to-refresh, haptics on swipe-complete and save, hover stripped on touch (Q193–Q200)                                                                                                                                                                              |   6 |
-| 5.4 | **Today** — capture box made the loudest thing, domain icons on tasks, overdue loud but not red, completed collapsed, summaries collapsed and quieter, agenda with a "now" marker, archive moved to the log (Q376–Q390)                                                                                                                                                                         |   6 |
+| 5.1 | ✅ **Shared states** — `components/site/states.tsx` and `lib/ui/staleness.ts`. `AsOf` grades fresh/aging/stale with **per-subject thresholds**; `Empty` moved out of `page-shell` and gained the action that fills it; `SkeletonPanel` takes a `shape`; `Unavailable` replaced **six** copies of the same red box and is amber for the schema case. **Skeletons went static**, reversing §1.10 in favour of Q204 (D-259) |
+| 5.2 | ✅ **Forms pass** — `components/site/field.tsx`, and `LogForm` speaks all of it. The `Toaster` is mounted for the first time since V1 (twice — the offline shell renders outside the private layout) and the first `toast()` is the undo on a task removal. `ActionState` gained `queued`, because a regex over a human sentence was the alternative |
+| 5.3 | ✅ **Motion and touch pass** — the press is a **base rule**, not 66 call sites. **Q193 needed no work at all**: Tailwind v4 already wraps every `hover:` in `@media (hover:hover)`. `can-hover:` is for the inverse case, where two delete buttons were unreachable on a touch tablet. Swipe reveals colour then icon; pull-to-refresh draws its progress |
+| 5.4 | **Today** — **the archive gets its own route, `/private/log/archive`** (answered 2026-09-19): a dated list of past daily and weekly summaries, linked from the collapsed panels on Today. Not a tab — Q258 already flags the tab row as having too much in it — and not a section at the bottom of `/private/log`, which would put read-only prose under the app's most-used write surface. Otherwise: capture box made the loudest thing, domain icons on tasks, overdue loud but not red, completed collapsed, summaries collapsed and quieter, agenda with a "now" marker, archive moved to the log (Q376–Q390)                                                                                                                                                                         |   6 |
 | 5.5 | **Log (non-training tabs)** — last-used category, drafts surviving restart, today's entries below the form, marked search results (Q393, Q394, Q401, Q404)                                                                                                                                                                                                                                      |   5 |
 | 5.6 | ~~**Athletics**~~ — ✅ **absorbed by Phase 2++ Stage 7** (2026-09-10): the gauge, the heatmap, the rehab mirror and the reworked record board all shipped there, plus a weekly muscle figure the original item did not ask for (Q405–Q414)                                                                                                                                                                                         |   6 |
-| 5.7 | **Academics** — audit as a progress structure, planner as a board on desktop and table on phone, **unverifiable marked distinctly from failing** (Q415–Q418)                                                                                                                                                                                                                                    |   5 |
-| 5.8 | **Work, Calendar, Hobbies, Sync** — kanban pipeline, agenda + month strip + view switch, Google/vault provenance, spool levels and colour swatches, per-item sync reasons designed (Q419–Q428)                                                                                                                                                                                                  |   6 |
-| 5.9 | **Charts** — the one number above every chart, near-sparklines on phone and full axes on desktop, the sub-2:00 goal line drawn, tap-to-pin instead of tooltips, tables restructured to cards under 40rem, mount animation off (Q227–Q242)                                                                                                                                                       |   6 |
+| 5.7 | **Academics** — **the board is columns with a status control on the card, not drag and drop** (answered 2026-09-19). Same interaction on phone and desktop, no drag library on a $0 budget, and keyboard-reachable for free. Otherwise: audit as a progress structure, planner as a board on desktop and table on phone, **unverifiable marked distinctly from failing** (Q415–Q418)                                                                                                                                                                                                                                    |   5 |
+| 5.8 | **Work, Calendar, Hobbies, Sync** — the kanban is **columns with a status control**, per 5.7. Otherwise: kanban pipeline, agenda + month strip + view switch, Google/vault provenance, spool levels and colour swatches, per-item sync reasons designed (Q419–Q428)                                                                                                                                                                                                  |   6 |
+| 5.9 | **Charts** — **every chart in the private app**, not athletics only (answered 2026-09-19); the goal line appears only where a goal exists. Otherwise: the one number above every chart, near-sparklines on phone and full axes on desktop, the sub-2:00 goal line drawn, tap-to-pin instead of tooltips, tables restructured to cards under 40rem, mount animation off (Q227–Q242)                                                                                                                                                       |   6 |
+
+**5.1–5.3 done 2026-09-19** (24 of 50 pts). Decisions **D-259 to D-270**. Four questions were
+put to Victor before any of it was written; the three that shape work still to come are recorded
+against their items — **boards are columns with a status control, not drag and drop** (5.7, 5.8),
+the summary archive gets its **own route** `/private/log/archive` (5.4), and §5.9's chart
+treatment applies to **every chart in the private app**, not only athletics.
+
+**Found while doing it**, none of it scoped:
+
+- **Q193 was already true.** Tailwind v4 wraps every `hover:` in `@media (hover:hover)`, so
+  all 246 call sites were already inert on touch. Checked in the built CSS rather than assumed.
+  The item that *did* need work is its inverse — something **hidden until hovered**, where
+  `hover:` being inert is the bug. Two delete buttons gated that on a 640px width as a proxy
+  for "has a mouse": on a touch tablet both were invisible with no way to reveal them, and
+  `log-console`'s row has no swipe, so its entries could not be removed at all. Both were also
+  14px glyphs with no padding, on a destructive action.
+- **`cn-toast` had never existed.** `ui/sonner.tsx` has named that class since V1 and no CSS
+  ever defined it — invisible because D-192's finding was that the `Toaster` was mounted
+  nowhere, so it was a class name on an element that never rendered.
+- **`private-tabbar.test.tsx` passed `timeStamp` to `fireEvent`, which does nothing.**
+  It is readonly on `Event` and absent from `EventInit`, so it had been ignored since the day
+  it was written. What the sheet actually measured was the wall-clock gap between two synchronous
+  calls, so a two-pixel tap read as a flick whenever the machine was busy — an intermittent
+  failure that accused whatever change happened to reorder the suite. The first fix stubbed
+  `performance.now`; jsdom uses `Date.now`.
+- **A sticky-values test waited for a condition that was already true** before the save, then
+  raced the remount it was meant to be waiting for. Passed on a fast machine, failed under load.
+- **jsdom implements neither `matchMedia` nor pointer capture**, and the first cost 28
+  unrelated assertions in `cached-app.test.tsx` with an error naming none of them. Both are now
+  in `vitest.setup.ts`.
+- **The screenshot sweep caught two things reasoning did not.** `Unavailable` lifted the
+  backticked command out of D-156's sentence and left *"Run , then reload."* on screen; and four
+  empty states were copies of the dashed box `Empty` used to be, so §5.1's rework reached every
+  list except the ones on Today, the log and the agenda.
+- **`npm run shots`: 0 horizontal overflow at four widths**, resume still one page. The 8
+  private faults are the environmental ones Phase 4 recorded — `npm run db:status` confirms
+  `0013_tags` is still pending on this machine, so `/private/log` and `/private/academics`
+  render their failure branch. Not touched: it is Victor's database.
 
 Throughout: **Q130 applies.** Where a panel is read-only prose, it becomes structured.
 
@@ -761,7 +800,7 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
 | 3     | Tags                                                |      12 | ✅ done **[FEATURE]**  |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | ✅ done · 4.7 part     |
-| 5     | The private screens                                 |      50 | part · 5.6 absorbed    |
+| 5     | The private screens                                 |      50 | part · 5.1–5.3 done, 5.6 absorbed |
 | 6     | Brand and the public site                           |      36 | ✅ done · Milestone D  |
 | 7     | Gates, performance, review                          |      22 | part · 7.2 done        |
 | 2.13  | The picker on a phone, and licensed art             |      11 | ✅ done                |

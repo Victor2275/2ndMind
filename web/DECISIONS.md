@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-18
+updated: 2026-09-20
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,278 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-19 · V4 Phase 5 (foundations) — shared states, forms, motion and touch
+
+### D-259 · Skeletons are static, which reverses §1.10
+
+**Decision.** `components/site/skeleton.tsx` and `components/ui/skeleton.tsx` no longer animate.
+The `animate-pulse` that had been there since V3 is gone and so is the `shimmer` §1.10 replaced
+it with. `shimmer` stays **defined** in `globals.css`, pinned by `scale.test.ts` and shown on
+the kitchen sink; it simply has no call site.
+
+**Why.** Q204 is a **[FORK]** and Victor answered it: _static — a shimmer on a screen that
+resolves in 200ms is worse than nothing._ §1.10 changed the primitive the other way with a
+component comment arguing that a static block at low contrast is indistinguishable from a panel
+that failed to render. That objection is real and is answered by **shape** rather than by
+motion: a failed panel is _absent_, and these are a recognisable arrangement of blocks sitting
+exactly where the content will be (D-260). An answer from Victor outranks a comment either way.
+
+**How to reverse.** Add `shimmer` back to `SkeletonLine` and to `ui/skeleton.tsx`. One class each.
+
+---
+
+### D-260 · A skeleton declares what shape it is standing in for
+
+**Decision.** `SkeletonPanel` takes `shape` — `rows`, `text`, `table`, `chart` or `board`. Five
+values, not one per screen.
+
+**Why.** Q279 asked for exact-shape skeletons and the reason is space, not fidelity: a skeleton
+earns its keep by reserving what the real thing will take, and one that does not makes the page
+jump under a thumb that is already reaching. `SkeletonStats` has mirrored the real stats row
+since V3 for exactly that reason; `SkeletonPanel` drew a checkbox, a label and a meta column
+whatever was behind it, so a chart resolved into a 240px panel where three 12px rows had been.
+
+Five rather than one-per-screen is the deliberate limit. A skeleton that is _exactly_ right is a
+second copy of a layout, and it will drift from the first; the jump worth preventing is the
+200px one, not the 4px one.
+
+**How to reverse.** Drop the prop and the `BODY` map; `rows` is the default and is what every
+call site had.
+
+---
+
+### D-261 · One "as of" badge, and the thresholds are arguments
+
+**Decision.** `AsOf` in `components/site/states.tsx` is the only staleness marker. It grades
+`fresh` / `aging` / `stale`, renders a badge plus a tabular `<time>`, and takes its `aging` and
+`stale` thresholds from the caller. `approximateAge` moved to `lib/ui/staleness.ts`;
+`lib/sync/outbox-view.ts` re-exports it and `STALE_MS`.
+
+**Why.** Q285 wanted cached data marked _everywhere, always_ and Q286 settled the shape. Three
+surfaces already answered the question three ways — a sentence on the cached shell, a mono line
+on the outbox screen, a day-based count on the freshness badge — and two of the three had no
+grade at all, reading the same at four minutes and at four weeks.
+
+**The thresholds differ per subject and that is not a flaw.** An outbox op is a problem after a
+day; the offline mirror is fine for a morning and worrying after two. What is shared is the
+_grades_, not the numbers, so the numbers are arguments. `STALE_MS` is re-exported rather than
+redeclared because two constants spelling one threshold is how a badge and the screen it links
+to come to disagree.
+
+Three grades rather than two because a badge with one threshold is a boolean wearing a
+timestamp: everything under the line looks identical, so the reader learns the number means
+nothing until it turns amber and stops reading it the rest of the time.
+
+**`now` is required.** It was defaulted to `Date.now()`, which `react-hooks/purity` catches, and
+the rule is right beyond React: two badges on one page would be measured against two different
+instants. Every real caller already has the instant it read at.
+
+**How to reverse.** The component is additive; the two call sites that adopted it kept their own
+copy in git history.
+
+---
+
+### D-262 · Six copies of the failure box become one, and the schema case is not red
+
+**Decision.** `Unavailable` replaces the hand-written `border-destructive/40` block on six
+screens. When `describeDbError`'s sentence says the database is behind the build, it renders in
+amber with a database glyph and lifts the command out as a `select-all` code block.
+
+**Why.** Q292. The copy was already good — D-156 made sure of that — and the design was a red
+rectangle that looked identical whether the database was asleep, behind a migration, or gone.
+The migration case is the only one with **a command that fixes it**, and a schema that is behind
+is a step not yet run rather than a crash; colouring it the same as a crash is how the crash
+stops being alarming.
+
+Detection is on the message rather than a second error inspection, because by the time a page
+has a string it has thrown the object away, and re-deriving it would be the fifth copy of the
+logic D-156 exists to have one of. If D-156's wording changes this stops matching and falls back
+to the generic failure — wrong, but wrong in the safe direction.
+
+**Removing the instruction is a sentence-level operation.** The first version lifted the
+backticked token out and left _"Run , then reload."_ on screen. Caught in
+`.shots/private-today-390.png`, not by reasoning, and now pinned by a test.
+
+**How to reverse.** Each call site was a six-line block; git history has all six.
+
+---
+
+### D-263 · The toast is mounted, and it is not how a save is confirmed
+
+**Decision.** `PrivateToaster` mounts `sonner` in the private layout and again in the offline
+shell, bottom-centred above the tab bar, at 8s. `notify` in `components/site/toasts.tsx` exposes
+three calls: `undoable`, `failed`, `done`. The `cn-toast` class that `ui/sonner.tsx` has named
+since V1 now has rules behind it.
+
+**Why.** D-192 found the `Toaster` mounted nowhere and `toast()` called nowhere, so the whole
+system was dead code that looked alive — including a class name with no CSS. Q265 makes
+destructive actions **undoable rather than confirmed**, which means there is no confirmation
+dialog anywhere in this app and the toast is the entire safety story for a delete. That is why
+its action button is 44px: this is the one place where a small tap target costs data rather than
+a second attempt.
+
+**A toast is deliberately not the confirmation that a save landed.** `log-form.tsx` said why
+before this existed: the form is used at a rack, one hand, eyes elsewhere, and a toast answers
+"did that save?" only if you look at it. `buzzSaved()` stays the primary confirmation for every
+write path (Q197).
+
+Two mounts because `/cached` renders outside the private layout — which is the whole point of it
+being a static route (D-161). Offline is where a mis-tap is least recoverable, so it is the last
+place an undo should have nowhere to appear.
+
+**How to reverse.** Remove the two `<PrivateToaster />` mounts. `notify` then no-ops visually.
+
+---
+
+### D-264 · Undo moved from a row under the list into the toast
+
+**Decision.** `TaskList`'s inline _"Removed. Undo"_ row is gone; a removal raises
+`notify.undoable`, which dispatches the same `undoTask` Server Action.
+
+**Why.** Q268. The row had two problems on the device this app is for. It rendered **below** the
+list, so on Today — where the list is long and D-083 spent a feature on the fold — the
+confirmation for a row you had just swiped was off screen. And it never expired, so the last
+removal's undo sat there indefinitely, which is how the wrong thing gets restored. A toast is
+bottom-anchored whatever the list is doing, and after eight seconds the removal is simply done,
+which is the honest state.
+
+It dispatches inside `startTransition` because it does not come from a `<form action>`; outside
+one, `isPending` never updates.
+
+**How to reverse.** The row is in git history; `undoTask` is unchanged.
+
+---
+
+### D-265 · One form vocabulary, and the four shortcut kinds split by whether you act on them
+
+**Decision.** `components/site/field.tsx` holds the control look, the label shell, chips, the
+error summary, `useDirty`, `StickySave` and `useBlurValidation`. `LogForm` uses all of it.
+Controls are 48px. Q253's four shortcuts are separated as: `sticky` and `keypad` are annotations
+on the label row, `chips` and `clipboard` are controls at a real size.
+
+**Why.** Q245–Q256 are _rules_, and a rule that lives in eleven copies holds in eight of them.
+Q253's verdict was that the four shortcuts are not distinguishable, and they were not: two of
+them rendered nothing at all, and "paste" was the word at 0.55rem — a 7px tap target beside a
+48px field. The axis that separates them is **whether you do them or they happen to you**, which
+is why two are annotations and two are controls, rather than four arbitrary colours.
+
+`useDirty` and `useBlurValidation` listen at the form rather than per field, which is what keeps
+every input uncontrolled — the property that lets a failed save put back exactly what was typed.
+
+`StickySave` appears only when the form is dirty and only on a phone. A bar that is always there
+costs 56px of the vertical space D-083 reclaimed, on every screen, to offer a button that does
+nothing until something is typed.
+
+**The two save buttons must not share a name.** The bar's says **Save**, the flow's says _Log
+training_. Two submit buttons with one accessible name are two identical answers to "what can I
+do here" — caught by `getByRole`, which is the same thing a screen reader would have hit.
+
+**How to reverse.** `LogForm` kept its own `CONTROL`/`INPUT`/`LABEL` names as aliases, so
+pointing them back at local strings restores the old look in three lines.
+
+---
+
+### D-266 · `ActionState` carries `queued`, because "saved" and "safe on this phone" are different
+
+**Decision.** `ActionState` gains an optional `queued`. `lib/offline/write.ts` sets it; nothing
+else does. Absent means "on the server", so every existing writer is correct unchanged.
+
+**Why.** Q289 requires a failed save and a queued one to be unmissably different, and an offline
+write returns `ok: true` — the entry **is** safe, and it is not on the server. Saying "Saved"
+about a row the server has never seen is the lie §1.7 exists to stop telling.
+
+The alternative was a regex over the message, and the offline writer happens to say _"It will
+send when you reconnect"_. Rewording that copy would have silently relabelled a queued save as a
+completed one, which is a bug nobody would find.
+
+**How to reverse.** Drop the field; `SaveState` falls back to two states.
+
+---
+
+### D-267 · The pressed state is a base rule, not sixty-six call sites
+
+**Decision.** `globals.css` gives every `button` and `[role="button"]` a 0.97 `:active` scale,
+excluding `:disabled` and `[data-no-press]`, with a ground-shift alternative under reduced
+motion. The `press` utility stays for `<label>`, `<a>` and `<summary>` controls, which the
+selector cannot reach.
+
+**Why.** Q195 calls the missing pressed state the biggest single miss on the phone and Q196
+requires it within 100ms. An audit found **66 hand-rolled buttons across 40 files** without one,
+against 21 that remembered the utility. Editing the 66 fixes the 66 and leaves the 67th — the
+next one anybody writes — exactly as it was. This is the move `.lucide { stroke-width }` already
+makes for icons: one declaration that reaches code nobody has written yet.
+
+`:active` rather than React state because the slow path being compensated for is a Server Action
+round trip, and a state update cannot be faster than the thing it reports on.
+
+**How to reverse.** Delete the two blocks in `globals.css`. `touch.test.ts` fails first, which is
+the point.
+
+---
+
+### D-268 · `can-hover:`, because a screen width is not a mouse
+
+**Decision.** New `@custom-variant can-hover (@media (hover: hover))`. The two
+hidden-until-hovered delete buttons use it instead of `sm:`.
+
+**Why.** Q193 asked for hover stripped on touch and **Tailwind v4 already does it** — every
+`hover:` it generates is wrapped in `@media (hover:hover)`, verified in the built CSS. All 246
+call sites were already correct and none needed editing, which is worth recording because "strip
+hover on touch" reads like a 246-file change and is a zero-file one.
+
+What Tailwind cannot express is the inverse: something **hidden until hovered**, where `hover:`
+being inert is precisely the bug. Those two buttons used 640px as a proxy for "has a mouse". A
+touch tablet is over 640px and has no mouse, so the button was invisible with no way to reveal
+it — and `log-console`'s row has no swipe to fall back on, so its entries could not be removed
+at all. Both were also 14px glyphs with no padding, on a destructive action; they are 44px now.
+
+**How to reverse.** The variant is additive. The two call sites would go back to `sm:`, which is
+the bug.
+
+---
+
+### D-269 · The swipe shows colour first, then the icon
+
+**Decision.** `SwipeRow`'s reveal ramps its ground over the first half of the travel and fades
+the icon and label in over the second. The label takes the body face at `text-sm`.
+
+**Why.** Q199 asked for both with the colour first, and the order is the point: the colour
+answers _what will this do_, which a thumb needs while the row is still moving, and the icon
+confirms it once the gesture has committed. Showing both at once says the same thing twice at
+10% opacity and neither legibly. The ground tops out at 28% rather than 100% because it sits
+behind an opaque row, so what is visible is the strip either side — at full strength it reads as
+a second row.
+
+The label was `font-mono text-[0.65rem]`, which is 10.4px and under the floor §7.1 gates, and it
+is a word rather than data (DESIGN.md §2 rule 2).
+
+**How to reverse.** The reveal block in `swipe-row.tsx` is self-contained.
+
+---
+
+### D-270 · Pull-to-refresh draws its progress, and `RELEASE` is now named
+
+**Decision.** The indicator is a filling ring with a rotating arrow and a spinner.
+`THRESHOLD * 0.5` is now the named constant `RELEASE` and is used by the gesture, the `ready`
+state and the ring alike.
+
+**Why.** Q200. The old indicator was a 9.6px mono sentence that changed wording twice and said
+nothing about _how far there is left to pull_ — and a pull with no progress is a guess, which
+fails by you letting go early, nothing happening, and concluding the gesture does not exist.
+
+Naming the constant is the part worth recording. `THRESHOLD * 0.5` was written out at both
+places that needed it and named at neither, which hid a real disagreement the moment progress
+was drawn: the release fires at 36px and the ring would have completed at 72, so the indicator
+would have said "keep pulling" through the entire second half of a gesture that was already
+going to work.
+
+The ring is SVG `stroke-dasharray` rather than a `conic-gradient`, which cannot be a ring
+without a second masking element and does not survive `forced-colors` — which §7.4 audits for.
+
+**How to reverse.** The render block is self-contained; `RELEASE` should stay either way.
 
 ---
 
