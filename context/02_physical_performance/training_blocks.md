@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-09-20
 domain: physical
 stability: stable
 summary: Weekly training split, strength program, technique focus, taper protocol.
@@ -11,27 +11,42 @@ read_when: Programming workouts or planning around training load.
 ## 1. The "Everyday" Schedule & Load Management
 *Goal: Maintain a 7-day-a-week training habit without central nervous system burnout.*
 
-**Polarization Rule (80/20):** 80% of cardio volume must be strictly Zone 2 (conversational pace, HR ~135-150 bpm). Only 20% should be high-intensity interval training (HIIT).
+**Polarization Rule (85/15):** 85% of cardio volume must be strictly Zone 2 (conversational
+pace, HR ~135-150 bpm). Only 15% should be high-intensity work. Tightened from 80/20 on
+2026-09-20 for the Fall 2026 endurance block.
 
 ### Weekly Layout
-- **Monday**: 
-  - Solo PERG (High Intensity: e.g., 15 x 30s ON / 30s OFF)
-  - Lower Body & Core Strength
-- **Tuesday**: 
-  - Team Land Practice (Form & Mobility Focus)
-  - Zone 2 Recovery Cardio (Concept2 Rower, 30-45 mins steady state)
-- **Wednesday**: 
-  - Solo PERG (Zone 2 Technique Focus: Right-side paddling drills for ambidextrous balance)
-  - Push/Pull Strength
-- **Thursday**: 
-  - Team Land Practice (Taxing / Conditioning)
-- **Friday**: 
-  - Active Recovery (Zone 2 Rower or Swimming)
-  - Light Mobility & Lower Back Rehab
-- **Saturday**: 
+
+*Superseded for the Fall 2026 term by `fall_2026_challenge.md`, which carries the dated
+day-by-day plan. This section is the recurring shape that plan is built on, and it is what the
+site's "This week" panel reads. The pre-challenge layout is preserved in `web/DECISIONS.md`
+D-275.*
+
+Built around the term: Monday and Wednesday are the lighter academic days and carry the longer
+weekday pieces. Tuesday, Thursday and Friday are the heavy academic days and stay at thirty
+minutes.
+
+- **Monday**:
+  - Longest weekday piece — Zone 2 distance, 45-60 minutes
+  - Stretching routine from the `base` or `recovery` pool
+- **Tuesday**:
+  - 5k or under, not for time, as a warmup
+  - Strength A (Legs & Rotational Power)
+- **Wednesday**:
+  - Zone 2 distance plus technique, 45-60 minutes; perg where available
+  - Right-side paddling drills for ambidextrous balance
+- **Thursday**:
+  - The week's quality session — intervals at or above race pace, 30-35 minutes
+  - This is the 15% in the 85/15 split; nothing else in the week should feel hard
+- **Friday**:
+  - Short and easy, 4k or under
+  - Strength B (Push/Pull & Grip)
+- **Saturday**:
   - 1-hour Water Practice (50% Active Paddling / 50% Drills)
-- **Sunday**: 
+  - Short shakeout afterwards
+- **Sunday**:
   - 1-hour Water Practice (50% Active Paddling / 50% Drills)
+  - The week's long piece, progressive
 
 ---
 

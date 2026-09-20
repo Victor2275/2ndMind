@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-20
+updated: 2026-09-20
 domain: physical
 stability: volatile
 summary: Dragon boat PRs, SPM targets, nutrition baseline, back rehab protocol.
@@ -8,19 +8,34 @@ read_when: Training, nutrition, recovery, or performance questions.
 
 # Benchmarks and Logs
 
+**The active plan is `fall_2026_challenge.md`** — the Fall 2026 daily-erg challenge, 2026-09-20
+to 2026-12-04. This file holds the standing targets and the reference protocols; that one holds
+what to do today.
+
 ## 1. Core Goal and Objective
 - **Target:** Sub-2:00 weight-adjusted 500m split in Dragon Boat.
 - **Milestone Date:** May 2027.
 - **Role:** Engine.
 
+**Nearer milestones.** The Dragonboat College Cup, 500 m, on 2026-11-07 is the term's A-race.
+After it the only thing that matters is the March 2027 time trials, which is where the sub-2:00
+is actually chased.
+
 ## 2. Telemetry and Targets
-*Current Weight: 215 lbs. Drag Factor: 1.*
+*Current Weight: 220 lbs. Drag Factor: 1.*
 
 ### Personal Records (PRs)
 - **Raw PERG 500m:** 2:17
 - **Rower 5k:** 18:50 (approx. 1:53 split)
 - **Bench Press (5RM):** 145 lbs
 - **Squat (5RM):** *Baseline testing needed*
+
+**These are stale and should be treated as ceilings to re-earn, not as current form.** The PERG
+500 and the 5k were both set around March 2026, with little training between then and the start
+of the fall challenge. Four 5k tests are scheduled across the challenge (2026-09-24, 2026-10-08,
+2026-11-12, 2026-12-04) precisely so this section stops being a guess. The squat is deliberately
+left untested this quarter — a 5RM test week costs three days of distance and answers a question
+the endurance block does not ask.
 
 ### SPM (Stroke Per Minute) Targets
 - **200m Sprints:** 80 - 85+ SPM (Maximal explosive power).
@@ -38,7 +53,11 @@ To sustain 7 days of active movement at 215 lbs, glycogen and protein synthesis 
 - **Post-Workout**: Large meal/Greek yogurt at dining hall for glycogen replenishment.
 
 **Lower Back Rehab Protocol:**
-*(Perform these daily or post-practice to prevent lower back shear during rotation.)*
+*(Reference only since 2026-09-20. These four movements are now delivered through the fifteen
+stretching routines in `fall_2026_challenge.md` §6 rather than as a separate daily checklist —
+distributed across the pools so at least one lands nearly every day, instead of all four landing
+after a rest day and after a 25k alike. This section stays as the statement of why each one
+exists. `web/DECISIONS.md` D-272 records the change.)*
 - **Pallof Presses**: 3x10 per side (Anti-rotation stiffening).
 - **Couch Stretch / Psoas Release**: 2 mins per side (Releases hip flexors that pull on the lower back).
 - **Hamstring Flossing**: 1 min per side (Allows hips to hinge properly on the erg).

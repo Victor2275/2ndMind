@@ -29,6 +29,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | What Victor is working on *right now* | the `status: active` projects and their `## Updates` sections — same files; published at `/now` |
 | Dragon boat, erg, PRs, nutrition, recovery | `context/02_physical_performance/benchmarks_and_logs.md` |
 | Workout programming, weekly split, tapering | `context/02_physical_performance/training_blocks.md` |
+| The fall challenge — today's session, the Nov 7 race, the 50k/100k, stretching routines | `context/02_physical_performance/fall_2026_challenge.md` |
 | Cooking, baking, recipes | **Proof** — https://proof-cdvj.onrender.com. Not in this vault. |
 | CAD, 3D printing, makerspace, the Turret | `context/03_craft_and_creative/fabrication_and_cad.md` |
 | This week's priorities, scheduling | `context/04_operations/current_sprint.md` |
