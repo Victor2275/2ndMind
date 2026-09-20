@@ -17,6 +17,128 @@ useful part.
 
 ---
 
+## 2026-09-20 · The Fall 2026 daily-erg challenge
+
+### D-271 · The challenge is a vault file, not a table and not TypeScript
+
+**Decision.** `context/02_physical_performance/fall_2026_challenge.md` holds the whole thing —
+the rules, the four goals, seventy-six dated day rows, the block structure, fifteen stretching
+routines and the fuelling plans for the two long pieces. `lib/athletics/challenge.ts` parses it
+on each request. Nothing about the *plan* is in Postgres and nothing is hard-coded.
+
+**Why.** This is the argument D-056 already made for the SPM targets, the rehab protocol and the
+weekly split, and it is stronger here: a training plan written in September will be rewritten in
+October when a week goes badly. A table would need a migration and an editing screen to change a
+Tuesday; a TypeScript constant would need a deploy. Editing the markdown *is* editing the app.
+
+The cost is the usual one — a reformat can stop a section parsing — and it is paid the usual way:
+every function returns empty rather than throwing, and every panel names the heading it looked
+for.
+
+**What is in the database is completion**, not prescription: which movements were ticked on which
+day. That is time-series, which markdown handles badly — the same line `web/context.md` already
+draws.
+
+**How to reverse.** Delete the file and the parser; the athletics page's two challenge sections
+are guarded by `challenge &&` and disappear with it. The routine checklist would then need a
+different source of items — see D-272, which is the entry that matters if the checklist is what
+you want back.
+
+### D-272 · The routine checklist replaces the rehab checklist, and writes to the same table
+
+**Decision.** `components/site/rehab-checklist.tsx` is deleted. `routine-checklist.tsx` takes its
+place on `/private/athletics` and on the Today mirror, rendering whichever of the fifteen routines
+the day draws. It writes through the existing `toggleRehabAction` into `rehab_completions`,
+unchanged. Slugs are namespaced `routine/movement`.
+
+**Why.** Victor asked for a unique stretching routine every day and for the rehab protocol to be
+absorbed into it. The protocol is not gone — Pallof presses, the couch stretch, hamstring flossing
+and glute bridges are distributed across the routines in §6, so at least one lands nearly every
+day. What was lost is a checklist that asked for the same four movements after a 25k and after a
+rest day.
+
+**Reusing the table is the whole point of the entry.** `rehab_completions` is a completion row per
+slug per day, with a tombstone, a sync entity, an offline store and an apply branch already built
+and tested. Repointing it at new slugs costs nothing. A second table with identical columns would
+have meant a migration, a new entity in `ENTITIES`, a new `STORE_FOR` entry and a new writer in
+`apply.ts` — four places to get wrong — for no behaviour that differs. The namespacing keeps the
+new rows from colliding with the legacy protocol slugs still in there, which carry no slash; a
+test asserts every routine slug contains one.
+
+**`parseRehabProtocol` is deliberately left in place** with no caller. Its tests pin the shape of
+a section of `benchmarks_and_logs.md` that still exists and is still the reference for *why* those
+four movements exist. Deleting it would remove a vault-shape guard and gain nothing.
+
+**How to reverse.** Restore `rehab-checklist.tsx` from history and swap the two call sites back;
+`parseRehabProtocol` never went away, so nothing else is needed. The completion rows written in
+the meantime stay in the table and are simply not read — they are namespaced, so they cannot
+confuse the restored list.
+
+### D-273 · The routine for a day is computed, not written into the vault
+
+**Decision.** The plan file declares a `Type` per day and a `Pool` per routine. `assignRoutines()`
+maps type to pool and gives each day the *n*th routine of its pool, where *n* counts how many days
+of that pool came before it.
+
+**Why.** The alternative is seventy-six hand-written assignments in the day table, which can
+silently disagree with the pool table and which nobody would re-derive after inserting a week.
+Computing it means the rotation cannot drift from the plan, and it is testable: `challenge.test.ts`
+pins the first fortnight of the sequence, so reordering §6 fails loudly instead of silently
+reshuffling months of completion history.
+
+"Unique every day" is honoured as *no repeat within a week*, not *no repeat ever* — fifteen
+routines over seventy-six days means each comes up about five times. A test asserts no two
+consecutive days share a routine, and it is asserted against the real vault file, because that
+property comes from the plan's day ordering rather than from the assignment function.
+
+**How to reverse.** Add a `Routine` column to the day tables and read it in `parseDays`. The pool
+machinery can stay as the fallback for a row that leaves it blank.
+
+### D-274 · Rule 4's practice credit is applied outside `challengeProgress`
+
+**Decision.** `challengeProgress()` sums whatever map it is handed. `applyPracticeCredit()` is a
+separate function that raises a logged `water` or `race` day to 5,000 m.
+
+**Why.** A boat practice is frequently logged as duration with no distance — the team does not
+publish metres — so without the credit the ledger quietly loses 5k a weekend. But folding it into
+the progress function would mean a function named "progress" silently inflating a real number,
+which is the opposite of what `AsOf` and the rest of this app are built to do. Separated, the raw
+total stays inspectable and the credit is one readable line at the call site.
+
+It only ever *raises* a day that already has something logged, and never invents one. A test pins
+that, because the failure it prevents — a streak holding itself up on days nothing happened —
+would make the whole record worthless.
+
+**How to reverse.** Stop calling it in `athletics/page.tsx`. The bar and the streak then report
+raw logged metres, and every practice weekend reads 5k light.
+
+### D-275 · `training_blocks.md`'s weekly layout now describes the challenge week
+
+**Decision.** The Weekly Layout section of `context/02_physical_performance/training_blocks.md`
+was rewritten to the challenge's week shape, and the file points at the challenge file for the
+dated detail.
+
+**Why.** It had to be one or the other. `parseWeeklyPlan()` reads that section to build the "This
+week" panel, which now sits directly beside the new "Today" panel — so leaving the old split in
+place would have put two contradictory weekly plans side by side on one screen, with nothing
+saying which was current. The old layout was also built for a different term: it assumed Monday
+was a high-intensity day, and the challenge makes Monday the longest Z2 piece of the week because
+Monday is now a light academic day.
+
+**How to reverse.** The pre-challenge layout is preserved here:
+
+> - **Monday**: Solo PERG (High Intensity: e.g., 15 x 30s ON / 30s OFF); Lower Body & Core Strength
+> - **Tuesday**: Team Land Practice (Form & Mobility Focus); Zone 2 Recovery Cardio (30-45 mins)
+> - **Wednesday**: Solo PERG (Zone 2 Technique Focus: right-side drills); Push/Pull Strength
+> - **Thursday**: Team Land Practice (Taxing / Conditioning)
+> - **Friday**: Active Recovery (Zone 2 Rower or Swimming); Light Mobility & Lower Back Rehab
+> - **Saturday**: 1-hour Water Practice (50% Active Paddling / 50% Drills)
+> - **Sunday**: 1-hour Water Practice (50% Active Paddling / 50% Drills)
+
+Paste it back over the Weekly Layout section and the panel returns to it with no code change.
+
+---
+
 ## 2026-09-19 · V4 Phase 5 (foundations) — shared states, forms, motion and touch
 
 ### D-259 · Skeletons are static, which reverses §1.10

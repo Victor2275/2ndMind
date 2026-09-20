@@ -38,7 +38,7 @@ Ships **2026-09-20**, the day UCLA fall term begins.
 4. **Writes go through the GitHub Contents API**, not the filesystem. Vercel functions have an
    ephemeral read-only FS and no git binary. One commit per save; last-write-wins on conflict.
    *Reads* of single editable files go the same way; the one exception is the freshness audit,
-   which walks 34 files on disk rather than making 34 API calls (DECISIONS.md D-022).
+   which walks 35 files on disk rather than making 35 API calls (DECISIONS.md D-022).
    That bulk read only works because `next.config.ts` widens the file-tracing root — see
    D-023, which was verified by counting traced files in the build output, not by assumption.
 5. **Every write bumps the file's `updated:` frontmatter** so freshness stays honest without
@@ -316,8 +316,8 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,891 tests across 130 files** as of
-2026-09-19, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,944 tests across 131 files** as of
+2026-09-20, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
@@ -560,6 +560,36 @@ the weekly split and the goal are parsed out of `context/02_physical_performance
 request (D-056), so editing the vault changes the site with no deploy. Every parser returns
 empty rather than throwing, and every panel names the heading it looked for — a parse miss has
 to read as a parse miss, not as an empty box.
+
+**The Fall 2026 challenge is a vault file, and only its completions are in Postgres** (D-271 to
+D-275). `context/02_physical_performance/fall_2026_challenge.md` carries the rules, the four
+goals, seventy-six dated day rows, the block structure, fifteen stretching routines and the
+fuelling plans for the 50k and the 100k; `lib/athletics/challenge.ts` parses it on each request.
+Four things here are easy to break by accident:
+
+1. **The routine for a day is computed, not written down** (D-273). The vault declares a `Type`
+   per day and a `Pool` per routine; `assignRoutines` gives each day the *n*th routine of its
+   pool. `challenge.test.ts` **pins the first fortnight of the sequence**, so reordering §6 of
+   the plan file fails loudly rather than silently reshuffling months of completion history.
+2. **`challengeFaults` is an arithmetic check on the plan, not a parser guard** (D-271). The day
+   rows must be contiguous, the dates must not skip, and the metres in §4 must total what §1
+   claims. It runs in the test suite against the real file and renders in amber on the page. The
+   plan's stated total was wrong when first written and this is what said so.
+3. **The practice credit lives outside `challengeProgress`** (D-274). `applyPracticeCredit` only
+   ever *raises* a `water` or `race` day that already has something logged, and never invents
+   one. Folding it into the progress function would make a function named "progress" silently
+   inflate a real number.
+4. **The routine checklist writes to `rehab_completions`** (D-272), which is not a leftover — it
+   is a completion row per slug per day with a tombstone, a sync entity, an offline store and an
+   apply branch already built. Routine slugs are namespaced `routine/movement` so they cannot
+   collide with the legacy protocol slugs still in the table; a test asserts every one contains a
+   slash. `rehab-checklist.tsx` is deleted; `parseRehabProtocol` is deliberately kept with no
+   caller, because its tests pin the shape of a vault section that still exists.
+
+**`training_blocks.md`'s Weekly Layout was rewritten to the challenge's week shape** (D-275), because
+`parseWeeklyPlan` feeds the "This week" panel that now sits beside the challenge's "Today" panel,
+and two contradictory weekly plans on one screen is worse than either of them. The pre-challenge
+layout is preserved verbatim in D-275 and pasting it back needs no code change.
 
 Health data is the category that must never become public — bodyweight above all. No public
 route imports `lib/db` or `lib/athletics`, the public build has no `DATABASE_URL` at all, and

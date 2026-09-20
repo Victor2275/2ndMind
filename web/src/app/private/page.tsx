@@ -13,7 +13,8 @@ import { Empty } from "@/components/site/states";
 import { Unavailable } from "@/components/site/states";
 import { ProposalReview } from "@/components/site/proposal-review";
 import { QuickCapture } from "@/components/site/quick-capture";
-import { RehabChecklist } from "@/components/site/rehab-checklist";
+import { RoutineChecklist } from "@/components/site/routine-checklist";
+import { ChallengeToday } from "@/components/site/challenge-panels";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { Task } from "@/lib/db/schema";
@@ -32,8 +33,8 @@ import {
 } from "@/lib/tasks/queries";
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
-import { parseRehabProtocol } from "@/lib/athletics/protocol";
 import { rehabCompletionsBetween } from "@/lib/athletics/queries";
+import { assignRoutines, dayFor, movementSlug, parseChallenge } from "@/lib/athletics/challenge";
 import { isoDay, shiftDay } from "@/lib/athletics/trends";
 import { readVaultFileCached } from "@/lib/vault/write";
 import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
@@ -540,58 +541,92 @@ async function SummaryArchive() {
 }
 
 /**
- * The rehab protocol, mirrored here while it is unfinished (V4 Phase 2++ Stage 7, Phase 5.6).
+ * Today's session and its stretching routine, mirrored here (D-271, replacing the rehab mirror).
  *
  * ## Why it appears here at all, and why it disappears
  *
- * It is four items that have to be done *daily*, and the page they live on is the record board
- * — which is the page you open after training, not before. Today is the page that answers "what
- * do I do now", and an unfinished daily protocol is one of the answers.
+ * The challenge asks for something *every day*, and the page that owns it — the record board —
+ * is the page you open after training, not before. Today is the page that answers "what do I do
+ * now", and an unstarted session is one of the answers.
  *
- * **It renders nothing once every item is ticked.** A panel that is always on screen saying
- * "all done" stops being read within a week, which is the same argument D-165 made for the error
- * panel above. The one on `/private/athletics` stays put either way: that is its home, and this
+ * **It renders nothing once the routine is fully ticked.** A panel that is always on screen
+ * saying "all done" stops being read within a week — the same argument D-165 made for the error
+ * panel above. The copy on `/private/athletics` stays put either way: that is its home, and this
  * is a reminder.
+ *
+ * The prescription is shown above the ticks because on this page the question really is "what
+ * is today", and unlike the athletics page nothing here competes for the fold — the capture box
+ * above already owns `data-first-action`.
  *
  * Silent on any failure. The vault or the database being unreachable is worth saying on the page
  * that owns this data; here it would be a second error message about someone else's panel.
  */
-async function RehabToday() {
+async function ChallengeTodayPanel() {
   if (!isDatabaseConfigured()) return null;
 
   const today = isoDay(new Date());
   const from = shiftDay(today, -13);
 
-  let items: ReturnType<typeof parseRehabProtocol> = [];
+  let challenge: ReturnType<typeof parseChallenge> = null;
   let done = new Map<string, Set<string>>();
   try {
     const [vault, completions] = await Promise.all([
-      readVaultFileCached("context/02_physical_performance/benchmarks_and_logs.md"),
+      readVaultFileCached("context/02_physical_performance/fall_2026_challenge.md"),
       rehabCompletionsBetween(db(), from, today),
     ]);
-    items = parseRehabProtocol(vault.content);
+    challenge = parseChallenge(vault.content);
     done = completions;
   } catch {
     return null;
   }
 
-  if (items.length === 0) return null;
+  if (!challenge) return null;
+
+  const day = dayFor(challenge, today);
+  if (!day) return null;
+
+  const routine = assignRoutines(challenge).get(day.day) ?? null;
+  if (!routine) return null;
 
   const todayDone = done.get(today) ?? new Set<string>();
-  if (items.every((item) => todayDone.has(item.slug))) return null;
+  if (routine.movements.every((movement) => todayDone.has(movementSlug(routine, movement)))) {
+    return null;
+  }
 
   const history = Array.from({ length: 14 }, (_, i) => {
-    const day = shiftDay(from, i);
-    return { day, count: done.get(day)?.size ?? 0 };
+    const on = shiftDay(from, i);
+    const planned = dayFor(challenge, on);
+    const its = planned ? (assignRoutines(challenge).get(planned.day) ?? null) : null;
+    const ticked = done.get(on) ?? new Set<string>();
+    return {
+      day: on,
+      done: its
+        ? its.movements.filter((movement) => ticked.has(movementSlug(its, movement))).length
+        : 0,
+      total: its ? its.movements.length : 0,
+    };
   });
+
+  const ticked = routine.movements.filter((movement) =>
+    todayDone.has(movementSlug(routine, movement)),
+  ).length;
 
   return (
     <div className="mt-8">
-      <Panel title="Rehab" meta={`${todayDone.size} of ${items.length} today`}>
+      <Panel title={`Day ${day.day}`} meta={`${ticked} of ${routine.movements.length} today`}>
+        <div className="mb-5 border-b border-border pb-5">
+          <ChallengeToday
+            day={day}
+            week={challenge.weeks.find((week) => week.index === day.week) ?? null}
+            challenge={challenge}
+            logged={null}
+          />
+        </div>
+
         {/* `firstAction={false}`: the capture box above is this page's first action, and two
             markers make the fold gate measure the wrong one. */}
-        <RehabChecklist
-          items={items}
+        <RoutineChecklist
+          routine={routine}
           done={todayDone}
           day={today}
           history={history}
@@ -661,7 +696,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
           {/* Under the tasks and above the schedule: it is a thing to *do*, like the tasks, and it
           vanishes entirely once the day's items are ticked. */}
           <Suspense fallback={null}>
-            <RehabToday />
+            <ChallengeTodayPanel />
           </Suspense>
         </div>
 

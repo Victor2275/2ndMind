@@ -9,7 +9,13 @@ import { PageHeader, Panel } from "@/components/site/page-shell";
 import { Empty } from "@/components/site/states";
 import { Unavailable } from "@/components/site/states";
 import { PrTable } from "@/components/site/pr-table";
-import { RehabChecklist } from "@/components/site/rehab-checklist";
+import {
+  ChallengeFaults,
+  ChallengeGoals,
+  ChallengeLedger,
+  ChallengeToday,
+} from "@/components/site/challenge-panels";
+import { RoutineChecklist } from "@/components/site/routine-checklist";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { GoalCard, SpmPanel, WeekReview } from "@/components/site/training-panels";
 import { TrainingTabs } from "@/components/site/training-tabs";
@@ -31,12 +37,22 @@ import {
   type StrengthRecord,
 } from "@/lib/athletics/prs";
 import {
-  parseRehabProtocol,
   parseSpmTargets,
   parseSplitGoal,
   parseVaultBodyweight,
   parseWeeklyPlan,
 } from "@/lib/athletics/protocol";
+import {
+  applyPracticeCredit,
+  assignRoutines,
+  challengeFaults,
+  challengeProgress,
+  dayFor,
+  metersByDay,
+  movementSlug,
+  parseChallenge,
+  type Routine,
+} from "@/lib/athletics/challenge";
 import {
   allEfforts,
   listBodyweight,
@@ -68,9 +84,13 @@ const DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" });
 
 const BENCHMARKS = "context/02_physical_performance/benchmarks_and_logs.md";
 const TRAINING = "context/02_physical_performance/training_blocks.md";
+const CHALLENGE = "context/02_physical_performance/fall_2026_challenge.md";
+
+/** Rule 4: a boat practice counts as this much toward the 5k-a-day average. */
+const PRACTICE_CREDIT_M = 5000;
 
 /** How far back the streak strip and the volume chart look. */
-const REHAB_WINDOW_DAYS = 14;
+const ROUTINE_WINDOW_DAYS = 14;
 const VOLUME_WEEKS = 10;
 
 function Unconfigured() {
@@ -219,18 +239,18 @@ function History({ workouts }: { workouts: WorkoutSummary[] }) {
 async function Training() {
   const today = isoDay(new Date());
   const weekStart = weekStartOf(today);
-  const historyFrom = shiftDay(today, -(REHAB_WINDOW_DAYS - 1));
+  const historyFrom = shiftDay(today, -(ROUTINE_WINDOW_DAYS - 1));
 
   let efforts: Awaited<ReturnType<typeof allEfforts>> = [];
   let history: WorkoutSummary[] = [];
   let readings: BodyweightReading[] = [];
-  let rehabDone = new Map<string, Set<string>>();
+  let ticked = new Map<string, Set<string>>();
   let sessionDates: Date[] = [];
   let failure: string | null = null;
 
   try {
     const handle = db();
-    [efforts, history, readings, rehabDone, sessionDates] = await Promise.all([
+    [efforts, history, readings, ticked, sessionDates] = await Promise.all([
       allEfforts(handle),
       recentWorkouts(handle, 15),
       listBodyweight(handle),
@@ -246,21 +266,23 @@ async function Training() {
   // charts down, and a missing table must not blank the protocol.
   let benchmarks = "";
   let training = "";
+  let challengeMarkdown = "";
   let vaultFailure: string | null = null;
   try {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       readVaultFileCached(BENCHMARKS),
       readVaultFileCached(TRAINING),
+      readVaultFileCached(CHALLENGE),
     ]);
     benchmarks = a.content;
     training = b.content;
+    challengeMarkdown = c.content;
   } catch (error) {
     vaultFailure = error instanceof Error ? error.message : String(error);
   }
 
   const goal = parseSplitGoal(benchmarks);
   const spmTargets = parseSpmTargets(benchmarks);
-  const rehabItems = parseRehabProtocol(benchmarks);
   const plan = parseWeeklyPlan(training);
   const vaultWeight = parseVaultBodyweight(benchmarks);
 
@@ -315,9 +337,48 @@ async function Training() {
   );
   const muscleWeek = weeklyMuscleVolume(efforts, musclesFor, weekStart);
 
-  const rehabHistory = Array.from({ length: REHAB_WINDOW_DAYS }, (_, i) => {
+  /**
+   * The Fall 2026 challenge (D-271).
+   *
+   * Parsed from its own vault file, joined against the ledger the charts above already loaded.
+   * `metersByDay` re-reads `efforts` rather than issuing a query — the rows are in memory and a
+   * second round trip to a serverless database to re-sum what we already have would be the most
+   * expensive line on this page.
+   */
+  const challenge = parseChallenge(challengeMarkdown);
+  const loggedByDay = metersByDay(efforts);
+  const creditedByDay = challenge
+    ? applyPracticeCredit(challenge, loggedByDay, PRACTICE_CREDIT_M)
+    : loggedByDay;
+
+  const challengeState = challenge ? challengeProgress(challenge, creditedByDay, new Date()) : null;
+  const challengeDay = challenge ? dayFor(challenge, today) : null;
+  const challengeWeek =
+    challenge && challengeDay
+      ? (challenge.weeks.find((week) => week.index === challengeDay.week) ?? null)
+      : null;
+  const routines: Map<number, Routine> = challenge ? assignRoutines(challenge) : new Map();
+  const todayRoutine = challengeDay ? (routines.get(challengeDay.day) ?? null) : null;
+  const faults = challenge ? challengeFaults(challenge) : [];
+
+  /**
+   * The fortnight strip.
+   *
+   * Each day is counted against *its own* routine, not today's: the routines differ in length,
+   * and a shared denominator would render a finished six-movement day as five-sixths done.
+   */
+  const routineHistory = Array.from({ length: ROUTINE_WINDOW_DAYS }, (_, i) => {
     const day = shiftDay(historyFrom, i);
-    return { day, count: rehabDone.get(day)?.size ?? 0 };
+    const planned = challenge ? dayFor(challenge, day) : null;
+    const routine = planned ? (routines.get(planned.day) ?? null) : null;
+    const done = ticked.get(day) ?? new Set<string>();
+    return {
+      day,
+      done: routine
+        ? routine.movements.filter((movement) => done.has(movementSlug(routine, movement))).length
+        : 0,
+      total: routine ? routine.movements.length : 0,
+    };
   });
 
   return (
@@ -333,20 +394,35 @@ async function Training() {
         </div>
       )}
 
-      {/* Rehab first (V3 §3.1).
-          The ticks are the only thing on this page you can *do*; everything else — the goal
-          card, nine chart panels, the PR tables — is something to look at. The goal card sat
-          above them and the checklist was measured at 855px on a phone, which for a protocol
-          that has to be done daily is the difference between a habit and a page you mean to
-          open. "This week" stays alongside it because it is the other thing that changes
-          what you do today. */}
+      {/* The challenge first (D-271, extending V3 §3.1).
+          Today's prescription and its routine share one panel, and that panel is the top of the
+          page. The ticks are still the only thing here you can *do* — everything else is a
+          number — so `data-first-action` stays on the checklist, and the card above it is kept
+          deliberately short so the first tick stays inside the 500px fold limit. Putting the
+          ledger or the goals above it would bury the action behind an argument for the action.
+          "This week" stays alongside, because it is the other thing that changes what you do
+          today. */}
       <section className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Panel title="Today's rehab" meta={rehabItems.length > 0 ? "from the vault" : undefined}>
-          <RehabChecklist
-            items={rehabItems}
-            done={rehabDone.get(today) ?? new Set<string>()}
+        <Panel
+          title="Today"
+          meta={todayRoutine ? `${todayRoutine.minutes} min routine` : undefined}
+        >
+          {challenge && (
+            <div className="mb-5 border-b border-border pb-5">
+              <ChallengeToday
+                day={challengeDay}
+                week={challengeWeek}
+                challenge={challenge}
+                logged={failure ? null : (creditedByDay.get(today) ?? 0)}
+              />
+            </div>
+          )}
+
+          <RoutineChecklist
+            routine={todayRoutine}
+            done={ticked.get(today) ?? new Set<string>()}
             day={today}
-            history={rehabHistory}
+            history={routineHistory}
           />
         </Panel>
 
@@ -354,6 +430,24 @@ async function Training() {
           <WeekReview days={reviewDays} planFound={plan.length > 0} />
         </Panel>
       </section>
+
+      {/* The ledger and the four goals — the "why" behind the panel above, so they sit under
+          it. Both are pure rendering; neither is actionable. */}
+      {challenge && challengeState && (
+        <section className="mt-4 grid gap-4">
+          <Panel
+            title="The challenge"
+            meta={`day ${challengeState.daysElapsed} of ${challengeState.daysTotal}`}
+          >
+            <ChallengeLedger challenge={challenge} progress={challengeState} />
+            <ChallengeFaults faults={faults} />
+          </Panel>
+
+          <Panel title="Goals" meta="from the vault">
+            <ChallengeGoals goals={challenge.goals} />
+          </Panel>
+        </section>
+      )}
 
       {/* What the week actually trained, on the figure Stage 1 redrew (V4 Phase 2++ Stage 7).
           Placed with the two panels above rather than among the charts: it answers "what do I
