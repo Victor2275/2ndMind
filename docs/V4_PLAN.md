@@ -747,7 +747,23 @@ Milestone C. The phase that changes your day.
   pre-existing "starts on the first tab" test caught it on the first run.
 - **Fake timers and `userEvent` deadlock** in the draft test — every test in the file timed out
   at five seconds. `waitFor` on real time is simpler and does not make the debounce interval part
-  of the test's contract. Four questions were
+  of the test's contract.
+
+**Measured, not assumed** (`npm run shots`, 2026-09-21, against a production build):
+**0 page/width combinations scroll sideways** at 360, 390, 768 and 1280 — including the new
+month grid, the applications board, the archive route and the record cards. The fold readings at
+390px, which is the number this phase is judged on:
+
+| Screen | First action | Was |
+| --- | --: | --- |
+| Today | **171px** | 418px when D-182 measured it |
+| Log | **206px** | — |
+| Academics | **171px** | 541px before D-132's fix was applied here |
+| Calendar | **249px** | — |
+| Athletics | **394px** | 392px after §2.13; unchanged by this phase |
+
+All five are inside the 500px limit, and Today is now the shallowest gated screen in the app —
+which is the one sentence §5.4 was written to be able to say. Four questions were
 put to Victor before any of it was written; the three that shape work still to come are recorded
 against their items — **boards are columns with a status control, not drag and drop** (5.7, 5.8),
 the summary archive gets its **own route** `/private/log/archive` (5.4), and §5.9's chart
