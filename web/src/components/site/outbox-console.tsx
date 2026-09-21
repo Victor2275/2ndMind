@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 
 import { requestSync } from "@/components/site/sync-runner";
 import { AsOf, SaveState } from "@/components/site/states";
@@ -165,7 +166,7 @@ export function OutboxConsole() {
           <button
             type="button"
             onClick={() => requestSync()}
-            className="mt-3 min-h-10 rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10"
+            className="mt-3 min-h-11 press rounded-control border border-primary/50 px-3 text-sm text-primary transition-colors duration-fast ease-standard hover:border-primary hover:bg-primary/10"
           >
             Try again now
           </button>
@@ -212,22 +213,41 @@ function OpRow({
             message={`${view.verb.toLowerCase()} · ${view.kind.toLowerCase()}`}
           />
         </span>
-        <span className="font-mono text-[0.65rem] text-muted-foreground tabular-nums">
-          {approximateAge(view.ageMs)} old
-          {view.attempts > 0 && ` · ${view.attempts} ${view.attempts === 1 ? "try" : "tries"}`}
+        {/* Q427 — the age is the thing this screen is *about*, and it was 10px of grey mono
+            at the far right of the row. It is now the second-loudest thing in the row after
+            the state, which is the order the two questions arrive in: what happened, and how
+            long ago. The attempt count stays small: it explains the age rather than competing
+            with it. */}
+        <span className="text-right">
+          <span className="tabular block text-sm text-foreground">
+            {approximateAge(view.ageMs)} old
+          </span>
+          {view.attempts > 0 && (
+            <span className="block text-[0.65rem] text-muted-foreground">
+              {view.attempts} {view.attempts === 1 ? "try" : "tries"}
+            </span>
+          )}
         </span>
       </div>
 
       {view.title && <p className="mt-1.5 text-sm text-foreground">{view.title}</p>}
 
+      {/* Q428 — the reason, designed rather than appended.
+          `describeOp` has written a real sentence per op since V3 ("the server rejected it as
+          malformed", "no connection since…"); it was rendered as one more grey paragraph in a
+          panel of grey paragraphs, so the answer to "why is this stuck" looked exactly like
+          the row's own description. Boxed, with a mark, it reads as a cause. */}
       {view.problem ? (
         <>
-          <p className="mt-2 text-sm text-muted-foreground">{view.problem}</p>
+          <div className="mt-2 flex items-start gap-2 rounded-control border border-border/60 bg-background/40 px-3 py-2">
+            <CircleAlertIcon aria-hidden className="mt-0.5 icon-sm shrink-0 text-highlight" />
+            <p className="text-sm text-muted-foreground">{view.problem}</p>
+          </div>
           <button
             type="button"
             disabled={busy}
             onClick={() => onRetry(view.opId)}
-            className="mt-3 min-h-10 rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
+            className="mt-3 min-h-11 press rounded-control border border-primary/50 px-3 text-sm text-primary transition-colors duration-fast ease-standard hover:border-primary hover:bg-primary/10 disabled:opacity-60"
           >
             {busy ? "Sending…" : "Send it again"}
           </button>

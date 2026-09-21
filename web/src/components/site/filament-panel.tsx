@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { PencilIcon, XIcon } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { deleteSpool, saveSpool } from "@/app/private/hobbies/actions";
@@ -27,6 +28,14 @@ import type { ActionState } from "@/lib/sprint-goals";
  * Nothing sensitive may appear in this file; it compiles into `/_next/static/chunks/`.
  */
 
+/** The bar's fill. Amber and red repeat what the badge already says in words. */
+const LEVEL_FILL = {
+  empty: "bg-destructive",
+  low: "bg-highlight",
+  some: "bg-primary/70",
+  full: "bg-primary",
+} as const;
+
 const LEVEL_TONE = {
   empty: "border-destructive/60 text-destructive",
   low: "border-highlight/60 text-highlight",
@@ -51,7 +60,7 @@ export function FilamentPanel({ spools }: { spools: FilamentSpool[] }) {
         <button
           type="button"
           onClick={() => setAdding((open) => !open)}
-          className="min-h-10 rounded-md border border-primary/50 px-3 font-mono text-xs text-primary transition-colors hover:bg-primary/10"
+          className="min-h-11 press rounded-control border border-primary/50 px-3 font-mono text-xs text-primary transition-colors duration-fast ease-standard hover:bg-primary/10"
         >
           {adding ? "Cancel" : "+ spool"}
         </button>
@@ -103,7 +112,7 @@ function SpoolRow({ spool }: { spool: FilamentSpool }) {
         </span>
 
         <span
-          className={`tabular shrink-0 rounded border px-1.5 py-0.5 font-mono text-[0.6rem] ${LEVEL_TONE[level]}`}
+          className={`tabular shrink-0 rounded border px-1.5 py-0.5 font-mono text-[0.65rem] ${LEVEL_TONE[level]}`}
         >
           {level === "empty" ? "empty" : `${spool.gramsRemaining}g · ${percent}%`}
         </span>
@@ -112,9 +121,9 @@ function SpoolRow({ spool }: { spool: FilamentSpool }) {
           type="button"
           onClick={() => setEditing((open) => !open)}
           aria-label={`Edit ${describeSpool(spool)}`}
-          className="shrink-0 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex size-11 shrink-0 press items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast ease-standard hover:text-foreground"
         >
-          edit
+          <PencilIcon aria-hidden className="size-3.5" />
         </button>
 
         <form action={remove} className="shrink-0">
@@ -122,11 +131,31 @@ function SpoolRow({ spool }: { spool: FilamentSpool }) {
           <button
             type="submit"
             aria-label={`Remove ${describeSpool(spool)}`}
-            className="font-mono text-[0.6rem] text-muted-foreground transition-colors hover:text-destructive"
+            className="-mr-2 inline-flex size-11 press items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast ease-standard hover:text-destructive"
           >
-            ✕
+            <XIcon aria-hidden className="size-3.5" />
           </button>
         </form>
+      </div>
+
+      {/* Q424 — the level, as a level.
+          The badge beside the name says "412g · 41%", which is precise and unscannable: the
+          question this page answers is *what am I about to run out of*, and eight rows of
+          percentages have to be read one at a time. A bar is the same number arranged so the
+          shortest one is visible without reading any of them. The badge stays, so nothing here
+          depends on the bar being measured by eye (rule 10). */}
+      <div
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${describeSpool(spool)} remaining`}
+        className="mt-2 ml-8 h-1 overflow-hidden rounded-full bg-border"
+      >
+        <div
+          className={`h-full rounded-full ${LEVEL_FILL[level]}`}
+          style={{ width: `${Math.max(percent, level === "empty" ? 0 : 2)}%` }}
+        />
       </div>
 
       {spool.notes !== "" && (

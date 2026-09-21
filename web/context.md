@@ -350,6 +350,22 @@ is easy to undo by accident:
 - **Counted and unchecked are different tokens** (D-299). Do not merge them back into a
   sentence: the unchecked one is a guess the audit could not confirm.
 
+## Work, Calendar, Hobbies, Sync — V4 §5.8 (2026-09-21, D-300 to D-304)
+
+- **The applications board never writes** (D-300). The Gmail script is the sheet's only writer;
+  a status control here would make two. Stages are derived from free text by `stageOf`, matched
+  most-specific-first, and `stages.test.ts` pins the two orderings that matter ("offer declined"
+  is closed, "rejected after interview" is closed).
+- **The calendar renders both views server-side** and `CalendarView` hides one (D-301). Do not
+  make the month view fetch on switch — the feeds are one parse, and the hidden subtree keeps
+  its `<details>` state.
+- **The month window is wider than the agenda window** on purpose, and the Canvas panel filters
+  back to a week. A month grid built from seven days claims the rest of the month is free.
+- **Provenance is a shape** — filled dot Google, ring Canvas — with a legend (D-302).
+- **Spool bars and printer dots never carry meaning alone** (D-303); the badges stay.
+- **`/private/sync` leads with age and boxes the reason** (D-304). Waiting is still not an
+  error (Q426): only a row that needs a person is destructive-bordered.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit

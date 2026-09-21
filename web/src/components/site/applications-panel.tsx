@@ -1,6 +1,7 @@
 import { Stat } from "@/components/site/page-shell";
-import type { Application, Pipeline, SheetResult } from "@/lib/jobs/sheet";
-import { toPipeline } from "@/lib/jobs/sheet";
+import { PipelineBoard } from "@/components/site/pipeline-board";
+import type { Pipeline, SheetResult, Stage } from "@/lib/jobs/sheet";
+import { STAGES, stageColumns, stageTotal, toPipeline } from "@/lib/jobs/sheet";
 
 /**
  * The applications pipeline, read from the published sheet.
@@ -9,72 +10,6 @@ import { toPipeline } from "@/lib/jobs/sheet";
  * may be shipped to a client bundle. It renders on the server and only the resulting HTML is
  * sent — to a page that already requires a session.
  */
-
-function Row({ application }: { application: Application }) {
-  const meta = [application.location, application.compensation, application.duration]
-    .filter((value) => value !== "")
-    .join(" · ");
-
-  return (
-    <li className="border-b border-border/50 py-2.5 last:border-0">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-sm font-medium text-foreground">{application.company}</span>
-        {application.status !== "" && (
-          <span className="eyebrow text-muted-foreground">{application.status}</span>
-        )}
-      </div>
-      {/* The role is the long field and wraps; giving it its own line keeps the company
-          scannable down the left edge at 390px. */}
-      <p className="text-sm text-muted-foreground">
-        {application.link !== "" ? (
-          <a href={application.link} className="link-wipe hover:text-primary">
-            {application.role || "(no role given)"}
-          </a>
-        ) : (
-          application.role || "(no role given)"
-        )}
-      </p>
-      {meta !== "" && <p className="font-mono text-[0.65rem] text-muted-foreground">{meta}</p>}
-    </li>
-  );
-}
-
-function Section({
-  title,
-  applications,
-  limit,
-  empty,
-}: {
-  title: string;
-  applications: Application[];
-  limit?: number;
-  empty: string;
-}) {
-  const shown = limit ? applications.slice(0, limit) : applications;
-
-  return (
-    <section className="mt-6">
-      <h3 className="eyebrow text-muted-foreground">
-        {title}
-        {applications.length > 0 && ` · ${applications.length}`}
-      </h3>
-      {shown.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="mt-1">
-          {shown.map((a) => (
-            <Row key={`${a.company}-${a.role}-${a.added}`} application={a} />
-          ))}
-        </ul>
-      )}
-      {limit && applications.length > limit && (
-        <p className="mt-2 font-mono text-[0.65rem] text-muted-foreground">
-          + {applications.length - limit} more in the sheet
-        </p>
-      )}
-    </section>
-  );
-}
 
 export function ApplicationsPanel({ sheet }: { sheet: SheetResult }) {
   // A message, never an error page. This is one panel among several, and Google being slow or
@@ -88,6 +23,11 @@ export function ApplicationsPanel({ sheet }: { sheet: SheetResult }) {
   }
 
   const pipeline: Pipeline = toPipeline(sheet.applications);
+  const columns = stageColumns(sheet.applications);
+  // The true count per stage, so a column that lists six of forty can say so.
+  const totals = Object.fromEntries(
+    STAGES.map((stage) => [stage, stageTotal(sheet.applications, stage)]),
+  ) as Record<Stage, number>;
 
   return (
     <div>
@@ -109,29 +49,12 @@ export function ApplicationsPanel({ sheet }: { sheet: SheetResult }) {
         </p>
       )}
 
-      <Section
-        title="Live"
-        applications={pipeline.open}
-        empty="Nothing outstanding — everything sent has been answered."
-      />
-
-      <Section
-        title="Next up · high priority, not yet applied"
-        applications={pipeline.shortlist}
-        limit={8}
-        empty="No high-priority postings left unapplied."
-      />
-
-      <section className="mt-6">
-        <h3 className="eyebrow text-muted-foreground">By status</h3>
-        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-          {pipeline.byStatus.map((s) => (
-            <li key={s.status} className="font-mono text-xs text-muted-foreground">
-              {s.status} <span className="tabular text-foreground">{s.count}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {/* The board (§5.8, Q419). It replaces three hand-rolled sections — "Live", "Next up"
+          and a status tally — which between them said the same thing three times and never
+          said where a given application had got to. */}
+      <div className="mt-6">
+        <PipelineBoard columns={columns} totals={totals} />
+      </div>
     </div>
   );
 }

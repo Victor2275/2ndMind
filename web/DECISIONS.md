@@ -17,6 +17,97 @@ useful part.
 
 ---
 
+## 2026-09-21 · Work, Calendar, Hobbies, Sync — V4 §5.8
+
+### D-300 · The applications board is a view, with no status control
+
+**Decision.** `/private/work`'s pipeline is a five-column board — Not applied, Applied,
+Interviewing, Offer, Closed — derived from the sheet's free-text status by `stageOf`. It
+replaces three hand-rolled sections ("Live", "Next up", a status tally). **There is no control
+to move a card**, unlike every other board in §5.7 and §5.8.
+
+**Why no control.** §5.8's brief says "columns with a status control, per 5.7", and that answer
+was about replacing drag-and-drop. It assumes the board owns its data. This one does not: the
+sheet is maintained by a background script that scans Gmail, `lib/jobs/sheet.ts` reads it, and
+the page's lede has said since V1 that nothing here writes to it. A control would need a second
+writer, which is the exact thing the original refusal to duplicate the sheet was protecting.
+
+**Why five stages and not the sheet's own values.** The status is whatever words the mail used —
+"Pending", "OA sent", "Rejected after onsite". A board cannot have a column per phrase. The
+stages are matched by substring in order of specificity: closed beats offer beats interviewing,
+so "offer declined" lands in Closed. Every card still shows the sheet's own wording, because
+"OA sent" and "phone screen booked" are both `interviewing` and the difference is the part
+Victor acts on.
+
+**The shortlist column lists high-priority rows only** and says how many it did not list. 173 of
+178 rows are postings never applied to; a column holding all of them is the wall `toPipeline`
+was written to avoid.
+
+**How to reverse.** Render `pipeline.open` and `pipeline.shortlist` as the two lists they were;
+`toPipeline` is untouched and still computes both.
+
+### D-301 · The calendar has two views, both rendered on the server
+
+**Decision.** `/private/calendar` offers **Agenda** and **Month**. Both subtrees render on the
+server and `CalendarView` — a client component that owns one boolean — shows one. The choice is
+remembered in `localStorage`, read in an effect.
+
+**Why both at once.** The page is `force-dynamic` and its feeds are one `.ics` parse, so
+rendering the month costs nothing extra; fetching on switch would cost a round trip on a screen
+whose whole job is to answer a question in one glance. Hiding rather than unmounting also keeps
+`<details>` state and scroll position across a switch.
+
+**The window widened to the month** for the grid, and the agenda's own window did not. A month
+grid built from a seven-day fetch is a calendar claiming the rest of the month is free.
+
+**How to reverse.** Render `agenda` directly and delete the switch; the grid is a component the
+page can stop calling.
+
+### D-302 · Provenance is a shape, not a colour
+
+**Decision.** In the month grid a Google day carries a filled dot and a Canvas day a ring, with
+both named in a legend. The agenda keeps its two panels, which is the strongest statement of
+provenance available (Q423).
+
+**Why shapes.** Rule 10, and the practical version of it: this is the one place in the app where
+two sources are necessarily mixed in one cell, and a greyscale screenshot or a colour-blind
+reader has to keep the distinction.
+
+**How to reverse.** Drop the second mark; the panels still separate the feeds in the agenda.
+
+### D-303 · A spool level is a bar, a printer state is a dot and a word
+
+**Decision.** Each spool row gains a `role="progressbar"` fill bar under it, coloured by level,
+with the exact "412g · 41%" badge kept. Each printer's state is a dot plus its word, and the dot
+pulses only while printing (`motion-safe`).
+
+**Why.** Q424 and Q425 asked for these panels to be visual; D-189 gave them swatches and a
+percentage, which is precise and unscannable — the question the page answers is *what am I about
+to run out of*, and eight percentages have to be read one at a time. A bar is the same number
+arranged so the shortest is visible without reading any of them.
+
+**Both keep their words**, so neither the bar nor the dot is carrying meaning alone.
+
+**How to reverse.** Delete the bar and the dot; the badges are unchanged.
+
+### D-304 · The reason an entry is stuck is a designed block, and its age is the second-loudest thing
+
+**Decision.** On `/private/sync`, an op's `problem` sentence renders in a bordered block with an
+alert mark, and its age moves from 10px grey mono at the right edge to `text-sm` foreground with
+the attempt count beneath it. Both retry buttons are 44px.
+
+**Why.** Q427 and Q428. `describeOp` has written a real per-op sentence since V3 and it was one
+more grey paragraph among grey paragraphs, so "why is this stuck" looked exactly like the row's
+own description. The age is what the screen is *about* — the whole page is "how long has this
+been waiting" — and it was the smallest text in the row.
+
+**Q426 is unchanged**: waiting is not an error and does not render as one. Only a row that needs
+a person keeps the destructive border.
+
+**How to reverse.** Put the two paragraphs back as plain `<p>`s.
+
+---
+
 ## 2026-09-21 · Academics stops being a document — V4 §5.7
 
 ### D-295 · The degree audit renders as structure, through the planner's parser

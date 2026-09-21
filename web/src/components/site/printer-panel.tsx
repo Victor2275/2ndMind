@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { PencilIcon, XIcon } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { deletePrinter, savePrinter } from "@/app/private/hobbies/actions";
@@ -40,7 +41,7 @@ export function PrinterPanel({ printers }: { printers: Printer[] }) {
         <button
           type="button"
           onClick={() => setAdding((open) => !open)}
-          className="min-h-10 rounded-md border border-primary/50 px-3 font-mono text-xs text-primary transition-colors hover:bg-primary/10"
+          className="min-h-11 press rounded-control border border-primary/50 px-3 font-mono text-xs text-primary transition-colors duration-fast ease-standard hover:bg-primary/10"
         >
           {adding ? "Cancel" : "+ printer"}
         </button>
@@ -68,11 +69,20 @@ function PrinterRow({ printer }: { printer: Printer }) {
       <div className="flex items-center gap-3">
         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{printer.name}</span>
 
+        {/* Q424 — the state, as a state. A dot plus the word: the dot is what makes a list of
+            four machines readable in one pass, and the word is what makes it mean something
+            (rule 10). `printing` pulses, because it is the one state that is *happening*. */}
         <span
-          className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[0.6rem] ${
+          className={`flex shrink-0 items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[0.65rem] ${
             TONE[printer.status] ?? TONE.idle
           }`}
         >
+          <span
+            aria-hidden
+            className={`size-1.5 rounded-full bg-current ${
+              printer.status === "printing" ? "motion-safe:animate-pulse" : ""
+            }`}
+          />
           {printer.status}
         </span>
 
@@ -80,9 +90,9 @@ function PrinterRow({ printer }: { printer: Printer }) {
           type="button"
           onClick={() => setEditing((open) => !open)}
           aria-label={`Edit ${printer.name}`}
-          className="shrink-0 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex size-11 shrink-0 press items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast ease-standard hover:text-foreground"
         >
-          edit
+          <PencilIcon aria-hidden className="size-3.5" />
         </button>
 
         <form action={remove} className="shrink-0">
@@ -90,9 +100,9 @@ function PrinterRow({ printer }: { printer: Printer }) {
           <button
             type="submit"
             aria-label={`Remove ${printer.name}`}
-            className="font-mono text-[0.6rem] text-muted-foreground transition-colors hover:text-destructive"
+            className="-mr-2 inline-flex size-11 press items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast ease-standard hover:text-destructive"
           >
-            ✕
+            <XIcon aria-hidden className="size-3.5" />
           </button>
         </form>
       </div>
