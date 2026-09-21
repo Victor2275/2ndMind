@@ -170,7 +170,28 @@ const PRIVATE_PAGES = [
  * A racy gate is worse than no gate. It passes often enough to look healthy and fails often
  * enough to be dismissed as flaky, and either way nobody trusts the number it prints.
  */
+/**
+ * Waits for webfonts before anything is measured.
+ *
+ * This app self-hosts three faces through `next/font/local`, and until they load the browser
+ * renders in a fallback whose metrics are different. Every number this script takes moves with
+ * that swap: the fold, the text-size census, and the overflow read.
+ *
+ * It is the cause of a flake that survived two wrong diagnoses. `/private/athletics` reported
+ * **394px on some runs and 414px on others**, same build, same server. The first guess was that
+ * concurrency was to blame, because the sequential sweep happened to return 414 twice — then
+ * the default six-way run produced 394 as well, which ruled parallelism out. Twenty pixels is
+ * one line of heading re-flowing when Bricolage replaces the fallback. `settledFold` cannot see
+ * it: the swap lands between two readings that have already agreed, so the loop exits happy.
+ *
+ * `document.fonts.ready` is the only real fix — waiting longer just narrows the window.
+ */
+async function fontsReady(page) {
+  await page.evaluate(() => document.fonts.ready).catch(() => {});
+}
+
 async function settledFold(page) {
+  await fontsReady(page);
   let previous = null;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const fold = await page.evaluate(() => {
@@ -241,148 +262,251 @@ async function measureResumes(browser) {
   console.log("\nResume, printed at Letter with 0.5in margins:\n");
   let over = 0;
 
-  for (const variant of RESUME_VARIANTS) {
-    // Viewport at the printable width so text wraps the way it wraps on paper. `main` keeps
-    // its px-6 in print, and so does this — the inset is real in the PDF too.
-    const page = await browser.newPage({ viewport: { width: PAGE_W, height: PAGE_H } });
-    await page.goto(`${BASE}/resume/${variant}`, { waitUntil: "networkidle" });
-    await hideDevOverlay(page);
+  flush(
+    await mapPool(RESUME_VARIANTS, CONCURRENCY, async (variant) => {
+      const { say, out } = buffer();
+      // Viewport at the printable width so text wraps the way it wraps on paper. `main` keeps
+      // its px-6 in print, and so does this — the inset is real in the PDF too.
+      const page = await browser.newPage({ viewport: { width: PAGE_W, height: PAGE_H } });
+      await page.goto(`${BASE}/resume/${variant}`, { waitUntil: "networkidle" });
+      await hideDevOverlay(page);
 
-    // `print:hidden` controls are display:none under print media, so they stop counting
-    // toward the height — which is the point of emulating rather than measuring on screen.
-    await page.emulateMedia({ media: "print" });
+      // `print:hidden` controls are display:none under print media, so they stop counting
+      // toward the height — which is the point of emulating rather than measuring on screen.
+      await page.emulateMedia({ media: "print" });
 
-    // The bottom edge of the sheet, plus the padding below it.
-    //
-    // Not `scrollHeight`, which never reports less than the viewport — every variant that fit
-    // would read exactly 1.00, and a resume with room to spare would be indistinguishable
-    // from one filled to the millimetre. Not `main` either: it carries `flex-1` inside the
-    // layout's flex column, so it is stretched to the viewport whatever it contains. Both of
-    // those measure the window. The sheet is the only element whose height is the content's.
-    const height = await page.evaluate(() => {
-      const sheet = document.querySelector(".resume-sheet");
-      const main = document.querySelector("main");
-      if (!sheet || !main) return 0;
-      // `py-12` below the sheet is not overridden in print, so it occupies paper too.
-      const below = parseFloat(getComputedStyle(main).paddingBottom) || 0;
-      return sheet.getBoundingClientRect().bottom + window.scrollY + below;
-    });
-    const ratio = height / PAGE_H;
+      // The bottom edge of the sheet, plus the padding below it.
+      //
+      // Not `scrollHeight`, which never reports less than the viewport — every variant that fit
+      // would read exactly 1.00, and a resume with room to spare would be indistinguishable
+      // from one filled to the millimetre. Not `main` either: it carries `flex-1` inside the
+      // layout's flex column, so it is stretched to the viewport whatever it contains. Both of
+      // those measure the window. The sheet is the only element whose height is the content's.
+      const height = await page.evaluate(() => {
+        const sheet = document.querySelector(".resume-sheet");
+        const main = document.querySelector("main");
+        if (!sheet || !main) return 0;
+        // `py-12` below the sheet is not overridden in print, so it occupies paper too.
+        const below = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+        return sheet.getBoundingClientRect().bottom + window.scrollY + below;
+      });
+      const ratio = height / PAGE_H;
 
-    const pdf = await page.pdf({
-      format: "Letter",
-      margin: { top: "0.5in", right: "0.5in", bottom: "0.5in", left: "0.5in" },
-      printBackground: false,
-    });
-    const pages = pdfPageCount(pdf);
+      const pdf = await page.pdf({
+        format: "Letter",
+        margin: { top: "0.5in", right: "0.5in", bottom: "0.5in", left: "0.5in" },
+        printBackground: false,
+      });
+      const pages = pdfPageCount(pdf);
 
-    fs.writeFileSync(path.join(OUT, `resume-${variant}.pdf`), pdf);
+      fs.writeFileSync(path.join(OUT, `resume-${variant}.pdf`), pdf);
 
-    // A PNG as well as the PDF, because reviewing the PDF needs a viewer and reviewing this
-    // does not. Same print media, white background, so what it shows is what prints.
-    await page.screenshot({
-      path: path.join(OUT, `resume-${variant}-print.png`),
-      clip: { x: 0, y: 0, width: PAGE_W, height: Math.max(PAGE_H, Math.ceil(height)) },
-    });
+      // A PNG as well as the PDF, because reviewing the PDF needs a viewer and reviewing this
+      // does not. Same print media, white background, so what it shows is what prints.
+      await shoot(page, {
+        path: path.join(OUT, `resume-${variant}-print.png`),
+        clip: { x: 0, y: 0, width: PAGE_W, height: Math.max(PAGE_H, Math.ceil(height)) },
+      });
 
-    const bad = pages === null ? false : pages > 1;
-    if (bad) over += 1;
+      const bad = pages === null ? false : pages > 1;
+      if (bad) over += 1;
 
-    console.log(
-      `  ${variant.padEnd(9)} ratio=${ratio.toFixed(2)} pages` +
-        `=${pages ?? "?"}` +
-        (pages === null ? "  <-- could not read the page tree" : bad ? "  <-- OVER" : "  ok"),
-    );
+      say(
+        `  ${variant.padEnd(9)} ratio=${ratio.toFixed(2)} pages` +
+          `=${pages ?? "?"}` +
+          (pages === null ? "  <-- could not read the page tree" : bad ? "  <-- OVER" : "  ok"),
+      );
 
-    await page.close();
-  }
+      await page.close();
+      return { out };
+    }),
+  );
 
   return over;
 }
 
 fs.mkdirSync(OUT, { recursive: true });
 
+/**
+ * How many pages are measured at once.
+ *
+ * The sweep was fully sequential and that was most of its runtime: roughly ninety page loads,
+ * each waiting for `networkidle` and then up to four seconds for the fold to settle, one after
+ * another. None of them depend on each other, so they were queueing for no reason.
+ *
+ * **Six is measured, not guessed.** Timed against this repo on 2026-09-21, gate-only
+ * (`SHOTS_PNG=0`), on a warm dev server:
+ *
+ * | Concurrency | Wall clock |
+ * | ----------- | ---------- |
+ * | 1 (the old sequential sweep) | 581 s |
+ * | 6 | 192 s |
+ * | 12 | 148 s |
+ *
+ * Twelve is faster and is still not the default, because the returns have flattened while the
+ * ways it can go wrong have not: `next dev` compiles routes on demand, and a cold sweep at
+ * twelve puts more work into the compiler than it puts through it. Six is roughly the knee.
+ *
+ * **Concurrency does not change what is measured, and it was wrongly blamed once.** A 20px
+ * swing on `/private/athletics` looked like a parallelism race until the sequential run
+ * reproduced it too; it was webfonts, and `fontsReady` fixes it at the source. Every reading
+ * here is taken inside one page from its own DOM, and `settledFold` reads twice and compares
+ * precisely so a slow frame is not mistaken for a settled layout. A loaded machine makes that
+ * take more attempts, not report a different number.
+ *
+ * If a number does move with this value, that is a real race in the page or in this script.
+ * Find it — do not lower the number to hide it.
+ */
+const CONCURRENCY = Number(process.env.SHOTS_CONCURRENCY ?? 6);
+
+/**
+ * Runs `fn` over `items` with at most `limit` in flight, resolving in **input order**.
+ *
+ * Order matters because the report is read top to bottom and diffed between runs; a sweep that
+ * printed rows in completion order would churn on every run and be useless to compare. So each
+ * job buffers its own lines (see `say` below) and the buffers are flushed in order afterwards
+ * rather than logged as they finish.
+ *
+ * Counters like `faults` are still incremented inside the jobs, and that is safe without any
+ * locking: Node runs one job's synchronous code at a time, so `faults += 1` cannot interleave.
+ */
+async function mapPool(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+
+  async function worker() {
+    for (;;) {
+      const index = next;
+      next += 1;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+/**
+ * Whether the sweep writes its screenshots.
+ *
+ * `SHOTS_PNG=0` keeps every measurement and skips the images. The sweep writes about 148 MB of
+ * full-page PNGs at `deviceScaleFactor: 2`, and encoding them is a large share of the runtime --
+ * but when this is being run as a *gate* (overflow, the fold, the header, resume page count)
+ * nobody opens them. The images stay on by default, because the other half of what this script
+ * is for is the visual review, and a flag that silently stopped producing them would be found
+ * out weeks later.
+ *
+ * The resume **PDFs are always written** even here: the page count is read back out of the PDF
+ * byte stream, so it is an input to the gate rather than a picture of one.
+ */
+const WRITE_PNG = process.env.SHOTS_PNG !== "0";
+
+/** `page.screenshot`, unless this run is gate-only. */
+async function shoot(page, options) {
+  if (!WRITE_PNG) return;
+  await page.screenshot(options);
+}
+
+/** Collects a job's output so the runner can print it in order. */
+function buffer() {
+  const out = [];
+  return { say: (...args) => out.push(args.join(" ")), out };
+}
+
+/** Prints every job's buffered lines, in the order the jobs were queued. */
+function flush(buffers) {
+  for (const b of buffers) for (const line of b.out) console.log(line);
+}
+
 const browser = await chromium.launch();
 let faults = 0;
 
-for (const width of widths) {
-  for (const target of PAGES) {
-    const page = await browser.newPage({
-      viewport: { width, height: 900 },
-      deviceScaleFactor: 2,
-      colorScheme: "dark",
-      isMobile: width < 768,
-      hasTouch: width < 768,
-    });
-
-    await page.goto(BASE + target.url, { waitUntil: "networkidle" });
-    await hideDevOverlay(page);
-    await page.screenshot({
-      path: path.join(OUT, `${target.name}-${width}.png`),
-      fullPage: true,
-    });
-
-    const report = await page.evaluate(() => {
-      const doc = document.documentElement;
-      const overflow = doc.scrollWidth - doc.clientWidth;
-
-      // Which elements actually stick out past the viewport. Reporting the widest few is
-      // what makes an overflow fixable rather than just visible.
-      const wide = [];
-      for (const el of document.querySelectorAll("body *")) {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) continue;
-        if (r.right > doc.clientWidth + 1 || r.left < -1) {
-          wide.push({
-            tag: el.tagName.toLowerCase(),
-            cls: (el.className?.toString?.() ?? "").slice(0, 60),
-            right: Math.round(r.right),
-          });
-        }
-      }
-
-      // Tap targets below ~40px are hard to hit accurately on a phone.
-      const small = [...document.querySelectorAll("a, button, input, select")].filter((el) => {
-        const r = el.getBoundingClientRect();
-        return r.height > 0 && r.height < 40;
-      }).length;
-
-      // Text under 12px is uncomfortable on a phone regardless of how tidy it looks.
-      // Grouped by size and class, because a bare count cannot be acted on: 28 elements at
-      // the same 0.62rem as every other eyebrow label on the page is a style, and one
-      // element at 9px is a bug, and the count reads identically for both.
-      const tinyEls = [...document.querySelectorAll("body *")].filter((el) => {
-        if (!el.textContent?.trim() || el.children.length > 0) return false;
-        return parseFloat(getComputedStyle(el).fontSize) < 12;
+flush(
+  await mapPool(
+    widths.flatMap((width) => PAGES.map((target) => ({ width, target }))),
+    CONCURRENCY,
+    async ({ width, target }) => {
+      const { say, out } = buffer();
+      const page = await browser.newPage({
+        viewport: { width, height: 900 },
+        deviceScaleFactor: 2,
+        colorScheme: "dark",
+        isMobile: width < 768,
+        hasTouch: width < 768,
       });
-      const tinyBy = {};
-      for (const el of tinyEls) {
-        const px = parseFloat(getComputedStyle(el).fontSize).toFixed(1);
-        tinyBy[px] = (tinyBy[px] ?? 0) + 1;
-      }
 
-      return { overflow, wide: wide.slice(0, 4), small, tiny: tinyEls.length, tinyBy };
-    });
+      await page.goto(BASE + target.url, { waitUntil: "networkidle" });
+      await hideDevOverlay(page);
+      await fontsReady(page);
+      await shoot(page, {
+        path: path.join(OUT, `${target.name}-${width}.png`),
+        fullPage: true,
+      });
 
-    const bad = report.overflow > 0;
-    if (bad) faults += 1;
-    console.log(
-      `${String(width).padStart(4)}px ${target.name.padEnd(15)}` +
-        ` overflow=${String(report.overflow).padStart(4)}px` +
-        ` tap<40px=${String(report.small).padStart(3)}` +
-        ` text<12px=${String(report.tiny).padStart(3)}` +
-        (report.tiny > 0
-          ? ` (${Object.entries(report.tinyBy)
-              .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([px, n]) => `${n}@${px}px`)
-              .join(" ")})`
-          : "") +
-        (bad ? "  <-- " + report.wide.map((w) => `${w.tag}.${w.cls}`).join(" | ") : ""),
-    );
+      const report = await page.evaluate(() => {
+        const doc = document.documentElement;
+        const overflow = doc.scrollWidth - doc.clientWidth;
 
-    await page.close();
-  }
-}
+        // Which elements actually stick out past the viewport. Reporting the widest few is
+        // what makes an overflow fixable rather than just visible.
+        const wide = [];
+        for (const el of document.querySelectorAll("body *")) {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.right > doc.clientWidth + 1 || r.left < -1) {
+            wide.push({
+              tag: el.tagName.toLowerCase(),
+              cls: (el.className?.toString?.() ?? "").slice(0, 60),
+              right: Math.round(r.right),
+            });
+          }
+        }
+
+        // Tap targets below ~40px are hard to hit accurately on a phone.
+        const small = [...document.querySelectorAll("a, button, input, select")].filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.height > 0 && r.height < 40;
+        }).length;
+
+        // Text under 12px is uncomfortable on a phone regardless of how tidy it looks.
+        // Grouped by size and class, because a bare count cannot be acted on: 28 elements at
+        // the same 0.62rem as every other eyebrow label on the page is a style, and one
+        // element at 9px is a bug, and the count reads identically for both.
+        const tinyEls = [...document.querySelectorAll("body *")].filter((el) => {
+          if (!el.textContent?.trim() || el.children.length > 0) return false;
+          return parseFloat(getComputedStyle(el).fontSize) < 12;
+        });
+        const tinyBy = {};
+        for (const el of tinyEls) {
+          const px = parseFloat(getComputedStyle(el).fontSize).toFixed(1);
+          tinyBy[px] = (tinyBy[px] ?? 0) + 1;
+        }
+
+        return { overflow, wide: wide.slice(0, 4), small, tiny: tinyEls.length, tinyBy };
+      });
+
+      const bad = report.overflow > 0;
+      if (bad) faults += 1;
+      say(
+        `${String(width).padStart(4)}px ${target.name.padEnd(15)}` +
+          ` overflow=${String(report.overflow).padStart(4)}px` +
+          ` tap<40px=${String(report.small).padStart(3)}` +
+          ` text<12px=${String(report.tiny).padStart(3)}` +
+          (report.tiny > 0
+            ? ` (${Object.entries(report.tinyBy)
+                .sort((a, b) => Number(a[0]) - Number(b[0]))
+                .map(([px, n]) => `${n}@${px}px`)
+                .join(" ")})`
+            : "") +
+          (bad ? "  <-- " + report.wide.map((w) => `${w.tag}.${w.cls}`).join(" | ") : ""),
+      );
+
+      await page.close();
+      return { out };
+    },
+  ),
+);
 
 /* --- The header, as Victor sees it ----------------------------------------------------
    The public sweep above renders the header a stranger gets: four items. Victor gets five,
@@ -398,85 +522,90 @@ if (process.env.SHOTS_RETURNING !== "0") {
   console.log("");
   const origin = new URL(BASE).origin;
 
-  for (const width of widths) {
-    const context = await browser.newContext({
-      viewport: { width, height: 900 },
-      deviceScaleFactor: 2,
-      colorScheme: "dark",
-      isMobile: width < 768,
-      hasTouch: width < 768,
-    });
-    if (process.env.SHOTS_NO_COOKIE !== "1")
-      await context.addCookies([
-        { name: "2m_returning", value: "1", url: origin, sameSite: "Lax" },
-      ]);
+  flush(
+    await mapPool(widths, CONCURRENCY, async (width) => {
+      const { say, out } = buffer();
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+        deviceScaleFactor: 2,
+        colorScheme: "dark",
+        isMobile: width < 768,
+        hasTouch: width < 768,
+      });
+      if (process.env.SHOTS_NO_COOKIE !== "1")
+        await context.addCookies([
+          { name: "2m_returning", value: "1", url: origin, sameSite: "Lax" },
+        ]);
 
-    const page = await context.newPage();
-    await page.goto(BASE + "/", { waitUntil: "networkidle" });
-    await hideDevOverlay(page);
-    await page.screenshot({ path: path.join(OUT, `home-returning-${width}.png`) });
+      const page = await context.newPage();
+      await page.goto(BASE + "/", { waitUntil: "networkidle" });
+      await hideDevOverlay(page);
+      await fontsReady(page);
+      await shoot(page, { path: path.join(OUT, `home-returning-${width}.png`) });
 
-    const header = await page.evaluate(() => {
-      const bar = document.querySelector("header");
-      if (!bar) return null;
-      const links = [...bar.querySelectorAll("nav a")].map(
-        (a) => a.getAttribute("aria-label") || a.textContent?.trim() || "",
-      );
-      const nav = bar.querySelector("nav");
+      const header = await page.evaluate(() => {
+        const bar = document.querySelector("header");
+        if (!bar) return null;
+        const links = [...bar.querySelectorAll("nav a")].map(
+          (a) => a.getAttribute("aria-label") || a.textContent?.trim() || "",
+        );
+        const nav = bar.querySelector("nav");
 
-      // How much of the name is still on screen.
+        // How much of the name is still on screen.
+        //
+        // This is the measurement the first version of this check lacked, and it cost a real
+        // mistake: the fifth nav item fit perfectly, reported zero overflow, and had silently
+        // squeezed "Victor Gusev" out of the header altogether. Nothing overflowed because the
+        // name is `min-w-0` and simply collapsed. A nav that fits is not the same as a header
+        // that works.
+        const brand = bar.querySelector("a span:last-child");
+        // The mark (V4 6.1). Below `cramped` the wordmark is dropped on purpose and this is the
+        // only identity left in the header, so it is measured rather than assumed.
+        const mark = bar.querySelector("a svg");
+        return {
+          links,
+          navOverflow: nav ? nav.scrollWidth - nav.clientWidth : 0,
+          barOverflow: bar.scrollWidth - bar.clientWidth,
+          brandWidth: brand ? Math.round(brand.getBoundingClientRect().width) : 0,
+          brandText: brand?.textContent?.trim() ?? "",
+          markWidth: mark ? Math.round(mark.getBoundingClientRect().width) : 0,
+        };
+      });
+
+      const hasPrivate = header?.links.includes("Private") ?? false;
+      const squeezed = (header?.navOverflow ?? 0) > 0 || (header?.barOverflow ?? 0) > 0;
+
+      // Below `cramped` the wordmark is dropped and the mark stands alone (V4 6.3, Q42), so what
+      // "the header still has an identity on it" means depends on the width.
       //
-      // This is the measurement the first version of this check lacked, and it cost a real
-      // mistake: the fifth nav item fit perfectly, reported zero overflow, and had silently
-      // squeezed "Victor Gusev" out of the header altogether. Nothing overflowed because the
-      // name is `min-w-0` and simply collapsed. A nav that fits is not the same as a header
-      // that works.
-      const brand = bar.querySelector("a span:last-child");
-      // The mark (V4 6.1). Below `cramped` the wordmark is dropped on purpose and this is the
-      // only identity left in the header, so it is measured rather than assumed.
-      const mark = bar.querySelector("a svg");
-      return {
-        links,
-        navOverflow: nav ? nav.scrollWidth - nav.clientWidth : 0,
-        barOverflow: bar.scrollWidth - bar.clientWidth,
-        brandWidth: brand ? Math.round(brand.getBoundingClientRect().width) : 0,
-        brandText: brand?.textContent?.trim() ?? "",
-        markWidth: mark ? Math.round(mark.getBoundingClientRect().width) : 0,
-      };
-    });
+      // This check used to demand the name at every width, and it was right to until 2026-09-10:
+      // the name vanishing meant the fifth nav item had silently squeezed it out, with no overflow
+      // to show for it. That failure is still caught — it is just now only a failure *above* the
+      // breakpoint, and below it the mark has to be there instead. Dropping the check entirely
+      // would have been the easy way through and would have retired a gate that earned its place.
+      //
+      // 40px is about four characters — enough to tell that a name is there and being truncated,
+      // rather than gone.
+      const nameGone = width >= CRAMPED_PX && (header?.brandWidth ?? 0) < 40;
+      const markGone = width < CRAMPED_PX && (header?.markWidth ?? 0) < 12;
+      if (!hasPrivate || squeezed || nameGone || markGone) returningFaults += 1;
 
-    const hasPrivate = header?.links.includes("Private") ?? false;
-    const squeezed = (header?.navOverflow ?? 0) > 0 || (header?.barOverflow ?? 0) > 0;
+      say(
+        ` ${String(width).padStart(4)}px header (signed in) ` +
+          `items=${header?.links.length ?? 0} ` +
+          `private=${hasPrivate ? "yes" : "NO"} ` +
+          `name=${header?.brandWidth ?? 0}px ` +
+          `overflow=${Math.max(header?.navOverflow ?? 0, header?.barOverflow ?? 0)}px` +
+          (squeezed ? "  <-- the nav does not fit" : "") +
+          (nameGone ? "  <-- the name is squeezed out" : "") +
+          (markGone ? "  <-- no mark, and no room for the name either" : "") +
+          (width < CRAMPED_PX && !markGone ? "  (mark only, by design)" : ""),
+      );
 
-    // Below `cramped` the wordmark is dropped and the mark stands alone (V4 6.3, Q42), so what
-    // "the header still has an identity on it" means depends on the width.
-    //
-    // This check used to demand the name at every width, and it was right to until 2026-09-10:
-    // the name vanishing meant the fifth nav item had silently squeezed it out, with no overflow
-    // to show for it. That failure is still caught — it is just now only a failure *above* the
-    // breakpoint, and below it the mark has to be there instead. Dropping the check entirely
-    // would have been the easy way through and would have retired a gate that earned its place.
-    //
-    // 40px is about four characters — enough to tell that a name is there and being truncated,
-    // rather than gone.
-    const nameGone = width >= CRAMPED_PX && (header?.brandWidth ?? 0) < 40;
-    const markGone = width < CRAMPED_PX && (header?.markWidth ?? 0) < 12;
-    if (!hasPrivate || squeezed || nameGone || markGone) returningFaults += 1;
-
-    console.log(
-      ` ${String(width).padStart(4)}px header (signed in) ` +
-        `items=${header?.links.length ?? 0} ` +
-        `private=${hasPrivate ? "yes" : "NO"} ` +
-        `name=${header?.brandWidth ?? 0}px ` +
-        `overflow=${Math.max(header?.navOverflow ?? 0, header?.barOverflow ?? 0)}px` +
-        (squeezed ? "  <-- the nav does not fit" : "") +
-        (nameGone ? "  <-- the name is squeezed out" : "") +
-        (markGone ? "  <-- no mark, and no room for the name either" : "") +
-        (width < CRAMPED_PX && !markGone ? "  (mark only, by design)" : ""),
-    );
-
-    await context.close();
-  }
+      await context.close();
+      return { out };
+    }),
+  );
 }
 
 let privateFaults = 0;
@@ -486,70 +615,76 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
   const origin = new URL(BASE).origin;
   console.log("");
 
-  for (const width of widths) {
-    for (const target of PRIVATE_PAGES) {
-      const context = await browser.newContext({
-        viewport: { width, height: 900 },
-        deviceScaleFactor: 2,
-        colorScheme: "dark",
-        isMobile: width < 768,
-        hasTouch: width < 768,
-      });
-      await context.addCookies([
-        { name: "2m_session", value: token, url: origin, httpOnly: true, sameSite: "Lax" },
-      ]);
+  flush(
+    await mapPool(
+      widths.flatMap((width) => PRIVATE_PAGES.map((target) => ({ width, target }))),
+      CONCURRENCY,
+      async ({ width, target }) => {
+        const { say, out } = buffer();
+        const context = await browser.newContext({
+          viewport: { width, height: 900 },
+          deviceScaleFactor: 2,
+          colorScheme: "dark",
+          isMobile: width < 768,
+          hasTouch: width < 768,
+        });
+        await context.addCookies([
+          { name: "2m_session", value: token, url: origin, httpOnly: true, sameSite: "Lax" },
+        ]);
 
-      const page = await context.newPage();
-      // 90s, not Playwright's default 30. `/private` renders the daily AI summary, and on a
-      // cold cache that is a live Gemini call from the server — measured past 30s on the first
-      // run after a build, which failed this gate twice with a timeout that had nothing to do
-      // with layout. Subsequent runs are fast because the summary is persisted (D-124).
-      const response = await page.goto(BASE + target.url, {
-        waitUntil: "networkidle",
-        timeout: 90_000,
-      });
-      await hideDevOverlay(page);
+        const page = await context.newPage();
+        // 90s, not Playwright's default 30. `/private` renders the daily AI summary, and on a
+        // cold cache that is a live Gemini call from the server — measured past 30s on the first
+        // run after a build, which failed this gate twice with a timeout that had nothing to do
+        // with layout. Subsequent runs are fast because the summary is persisted (D-124).
+        const response = await page.goto(BASE + target.url, {
+          waitUntil: "networkidle",
+          timeout: 90_000,
+        });
+        await hideDevOverlay(page);
 
-      // A redirect to /signin means the cookie was rejected — report it rather than
-      // silently screenshotting a sign-in page and calling the layout fine.
-      const landed = new URL(page.url()).pathname;
-      const rejected = landed.startsWith("/signin");
+        // A redirect to /signin means the cookie was rejected — report it rather than
+        // silently screenshotting a sign-in page and calling the layout fine.
+        const landed = new URL(page.url()).pathname;
+        const rejected = landed.startsWith("/signin");
 
-      // How much of the answer is above the fold: everything above the marker is what you
-      // have to scroll past to reach the one thing this page is for. Settled first, and the
-      // screenshot is taken afterwards for the same reason — a PNG of a page mid-stream shows
-      // a layout that nobody ever sees.
-      const fold = await settledFold(page);
+        // How much of the answer is above the fold: everything above the marker is what you
+        // have to scroll past to reach the one thing this page is for. Settled first, and the
+        // screenshot is taken afterwards for the same reason — a PNG of a page mid-stream shows
+        // a layout that nobody ever sees.
+        const fold = await settledFold(page);
 
-      await page.screenshot({
-        path: path.join(OUT, `${target.name}-${width}.png`),
-        fullPage: true,
-      });
+        await shoot(page, {
+          path: path.join(OUT, `${target.name}-${width}.png`),
+          fullPage: true,
+        });
 
-      // A 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
-      // margin and still fails loudly if a panel creeps back above the action. /private was
-      // 791px before feature 3 was closed out and 265px after D-132.
-      const buried = width < 768 && fold !== null && fold > FOLD_LIMIT;
+        // A 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
+        // margin and still fails loudly if a panel creeps back above the action. /private was
+        // 791px before feature 3 was closed out and 265px after D-132.
+        const buried = width < 768 && fold !== null && fold > FOLD_LIMIT;
 
-      // A gated page with no marker is a fault in its own right, and a quiet one: the check
-      // would otherwise report nothing and the page would pass by having lost the very thing
-      // being measured. That is how a page stops being checked without anyone noticing —
-      // see the migration test that spent a release testing nothing (D-165's commit).
-      const unmarked = target.gated && !rejected && fold === null;
-      if (buried || rejected || unmarked) privateFaults += 1;
+        // A gated page with no marker is a fault in its own right, and a quiet one: the check
+        // would otherwise report nothing and the page would pass by having lost the very thing
+        // being measured. That is how a page stops being checked without anyone noticing —
+        // see the migration test that spent a release testing nothing (D-165's commit).
+        const unmarked = target.gated && !rejected && fold === null;
+        if (buried || rejected || unmarked) privateFaults += 1;
 
-      console.log(
-        `${String(width).padStart(4)}px ${target.name.padEnd(18)}` +
-          ` status=${response?.status() ?? "?"}` +
-          (fold === null ? "" : ` first-action-at=${String(fold).padStart(4)}px`) +
-          (rejected ? `  <-- redirected to ${landed}` : "") +
-          (unmarked ? `  <-- gated, but no [data-first-action] on the page` : "") +
-          (buried ? `  <-- below the fold (limit ${FOLD_LIMIT}px)` : ""),
-      );
+        say(
+          `${String(width).padStart(4)}px ${target.name.padEnd(18)}` +
+            ` status=${response?.status() ?? "?"}` +
+            (fold === null ? "" : ` first-action-at=${String(fold).padStart(4)}px`) +
+            (rejected ? `  <-- redirected to ${landed}` : "") +
+            (unmarked ? `  <-- gated, but no [data-first-action] on the page` : "") +
+            (buried ? `  <-- below the fold (limit ${FOLD_LIMIT}px)` : ""),
+        );
 
-      await context.close();
-    }
-  }
+        await context.close();
+        return { out };
+      },
+    ),
+  );
 } else if (!secret) {
   console.log("\nSESSION_SECRET not set, so the private pages were skipped.");
 }

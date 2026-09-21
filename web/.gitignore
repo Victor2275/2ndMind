@@ -49,4 +49,6 @@ next-env.d.ts
 # commit stamped in. Generated rather than committed so the stamp is never stale in git.
 /public/sw.js
 .shots/
+# SHOTS_OUT can point the sweep somewhere else when comparing two runs.
+.shots-*/
 .frozen/

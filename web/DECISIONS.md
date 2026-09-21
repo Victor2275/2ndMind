@@ -17,6 +17,77 @@ useful part.
 
 ---
 
+## 2026-09-21 · The layout sweep gets faster, and a flake gets found
+
+### D-281 · `npm run shots` runs six pages at once, and buffers its output to stay diffable
+
+**Decision.** The four sweeps — public, returning-header, private, resumes — run their jobs
+through `mapPool`, a bounded-concurrency runner defaulting to six and tunable with
+`SHOTS_CONCURRENCY`. Each job buffers its own lines and the buffers are flushed in queue order.
+
+**Why.** It was fully sequential: roughly ninety-five page loads, each waiting for `networkidle`
+and then up to four seconds for the fold to settle, one after another. Nothing in it depends on
+anything else in it, so they were queueing for no reason. **581s → ~250s**, and gate-only
+(below) is ~150s.
+
+**The output buffering is not cosmetic.** The report is read top to bottom and diffed between
+runs to see what moved; printing rows as they finished would reorder them on every run and make
+that impossible. Buffering per job and flushing in order keeps the report byte-identical to the
+sequential version — which is also how the change was verified.
+
+**Counters need no locking.** `faults += 1` inside concurrent jobs is safe because Node runs one
+job's synchronous code at a time.
+
+**Six rather than twelve.** Twelve measured 148s against six's 192s — faster, and still not the
+default: `next dev` compiles routes on demand, the returns have flattened, and a cold sweep at
+twelve puts more into the compiler than it gets through. Six is about the knee. The timing table
+is in the comment above `CONCURRENCY`.
+
+**How to reverse.** Set `SHOTS_CONCURRENCY=1` for sequential behaviour without touching the code.
+
+### D-282 · `SHOTS_PNG=0` for gate-only runs
+
+**Decision.** A flag that keeps every measurement and skips writing screenshots. Resume **PDFs
+are still written** — the page count is read back out of the PDF byte stream, so it is an input
+to the gate rather than a picture of one.
+
+**Why.** The sweep writes about 148 MB of full-page PNGs at `deviceScaleFactor: 2` and encoding
+them is roughly 60s of the runtime. When the run is a gate — overflow, the fold, the header,
+resume page count — nobody opens them.
+
+**Default stays on**, deliberately. The other half of this script's job is the visual review
+(D-077, D-115), and a flag that silently stopped producing images would be discovered weeks
+later by someone wondering why a regression went unseen.
+
+**How to reverse.** Delete the flag and call `page.screenshot` directly; `shoot()` is a two-line
+wrapper.
+
+### D-283 · Everything measured waits for `document.fonts.ready`
+
+**Decision.** `fontsReady(page)` runs before `settledFold` and before the public and
+returning-header measurements.
+
+**Why — and this is the entry worth reading.** `/private/athletics` reported **394px on some
+runs and 414px on others**, same build, same server. It was diagnosed wrongly twice. First guess
+was the new concurrency, because a run at twelve produced 394 while the old sequential sweep had
+produced 414 twice — so the concurrency comment was written blaming parallelism and capping it.
+Then the *default six-way* run produced 394 as well, and a sequential re-run produced it too,
+which ruled parallelism out entirely.
+
+It is webfonts. Three faces are self-hosted through `next/font/local`, and until they load the
+browser lays out in a fallback with different metrics; twenty pixels is one heading line
+re-flowing when Bricolage replaces it. **`settledFold` structurally cannot catch this** — it
+reads twice 500 ms apart and returns when they agree, and the swap lands after two agreeing
+readings. Waiting longer only narrows the window.
+
+**394px is the correct number** and 414px was the sweep measuring a page rendered in a fallback
+font. Every fold reading taken before this fix was subject to the same error.
+
+**How to reverse.** Delete the calls. Do not "fix" a recurrence by lowering `SHOTS_CONCURRENCY`
+— that is the mistake this entry exists to stop being repeated.
+
+---
+
 ## 2026-09-20 · The plan becomes visible and editable
 
 ### D-276 · The plan is editable, and the edits live beside the vault rather than in it

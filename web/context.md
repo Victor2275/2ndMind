@@ -351,7 +351,19 @@ Both are local-only and need `.env.local`. Shared setup is in `scripts/lib/e2e.m
 
 `npm run shots` (dev server must be running) is the third gate. It sweeps the public pages at
 four device widths, sweeps every private screen, and measures every resume variant against one
-printed Letter page. It exits non-zero on a fault, so it can gate a commit. See D-077 — the
+printed Letter page. It exits non-zero on a fault, so it can gate a commit.
+
+**It runs its ~95 page loads six at a time** (D-281). It was fully sequential and took **581s**;
+it now takes **~250s**, and `SHOTS_PNG=0` drops that to **~150s** by skipping the 148 MB of
+screenshots when you only want the gates. `SHOTS_CONCURRENCY` tunes it, and the comment above it
+says why six rather than twelve. Jobs buffer their own output and it is flushed in queue order,
+so the report is byte-identical run to run and still diffable.
+
+**Anything measured here waits for `document.fonts.ready` first.** Three faces are self-hosted,
+and until they load the browser lays out in a fallback with different metrics — which made
+`/private/athletics` report 394px or 414px depending on the run. `settledFold` could not catch it
+because the swap lands between two readings that have already agreed. If a number here ever moves
+between runs, look for a race like that one; do not lower the concurrency to hide it. See D-077 — the
 resume ran at 1.33 pages for weeks because the only check anyone ran was looking at it. It
 earned its keep again on 2026-08-29: adding Proof to the robotics variant and two roles to all
 three pushed every variant onto a second page, and nothing else would have noticed (D-115).
