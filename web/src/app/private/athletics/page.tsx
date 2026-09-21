@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { BodyweightForm } from "@/components/site/bodyweight-form";
-import { BarChart, TrendChart, type ChartSeries } from "@/components/site/chart";
+import { BarChart, TrendChart, leadFromSeries, type ChartSeries } from "@/components/site/chart";
 import { HevyImportForm } from "@/components/site/hevy-import-form";
 import { PageHeader, Panel } from "@/components/site/page-shell";
 import { Empty } from "@/components/site/states";
@@ -481,18 +481,27 @@ async function Training() {
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Panel title="Bodyweight" meta={latestWeight !== null ? `${latestWeight} lb` : undefined}>
             {weightPoints.length > 0 ? (
-              <TrendChart
-                labels={weightPoints.map((p) => p.day)}
-                series={[
-                  {
-                    label: "Bodyweight",
-                    color: "var(--secondary)",
-                    values: weightPoints.map((p) => p.value),
-                  },
-                ]}
-                format={(v) => `${v.toFixed(1)}`}
-                caption="Bodyweight in pounds over time"
-              />
+              (() => {
+                // Q230 — every chart leads with the number it exists to show. Bodyweight has
+                // no direction that is *better*, so `lowerIsBetter` is left undefined and the
+                // delta is reported without a verdict.
+                const series: ChartSeries = {
+                  label: "Bodyweight",
+                  color: "var(--secondary)",
+                  values: weightPoints.map((p) => p.value),
+                };
+                return (
+                  <TrendChart
+                    labels={weightPoints.map((p) => p.day)}
+                    series={[series]}
+                    format={(v) => `${v.toFixed(1)}`}
+                    lead={leadFromSeries(series, (v) => `${v.toFixed(1)} lb`, {
+                      label: "latest",
+                    })}
+                    caption="Bodyweight in pounds over time"
+                  />
+                );
+              })()
             ) : (
               <Empty>Record a weigh-in below to start this line.</Empty>
             )}
@@ -508,6 +517,27 @@ async function Training() {
                     value: week.volumeLbs,
                   }))}
                   format={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${Math.round(v)}`)}
+                  // The **last complete** week, not the current one: the current bar is drawn
+                  // hollow precisely because it is partial, and leading with a partial number
+                  // would say training had halved every Monday morning.
+                  lead={(() => {
+                    const complete = volume.slice(0, -1);
+                    const last = complete[complete.length - 1];
+                    if (!last) return undefined;
+                    const before = complete[complete.length - 2];
+                    const change = before ? last.volumeLbs - before.volumeLbs : 0;
+                    return {
+                      value: `${Math.round(last.volumeLbs / 1000)}k lb`,
+                      label: `week of ${last.weekStart.slice(5)}`,
+                      delta: before
+                        ? {
+                            text: `${Math.abs(Math.round(change / 100) / 10)}k`,
+                            direction: Math.abs(change) < 100 ? "flat" : change > 0 ? "up" : "down",
+                            good: Math.abs(change) < 100 ? undefined : change > 0,
+                          }
+                        : undefined,
+                    };
+                  })()}
                 />
                 <p className="mt-3 text-xs text-muted-foreground">
                   Pounds moved per week, warmup sets included — they are load the body absorbed,
@@ -544,6 +574,12 @@ async function Training() {
                   labels={points.map((p) => p.day)}
                   series={series}
                   format={formatSplit}
+                  // A split improves downward, which is the one case where the arrow and the
+                  // colour would disagree if `lowerIsBetter` were not stated.
+                  lead={leadFromSeries(series[0], formatSplit, {
+                    label: "best, latest day",
+                    lowerIsBetter: true,
+                  })}
                   invert
                   target={
                     goal && distance === Math.round(goal.distanceM / 100) * 100
@@ -560,18 +596,25 @@ async function Training() {
             const points = e1rmSeries(efforts, lift);
             return (
               <Panel key={lift} title={lift} meta="est. 1RM">
-                <TrendChart
-                  labels={points.map((p) => p.day)}
-                  series={[
-                    {
-                      label: "Est. 1RM",
-                      color: "var(--primary)",
-                      values: points.map((p) => p.value),
-                    },
-                  ]}
-                  format={(v) => `${Math.round(v)}`}
-                  caption={`Estimated one-rep max for ${lift} per training day`}
-                />
+                {(() => {
+                  const series: ChartSeries = {
+                    label: "Est. 1RM",
+                    color: "var(--primary)",
+                    values: points.map((p) => p.value),
+                  };
+                  return (
+                    <TrendChart
+                      labels={points.map((p) => p.day)}
+                      series={[series]}
+                      format={(v) => `${Math.round(v)}`}
+                      lead={leadFromSeries(series, (v) => `${Math.round(v)} lb`, {
+                        label: "est. 1RM",
+                        lowerIsBetter: false,
+                      })}
+                      caption={`Estimated one-rep max for ${lift} per training day`}
+                    />
+                  );
+                })()}
               </Panel>
             );
           })}

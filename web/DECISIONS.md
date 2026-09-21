@@ -17,6 +17,79 @@ useful part.
 
 ---
 
+## 2026-09-21 · Every chart leads with its number — V4 §5.9
+
+### D-305 · A chart leads with the figure it exists to show, and the delta carries a verdict
+
+**Decision.** `ChartHeadline` renders above every chart in the private app: the current value at
+`text-2xl`, its label, and a delta with an arrow **and** a colour. `leadFromSeries` builds one
+from a series, and its `lowerIsBetter` option decides whether the change is good.
+
+**Why the option exists.** Direction and verdict are different questions. A split that improves
+goes *down*; an estimated 1RM that improves goes up; a bodyweight that moves is neither, and
+where `lowerIsBetter` is left undefined the delta is muted rather than judged. Getting this
+backwards is invisible — a falling split rendered as a loss looks like an ordinary chart — so
+`chart.test.tsx` pins all three cases.
+
+**Why a number above a line at all** (Q230): the line answers "what shape", and the question
+actually asked at 6am is "what is it".
+
+**How to reverse.** Stop passing `lead`; the prop is optional and the charts render as before.
+
+### D-306 · One server-rendered SVG is a sparkline on a phone and a full axis on a laptop
+
+**Decision.** The axis labels carry `phone-hidden` (Q231). Gridlines are horizontal only and
+drop to 55% opacity (Q232). The endpoint value stays in the caption at every width, so the
+phone chart is a labelled sparkline rather than an unlabelled squiggle.
+
+**Why CSS rather than two renders.** The alternative is rendering the chart twice and hiding
+one, which doubles the markup on the app's heaviest page to change three `<text>` elements.
+`phone-hidden` is the app's own display switch and applies to SVG like anything else.
+
+**How to reverse.** Drop the class from the `<text>` elements.
+
+### D-307 · Tap-to-pin is an overlay, so the chart stays a Server Component
+
+**Decision.** `ChartPin` is a client component absolutely positioned over the SVG. It takes
+**formatted strings only** — one entry per series per x position — computes the index from the
+pointer's x as a fraction of the width, and draws a rule plus a readout. Tapping the pinned
+point again clears it.
+
+**Why not an interactive SVG.** `TrendChart` renders plain SVG on the server with no charting
+runtime and no hydration; making it interactive would move the whole chart, and its series data,
+into a client bundle. The overlay ships the strings that are already on screen.
+
+**Why the index comes from a fraction.** `TrendChart` spaces points evenly by index, so the
+pointer's position *is* the index — no measurement, no resize listener, nothing to keep in step.
+
+**Why the same tap clears it** (Q235): there is no hover and no Escape key on a phone, and a
+readout that cannot be dismissed is a readout covering the chart.
+
+**How to reverse.** Pass `pinnable={false}`, or delete the component and its one call site.
+
+### D-308 · The record table becomes cards under 40rem
+
+**Decision.** `PrTable` renders a card list below `phone` and the five-column table above it,
+both from the same `shown` array, switched by `phone-only` / `phone-hidden`.
+
+**Why.** Q238 is explicit that a table restructures rather than scrolls below 40rem, and this is
+the table it matters most for: it is read at a rack, one-handed, and `overflow-x-auto` with a
+30rem minimum put the e1RM and the date off screen behind a sideways scroll.
+
+**How to reverse.** Delete the `phone-only` list and drop `phone-hidden` from the table.
+
+### D-309 · Charts say what is missing through the shared empty state
+
+**Decision.** Both "not enough data" boxes in `chart.tsx` are `Empty`.
+
+**Why.** They were the last two copies of the dashed rectangle §5.1 replaced. **Mount animation
+stays off** — this file has never had one, and it is written down here because "charts animate
+in" is the default of every library that would replace this one (Q227).
+
+**How to reverse.** Nothing else depends on it; restoring the `<p>` is one line each.
+
+---
+
 ## 2026-09-21 · Work, Calendar, Hobbies, Sync — V4 §5.8
 
 ### D-300 · The applications board is a view, with no status control

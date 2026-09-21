@@ -64,8 +64,36 @@ export function PrTable({ records }: { records: StrengthRecord[] }) {
         />
       </div>
 
-      {/* Wide content scrolls inside itself rather than pushing the page sideways. */}
-      <div className="mt-3 overflow-x-auto">
+      {/* Cards under 40rem, the table above it (§5.9, Q238).
+          It was `overflow-x-auto` with a 30rem minimum, which on the device this screen is for
+          — a phone, at a rack — means five columns behind a sideways scroll: the e1RM and the
+          date were off screen, and finding them costs the hand holding the bar. Q238 is
+          explicit that a table restructures rather than scrolls below 40rem.
+
+          One component, two layouts, no JavaScript: `phone-only` and `phone-hidden` are the
+          app's own display switch (`globals.css`), and both branches read the same `shown`. */}
+      <ul className="phone-only mt-3 space-y-2">
+        {shown.map((record) => (
+          <li
+            key={record.exercise}
+            className="rounded-lg border border-border bg-card/60 px-3 py-2"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="min-w-0 text-sm text-foreground">{record.exercise}</span>
+              <span className="tabular shrink-0 font-mono text-xs text-foreground">
+                {record.heaviest ? `${record.heaviest.weightLbs} × ${record.heaviest.reps}` : "—"}
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 font-mono text-[0.65rem] text-muted-foreground">
+              <span className="tabular">e1RM {record.bestE1rm?.e1rm ?? "—"}</span>
+              <span className="tabular">{record.workingSets} sets</span>
+              <span className="tabular">{record.lastPerformed.toISOString().slice(0, 10)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="phone-hidden mt-3 overflow-x-auto">
         <table className="w-full min-w-[30rem] border-collapse">
           <thead>
             <tr className="border-b border-border text-left">

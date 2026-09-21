@@ -52,14 +52,18 @@ read_when: Always — anything about current priorities or scheduling.
   the markdown. Decisions D-271 to D-280. **2026-09-21:** `npm run shots` went from 581s to 250s
   and stopped measuring the fold against the fallback font (D-281 to D-283, plan item 7.0).
 
-  **Phase 5 — the private screens, Milestone C — is in progress** (2026-09-21). The plan now
-  totals **489 points, 429 done**; 60 remain, 47 unparked — Phase 5's five screens (28) and
-  Phase 7's remaining items (19). The 402-done figure the plan carried until 2026-09-21 was eight
-  points of optimism in a heading; §4's table is the authority.
+  **Phase 5 — the private screens — closed 2026-09-21. Milestone C: the private app is
+  finished.** Today leads with the capture box and links to a summary archive at
+  `/private/log/archive` instead of carrying fourteen days of model prose; the log keeps drafts
+  across a restart and opens on the tab last used; the degree audit is a progress structure
+  rather than four hundred lines of markdown, with the GPA beside it; applications are a
+  five-column board; the calendar has a month view and a switch; spools and printers show their
+  state; sync leads with how long something has waited; and every chart leads with its number.
+  Decisions D-284 to D-309.
 
-  **One thing on Victor:** the local database is behind `0014_plan_overrides`, so anything that
-  touches the editable plan fails locally and `npm run shots` reports faults that are not real.
-  `npm run db:migrate` clears it.
+  The plan now totals **489 points, 457 done**. **32 remain, 19 unparked** — all of Phase 7
+  (gates, performance, accessibility, two review rounds), plus N9's parked 13. All four
+  milestones are reached.
 - **Athletics:** The fall challenge is running — 76 days from 2026-09-20 to the 2026-11-07 race,
   plus the 50k/100k. Today's session, the routine and the ledger are on `/private` and
   `/private/athletics`; the day-by-day plan is at `/private/athletics/plan` and every day is

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { TrendChart } from "@/components/site/chart";
+import { TrendChart, leadFromSeries, type ChartSeries } from "@/components/site/chart";
 import { ExerciseEditForm } from "@/components/site/exercise-edit-form";
 import { MuscleMap } from "@/components/site/muscle-map";
 import { SYNC_DONE_EVENT } from "@/components/site/sync-runner";
@@ -146,6 +146,11 @@ export function ExerciseDetail({ slug }: { slug: string }) {
   const strength = entry.modality === "lift" ? strengthRecords(history)[0] : null;
   const erg = entry.modality === "erg" || entry.modality === "water" ? ergRecords(history) : null;
   const e1rmPoints = entry.modality === "lift" ? e1rmSeries(history, entry.name) : [];
+  const e1rmSeriesForChart: ChartSeries = {
+    label: "Est. 1RM",
+    color: "var(--primary)",
+    values: e1rmPoints.map((p) => p.value),
+  };
   const bestE1rm = strength?.bestE1rm?.e1rm ?? null;
 
   return (
@@ -246,14 +251,14 @@ export function ExerciseDetail({ slug }: { slug: string }) {
             <div className="mt-4 rounded-lg border border-border bg-card/70 p-4">
               <TrendChart
                 labels={e1rmPoints.map((p) => p.day)}
-                series={[
-                  {
-                    label: "Est. 1RM",
-                    color: "var(--primary)",
-                    values: e1rmPoints.map((p) => p.value),
-                  },
-                ]}
+                series={[e1rmSeriesForChart]}
                 format={(v) => `${Math.round(v)}`}
+                // Q230, and §5.9's answer of 2026-09-19: **every** chart in the private app,
+                // not the athletics dashboard only.
+                lead={leadFromSeries(e1rmSeriesForChart, (v) => `${Math.round(v)} lb`, {
+                  label: "est. 1RM",
+                  lowerIsBetter: false,
+                })}
                 caption={`Estimated one-rep max for ${entry.name} per training day`}
               />
             </div>

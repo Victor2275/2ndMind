@@ -366,6 +366,21 @@ is easy to undo by accident:
 - **`/private/sync` leads with age and boxes the reason** (D-304). Waiting is still not an
   error (Q426): only a row that needs a person is destructive-bordered.
 
+## Charts — V4 §5.9 (2026-09-21, D-305 to D-309)
+
+- **Every chart leads with `ChartHeadline`** (D-305). `leadFromSeries`'s `lowerIsBetter` is what
+  turns a direction into a verdict — a falling split is good, a falling 1RM is not, a moving
+  bodyweight is neither. Leave it undefined rather than guessing.
+- **`TrendChart` and `BarChart` stay Server Components.** Interaction lives in `ChartPin`, an
+  overlay that receives formatted strings only (D-307). Do not make the chart itself a client
+  component to add a feature to it.
+- **One SVG serves both widths** (D-306): axis labels are `phone-hidden`, the endpoint value is
+  in the caption at every width.
+- **No mount animation, ever.** It is the default of every charting library that could replace
+  this file, and it makes a chart unreadable for the first 400ms.
+- **`PrTable` is cards below 40rem** (D-308). Any new table on a private screen should follow
+  it rather than `overflow-x-auto`.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit
