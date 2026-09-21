@@ -44,15 +44,12 @@ import {
 } from "@/lib/athletics/protocol";
 import {
   applyPracticeCredit,
-  assignRoutines,
-  challengeFaults,
   challengeProgress,
   dayFor,
   metersByDay,
   movementSlug,
-  parseChallenge,
-  type Routine,
 } from "@/lib/athletics/challenge";
+import { loadPlan, PRACTICE_CREDIT_M } from "@/lib/athletics/plan";
 import {
   allEfforts,
   listBodyweight,
@@ -84,10 +81,6 @@ const DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" });
 
 const BENCHMARKS = "context/02_physical_performance/benchmarks_and_logs.md";
 const TRAINING = "context/02_physical_performance/training_blocks.md";
-const CHALLENGE = "context/02_physical_performance/fall_2026_challenge.md";
-
-/** Rule 4: a boat practice counts as this much toward the 5k-a-day average. */
-const PRACTICE_CREDIT_M = 5000;
 
 /** How far back the streak strip and the volume chart look. */
 const ROUTINE_WINDOW_DAYS = 14;
@@ -266,20 +259,21 @@ async function Training() {
   // charts down, and a missing table must not blank the protocol.
   let benchmarks = "";
   let training = "";
-  let challengeMarkdown = "";
   let vaultFailure: string | null = null;
   try {
-    const [a, b, c] = await Promise.all([
+    const [a, b] = await Promise.all([
       readVaultFileCached(BENCHMARKS),
       readVaultFileCached(TRAINING),
-      readVaultFileCached(CHALLENGE),
     ]);
     benchmarks = a.content;
     training = b.content;
-    challengeMarkdown = c.content;
   } catch (error) {
     vaultFailure = error instanceof Error ? error.message : String(error);
   }
+
+  // The plan is loaded through the shared loader rather than parsed here, so this screen, the
+  // Plan screen, the logger and the dashboard all apply overrides in the same order (D-276).
+  const { challenge, routines, faults } = await loadPlan();
 
   const goal = parseSplitGoal(benchmarks);
   const spmTargets = parseSpmTargets(benchmarks);
@@ -345,7 +339,6 @@ async function Training() {
    * second round trip to a serverless database to re-sum what we already have would be the most
    * expensive line on this page.
    */
-  const challenge = parseChallenge(challengeMarkdown);
   const loggedByDay = metersByDay(efforts);
   const creditedByDay = challenge
     ? applyPracticeCredit(challenge, loggedByDay, PRACTICE_CREDIT_M)
@@ -357,9 +350,7 @@ async function Training() {
     challenge && challengeDay
       ? (challenge.weeks.find((week) => week.index === challengeDay.week) ?? null)
       : null;
-  const routines: Map<number, Routine> = challenge ? assignRoutines(challenge) : new Map();
   const todayRoutine = challengeDay ? (routines.get(challengeDay.day) ?? null) : null;
-  const faults = challenge ? challengeFaults(challenge) : [];
 
   /**
    * The fortnight strip.

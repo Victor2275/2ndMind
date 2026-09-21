@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   allDays,
+  applyOverrides,
   applyPracticeCredit,
   assignRoutines,
   challengeFaults,
   challengeProgress,
   dayFor,
+  isSessionType,
   metersByDay,
   movementSlug,
   parseChallenge,
@@ -18,6 +20,7 @@ import {
   parseWeeks,
   routineFor,
   type Challenge,
+  type PlanOverride,
 } from "../challenge";
 
 /**
@@ -287,20 +290,75 @@ describe("assignRoutines", () => {
       "gunwale",
       "catch-position",
       "armour-check",
-      "rotation-primer",
-      "fast-twitch",
-      "hinge-prep",
       "lat-and-lock",
+      "rotation-primer",
+      "hinge-prep",
+      "press-and-pull",
       "seat-saver",
       "catch-position",
-      "press-and-pull",
-      "rotation-primer",
-      "race-face",
       "armour-check",
+      "lat-and-lock",
+      "fast-twitch",
+      "hinge-prep",
       "gunwale",
     ]);
   });
+
+  it("never repeats a routine within one week", () => {
+    // The property the per-week slot design exists for, and the one that caught a real bug:
+    // indexing by `day.day % poolSize` gave Tuesday and Friday the same strength routine every
+    // single week, because they are three apart and the pool held three.
+    const challenge = vaultChallenge();
+    const assigned = assignRoutines(challenge);
+
+    for (const week of challenge.weeks) {
+      const slugs = week.days
+        .map((day) => assigned.get(day.day)?.slug)
+        .filter((slug): slug is string => slug !== undefined);
+      expect(new Set(slugs).size).toBe(slugs.length);
+    }
+  });
+
+  it("has a pool at least as large as the busiest week needs", () => {
+    // What makes the test above hold rather than happen to pass. If a rewrite adds a fourth
+    // quality day to some week, this fails first and names the pool.
+    const challenge = vaultChallenge();
+    const size = new Map<string, number>();
+    for (const routine of challenge.routines) {
+      size.set(routine.pool, (size.get(routine.pool) ?? 0) + 1);
+    }
+
+    for (const week of challenge.weeks) {
+      const need = new Map<string, number>();
+      for (const day of week.days) {
+        const pool = POOL_FOR_TYPE_TEST[day.type];
+        need.set(pool, (need.get(pool) ?? 0) + 1);
+      }
+      for (const [pool, count] of need) {
+        // The pool name is in the message so a failure says which one to grow.
+        expect({ pool, week: week.index, have: size.get(pool) ?? 0 }).toEqual({
+          pool,
+          week: week.index,
+          have: expect.any(Number),
+        });
+        expect(size.get(pool) ?? 0).toBeGreaterThanOrEqual(count);
+      }
+    }
+  });
 });
+
+/** Mirrors the private map in `challenge.ts`; a divergence would make the pool test lie. */
+const POOL_FOR_TYPE_TEST: Record<string, string> = {
+  base: "base",
+  long: "long",
+  epic: "long",
+  quality: "quality",
+  test: "quality",
+  race: "quality",
+  strength: "strength",
+  water: "water",
+  recovery: "recovery",
+};
 
 describe("movementSlug", () => {
   it("namespaces by routine so the same movement in two routines is two rows", () => {
@@ -316,6 +374,138 @@ describe("movementSlug", () => {
         expect(movementSlug(routine, movement)).toContain("/");
       }
     }
+  });
+});
+
+describe("applyOverrides", () => {
+  const challenge = parseChallenge(FIXTURE)!;
+
+  function override(partial: Partial<PlanOverride> & { date: string }): PlanOverride {
+    return { name: null, detail: null, type: null, meters: null, note: "", ...partial };
+  }
+
+  it("returns the same object when there is nothing to apply", () => {
+    expect(applyOverrides(challenge, new Map())).toBe(challenge);
+  });
+
+  it("replaces only the fields that are set", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-20", override({ date: "2026-09-20", type: "base", meters: 9000 })]]),
+    );
+    const day = dayFor(merged, "2026-09-20")!;
+
+    expect(day.type).toBe("base");
+    expect(day.meters).toBe(9000);
+    // Untouched, because the override left them null.
+    expect(day.name).toBe("Day Zero");
+    expect(day.detail).toBe("Boat practice.");
+  });
+
+  it("keeps what the vault said, so the change is reversible and visible", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", name: "3 x 2k", meters: 6000 })]]),
+    );
+    const day = dayFor(merged, "2026-09-21")!;
+
+    expect(day.name).toBe("3 x 2k");
+    expect(day.planned).toEqual({
+      name: "Rolling Start",
+      detail: "10k Z2, rate 20, split 2:15-2:25.",
+      type: "base",
+      meters: 10000,
+    });
+  });
+
+  it("does not mark a day changed when the override changes nothing", () => {
+    // A note on its own is not an edit. Without this the day would be badged "changed" for
+    // carrying a comment.
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", note: "felt fine" })]]),
+    );
+    expect(dayFor(merged, "2026-09-21")?.planned).toBeUndefined();
+  });
+
+  it("does not mark a day changed when the override restates the plan", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([
+        ["2026-09-21", override({ date: "2026-09-21", name: "Rolling Start", meters: 10000 })],
+      ]),
+    );
+    expect(dayFor(merged, "2026-09-21")?.planned).toBeUndefined();
+  });
+
+  it("leaves every other day alone", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", meters: 1 })]]),
+    );
+    expect(dayFor(merged, "2026-09-20")).toEqual(dayFor(challenge, "2026-09-20"));
+    expect(dayFor(merged, "2026-09-22")).toEqual(dayFor(challenge, "2026-09-22"));
+  });
+
+  it("does not mutate the challenge it was given", () => {
+    applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", meters: 1 })]]),
+    );
+    expect(dayFor(challenge, "2026-09-21")?.meters).toBe(10000);
+  });
+
+  it("ignores an override for a date the plan does not contain", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2027-01-01", override({ date: "2027-01-01", meters: 1 })]]),
+    );
+    expect(allDays(merged)).toHaveLength(3);
+  });
+
+  it("changes the day's stretching routine when it changes the type", () => {
+    // The consequence the edit form warns about, asserted rather than assumed.
+    const before = assignRoutines(challenge).get(1)?.pool;
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", type: "water" })]]),
+    );
+    expect(before).toBe("base");
+    expect(assignRoutines(merged).get(1)?.pool).toBe("water");
+  });
+
+  it("feeds the changed distance into progress", () => {
+    const merged = applyOverrides(
+      challenge,
+      new Map([["2026-09-21", override({ date: "2026-09-21", meters: 2000 })]]),
+    );
+    const progress = challengeProgress(merged, new Map(), new Date("2026-09-22T18:00:00Z"));
+    // 5,000 on day 0 + the overridden 2,000 on day 1 + 6,000 on day 2. Without the override
+    // it is 21,000, so this is the edit reaching the ledger.
+    expect(progress.plannedToDateM).toBe(13000);
+  });
+});
+
+describe("isSessionType", () => {
+  it("accepts the nine", () => {
+    for (const type of [
+      "base",
+      "long",
+      "quality",
+      "strength",
+      "water",
+      "recovery",
+      "test",
+      "race",
+      "epic",
+    ]) {
+      expect(isSessionType(type)).toBe(true);
+    }
+  });
+
+  it("rejects anything else", () => {
+    expect(isSessionType("brunch")).toBe(false);
+    expect(isSessionType("")).toBe(false);
   });
 });
 
@@ -493,6 +683,32 @@ describe("the vault plan", () => {
       "perg50k",
       "erg100k",
     ]);
+  });
+
+  it("asks for no equipment anywhere", () => {
+    // Victor's constraint: every routine has to be doable in a dorm room, a hotel room or on
+    // grass. This is checked against movement *names and prescriptions* only — the "Why"
+    // column is prose and legitimately says things like "the wall that fails last".
+    const banned =
+      /(band|barbell|dumbbell|kettlebell|cable|machine|foam roller|roller|pull-?up bar|rack|bench|step|box|chair|doorway|strap|ball|weight)/i;
+
+    for (const routine of vaultChallenge().routines) {
+      for (const movement of routine.movements) {
+        expect(`${routine.slug}/${movement.slug}: ${movement.name}`).not.toMatch(banned);
+        expect(`${routine.slug}/${movement.slug}: ${movement.prescription}`).not.toMatch(banned);
+      }
+    }
+  });
+
+  it("has dropped the Pallof press, which needs a band", () => {
+    // Named explicitly because it was the rehab protocol's keystone and its removal is the one
+    // substantive change the equipment rule forced. Dead bugs, bird dogs and side planks carry
+    // the anti-rotation job now; see benchmarks_and_logs.md §3.
+    const movements = vaultChallenge().routines.flatMap((routine) =>
+      routine.movements.map((movement) => movement.name.toLowerCase()),
+    );
+    expect(movements.some((name) => name.includes("pallof"))).toBe(false);
+    expect(movements.some((name) => name.includes("dead bug"))).toBe(true);
   });
 
   it("carries fifteen routines, every one with movements", () => {

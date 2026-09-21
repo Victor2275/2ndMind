@@ -10,12 +10,15 @@ import {
 } from "@/lib/athletics/forms";
 import { parseHevyCsv } from "@/lib/athletics/hevy";
 import {
+  clearPlanOverride,
   deleteWorkout,
   importWorkouts,
   logWorkout,
   recordBodyweight,
+  setPlanOverride,
   toggleRehab,
 } from "@/lib/athletics/queries";
+import type { SessionType } from "@/lib/athletics/challenge";
 import { requireSession } from "@/lib/auth/dal";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { describeDbError } from "@/lib/db/describe";
@@ -230,5 +233,124 @@ export async function toggleRehabAction(formData: FormData): Promise<void> {
 
   await toggleRehab(db(), day, slug);
   revalidatePath("/private/athletics");
+  revalidatePath("/private");
+}
+
+/* ------------------------------------------------------- challenge plan overrides */
+
+/**
+ * The hard ceiling on a planned day, in metres.
+ *
+ * A typo guard, not a judgement — the plan's own largest day is the 100k. 250,000 catches a
+ * mis-keyed "100000" that gained a zero, and 0 is allowed because a genuine rest day is a
+ * legitimate edit.
+ */
+const MAX_PLANNED_M = 250_000;
+
+const SESSION_TYPES = [
+  "base",
+  "long",
+  "quality",
+  "strength",
+  "water",
+  "recovery",
+  "test",
+  "race",
+  "epic",
+];
+
+/**
+ * Changes one day of the challenge plan (D-276).
+ *
+ * The vault file is **not** rewritten. This writes a `plan_overrides` row, which
+ * `applyOverrides` merges over the parsed plan on read — so the original stays visible beside
+ * the change and reverting is one click.
+ *
+ * An empty field means "leave the vault's value", which is why every column is nullable and
+ * why the form ships the vault's text as the placeholder rather than as the value: a
+ * pre-filled input that is submitted unchanged would write a copy of the plan as an override
+ * and badge an untouched day as edited.
+ */
+export async function savePlanDayAction(
+  _prev: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireSession();
+
+  const missing = requireDatabase();
+  if (missing) return missing;
+
+  const day = String(formData.get("day") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return { ok: false, message: "That day makes no sense." };
+  }
+
+  const type = String(formData.get("type") ?? "").trim();
+  if (type !== "" && !SESSION_TYPES.includes(type)) {
+    return { ok: false, message: `"${type}" is not one of the nine session types.` };
+  }
+
+  const metersRaw = String(formData.get("meters") ?? "").trim();
+  let meters: number | null = null;
+  if (metersRaw !== "") {
+    const parsed = Number(metersRaw.replace(/[, ]/g, ""));
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > MAX_PLANNED_M) {
+      return { ok: false, message: `A distance in metres, between 0 and ${MAX_PLANNED_M}.` };
+    }
+    meters = Math.round(parsed);
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const detail = String(formData.get("detail") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+
+  // Nothing filled in is a revert, not an empty override. Writing a row of nulls would leave a
+  // day looking unchanged while carrying a row that the next edit would silently build on.
+  if (name === "" && detail === "" && type === "" && meters === null && note === "") {
+    try {
+      await clearPlanOverride(db(), day);
+      revalidatePath("/private/athletics/plan");
+      revalidatePath("/private/athletics");
+      revalidatePath("/private/athletics/log");
+      revalidatePath("/private");
+      return { ok: true, message: `${day} is back to the plan.` };
+    } catch (error) {
+      return { ok: false, message: describe(error) };
+    }
+  }
+
+  try {
+    await setPlanOverride(db(), {
+      date: day,
+      name: name === "" ? null : name,
+      detail: detail === "" ? null : detail,
+      type: type === "" ? null : (type as SessionType),
+      meters,
+      note,
+    });
+
+    revalidatePath("/private/athletics/plan");
+    revalidatePath("/private/athletics");
+    revalidatePath("/private/athletics/log");
+    revalidatePath("/private");
+
+    return { ok: true, message: `${day} changed.` };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
+}
+
+/** Drops one day's override, returning it to the vault's plan. */
+export async function revertPlanDayAction(formData: FormData): Promise<void> {
+  await requireSession();
+  if (!isDatabaseConfigured()) return;
+
+  const day = String(formData.get("day") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+
+  await clearPlanOverride(db(), day);
+  revalidatePath("/private/athletics/plan");
+  revalidatePath("/private/athletics");
+  revalidatePath("/private/athletics/log");
   revalidatePath("/private");
 }

@@ -802,3 +802,50 @@ export const passkeyCredentials = pgTable("passkey_credentials", {
 
 export type PasskeyCredentialRow = typeof passkeyCredentials.$inferSelect;
 export type NewPasskeyCredentialRow = typeof passkeyCredentials.$inferInsert;
+
+/**
+ * One day of the fall challenge, changed from the app (D-276).
+ *
+ * The plan itself is a vault file (D-271) and is never rewritten by the app. This table holds
+ * only the *diffs*: a row exists for a day Victor decided to do differently — a water day turned
+ * into an erg, a steady 5k turned into 3 x 2k — and every column is nullable, so changing the
+ * session without touching the distance writes one column rather than a copy of the row.
+ * `applyOverrides` in `lib/athletics/challenge.ts` merges these over the parsed plan and keeps
+ * the vault's values in `ChallengeDay.planned`, which is what makes a change reversible in one
+ * click and auditable afterwards.
+ *
+ * **Deliberately not in `ENTITIES`, so it does not sync** — the same call `error_reports` makes,
+ * for a different reason. Changing the plan is a planning act done sitting down, not a logging
+ * act done at a rack with one hand, and Victor ranked offline support for the challenge as "not
+ * a priority". Adding it later is the documented three-line change (entity, store, apply
+ * branch); shipping an unused sync path now is not.
+ *
+ * **Reverting hard-deletes**, which is why there is no `deleted_at` here and why that is not an
+ * inconsistency with the rest of the schema. A tombstone exists so last-write-wins has two
+ * comparable states to choose between, and nothing about this table is ever merged across
+ * devices. The vault row is the fallback for a deleted override, so nothing is lost by the row
+ * going away.
+ */
+export const planOverrides = pgTable(
+  "plan_overrides",
+  {
+    id: serial("id").primaryKey(),
+    /** ISO day. The identity — one override per day, which is the upsert target. */
+    planDate: date("plan_date", { mode: "string" }).notNull(),
+    /** The bold session name. Null leaves the vault's. */
+    sessionName: text("session_name"),
+    /** The prescription after the em dash. Null leaves the vault's. */
+    detail: text("detail"),
+    /** One of the nine session types. Changing it changes the day's stretching routine. */
+    type: text("type"),
+    distanceM: integer("distance_m"),
+    /** Why it changed. Shown on the plan screen, never parsed. */
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("plan_overrides_plan_date_idx").on(t.planDate)],
+);
+
+export type PlanOverrideRow = typeof planOverrides.$inferSelect;
+export type NewPlanOverrideRow = typeof planOverrides.$inferInsert;

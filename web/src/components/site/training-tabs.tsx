@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * One Training area, four tabs (V4 Phase 2++ Stage 7).
+ * One Training area, six tabs (V4 Phase 2++ Stage 7; Plan added with the fall challenge, D-276).
  *
  * ## Why this replaces two navigation entries
  *
@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
  * its nine entries spent on one subject — and C-11 in the V4 plan has been asking whether nine
  * is too many since 2026-09-06. They are one area: you log a session, you look at what the
  * sessions add up to, and you edit the catalogue those sessions are written in. So the nav
- * carries **Training**, and the four screens inside it are tabs on the page rather than
+ * carries **Training**, and the six screens inside it are tabs on the page rather than
  * competitors in a bar that already scrolls sideways at 1440px.
  *
  * A Client Component only because it needs `usePathname`. Nothing here is sensitive: this file
@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/private/athletics/log", label: "Log" },
+  { href: "/private/athletics/plan", label: "Plan" },
   { href: "/private/athletics/exercises", label: "Exercises" },
   { href: "/private/athletics", label: "Records" },
   { href: "/private/athletics/history", label: "History" },

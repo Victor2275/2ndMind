@@ -138,6 +138,14 @@ const PRIVATE_PAGES = [
     gated: false,
   },
   { name: "private-training-history", url: "/private/athletics/history", gated: false },
+  // The plan (D-276). **Gated**: it is seventy-six rows of read-only plan with exactly one
+  // thing you can do on it — change a day — and that link is the whole reason the screen is
+  // not just the vault file rendered. If it slides below the fold it has become a document.
+  { name: "private-plan", url: "/private/athletics/plan", gated: true },
+  // The logger, swept because the challenge card now sits above it (D-276) and what this
+  // measures is whether that card pushed the first set off a phone. Ungated for the reason
+  // the other Training screens are: its first action is the exercise picker, which is a sheet.
+  { name: "private-training-log", url: "/private/athletics/log", gated: false },
 ];
 
 /**

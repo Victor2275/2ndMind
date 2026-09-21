@@ -316,7 +316,7 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,944 tests across 131 files** as of
+Run with `npm test`. Typecheck with `npm run typecheck`. **1,970 tests across 132 files** as of
 2026-09-20, all passing. A drop from that count is a regression, not noise.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
@@ -401,6 +401,9 @@ build"* rather than printing the query (D-156).
 Everything not listed here is markdown. Four tables live in Neon via Drizzle, with migrations
 committed under `drizzle/` and applied with `npm run db:migrate`:
 
+- `plan_overrides` — days of the fall challenge changed from the app (D-276). **Not synced**
+  and not in `ENTITIES`, like `error_reports`; reverting hard-deletes because nothing merges it
+  across devices.
 - `workouts` / `workout_sets` — training data, tabular and queried across rows. **Writable from
   the phone since V4 Phase 2**: a session and all its sets travel as one aggregate op and the
   server assigns the foreign key (`SYNC_DESIGN.md` §4a, D-211).
@@ -590,6 +593,43 @@ Four things here are easy to break by accident:
 `parseWeeklyPlan` feeds the "This week" panel that now sits beside the challenge's "Today" panel,
 and two contradictory weekly plans on one screen is worse than either of them. The pre-challenge
 layout is preserved verbatim in D-275 and pasting it back needs no code change.
+
+**The plan is readable and editable from the Training area** (D-276 to D-280). `Plan` is the
+second tab; `/private/athletics/plan` renders all eleven weeks and every day, and a card on the
+logger shows today's session above the form. Four things here are easy to break by accident:
+
+1. **Everything goes through `loadPlan()`** (`lib/athletics/plan.ts`, D-277). Parse the vault,
+   merge the overrides, *then* assign routines — in that order, which is what makes a changed
+   session type also change that day's stretching routine. Four screens read it; none of them
+   parse the plan themselves, and a fifth should not start.
+2. **Edits never touch the vault file.** `plan_overrides` holds one row per changed day and
+   `ChallengeDay.planned` carries what the vault said, which is what makes "back to plan" a row
+   delete. The edit form's inputs are **empty with the plan as placeholder** — an empty field
+   writes null and the vault shows through, so a pre-filled form submitted untouched would badge
+   an unchanged day as changed.
+3. **`challengeFaults` runs on the original, not the merged plan.** An override is a deliberate
+   disagreement with the totals in §1 of the vault file; running the check on the merged plan
+   reports every edit as a vault bug.
+4. **`plan_overrides` is not in `ENTITIES` and does not sync**, the same call `error_reports`
+   makes. Reverting hard-deletes, and that is not an inconsistency: a tombstone exists to give
+   last-write-wins two comparable states, and nothing merges this table across devices.
+
+**The routine rotation counts across the whole challenge, and two local schemes were tried and
+rejected** (D-278). `day.day % poolSize` gave Tuesday and Friday the same strength routine every
+week; per-week slots moved the collision to the week boundary. The cost of the running count is
+that editing a **past** day reshuffles later assignments, so that day reads as undone in the
+fortnight strip — cosmetic, and cheaper than a rotation that repeats inside a week. **Pool sizes
+are load-bearing**: each must be at least as large as the most days of that pool any one week
+holds, and a test asserts it per week.
+
+**The routines need no equipment, and a test enforces it** (D-279). No bands, roller, bar, rack,
+step, bench or doorway — a regex over every movement name and prescription in the vault fails the
+suite. This is what removed the Pallof press, which has no equipment-free equivalent; dead bugs,
+bird dogs and side planks carry the anti-rotation job the rehab protocol needs.
+
+**Boat practice is credited, never prescribed** (D-280). Victor does not choose practices and
+does not decide whether one is technique or conditioning — the coach does. `water` days say
+there is practice and nothing about its content.
 
 Health data is the category that must never become public — bodyweight above all. No public
 route imports `lib/db` or `lib/athletics`, the public build has no `DATABASE_URL` at all, and

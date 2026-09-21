@@ -3,6 +3,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
   bodyweightEntries,
+  planOverrides,
   rehabCompletions,
   workoutSets,
   workouts,
@@ -12,6 +13,7 @@ import type * as schema from "@/lib/db/schema";
 import type { BodyweightReading } from "./adjusted";
 import type { ParsedWorkout } from "./hevy";
 import type { Effort } from "./prs";
+import type { PlanOverride, SessionType } from "./challenge";
 
 /**
  * Every function takes the database handle as its first argument rather than reaching for a
@@ -352,4 +354,93 @@ export async function toggleRehab(db: Db, day: string, slug: string): Promise<bo
   await db.insert(rehabCompletions).values({ completedOn: day, slug }).onConflictDoNothing();
 
   return true;
+}
+
+/* ------------------------------------------------------- challenge plan overrides */
+
+/**
+ * Every day Victor has changed from the vault's plan, keyed by ISO day (D-276).
+ *
+ * Read whole rather than by range: there are at most 76 rows for the whole challenge, and the
+ * plan screen needs all of them at once. A range query here would be a second code path for no
+ * measurable saving.
+ */
+export async function listPlanOverrides(db: Db): Promise<Map<string, PlanOverride>> {
+  const rows = await db
+    .select({
+      planDate: planOverrides.planDate,
+      sessionName: planOverrides.sessionName,
+      detail: planOverrides.detail,
+      type: planOverrides.type,
+      distanceM: planOverrides.distanceM,
+      note: planOverrides.note,
+    })
+    .from(planOverrides);
+
+  const out = new Map<string, PlanOverride>();
+  for (const row of rows) {
+    out.set(row.planDate, {
+      date: row.planDate,
+      name: row.sessionName,
+      detail: row.detail,
+      // Stored as free text so a new session type never needs a migration — the same call
+      // `workout_sets.piece_type` makes (D-230). A value the current build does not know is
+      // dropped here rather than crashing `applyOverrides`, which types it as `SessionType`.
+      type: row.type !== null && isKnownType(row.type) ? row.type : null,
+      meters: row.distanceM,
+      note: row.note,
+    });
+  }
+  return out;
+}
+
+const KNOWN_TYPES = new Set<string>([
+  "base",
+  "long",
+  "quality",
+  "strength",
+  "water",
+  "recovery",
+  "test",
+  "race",
+  "epic",
+]);
+
+function isKnownType(value: string): value is SessionType {
+  return KNOWN_TYPES.has(value);
+}
+
+/**
+ * Writes or replaces one day's override.
+ *
+ * Upsert on `plan_date` rather than read-modify-write, so a double-submit cannot produce two
+ * rows for one day. Every field is written, including the nulls: this is "the day now reads like
+ * this", not a patch, which is what makes the form's cleared field actually clear.
+ */
+export async function setPlanOverride(db: Db, override: PlanOverride): Promise<void> {
+  const values = {
+    planDate: override.date,
+    sessionName: override.name,
+    detail: override.detail,
+    type: override.type,
+    distanceM: override.meters,
+    note: override.note,
+    updatedAt: new Date(),
+  };
+
+  await db
+    .insert(planOverrides)
+    .values(values)
+    .onConflictDoUpdate({ target: planOverrides.planDate, set: values });
+}
+
+/**
+ * Drops one day's override, returning it to the vault's plan.
+ *
+ * A hard delete, deliberately — see the schema comment. Nothing merges this table across
+ * devices, so there is no second state for a tombstone to be compared against, and the vault
+ * row is always the fallback. Nothing is lost.
+ */
+export async function clearPlanOverride(db: Db, day: string): Promise<void> {
+  await db.delete(planOverrides).where(eq(planOverrides.planDate, day));
 }

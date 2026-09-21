@@ -34,7 +34,8 @@ import {
 import { isCalendarConfigured, loadGoogle } from "@/lib/calendar/load";
 import { loadFreshness } from "@/lib/vault/freshness";
 import { rehabCompletionsBetween } from "@/lib/athletics/queries";
-import { assignRoutines, dayFor, movementSlug, parseChallenge } from "@/lib/athletics/challenge";
+import { dayFor, movementSlug, type Challenge, type Routine } from "@/lib/athletics/challenge";
+import { loadPlan } from "@/lib/athletics/plan";
 import { isoDay, shiftDay } from "@/lib/athletics/trends";
 import { readVaultFileCached } from "@/lib/vault/write";
 import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
@@ -567,14 +568,18 @@ async function ChallengeTodayPanel() {
   const today = isoDay(new Date());
   const from = shiftDay(today, -13);
 
-  let challenge: ReturnType<typeof parseChallenge> = null;
+  let challenge: Challenge | null = null;
+  let routines = new Map<number, Routine>();
   let done = new Map<string, Set<string>>();
   try {
-    const [vault, completions] = await Promise.all([
-      readVaultFileCached("context/02_physical_performance/fall_2026_challenge.md"),
+    // One loader, shared with the athletics page, the plan screen and the logger, so a day
+    // Victor changed reads the same on all four (D-276).
+    const [plan, completions] = await Promise.all([
+      loadPlan(),
       rehabCompletionsBetween(db(), from, today),
     ]);
-    challenge = parseChallenge(vault.content);
+    challenge = plan.challenge;
+    routines = plan.routines;
     done = completions;
   } catch {
     return null;
@@ -585,7 +590,7 @@ async function ChallengeTodayPanel() {
   const day = dayFor(challenge, today);
   if (!day) return null;
 
-  const routine = assignRoutines(challenge).get(day.day) ?? null;
+  const routine = routines.get(day.day) ?? null;
   if (!routine) return null;
 
   const todayDone = done.get(today) ?? new Set<string>();
@@ -596,7 +601,7 @@ async function ChallengeTodayPanel() {
   const history = Array.from({ length: 14 }, (_, i) => {
     const on = shiftDay(from, i);
     const planned = dayFor(challenge, on);
-    const its = planned ? (assignRoutines(challenge).get(planned.day) ?? null) : null;
+    const its = planned ? (routines.get(planned.day) ?? null) : null;
     const ticked = done.get(on) ?? new Set<string>();
     return {
       day: on,

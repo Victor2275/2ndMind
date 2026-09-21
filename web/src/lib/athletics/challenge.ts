@@ -65,6 +65,15 @@ export type ChallengeDay = {
   meters: number;
   /** Index of the week this day belongs to, matching `ChallengeWeek.index`. */
   week: number;
+  /**
+   * What the vault said, when a `plan_overrides` row has changed this day.
+   *
+   * Absent on an untouched day, which is how the UI tells "this is the plan" from "this is what
+   * I decided instead" without a second flag that can disagree with the values. Keeping the
+   * original is what makes the change reversible in one click and auditable afterwards — the
+   * plan file is never rewritten.
+   */
+  planned?: { name: string; detail: string; type: SessionType; meters: number };
 };
 
 export type ChallengeWeek = {
@@ -457,6 +466,82 @@ export function parseChallenge(markdown: string): Challenge | null {
   };
 }
 
+/* -------------------------------------------------------------------- overrides */
+
+/**
+ * One day of the plan, changed from the app.
+ *
+ * Every field is nullable and null means "leave the vault's value alone", so swapping a Sunday
+ * from water to erg without touching the distance is one column, not a full copy of the row.
+ */
+export type PlanOverride = {
+  /** ISO day, `YYYY-MM-DD`. The key — one override per day. */
+  date: string;
+  name: string | null;
+  detail: string | null;
+  type: SessionType | null;
+  meters: number | null;
+  /** Why it changed. Free text, shown on the plan screen, never parsed. */
+  note: string;
+};
+
+export function isSessionType(value: string): value is SessionType {
+  return SESSION_TYPES.has(value);
+}
+
+/**
+ * The plan as Victor actually intends to do it.
+ *
+ * Returns a new `Challenge`; the parsed one is never mutated, because two things still need the
+ * vault's own numbers. **`challengeFaults` must be run on the original**, since it checks the
+ * day rows against the totals stated in §1 and an override is precisely a deliberate
+ * disagreement with them — running it on the merged plan would report every edit as a vault bug.
+ * The `planned` field on each changed day carries the original values for the UI.
+ *
+ * Order matters at the call site: this runs *before* `assignRoutines`, so changing a day's type
+ * changes that day's stretching routine, and before `challengeProgress`, so the planned metres
+ * reflect the edit.
+ */
+export function applyOverrides(
+  challenge: Challenge,
+  overrides: Map<string, PlanOverride>,
+): Challenge {
+  if (overrides.size === 0) return challenge;
+
+  const weeks = challenge.weeks.map((week) => ({
+    ...week,
+    days: week.days.map((day) => {
+      const override = overrides.get(day.date);
+      if (!override) return day;
+
+      const next: ChallengeDay = {
+        ...day,
+        name: override.name ?? day.name,
+        detail: override.detail ?? day.detail,
+        type: override.type ?? day.type,
+        meters: override.meters ?? day.meters,
+      };
+
+      // An override row that changes nothing — every column null — is not an override. Without
+      // this the UI would badge a day as changed because a note was left on it.
+      const changed =
+        next.name !== day.name ||
+        next.detail !== day.detail ||
+        next.type !== day.type ||
+        next.meters !== day.meters;
+
+      if (!changed) return day;
+
+      return {
+        ...next,
+        planned: { name: day.name, detail: day.detail, type: day.type, meters: day.meters },
+      };
+    }),
+  }));
+
+  return { ...challenge, weeks };
+}
+
 /* ------------------------------------------------------------------- day lookup */
 
 /** Every day across every week, in day order. */
@@ -478,15 +563,29 @@ export function dayFor(challenge: Challenge, isoDay: string): ChallengeDay | nul
  *
  * Deterministic and computed rather than written into the vault, so the plan file does not
  * carry 76 hand-made assignments that can silently disagree with the pool table. A day takes
- * the *n*th routine of its pool, where *n* counts how many days of that pool have come before
- * it — so each pool rotates in vault order and the sequence is identical on every device and
- * every render. `routines.test.ts` pins the first fortnight of the sequence, which is what
- * catches a reordering of §6 that would otherwise silently reshuffle months of history.
+ * the *n*th routine of its pool, where *n* counts how many days of that pool came before it —
+ * each pool cycling in vault order across the whole challenge.
  *
- * Consecutive days never share a routine, because consecutive days never share a pool in this
- * plan — but that is a property of the plan, not something enforced here. Over 76 days against
- * 15 routines each one comes up about five times; "unique every day" means no repeat in a
- * week, not no repeat ever.
+ * **Two cheaper-looking schemes were tried and both broke the thing this is for.** Indexing by
+ * `day.day % poolSize` is local to a day, but the strength sessions are Tuesday and Friday —
+ * three apart — and the strength pool held three routines, so *every* week handed both lifting
+ * days the same routine. Restarting the count each week fixed that and put a collision on the
+ * week boundary instead: week 7's recovery rotation ended on the index week 8 began at, so
+ * 8 November and 9 November drew the same routine on consecutive days. The running count has
+ * neither fault, and `challenge.test.ts` asserts both properties directly rather than trusting
+ * this note.
+ *
+ * **What the running count costs**, and it is a real cost: a day's routine depends on every
+ * earlier day of its pool, so changing a day's `Type` (D-276) reshuffles the assignment of
+ * every *later* day of the pools involved. For today and the future that is harmless. For a day
+ * already past it means its completion rows, which are keyed by routine slug, no longer match
+ * the routine the page now shows — the ticks are not lost, but that day reads as undone in the
+ * fortnight strip. Editing the past is the rare case and the damage is cosmetic, which is why
+ * it loses to a rotation that never repeats itself in a week.
+ *
+ * **Pool sizes are load-bearing.** Each must be at least as large as the most days of that pool
+ * any single week holds, or a routine repeats inside that week however it is indexed. §6 of the
+ * plan file states both numbers side by side and a test enforces the relation.
  */
 export function assignRoutines(challenge: Challenge): Map<number, Routine> {
   const byPool = new Map<RoutinePool, Routine[]>();

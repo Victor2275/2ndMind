@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { PageHeader } from "@/components/site/page-shell";
+import { PlannedToday } from "@/components/site/planned-today";
 import { RecentSessions } from "@/components/site/recent-sessions";
 import { SessionLogger } from "@/components/site/session-logger";
 import { TrainingTabs } from "@/components/site/training-tabs";
@@ -20,6 +23,16 @@ import { TrainingTabs } from "@/components/site/training-tabs";
  * It is still `force-dynamic` and still inside the private layout, so it is behind the session
  * cookie like everything else here. The route being reachable is not the same as its data being
  * public — there is no data on it.
+ *
+ * ## The one thing it does fetch, and why that is not a reversal
+ *
+ * `PlannedToday` reads the challenge plan on the server (D-276) — Victor asked to see the
+ * workout from the tab he opens to train. It sits inside its own `Suspense` boundary, so the
+ * logger renders and is usable before that read resolves: the rule this page was written to
+ * protect is "the form must not wait on the network", not "the page must contain nothing else".
+ * `loadPlan()` swallows a database failure and returns the vault's plan, and a vault failure
+ * renders as a missing card rather than taking the screen down. Offline the whole navigation
+ * fails and the worker serves `/cached`, exactly as before.
  */
 export const metadata = {
   title: "Log training",
@@ -40,6 +53,13 @@ export default function LogSessionPage() {
     <div className="max-w-2xl pb-16 lg:max-w-4xl">
       <PageHeader eyebrow="Training" title="Log a session" />
       <TrainingTabs />
+
+      {/* Above the logger: what to do comes before what was done. Deliberately one card and
+          two lines — this screen is used at a rack, and anything taller pushes the first set
+          off a phone. */}
+      <Suspense fallback={null}>
+        <PlannedToday />
+      </Suspense>
 
       <div className="mt-6">
         <SessionLogger />

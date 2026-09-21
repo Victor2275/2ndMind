@@ -17,6 +17,136 @@ useful part.
 
 ---
 
+## 2026-09-20 · The plan becomes visible and editable
+
+### D-276 · The plan is editable, and the edits live beside the vault rather than in it
+
+**Decision.** A new `plan_overrides` table holds one row per day Victor has changed — session
+name, prescription, type, distance, and why. `applyOverrides` merges them over the parsed vault
+plan on read and keeps the original in `ChallengeDay.planned`. **The vault file is never
+rewritten by the app.**
+
+**Why not write the markdown back.** The app already has a vault write path, so this was a real
+option. Three things killed it. Rewriting one cell of a markdown table programmatically is a
+parser and a serialiser, and the serialiser is the half that can corrupt eleven weeks of work.
+Last-write-wins on a GitHub commit means an edit made on a phone can silently drop one made on a
+laptop ten minutes earlier. And it destroys the distinction that makes the feature worth having
+— "what I planned" against "what I decided instead" — which is exactly what you want to see in
+December when the block is over.
+
+Keeping edits in a table gets reverting for free (drop the row), keeps the plan file readable as
+the thing that was intended, and means a bad edit can never damage the plan.
+
+**Every column is nullable and null means "leave the vault's value".** That is why the edit form
+renders empty inputs with the plan as placeholder rather than pre-filled values: a pre-filled
+form submitted untouched would write a copy of the plan as an override and badge an unchanged
+day as changed. The cost is that editing part of a sentence means retyping it.
+
+**Deliberately not synced.** It is not in `ENTITIES`, the same call `error_reports` makes for a
+different reason: changing the plan is a planning act done sitting down, not a logging act done
+at a rack, and Victor ranked offline support for the challenge as "not a priority". Adding it is
+the documented three-line change (entity, store, apply branch) if that turns out to be wrong.
+Because nothing merges across devices, reverting **hard-deletes** — a tombstone exists to give
+last-write-wins two comparable states, and there is no second state here. The vault row is
+always the fallback, so nothing is lost.
+
+**`challengeFaults` runs on the original, not the merged plan.** It checks the day rows against
+the totals stated in §1 of the vault file, and an override is a deliberate disagreement with
+them; running it on the merged plan would report every edit as a vault bug.
+
+**How to reverse.** Drop the table and the three query functions; `applyOverrides` with an empty
+map returns the parsed challenge unchanged, so every screen keeps working on the vault's plan
+alone.
+
+### D-277 · One loader, because the merge order is load-bearing
+
+**Decision.** `lib/athletics/plan.ts` exports `loadPlan()`. The Records page, the Plan page, the
+logger and the Today dashboard all call it; none of them parse the plan themselves.
+
+**Why.** Three steps have to happen in one order — parse the vault, merge the overrides, *then*
+assign routines — and the third depending on the second is the whole reason a changed session
+type also changes that day's stretching routine. Four hand-written copies of that order is four
+chances to assign routines before merging and have a day show the stretch for a session it is no
+longer doing. It also puts the "database down means the vault's plan, not a broken screen"
+fallback in one place.
+
+**How to reverse.** Inline it. The three calls are `parseChallenge`, `applyOverrides`,
+`assignRoutines`, in that order, and `challengeFaults` on the parse result.
+
+### D-278 · The rotation counts across the challenge, after two local schemes failed
+
+**Decision.** `assignRoutines` gives a day the *n*th routine of its pool, where *n* counts how
+many days of that pool came before it across the whole challenge.
+
+**Why, and what was tried.** Making `Type` editable made me want the assignment to be *local*,
+so that changing one day could not reshuffle another. Two local schemes were built and both
+broke the thing the rotation exists for:
+
+- **`day.day % poolSize`.** Strength sessions are Tuesday and Friday — three days apart — and
+  the strength pool held three routines, so every week in the plan handed both lifting days the
+  same routine.
+- **Per-week slots.** Fixed that, and moved the collision to the week boundary: week 7's
+  recovery rotation ended on the index week 8 started at, so 8 and 9 November drew the same
+  routine on consecutive days.
+
+The running count has neither fault. **Its cost is real and accepted:** changing a day's type
+reshuffles every *later* day of the pools involved. For today and the future that is harmless;
+for a day already past, its completion rows are keyed by routine slug and no longer match the
+routine the page shows, so that day reads as undone in the fortnight strip. The ticks are not
+deleted. Editing the past is rare and the damage is cosmetic, which is why it loses to a
+rotation that never repeats inside a week.
+
+**Pool sizes are load-bearing and §6 now states why.** Each pool must be at least as large as
+the most days of that pool any single week contains. Finding this is what moved Rotation Primer
+from `base` to `quality` and Press and Pull from `strength` to `base`: weeks 7 and 11 each have
+three quality days and the pool held two. A test asserts the relation per week and names the
+pool that is too small.
+
+**How to reverse.** Either local scheme is a ten-line change, and both are described above with
+the failure each one produces — do not rediscover them.
+
+### D-279 · Every stretch is floor-and-bodyweight, which cost the Pallof press
+
+**Decision.** All fifteen routines are constrained to need no equipment anywhere: no bands, no
+foam roller, no pull-up bar, no rack, no step, no bench, no doorway. A test scans every movement
+name and prescription in the vault against a banned-equipment pattern.
+
+**Why.** Victor's requirement — they have to work in a dorm room, a hotel room over Thanksgiving,
+or a corner of the boathouse. A routine that assumes a rack is a routine that gets skipped on the
+days it matters most.
+
+**What it cost.** The couch stretch became a half-kneeling hip flexor stretch, wall slides became
+floor slides, band pull-aparts became prone Y-T-Ws, and the dead hang became a standing overhead
+reach — all like-for-like. **The Pallof press could not be replaced like-for-like**, because it
+is a loaded anti-rotation press and there is no equipment-free version of one. It was the
+keystone of the rehab absorption (D-272), so this is a substantive change rather than a
+substitution: dead bugs, bird dogs and side planks now carry the anti-rotation job.
+`benchmarks_and_logs.md` §3 records that the Pallof press is still the better exercise when
+there is a cable stack, and that it simply cannot be what a daily routine assumes.
+
+**How to reverse.** Put the equipment back in §6 of the plan file and delete the two guard tests.
+The rehab protocol in `benchmarks_and_logs.md` was never edited — only annotated.
+
+### D-280 · Boat practice is credited, never prescribed
+
+**Decision.** Water days in the plan say that there is practice and nothing about what it
+contains. The week-shape table says "coach's session", and `training_blocks.md`'s Weekly Layout
+says "content is the coach's call, not Victor's".
+
+**Why.** Victor does not choose practices and does not decide whether one is technique,
+conditioning or race pieces — the coach does. The plan had inherited "50% Active Paddling / 50%
+Drills" from the old vault file, which reads as a prescription he is failing to follow whenever
+the coach calls something else. A plan that quietly blames you for someone else's decision is
+worse than one that stays quiet.
+
+The `water` type still exists and still earns rule 4's 5,000 m credit — crediting a practice and
+prescribing one are different things.
+
+**How to reverse.** It is prose in two vault files; nothing in code reads the practice
+description.
+
+---
+
 ## 2026-09-20 · The Fall 2026 daily-erg challenge
 
 ### D-271 · The challenge is a vault file, not a table and not TypeScript
@@ -90,6 +220,9 @@ reshuffling months of completion history.
 routines over seventy-six days means each comes up about five times. A test asserts no two
 consecutive days share a routine, and it is asserted against the real vault file, because that
 property comes from the plan's day ordering rather than from the assignment function.
+
+**Superseded in part by D-278**, which keeps this design after testing two alternatives and
+records what each one broke. Read that entry before changing the indexing.
 
 **How to reverse.** Add a `Routine` column to the day tables and read it in `parseDays`. The pool
 machinery can stay as the fallback for a row that leaves it blank.
