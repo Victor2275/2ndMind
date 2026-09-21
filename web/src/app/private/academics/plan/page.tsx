@@ -1,5 +1,6 @@
 import { CoursePlanner } from "@/components/site/course-planner";
 import { PageHeader } from "@/components/site/page-shell";
+import { Unavailable } from "@/components/site/states";
 import { emptyPlan, parsePlan, PLAN_PATH } from "@/lib/academics/plan";
 import { parseAudit } from "@/lib/academics/requirements";
 import { readVaultFileCached } from "@/lib/vault/write";
@@ -49,10 +50,14 @@ export default async function CoursePlanPage() {
       />
 
       {requirements.length === 0 ? (
-        <p className="mt-8 rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-          No degree audit was found. Save a fresh DARS audit and run{" "}
-          <code>python scripts/parse_dars.py</code> to generate it.
-        </p>
+        // The shared failure state (§5.1). It renders the command as something to copy rather
+        // than as a phrase inside a paragraph, which is exactly what Q292 asked for and what
+        // this box was a hand-written copy of.
+        <Unavailable
+          subject="The degree audit"
+          detail="No audit was found. Save a fresh DARS audit and run `python scripts/parse_dars.py` to generate it."
+          className="mt-8"
+        />
       ) : (
         <CoursePlanner requirements={requirements} initial={plan} />
       )}

@@ -17,6 +17,87 @@ useful part.
 
 ---
 
+## 2026-09-21 · Academics stops being a document — V4 §5.7
+
+### D-295 · The degree audit renders as structure, through the planner's parser
+
+**Decision.** `/private/academics`'s "Outstanding requirements" panel is `RequirementProgress`
+— a meter, then one card per open requirement with what it still needs, what already counts,
+and a collapsed list of what would count. `VaultDocument` no longer renders the audit.
+
+**Why.** Q415 asked for a progress structure. The panel was the generated markdown as prose:
+four hundred lines of nested bullets with the GE course lists inlined, on the page that is meant
+to answer "what is left". Q130's complaint, in its purest form.
+
+**Why no second parser.** `lib/academics/requirements.ts` has read this file since D-187 for the
+planner. Using it here means the audit screen and the plan screen cannot disagree about what is
+outstanding, and a change to `scripts/parse_dars.py` breaks both or neither.
+
+**The totals come from the frontmatter**, not from the parse: DARS counts 35 requirements
+including the ones already met, and the file only lists the open ones in full. Deriving "21 of
+35" from the parse would mean inventing the numerator.
+
+**How to reverse.** Put `<VaultDocument doc={doc} />` back in the panel. The parser stays either
+way — the planner needs it.
+
+### D-296 · In progress is not done, and a truncated list says so
+
+**Decision.** An applied course with the grade `IP` renders as a dashed token with no tick; a
+finished one is solid with a tick and its grade. A requirement whose acceptable-course list the
+generator cut short carries a line saying anything checked against it is a guess.
+
+**Why.** Both are cases where the honest rendering and the flattering one differ. A term in
+progress shown as counted is the one way this panel could be actively wrong about whether
+Victor graduates, and a truncated list shown as complete makes the panel look more certain than
+DARS is. D-187 already made the second distinction in logic; this is the first time it is on
+screen.
+
+**How to reverse.** Drop the `course.grade === "IP"` branch and the `truncated` paragraph.
+
+### D-297 · The GPA is on the private academics page
+
+**Decision.** The third stat is GPA, from `core_profile.md`'s frontmatter through `loadProfile`.
+Graduation moved into its hint.
+
+**Why.** Q418. It is already on the resume and the public site, so its absence from the private
+page *about* academics was an oversight rather than a privacy line. Read from the same field the
+resume reads, so there is one number rather than two that drift. Graduation is a date three
+years out — context for the number beside it, not a number in its own right.
+
+**How to reverse.** Swap the stat back to `Graduation · Jun 2028`.
+
+### D-298 · The planner is a table on a phone and a board on a laptop, with Edit one tap away
+
+**Decision.** Below `lg` the plan renders as a table — term, planned courses as chips, units
+right-aligned with the verdict as a word — and an **Edit** button swaps in the five textareas.
+At `lg` and above, the board is the only view.
+
+**Why.** Q416 asked for exactly this split. D-187 made the planner desktop-only on purpose, but
+that was implemented as five stacked textareas, which is the worst of both: unusable for editing
+on a phone *and* unreadable for checking. A table is what a phone is for here — reading the plan
+you made on a laptop.
+
+**Why the Edit button exists.** Removing phone editing entirely would be a regression dressed up
+as a decision. It is one tap, and nobody has to discover it to read the plan.
+
+**How to reverse.** Delete `PlanTable` and the `editing` state; the board's classes go back to
+`grid gap-4 lg:grid-cols-5`.
+
+### D-299 · Counted and "might count" are different tokens, not one sentence
+
+**Decision.** In the outstanding list, a planned course the audit names is a solid token with a
+tick; one it could not verify is a dashed token with a question mark, the word **unchecked**, and
+a sentence explaining that the audit's own list is cut short.
+
+**Why.** Q417. The distinction existed in logic (D-187: accept an unverifiable course rather
+than reject a valid one) and was rendered as *"might count: ART HIS 55 — the audit's list is
+truncated"* in the same grey as everything else. A guess that reads like a fact is worse than no
+answer, because the whole screen exists to be trusted at enrollment.
+
+**How to reverse.** Restore the single `<p>` that joined both lists with commas.
+
+---
+
 ## 2026-09-21 · The log remembers — V4 §5.5
 
 ### D-290 · A draft keeps everything, including the measurements — and says so

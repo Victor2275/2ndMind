@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import { CheckIcon, CircleHelpIcon } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { savePlan } from "@/app/private/academics/plan/actions";
@@ -10,6 +11,7 @@ import {
   termLoads,
   TERMS,
   type Plan,
+  type TermLoad,
   MAX_UNITS,
   MIN_UNITS,
 } from "@/lib/academics/plan";
@@ -39,6 +41,73 @@ import type { ActionState } from "@/lib/sprint-goals";
  * requirements arrive as props, read on the server from the vault.
  */
 
+/**
+ * The plan, as a table (§5.7, Q416).
+ *
+ * One row per term, with the courses as chips rather than a comma sentence — "COM SCI 111,
+ * EC ENGR 115C, ENGR 183EW" on a 360px screen wraps into a paragraph and stops being scannable,
+ * which is the whole reason this is a table and not the vault file.
+ *
+ * The verdict is a word, not a colour: a term is "heavy", "light" or nothing at all. `Q72`'s
+ * rule, and here it is also the only honest rendering — "light" on an empty term would be a
+ * warning about a term nobody has planned yet, which is why `termLoads` calls that `ok`.
+ */
+function PlanTable({ plan, loads }: { plan: Plan; loads: TermLoad[] }) {
+  return (
+    <table className="w-full border-collapse overflow-hidden rounded-lg border border-border bg-card/60 text-left">
+      <thead>
+        <tr className="border-b border-border">
+          <th scope="col" className="px-3 py-2 eyebrow text-muted-foreground">
+            Term
+          </th>
+          <th scope="col" className="px-3 py-2 eyebrow text-muted-foreground">
+            Planned
+          </th>
+          <th scope="col" className="px-3 py-2 text-right eyebrow text-muted-foreground">
+            Units
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {TERMS.map((term) => {
+          const courses = plan[term] ?? [];
+          const load = loads.find((l) => l.term === term);
+          return (
+            <tr key={term} className="border-b border-border align-top last:border-b-0">
+              <th scope="row" className="px-3 py-2.5 text-sm font-medium whitespace-nowrap">
+                {term}
+              </th>
+              <td className="px-3 py-2.5">
+                {courses.length === 0 ? (
+                  <span className="text-xs text-faint-foreground">nothing planned</span>
+                ) : (
+                  <ul className="flex flex-wrap gap-1">
+                    {courses.map((course) => (
+                      <li
+                        key={course.course}
+                        className="rounded border border-border px-1.5 py-0.5 font-mono text-[0.65rem] text-foreground"
+                      >
+                        {course.course}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+              {/* Right-aligned and tabular (Q239): these are numbers to compare down a column. */}
+              <td className="px-3 py-2.5 text-right">
+                <span className="tabular text-sm text-foreground">{load?.units ?? 0}</span>
+                {load?.verdict !== "ok" && (
+                  <span className="block eyebrow text-highlight">{load?.verdict}</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 function toText(plan: Plan, term: string): string {
   return (plan[term] ?? []).map((c) => `${c.course} (${c.units})`).join("\n");
 }
@@ -66,17 +135,44 @@ export function CoursePlanner({
 
   const outstanding = coverage.filter((entry) => !entry.satisfied);
 
+  /**
+   * On a phone this is a **table** until you ask to edit it (§5.7, Q416).
+   *
+   * D-187 made this screen desktop-only on purpose — planning three years of courses is a
+   * sit-down activity with a keyboard — but "desktop-only" was implemented as five stacked
+   * textareas, which is the worst of both: unusable for editing *and* unreadable for checking.
+   * Q416 asks for a board on a desktop and a table on a phone, and that is what a phone is for
+   * here: reading the plan you made on a laptop.
+   *
+   * Editing is still reachable in one tap, because taking it away would be a regression
+   * dressed up as a decision.
+   */
+  const [editing, setEditing] = useState(false);
+
   return (
     <form action={action} className="mt-8 space-y-8">
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-base font-semibold tracking-tight text-foreground">The terms</h2>
-          <span className="font-mono text-[0.65rem] text-muted-foreground">
+          <span className="phone-hidden font-mono text-[0.65rem] text-muted-foreground">
             one course per line · units in brackets
           </span>
+          <button
+            type="button"
+            onClick={() => setEditing((current) => !current)}
+            aria-pressed={editing}
+            className="min-h-11 press rounded-control border border-border px-3 text-xs text-muted-foreground transition-colors duration-fast ease-standard hover:border-primary/50 hover:text-foreground lg:hidden"
+          >
+            {editing ? "Done" : "Edit"}
+          </button>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-5">
+        {/* The table. Below `lg` only, and only while not editing. */}
+        <div className={`mt-4 ${editing ? "hidden" : "lg:hidden"}`}>
+          <PlanTable plan={plan} loads={loads} />
+        </div>
+
+        <div className={`mt-4 gap-4 lg:grid lg:grid-cols-5 ${editing ? "grid" : "hidden"}`}>
           {TERMS.map((term) => {
             const load = loads.find((l) => l.term === term);
             return (
@@ -166,17 +262,45 @@ export function CoursePlanner({
 
                 <p className="mt-1 eyebrow text-muted-foreground">{entry.requirement.group}</p>
 
+                {/* Q417 — what is **counted** and what merely **might count** are different
+                    kinds of claim, and they were one sentence in the same grey.
+
+                    D-187 made the distinction in logic: a course in a truncated audit list is
+                    accepted as unverifiable rather than rejected, because a checker that is
+                    wrong about what is allowed is worse than one that admits its limits. That
+                    reasoning was invisible on screen. A solid token with a tick is a course the
+                    audit names; a dashed token with a question mark is one it could not confirm,
+                    and the sentence under it says why. */}
                 {(entry.matched.length > 0 || entry.unverifiable.length > 0) && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {entry.matched.length > 0 && (
-                      <span>counted: {entry.matched.map((c) => c.course).join(", ")}. </span>
-                    )}
-                    {entry.unverifiable.length > 0 && (
-                      <span>
-                        might count: {entry.unverifiable.map((c) => c.course).join(", ")} — the
-                        audit&rsquo;s list is truncated, so this is not checked.
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {entry.matched.map((course) => (
+                      <span
+                        key={`counted-${course.course}`}
+                        className="flex items-center gap-1 rounded border border-primary/40 px-1.5 py-0.5 font-mono text-[0.65rem] text-foreground"
+                      >
+                        <CheckIcon aria-hidden className="size-3 text-primary" />
+                        {course.course}
                       </span>
-                    )}
+                    ))}
+                    {entry.unverifiable.map((course) => (
+                      <span
+                        key={`maybe-${course.course}`}
+                        title="The audit's list of acceptable courses is truncated, so this one could not be checked."
+                        className="flex items-center gap-1 rounded border border-dashed border-highlight/50 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground"
+                      >
+                        <CircleHelpIcon aria-hidden className="size-3 text-highlight" />
+                        {course.course}
+                        <span className="eyebrow">unchecked</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {entry.unverifiable.length > 0 && (
+                  <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
+                    Marked <span className="text-highlight">unchecked</span> because the
+                    audit&rsquo;s own list of acceptable courses is cut short — this plan may be
+                    fine, and this screen cannot say so.
                   </p>
                 )}
               </li>

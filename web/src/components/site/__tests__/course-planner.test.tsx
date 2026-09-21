@@ -70,8 +70,60 @@ describe("it distinguishes what it knows from what it guesses", () => {
       target: { value: "ART HIS 55 (5)" },
     });
 
-    expect(screen.getByText(/might count/i)).toBeInTheDocument();
-    expect(screen.getByText(/not checked/i)).toBeInTheDocument();
+    // V4 §5.7 (Q417) turned this from one grey sentence into two kinds of token. The claim
+    // under test is unchanged: an unverifiable course must not read as a counted one.
+    // The code appears twice — once as a chip in the phone table, once as a token in the
+    // outstanding list — so this asks whether *a* rendering of it is the hedged one.
+    const classes = screen
+      .getAllByText("ART HIS 55")
+      .map((element) => element.closest("span")?.className ?? "");
+    expect(classes.some((name) => name.includes("border-dashed"))).toBe(true);
+    expect(screen.getAllByText("unchecked").length).toBeGreaterThan(0);
+    expect(screen.getByText(/cut short/i)).toBeInTheDocument();
+  });
+
+  it("marks a course the audit does name as counted, with no hedge", () => {
+    render(
+      <CoursePlanner
+        requirements={[requirement({ needsUnits: 8, needsCourses: 2, selectFrom: ["ART HIS 20"] })]}
+        initial={emptyPlan()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/courses planned for winter 2027/i), {
+      target: { value: "ART HIS 20 (5)" },
+    });
+
+    const classes = screen
+      .getAllByText("ART HIS 20")
+      .map((element) => element.closest("span")?.className ?? "");
+    expect(classes.some((name) => name.includes("border-primary/40"))).toBe(true);
+    expect(classes.some((name) => name.includes("border-dashed"))).toBe(false);
+    expect(screen.queryAllByText("unchecked")).toHaveLength(0);
+  });
+});
+
+describe("the plan reads as a table before it reads as a form (Q416)", () => {
+  it("renders every term as a row, with its units", () => {
+    render(
+      <CoursePlanner
+        requirements={[requirement({})]}
+        initial={{ "Winter 2027": [{ course: "COM SCI 111", units: 4 }] }}
+      />,
+    );
+
+    // The table is the phone's default view. It is in the DOM at every width — `lg:hidden` is
+    // a media rule — so this asserts structure, not paint.
+    const row = screen.getByRole("row", { name: /winter 2027/i });
+    expect(row).toBeInTheDocument();
+    expect(row.textContent).toContain("COM SCI 111");
+  });
+
+  it("offers a way into editing on a phone", () => {
+    render(<CoursePlanner requirements={[requirement({})]} initial={emptyPlan()} />);
+
+    // D-187 keeps planning a laptop activity; taking editing away from the phone entirely
+    // would be a regression dressed up as a decision.
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 });
 

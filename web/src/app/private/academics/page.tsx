@@ -6,7 +6,12 @@ import { Suspense } from "react";
 import { PageHeader, Panel, Stat } from "@/components/site/page-shell";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
 import { TaskList, type TaskView } from "@/components/site/task-list";
+import { RequirementProgress } from "@/components/site/requirement-progress";
 import { VaultDocument, loadVaultDoc } from "@/components/site/vault-document";
+import { parseAudit } from "@/lib/academics/requirements";
+import { getFrontmatterField } from "@/lib/vault/frontmatter";
+import { readVaultFileCached } from "@/lib/vault/write";
+import { publicProfile } from "@/lib/vault/public";
 import type { Task } from "@/lib/db/schema";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
 import { listTasks } from "@/lib/tasks/queries";
@@ -46,6 +51,30 @@ async function Outstanding() {
 
   const overdue = academic.filter((t) => t.dueAt !== null && t.dueAt < new Date()).length;
 
+  /**
+   * The GPA, through `publicProfile` rather than `loadProfile`.
+   *
+   * Rule 1 of the V4 plan — and `public.test.ts` enforces it for **every** file under
+   * `src/app`, private routes included: a page imports the projection, never the loader. That
+   * is not bureaucracy here, it is the reason the allowlist can be trusted at all; an exception
+   * for "but this route is behind a passkey" is how the next exception gets made.
+   *
+   * It is also the right shape semantically. The GPA is published — it is on the resume and on
+   * the public site — so it is exactly what the projection is for, and this page reads the same
+   * field the resume does rather than a second copy.
+   *
+   * A missing or malformed value renders an em dash rather than `NaN`.
+   */
+  let gpa = "—";
+  let graduation = "";
+  try {
+    const profile = publicProfile();
+    gpa = Number.isFinite(profile.gpa) ? profile.gpa.toFixed(2) : "—";
+    graduation = profile.graduation ? `grad ${profile.graduation}` : "";
+  } catch {
+    // The vault is unreadable, which the panels above already say. One message is enough.
+  }
+
   return (
     <>
       {/* The list before the numbers that describe it, and three across rather than stacked
@@ -72,7 +101,14 @@ async function Outstanding() {
       <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat label="Open" value={academic.length} />
         <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "warn" : "default"} />
-        <Stat label="Graduation" value="Jun 2028" hint="3-year track" />
+        {/* Q418 — the GPA belongs here. It is on the resume and on the public site already;
+            withholding it from the private page that is *about* academics was an oversight, not
+            a privacy decision. From the profile frontmatter, which is where the resume reads it,
+            so there is one number rather than two that can drift.
+
+            Graduation moved into the hint: it is a date three years out, which is context for
+            the number beside it rather than a number that changes. */}
+        <Stat label="GPA" value={gpa} hint={graduation} />
       </div>
     </>
   );
@@ -90,8 +126,32 @@ async function Outstanding() {
  * page carries a student ID, a high school, and every grade ever received, none of which
  * this page needs. Re-run the script when a new audit is saved.
  */
+const AUDIT_PATH = "context/01_engineering/degree_audit.md";
+
 async function Degree() {
-  const doc = await loadVaultDoc("context/01_engineering/degree_audit.md");
+  const doc = await loadVaultDoc(AUDIT_PATH);
+
+  /**
+   * Structure, not prose (§5.7, Q415).
+   *
+   * The same parser the planner uses (D-187), so the two screens cannot disagree about what is
+   * outstanding. The totals come from the audit's frontmatter rather than from the parse: DARS
+   * counts 35 requirements including the ones it has already met, and this file only lists the
+   * open ones in full.
+   */
+  const requirements = parseAudit(doc.body);
+
+  // The frontmatter, which `loadVaultDoc` strips out of `body`. `readVaultFileCached` is
+  // memoised per request, so reading the same file twice costs one read.
+  let frontmatter = "";
+  try {
+    frontmatter = (await readVaultFileCached(AUDIT_PATH)).content;
+  } catch {
+    // `doc.error` already covers this; the meter simply does not render.
+  }
+  const total = number(frontmatter, "requirements_total");
+  const unfulfilled = number(frontmatter, "requirements_unfulfilled");
+
   return (
     // `mt-6` at `laptop`: this is the top of the second column there, so it aligns with the
     // first panel of the left column rather than hanging 8 units below it.
@@ -102,7 +162,18 @@ async function Degree() {
         collapsible
         defaultOpen
       >
-        <VaultDocument doc={doc} />
+        {doc.error ? (
+          <Unavailable
+            subject="The degree audit"
+            detail="The audit file could not be read. Save a fresh DARS audit and run python scripts/parse_dars.py."
+          />
+        ) : (
+          <RequirementProgress
+            requirements={requirements}
+            total={total}
+            unfulfilled={unfulfilled}
+          />
+        )}
       </Panel>
     </div>
   );
@@ -123,6 +194,14 @@ async function Record() {
       </Panel>
     </div>
   );
+}
+
+/** One frontmatter field as a number, or null. */
+function number(markdown: string, field: string): number | null {
+  const raw = getFrontmatterField(markdown, field);
+  if (raw === null) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
 }
 
 export default function AcademicsPage() {

@@ -336,6 +336,20 @@ is easy to undo by accident:
 - **Undo is a toast here too now** (D-293). No list in the private app renders an inline undo
   row any more.
 
+## Academics, after V4 §5.7 (2026-09-21, D-295 to D-299)
+
+- **The audit is rendered from `lib/academics/requirements.ts`, not as markdown.** That parser
+  is shared with the planner and is the only one; `scripts/parse_dars.py` changing breaks both
+  screens or neither (D-295).
+- **The meter's numbers come from the audit's frontmatter**, not from the parse — the file lists
+  only the open requirements in full, so a parsed numerator would be wrong.
+- **`IP` means in progress and must never render as counted** (D-296), and a truncated
+  acceptable-course list must keep saying it is truncated.
+- **The planner is a table below `lg` with an Edit toggle** (D-298). D-187's "desktop-only"
+  stands for editing; reading is a phone activity.
+- **Counted and unchecked are different tokens** (D-299). Do not merge them back into a
+  sentence: the unchecked one is a guess the audit could not confirm.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit

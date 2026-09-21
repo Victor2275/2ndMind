@@ -157,6 +157,92 @@ export function isHighPriority(application: Application): boolean {
   return application.priority.toLowerCase().startsWith("high");
 }
 
+/* ------------------------------------------------------------------------------------------
+   Stages — V4 §5.8 (Q419)
+   ------------------------------------------------------------------------------------------ */
+
+/**
+ * The pipeline as a board (Q419: *kanban*).
+ *
+ * The sheet's `status` is free text written by a Gmail script and by hand — "Pending",
+ * "OA sent", "Rejected", "No Application", "" — so a board has to *derive* its columns rather
+ * than read them. These five are the stages Victor's sheet actually contains, matched by
+ * substring and in order of specificity: an offer that was later rejected is closed, and a
+ * status naming an interview outranks the generic "applied".
+ *
+ * **Nothing here writes.** The sheet has exactly one writer, which is the point of D-x's
+ * original refusal to duplicate it, so this is a board you read and not a board you drag. See
+ * D-300.
+ */
+export type Stage = "shortlist" | "applied" | "interviewing" | "offer" | "closed";
+
+export type StageColumn = {
+  stage: Stage;
+  label: string;
+  applications: Application[];
+};
+
+export function stageOf(application: Application): Stage {
+  const status = application.status.toLowerCase();
+
+  if (!isSubmitted(application)) return "shortlist";
+  // Closed first: "offer declined" and "rejected after interview" both name an earlier stage
+  // and are neither of them still live.
+  if (status.includes("reject") || status.includes("declin") || status.includes("closed"))
+    return "closed";
+  if (status.includes("offer")) return "offer";
+  if (
+    status.includes("interview") ||
+    status.includes("screen") ||
+    status.includes("oa") ||
+    status.includes("assessment")
+  )
+    return "interviewing";
+  return "applied";
+}
+
+const STAGE_LABEL: Record<Stage, string> = {
+  shortlist: "Not applied",
+  applied: "Applied",
+  interviewing: "Interviewing",
+  offer: "Offer",
+  closed: "Closed",
+};
+
+export const STAGES: readonly Stage[] = [
+  "shortlist",
+  "applied",
+  "interviewing",
+  "offer",
+  "closed",
+] as const;
+
+/**
+ * The board's columns, newest first inside each.
+ *
+ * The `shortlist` column is **high priority only**. 173 of 178 rows are postings Victor has not
+ * applied to, and a column holding all of them is the wall `toPipeline` was written to avoid —
+ * the count above it still reports the true total, so nothing is hidden, only unlisted.
+ */
+export function stageColumns(applications: Application[]): StageColumn[] {
+  const recent = (a: Application, b: Application) =>
+    (b.added || "0000-00-00").localeCompare(a.added || "0000-00-00");
+
+  return STAGES.map((stage) => {
+    const inStage = applications.filter((application) => stageOf(application) === stage);
+    return {
+      stage,
+      label: STAGE_LABEL[stage],
+      applications: (stage === "shortlist" ? inStage.filter(isHighPriority) : inStage).sort(recent),
+    };
+  });
+}
+
+/** How many rows are in a stage, including the ones a column does not list. */
+export function stageTotal(applications: Application[], stage: Stage): number {
+  return applications.filter((application) => stageOf(application) === stage).length;
+}
+
 export type Pipeline = {
   total: number;
   submitted: Application[];
