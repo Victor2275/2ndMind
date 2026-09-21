@@ -17,6 +17,7 @@ import {
 } from "@/lib/academics/plan";
 import type { Requirement } from "@/lib/academics/requirements";
 import type { ActionState } from "@/lib/sprint-goals";
+import { useAnnounce } from "@/components/site/announcer";
 
 /**
  * The three-year plan, and whether it fits (V3 §5.2, D-187).
@@ -120,6 +121,7 @@ export function CoursePlanner({
   initial: Plan;
 }) {
   const [state, action] = useActionState<ActionState | null, FormData>(savePlan, null);
+  useAnnounce(state);
   const [text, setText] = useState<Record<string, string>>(() =>
     Object.fromEntries(TERMS.map((term) => [term, toText(initial, term)])),
   );
@@ -312,10 +314,7 @@ export function CoursePlanner({
       <div className="flex items-center gap-3">
         <SaveButton />
         {state && (
-          <span
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <span className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </span>
         )}

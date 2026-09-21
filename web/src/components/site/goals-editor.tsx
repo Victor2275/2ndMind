@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { saveSprintGoals } from "@/app/private/actions";
 import { GOAL_DOMAINS, type ActionState } from "@/lib/sprint-goals";
+import { useAnnounce } from "@/components/site/announcer";
 
 /**
  * The week's three goals, inline on the Today screen.
@@ -30,6 +31,7 @@ function SaveButton() {
 
 export function GoalsEditor({ values }: { values: Record<string, string> }) {
   const [state, action] = useActionState<ActionState | null, FormData>(saveSprintGoals, null);
+  useAnnounce(state);
 
   return (
     <form action={action} className="space-y-3">
@@ -51,10 +53,7 @@ export function GoalsEditor({ values }: { values: Record<string, string> }) {
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <SaveButton />
         {state && (
-          <p
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <p className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </p>
         )}

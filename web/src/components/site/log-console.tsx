@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 
 import { fileLogEntry, removeLogEntry, tagLogEntry, undoLogEntry } from "@/app/private/log/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { SwipeRow } from "@/components/site/swipe-row";
 import { notify } from "@/components/site/toasts";
 import { Empty } from "@/components/site/states";
@@ -39,6 +40,7 @@ const TIME = new Intl.DateTimeFormat("en-US", {
 
 function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) => void }) {
   const [state, remove] = useActionState<ActionState | null, FormData>(removeLogEntry, null);
+  useAnnounce(state);
 
   /**
    * Guarded on the state object's identity, not on `state.ok` (§5.5, the same trap `TaskList`
@@ -155,6 +157,7 @@ function UnsortedRow({
 }) {
   const [state, file] = useActionState<ActionState | null, FormData>(fileLogEntry, null);
   const [tagState, tag] = useActionState<ActionState | null, FormData>(tagLogEntry, null);
+  useAnnounce(tagState);
 
   return (
     <li className="px-4 py-3">

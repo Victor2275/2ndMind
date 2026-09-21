@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { importHevyCsv } from "@/app/private/athletics/actions";
 import type { ActionState } from "@/lib/athletics/forms";
+import { useAnnounce } from "@/components/site/announcer";
 
 function ImportButton() {
   const { pending } = useFormStatus();
@@ -21,6 +22,7 @@ function ImportButton() {
 
 export function HevyImportForm() {
   const [state, action] = useActionState<ActionState | null, FormData>(importHevyCsv, null);
+  useAnnounce(state);
 
   return (
     <form action={action} className="mt-5 space-y-4">
@@ -40,10 +42,7 @@ export function HevyImportForm() {
       <div className="flex flex-wrap items-center gap-4">
         <ImportButton />
         {state && (
-          <p
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <p className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </p>
         )}

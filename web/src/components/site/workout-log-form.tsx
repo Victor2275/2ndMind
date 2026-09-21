@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { logWorkoutAction } from "@/app/private/athletics/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { SlowSaveNotice } from "@/components/site/slow-save";
 import type { ActionState } from "@/lib/athletics/forms";
 
@@ -98,6 +99,7 @@ function SetRow({ index }: { index: number }) {
 
 export function WorkoutLogForm() {
   const [state, action] = useActionState<ActionState | null, FormData>(logWorkoutAction, null);
+  useAnnounce(state);
   const [rows, setRows] = useState(3);
 
   return (
@@ -154,10 +156,7 @@ export function WorkoutLogForm() {
       <div className="flex flex-wrap items-center gap-4">
         <SaveButton />
         {state && (
-          <p
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <p className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </p>
         )}

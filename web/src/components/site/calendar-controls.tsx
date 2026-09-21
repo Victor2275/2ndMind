@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { refreshCalendars, syncCanvas } from "@/app/private/calendar/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -32,7 +33,9 @@ export function CalendarControls() {
     refreshCalendars,
     null,
   );
+  useAnnounce(refreshState);
   const [syncState, sync] = useActionState<ActionState | null, FormData>(syncCanvas, null);
+  useAnnounce(syncState);
   const status = syncState ?? refreshState;
 
   return (
@@ -45,7 +48,6 @@ export function CalendarControls() {
       </form>
       {status && (
         <p
-          role="status"
           className={`w-full font-mono text-[0.65rem] sm:w-auto ${
             status.ok ? "text-primary" : "text-destructive"
           }`}

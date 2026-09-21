@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { resolveErrorReport } from "@/app/private/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { ActionState } from "@/lib/sprint-goals";
 
 /**
@@ -42,6 +43,7 @@ const AGE = new Intl.DateTimeFormat("en-US", {
 
 function Row({ error }: { error: ErrorView }) {
   const [state, resolve] = useActionState<ActionState | null, FormData>(resolveErrorReport, null);
+  useAnnounce(state);
 
   return (
     <li className="px-4 py-3">

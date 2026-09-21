@@ -89,7 +89,10 @@ describe("when the save fails", () => {
     await userEvent.type(screen.getByRole("textbox"), "the thing I must not forget");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("DATABASE_URL");
+    // By text, not by `role="status"`: the announcement moved to the one live region in the
+    // layout (§7.4, D-313), so the paragraph beside the button is now visible feedback only.
+    // What this test is about is that the failure is *shown* and the text survives it.
+    expect(await screen.findByText(/DATABASE_URL/)).toBeInTheDocument();
     await waitFor(() =>
       expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe(
         "the thing I must not forget",

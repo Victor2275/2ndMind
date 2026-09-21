@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { publishUpdate } from "@/app/private/now/actions";
 import type { ActionState } from "@/lib/sprint-goals";
+import { useAnnounce } from "@/components/site/announcer";
 
 /**
  * Writing an update onto the public Working page.
@@ -33,6 +34,7 @@ function PublishButton() {
 
 export function UpdateComposer({ projects, today }: { projects: ActiveProject[]; today: string }) {
   const [state, action] = useActionState<ActionState | null, FormData>(publishUpdate, null);
+  useAnnounce(state);
   const [slug, setSlug] = useState(projects[0]?.slug ?? "");
 
   // The textarea is uncontrolled and remounts when this key changes, which empties it.
@@ -111,7 +113,6 @@ export function UpdateComposer({ projects, today }: { projects: ActiveProject[];
         <PublishButton />
         {state && (
           <p
-            role="status"
             className={
               state.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive-foreground"
             }

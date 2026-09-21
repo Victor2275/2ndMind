@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { answerPostingQuestion } from "@/app/private/work/tailor/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { TailorState } from "@/lib/tailor-state";
 
 /**
@@ -33,6 +34,7 @@ function AskButton() {
 
 export function QuestionForm() {
   const [state, action] = useActionState<TailorState | null, FormData>(answerPostingQuestion, null);
+  useAnnounce(state);
 
   const answer = state?.ok ? state.answer : undefined;
   const byId = new Map((state?.bullets ?? []).map((b) => [b.id, b]));
@@ -56,9 +58,7 @@ export function QuestionForm() {
         <div className="flex flex-wrap items-center gap-3">
           <AskButton />
           {state && !state.ok && (
-            <p role="status" className="text-xs text-destructive-foreground">
-              {state.message}
-            </p>
+            <p className="text-xs text-destructive-foreground">{state.message}</p>
           )}
         </div>
       </form>

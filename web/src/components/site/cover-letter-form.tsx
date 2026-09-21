@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { generateCoverLetterAction } from "@/app/private/work/tailor/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { TailorState } from "@/lib/tailor-state";
 
 /**
@@ -40,6 +41,7 @@ export function CoverLetterForm() {
     generateCoverLetterAction,
     null,
   );
+  useAnnounce(state);
   const [copied, setCopied] = useState(false);
 
   const letter = state?.ok ? state.letter : undefined;
@@ -77,9 +79,7 @@ export function CoverLetterForm() {
         <div className="flex flex-wrap items-center gap-3">
           <DraftButton />
           {state && !state.ok && (
-            <p role="status" className="text-xs text-destructive-foreground">
-              {state.message}
-            </p>
+            <p className="text-xs text-destructive-foreground">{state.message}</p>
           )}
         </div>
       </form>

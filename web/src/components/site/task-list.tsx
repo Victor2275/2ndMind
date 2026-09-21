@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { BriefcaseIcon, DumbbellIcon, GraduationCapIcon } from "lucide-react";
 
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { SwipeRow } from "@/components/site/swipe-row";
 import { Empty } from "@/components/site/states";
 import { notify } from "@/components/site/toasts";
@@ -111,6 +112,7 @@ function DomainBadge({ domain }: { domain: string }) {
 function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => void }) {
   const [, toggle] = useActionState<ActionState | null, FormData>(toggleTask, null);
   const [removeState, remove] = useActionState<ActionState | null, FormData>(removeTask, null);
+  useAnnounce(removeState);
 
   // In an effect, not during render: raising a toast during render is a setState on another
   // component's store, which React reports as an error and which would loop this subtree.
@@ -289,6 +291,7 @@ export function TaskList({
   tagSuggestions?: readonly string[];
 }) {
   const [addState, add] = useActionState<ActionState | null, FormData>(addTask, null);
+  useAnnounce(addState);
   const [, undo] = useActionState<ActionState | null, FormData>(undoTask, null);
 
   /**

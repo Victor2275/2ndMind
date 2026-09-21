@@ -12,6 +12,7 @@ import {
 import { useFormStatus } from "react-dom";
 
 import { createLogEntry } from "@/app/private/log/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { DictateButton } from "@/components/site/dictate-button";
 import { SlowSaveNotice } from "@/components/site/slow-save";
 import { TagInput } from "@/components/site/tag-input";
@@ -586,6 +587,7 @@ export function LogForm({
   write?: (prev: ActionState | null, formData: FormData) => Promise<ActionState>;
 }) {
   const [state, action] = useActionState<ActionState | null, FormData>(write, null);
+  useAnnounce(state);
   const [showDate, setShowDate] = useState(false);
   const noteId = `note-${category.key}`;
 

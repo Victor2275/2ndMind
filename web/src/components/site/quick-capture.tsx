@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { captureQuick } from "@/app/private/log/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { CONTROL_FULL } from "@/components/site/field";
 import { SlowSaveNotice } from "@/components/site/slow-save";
 import { buzzSaved } from "@/lib/haptics";
@@ -72,6 +73,7 @@ export function QuickCapture({
   firstAction?: boolean;
 }) {
   const [state, action] = useActionState<ActionState | null, FormData>(write, null);
+  useAnnounce(state);
   const [as, setAs] = useState<"note" | "task">("note");
   const input = useRef<HTMLInputElement>(null);
 
@@ -162,10 +164,7 @@ export function QuickCapture({
         <SlowSaveNotice />
 
         {state && (
-          <p
-            role="status"
-            className={`text-xs ${state.ok ? "text-muted-foreground" : "text-destructive"}`}
-          >
+          <p className={`text-xs ${state.ok ? "text-muted-foreground" : "text-destructive"}`}>
             {state.message}
           </p>
         )}

@@ -14,6 +14,7 @@ import {
 } from "@/lib/fabrication/spools";
 import type { FilamentSpool } from "@/lib/db/schema";
 import type { ActionState } from "@/lib/sprint-goals";
+import { useAnnounce } from "@/components/site/announcer";
 
 /**
  * Filament, sorted by what runs out first (V3 §5.1, D-189).
@@ -169,6 +170,7 @@ function SpoolRow({ spool }: { spool: FilamentSpool }) {
 
 function SpoolForm({ spool, onDone }: { spool?: FilamentSpool; onDone: () => void }) {
   const [state, action] = useActionState<ActionState | null, FormData>(saveSpool, null);
+  useAnnounce(state);
 
   return (
     <form action={action} className="mt-3 rounded-lg border border-border bg-background/60 p-3">
@@ -212,10 +214,7 @@ function SpoolForm({ spool, onDone }: { spool?: FilamentSpool; onDone: () => voi
           close
         </button>
         {state && (
-          <span
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <span className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </span>
         )}

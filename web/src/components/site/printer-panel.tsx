@@ -8,6 +8,7 @@ import { deletePrinter, savePrinter } from "@/app/private/hobbies/actions";
 import { PRINTER_STATUSES } from "@/lib/fabrication/statuses";
 import type { Printer } from "@/lib/db/schema";
 import type { ActionState } from "@/lib/sprint-goals";
+import { useAnnounce } from "@/components/site/announcer";
 
 /**
  * Printers, as a secondary panel (V3 §5.1, D-189).
@@ -118,6 +119,7 @@ function PrinterRow({ printer }: { printer: Printer }) {
 
 function PrinterForm({ printer, onDone }: { printer?: Printer; onDone: () => void }) {
   const [state, action] = useActionState<ActionState | null, FormData>(savePrinter, null);
+  useAnnounce(state);
 
   return (
     <form action={action} className="mt-3 rounded-lg border border-border bg-background/60 p-3">
@@ -171,10 +173,7 @@ function PrinterForm({ printer, onDone }: { printer?: Printer; onDone: () => voi
           close
         </button>
         {state && (
-          <span
-            role="status"
-            className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}
-          >
+          <span className={`font-mono text-xs ${state.ok ? "text-primary" : "text-destructive"}`}>
             {state.message}
           </span>
         )}

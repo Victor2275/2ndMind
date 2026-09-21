@@ -1,3 +1,4 @@
+import { Announcer } from "@/components/site/announcer";
 import { ContentWidth } from "@/components/site/content-width";
 import { PrivateSidebar } from "@/components/site/private-sidebar";
 import { PrivateTabBar } from "@/components/site/private-tabbar";
@@ -80,6 +81,12 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
           statically generated page for a function that can never fire. The offline shell
           mounts its own, because it renders outside this layout. */}
       <PrivateToaster />
+
+      {/* The one live region (§7.4, Q449, D-313). Mounted here, empty, for the same reason the
+          `Toaster` is: it has to already exist when something needs to be said. A region
+          created *by* the message it carries is the bug this replaces — twenty forms each
+          rendered their own `role="status"` conditionally on having a result. */}
+      <Announcer />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { suggestTailoring } from "@/app/private/work/tailor/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { TailorState } from "@/lib/tailor-state";
 
 /**
@@ -28,6 +29,7 @@ function SuggestButton() {
 
 export function TailorForm({ variantLabels }: { variantLabels: Record<string, string> }) {
   const [state, action] = useActionState<TailorState | null, FormData>(suggestTailoring, null);
+  useAnnounce(state);
 
   const advice = state?.ok ? state.advice : undefined;
   const byId = new Map((state?.bullets ?? []).map((b) => [b.id, b]));
@@ -51,9 +53,7 @@ export function TailorForm({ variantLabels }: { variantLabels: Record<string, st
         <div className="flex flex-wrap items-center gap-3">
           <SuggestButton />
           {state && !state.ok && (
-            <p role="status" className="text-xs text-destructive-foreground">
-              {state.message}
-            </p>
+            <p className="text-xs text-destructive-foreground">{state.message}</p>
           )}
         </div>
       </form>

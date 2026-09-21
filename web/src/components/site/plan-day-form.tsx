@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useRef } from "react";
 
 import { savePlanDayAction } from "@/app/private/athletics/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { CONTROL_FULL, Field, StickySave, useDirty } from "@/components/site/field";
 import { SaveState } from "@/components/site/states";
 import type { ChallengeDay, SessionType } from "@/lib/athletics/challenge";
@@ -40,6 +41,7 @@ const TYPES: { value: SessionType | ""; label: string }[] = [
 
 export function PlanDayForm({ day, note }: { day: ChallengeDay; note: string }) {
   const [state, action, pending] = useActionState(savePlanDayAction, null);
+  useAnnounce(state);
   const form = useRef<HTMLFormElement>(null);
   const { dirty } = useDirty(form);
 

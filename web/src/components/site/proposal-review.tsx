@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { approveGoals, proposeGoals } from "@/app/private/goals/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import type { ActionState } from "@/lib/sprint-goals";
 import type { ProposalState } from "@/lib/proposals/types";
 
@@ -47,6 +48,8 @@ function ApproveButton() {
 export function ProposalReview() {
   const [draft, draftAction] = useActionState<ProposalState | null, FormData>(proposeGoals, null);
   const [saved, saveAction] = useActionState<ActionState | null, FormData>(approveGoals, null);
+  useAnnounce(draft);
+  useAnnounce(saved);
 
   const proposal = draft?.proposal;
 
@@ -54,11 +57,7 @@ export function ProposalReview() {
     <div className="space-y-4">
       <form action={draftAction} className="flex flex-wrap items-center gap-3">
         <DraftButton hasProposal={Boolean(proposal)} />
-        {draft && !draft.ok && (
-          <p role="status" className="text-xs text-muted-foreground">
-            {draft.message}
-          </p>
-        )}
+        {draft && !draft.ok && <p className="text-xs text-muted-foreground">{draft.message}</p>}
       </form>
 
       {proposal && (
@@ -127,7 +126,6 @@ export function ProposalReview() {
             <ApproveButton />
             {saved && (
               <p
-                role="status"
                 className={
                   saved.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive-foreground"
                 }

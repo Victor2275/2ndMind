@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { addInboxNote } from "@/app/private/actions";
+import { useAnnounce } from "@/components/site/announcer";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -27,6 +28,7 @@ const NAG_AFTER_DAYS = 7;
 
 export function InboxPanel({ items, staleDays }: { items: TaskView[]; staleDays: number }) {
   const [state, action, pending] = useActionState<ActionState | null, FormData>(addInboxNote, null);
+  useAnnounce(state);
   const form = useRef<HTMLFormElement>(null);
 
   // Clear on success so the next thought can go straight in. Capture is meant to be
