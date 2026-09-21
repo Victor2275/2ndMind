@@ -85,8 +85,8 @@ weekday pieces; Tuesday, Thursday and Friday are the heavy academic days and sta
 | Wed | Z2 plus technique, 45–60 min, perg where available |
 | Thu | The week's quality session, 30–35 min |
 | Fri | Short and easy, then Strength B |
-| Sat | Boat practice, plus a short shakeout |
-| Sun | Boat practice, then the week's long piece |
+| Sat | Boat practice (coach's session), plus a short shakeout |
+| Sun | Boat practice (coach's session), then the week's long piece |
 
 **Polarisation is 85/15.** Thursday carries almost all of the intensity. If a session feels
 hard on a day not marked `quality`, `test` or `race`, it is being done wrong.
@@ -287,7 +287,7 @@ hard on a day not marked `quality`, `test` or `race`, it is being done wrong.
 | long | The week's long piece | Z2, fuelled, negative split if possible |
 | quality | The week's intensity | Hard. This is the 15%. |
 | strength | Short erg then a lift | Erg is a warmup, not a session |
-| water | Boat practice | Whatever the team asks |
+| water | Boat practice | Whatever the coach calls |
 | recovery | Deliberately easy | Easier than feels worthwhile |
 | test | A time trial | Maximal, logged as a `race` piece type |
 | race | The Cup | Maximal |
@@ -296,22 +296,35 @@ hard on a day not marked `quality`, `test` or `race`, it is being done wrong.
 ## 6. Stretching Routines
 
 Fifteen routines, ten minutes each, except the recovery pool at fifteen. The routine is chosen
-by the day's `Type` — see §5 — and rotates deterministically within its pool, so no two
-consecutive days share a routine and the sequence is the same every time it is computed.
+by the day's `Type` — see §5 — and is fixed for that day, so changing one day's session changes
+only that day's routine and never any other.
 
-**The lower-back rehab protocol lives here now.** Pallof presses, the couch stretch, hamstring
-flossing and glute bridges are distributed across the pools rather than sitting in their own
-checklist, so at least one of them lands nearly every day. `benchmarks_and_logs.md` §3 remains
-the reference for why each one exists.
+**Every movement needs nothing but a floor.** No bands, no foam roller, no pull-up bar, no rack,
+no step, no bench, no doorway — a dorm room, a hotel room, a corner of the boathouse or a patch
+of grass all work. That rules out a few obvious choices on purpose: the couch stretch becomes a
+half-kneeling hip flexor stretch, wall slides become floor slides, band pull-aparts become prone
+Y-T-Ws, and the dead hang becomes a standing overhead reach.
 
-| Pool | Used on | Routines | Minutes |
-| ---- | ------- | -------: | ------: |
-| recovery | recovery, taper days | 4 | 15 |
-| base | base days | 3 | 10 |
-| strength | strength days | 3 | 10 |
-| long | long and epic days | 2 | 10 |
-| quality | quality, test, race days | 2 | 10 |
-| water | boat practice days | 1 | 10 |
+**The lower-back rehab protocol lives here now**, with one substitution. The couch stretch,
+hamstring flossing and glute bridges are distributed across the pools unchanged, so at least one
+lands nearly every day. **Pallof presses are out** — they need a band or a cable and there is no
+equipment-free version of a loaded anti-rotation press. Dead bugs, bird dogs and side planks
+carry that job instead: same target, same "stiffen the trunk before it gets twisted" intent,
+nothing to hold. `benchmarks_and_logs.md` §3 remains the reference for why each one exists.
+
+**Pool sizes are not arbitrary.** Each one is at least as large as the most days of that pool
+any single week contains, which is what guarantees no routine repeats inside a week: recovery
+peaks at four (the Thanksgiving week), base and quality at three, strength and long at two, and
+there is never more than one practice day that is not also a long day.
+
+| Pool | Used on | Routines | Busiest week needs | Minutes |
+| ---- | ------- | -------: | -----------------: | ------: |
+| recovery | recovery, taper days | 4 | 4 | 15 |
+| base | base days | 3 | 3 | 10 |
+| quality | quality, test, race days | 3 | 3 | 10 |
+| strength | strength days | 2 | 2 | 10 |
+| long | long and epic days | 2 | 2 | 10 |
+| water | boat practice days | 1 | 1 | 10 |
 
 ### R1 · The Reset — `the-reset`
 
@@ -320,12 +333,12 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Supine breathing, knees on a chair | 2 min | Drops the ribs and switches off the lumbar extensors |
-| Hamstring flossing | 1 min per side | Lets the hips hinge instead of the spine |
+| Constructive rest breathing | 2 min, knees bent, feet flat | Drops the ribs and switches off the lumbar extensors |
+| Supine hamstring floss | 1 min per side, hands behind the thigh | Lets the hips hinge instead of the spine |
 | Supine figure-4 | 90 s per side | Glute and piriformis after a day of sitting |
 | Cat-cow, slow | 2 min | Segmental motion through a back that has been held rigid |
 | Child's pose with side reach | 90 s per side | Lats and quadratus lumborum |
-| Legs up the wall | 3 min | Venous return; finish here |
+| Supine knee hug, slow rock | 2 min | Finish decompressed |
 
 ### R2 · Hip Opener — `hip-opener`
 
@@ -334,10 +347,10 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Couch stretch | 2 min per side | Releases the hip flexors that pull the lower back into extension |
+| Half-kneeling hip flexor stretch | 2 min per side, glute squeezed | Releases what pulls the lower back into extension |
 | 90/90 switches | 12 slow reps | Internal and external rotation the erg never asks for |
 | Half-kneeling adductor rock | 90 s per side | Groin, which limits the catch |
-| Glute bridge | 3 × 15 | Teaches the glutes to fire so the back does not |
+| Glute bridge | 3 x 15 | Teaches the glutes to fire so the back does not |
 | Pigeon | 90 s per side | Deep external rotators |
 
 ### R3 · Spinal Floss — `spinal-floss`
@@ -347,11 +360,11 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Thoracic extension over a foam roller | 2 min | Undoes the rounded catch position |
+| Sphinx hold | 2 min | Prone thoracic extension; undoes the rounded catch |
 | Open book | 10 per side | Rotation from the ribs, not the lumbar spine |
 | Seated sciatic floss | 15 per side | Nerve glide down the hamstring |
 | Thread the needle | 90 s per side | Rear shoulder and mid-back |
-| Dead hang | 3 × 30 s | Decompresses everything at once |
+| Standing overhead reach and side bend | 45 s per side | Lengthens the whole side without a bar to hang from |
 | Standing forward fold | 2 min | Finish long |
 
 ### R4 · The Long Unwind — `the-long-unwind`
@@ -361,9 +374,9 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Quad stretch, standing | 90 s per side | First thing to seize after hours of leg drive |
-| Calf stretch on a step | 90 s per side | Ankles set the catch |
-| Glute bridge | 3 × 15 | Reactivation after a long sit |
+| Standing quad stretch | 90 s per side | First thing to seize after hours of leg drive |
+| Standing calf stretch, split stance | 90 s per side | Ankles set the catch |
+| Glute bridge | 3 x 15 | Reactivation after a long sit |
 | Seated straddle | 2 min | Adductors and lower back together |
 | Supine twist | 2 min per side | Unwinds the ribs |
 | Box breathing, flat on the floor | 3 min | Parasympathetic switch; you have earned it |
@@ -375,23 +388,23 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Ankle rock against a wall | 15 per side | Shin-to-wall distance decides how deep the catch goes |
-| Hamstring flossing | 1 min per side | Hinge without rounding |
+| Half-kneeling ankle rock | 15 per side, knee travelling past the toes | Ankle range decides how deep the catch goes |
+| Supine hamstring floss | 1 min per side | Hinge without rounding |
 | Deep squat hold | 90 s | Puts the whole catch position together |
-| Lat stretch on a rack | 45 s per side | Lets the arms reach past the shins |
+| Child's pose lat reach | 45 s per side | Lets the arms reach past the shins |
 | Cat-cow | 1 min | Free the spine before loading it |
 
 ### R6 · Rotation Primer — `rotation-primer`
 
-- **Pool**: base
+- **Pool**: quality
 - **Minutes**: 10
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Pallof press | 3 × 10 per side | Anti-rotation first: stiffen before you twist |
+| Dead bug, slow | 3 x 10 per side | Anti-rotation first: stiffen before you twist |
 | Open book | 10 per side | Rotation from the thoracic spine |
 | Half-kneeling rotation | 10 per side | Rotation with the hips locked out of it |
-| Side plank | 3 × 30 s per side | Lateral trunk, the neglected wall |
+| Side plank | 3 x 30 s per side | Lateral trunk, the neglected wall |
 | Thread the needle | 45 s per side | Finish in the rear shoulder |
 
 ### R7 · Lat and Lock — `lat-and-lock`
@@ -401,11 +414,11 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Dead hang | 3 × 30 s | Lats and shoulders under traction |
-| Doorway pec stretch | 45 s per side, three heights | Opens what a day of rowing closes |
-| Band pull-apart | 2 × 20 | Wakes the mid-back |
+| Prone Y-T-W raise | 2 x 10 each position | Wakes the mid-back with nothing in the hands |
+| Prone pec opener | 45 s per side, arm out in a T | Opens what a day of rowing closes |
+| Floor slide | 15 reps, supine, arms overhead | Scapular rhythm, and the floor gives the feedback a wall would |
 | Child's pose with side reach | 60 s per side | Lat and QL |
-| Wall slide | 15 reps | Teaches the shoulder blade to move on the ribcage |
+| Prone swimmer | 15 reps | Shoulder range under control |
 
 ### R8 · Armour Check — `armour-check`
 
@@ -414,11 +427,11 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Pallof press | 3 × 10 per side | Pre-activation before the bar; this is the rehab keystone |
-| Glute bridge | 3 × 15 | Glutes on before squats, or the back takes the load |
+| Dead bug | 3 x 10 per side | Pre-activation before the bar; the rehab keystone, unloaded |
+| Glute bridge | 3 x 15 | Glutes on before squats, or the back takes the load |
 | Bird dog | 10 per side, slow | Trunk stiffness with limbs moving |
-| Couch stretch | 90 s per side | Hip flexors off before hinging |
-| Ankle rock against a wall | 15 per side | Depth for the squat |
+| Half-kneeling hip flexor stretch | 90 s per side | Hip flexors off before hinging |
+| Half-kneeling ankle rock | 15 per side | Depth for the squat |
 
 ### R9 · Hinge Prep — `hinge-prep`
 
@@ -427,24 +440,24 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Hamstring flossing | 1 min per side | RDLs need length before load |
+| Supine hamstring floss | 1 min per side | RDLs need length before load |
 | Half-kneeling adductor rock | 60 s per side | Groin opens the stance |
-| Glute bridge, single leg | 12 per side | Finds the side that is not working |
+| Single-leg glute bridge | 12 per side | Finds the side that is not working |
 | Cat-cow | 1 min | Neutral spine, found deliberately |
 | Toe-touch progression | 10 reps | Rehearses the hinge unloaded |
 
 ### R10 · Press and Pull — `press-and-pull`
 
-- **Pool**: strength
+- **Pool**: base
 - **Minutes**: 10
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Doorway pec stretch | 45 s per side, three heights | Overhead press needs the front open |
-| Wall slide | 15 reps | Scapular rhythm before loading it |
-| Band external rotation | 2 × 15 per side | Cuff, cheaply insured |
-| Thoracic extension over a foam roller | 90 s | You cannot press overhead through a rounded back |
-| Wrist and forearm stretch | 45 s per side | Grip work is coming |
+| Prone pec opener | 45 s per side | Overhead press needs the front open |
+| Floor slide | 15 reps | Scapular rhythm before loading it |
+| Prone external rotation | 2 x 15, elbows at 90 degrees | Cuff, cheaply insured, no band needed |
+| Sphinx hold | 90 s | You cannot press overhead through a rounded back |
+| Wrist and forearm stretch | 45 s per side, palms on the floor | Grip work is coming |
 
 ### R11 · Seat Saver — `seat-saver`
 
@@ -453,9 +466,9 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Couch stretch | 2 min per side | Hours of hip flexion are about to happen |
+| Half-kneeling hip flexor stretch | 2 min per side | Hours of hip flexion are about to happen |
 | Supine figure-4 | 90 s per side | Glutes, before they go numb |
-| Glute bridge | 2 × 15 | Fire them once before the piece |
+| Glute bridge | 2 x 15 | Fire them once before the piece |
 | Standing hamstring sweep | 15 per side | Dynamic, not held — this is a warmup |
 | Leg swings, both planes | 15 per side | Hips loose at the start rather than at 10k |
 
@@ -466,11 +479,11 @@ the reference for why each one exists.
 
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
-| Pallof press | 3 × 10 per side | Trunk stiff for the next several hours |
+| Dead bug | 3 x 10 per side | Trunk stiff for the next several hours |
 | Bird dog | 10 per side | Endurance in the deep stabilisers |
-| Side plank | 3 × 30 s per side | The wall that fails last on a long piece |
+| Side plank | 3 x 30 s per side | The wall that fails last on a long piece |
 | Cat-cow | 1 min | Mobility before immobility |
-| Dead hang | 2 × 30 s | Last decompression before you sit down |
+| Standing overhead reach and side bend | 45 s per side | Last decompression before you sit down |
 
 ### R13 · Fast Twitch — `fast-twitch`
 
@@ -480,10 +493,10 @@ the reference for why each one exists.
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
 | Leg swings, both planes | 15 per side | Dynamic range before speed |
-| Walking lunge with rotation | 10 per side | Whole-body prep in one movement |
-| A-skip | 2 × 20 m | Elastic, cheap, wakes the calves |
-| Pogo hops | 3 × 15 | Tendon stiffness |
-| Band-resisted rotation | 15 per side, fast | Rehearses the stroke at speed |
+| Walking lunge with rotation, in place | 10 per side | Whole-body prep in one movement |
+| A-skip in place | 2 x 30 s | Elastic, cheap, wakes the calves |
+| Pogo hops | 3 x 15 | Tendon stiffness |
+| Standing rotation, fast | 15 per side, arms loose | Rehearses the stroke at speed |
 
 ### R14 · Race Face — `race-face`
 
@@ -493,9 +506,9 @@ the reference for why each one exists.
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
 | Leg swings, both planes | 15 per side | Range first |
-| Glute bridge, fast | 2 × 15 | Glutes firing before the first stroke |
-| Pallof press | 2 × 10 per side | Anti-rotation, then rotate hard |
-| Jump squat | 3 × 5 | Central nervous system on |
+| Glute bridge, fast | 2 x 15 | Glutes firing before the first stroke |
+| Dead bug, fast | 2 x 10 per side | Anti-rotation, then rotate hard |
+| Jump squat | 3 x 5 | Central nervous system on |
 | Visualisation, eyes closed | 2 min | Start sequence, first ten strokes, the call |
 
 ### R15 · Gunwale — `gunwale`
@@ -506,10 +519,10 @@ the reference for why each one exists.
 | Movement | Prescription | Why |
 | -------- | ------------ | --- |
 | Open book | 10 per side | Rotation is the whole stroke |
-| Band external rotation | 2 × 15 per side | Shoulders, before an hour of reaching |
+| Prone external rotation | 2 x 15 | Shoulders, before an hour of reaching |
 | Half-kneeling rotation | 10 per side | Rotation with a locked pelvis |
-| Glute bridge | 2 × 15 | Seated power comes from here |
-| Lat stretch on a rack | 45 s per side | Reach, unrestricted |
+| Glute bridge | 2 x 15 | Seated power comes from here |
+| Child's pose lat reach | 45 s per side | Reach, unrestricted |
 | Wrist and forearm stretch | 45 s per side | Grip, all practice |
 
 ## 7. The Two Big Pieces

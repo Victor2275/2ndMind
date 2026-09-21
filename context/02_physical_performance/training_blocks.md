@@ -28,7 +28,7 @@ minutes.
 
 - **Monday**:
   - Longest weekday piece — Zone 2 distance, 45-60 minutes
-  - Stretching routine from the `base` or `recovery` pool
+  - Stretching routine from the `base` or `recovery` pool (no equipment, ever)
 - **Tuesday**:
   - 5k or under, not for time, as a warmup
   - Strength A (Legs & Rotational Power)
@@ -42,10 +42,10 @@ minutes.
   - Short and easy, 4k or under
   - Strength B (Push/Pull & Grip)
 - **Saturday**:
-  - 1-hour Water Practice (50% Active Paddling / 50% Drills)
+  - 1-hour Water Practice — content is the coach's call, not Victor's
   - Short shakeout afterwards
 - **Sunday**:
-  - 1-hour Water Practice (50% Active Paddling / 50% Drills)
+  - 1-hour Water Practice — content is the coach's call, not Victor's
   - The week's long piece, progressive
 
 ---

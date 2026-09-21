@@ -53,11 +53,17 @@ To sustain 7 days of active movement at 215 lbs, glycogen and protein synthesis 
 - **Post-Workout**: Large meal/Greek yogurt at dining hall for glycogen replenishment.
 
 **Lower Back Rehab Protocol:**
-*(Reference only since 2026-09-20. These four movements are now delivered through the fifteen
+*(Reference only since 2026-09-20. These movements are now delivered through the fifteen
 stretching routines in `fall_2026_challenge.md` §6 rather than as a separate daily checklist —
 distributed across the pools so at least one lands nearly every day, instead of all four landing
 after a rest day and after a 25k alike. This section stays as the statement of why each one
 exists. `web/DECISIONS.md` D-272 records the change.)*
+
+***Pallof presses are not in the routines.*** *The routines are constrained to need no equipment
+anywhere — floor and bodyweight only — and a Pallof press needs a band or a cable. Its job,
+anti-rotation trunk stiffness before the spine gets twisted, is carried by **dead bugs, bird dogs
+and side planks** instead. If Victor is in a gym with a cable stack, the Pallof press below is
+still the better version of the exercise; it simply cannot be the one the daily routine assumes.*
 - **Pallof Presses**: 3x10 per side (Anti-rotation stiffening).
 - **Couch Stretch / Psoas Release**: 2 mins per side (Releases hip flexors that pull on the lower back).
 - **Hamstring Flossing**: 1 min per side (Allows hips to hinge properly on the erg).
