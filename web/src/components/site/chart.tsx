@@ -1,4 +1,5 @@
 import { ChartPin } from "@/components/site/chart-pin";
+import { ChartTable } from "@/components/site/chart-table";
 import { Empty } from "@/components/site/states";
 
 /**
@@ -335,6 +336,17 @@ export function TrendChart({
           {labels.length > 1 && ` → ${labels[labels.length - 1]}`}
         </span>
       </figcaption>
+
+      {/* The text alternative (Q450). `format` is the chart's own formatter, so the table
+          reads in the same units as the axis rather than in raw numbers. */}
+      <ChartTable
+        labels={labels}
+        rowHeader="Session"
+        columns={series.map((s) => ({
+          label: s.label,
+          cells: s.values.map((v) => (v === null || !Number.isFinite(v) ? null : format(v))),
+        }))}
+      />
     </figure>
   );
 }
@@ -383,6 +395,14 @@ export function BarChart({ bars, format, height = 120, lead }: BarChartProps) {
           </div>
         ))}
       </div>
+
+      {/* The text alternative (Q450). A bar chart is one series, so one column — and the
+          sublabel is dropped here because it is an abbreviation of the label it sits under. */}
+      <ChartTable
+        labels={bars.map((b) => b.label)}
+        rowHeader="Week"
+        columns={[{ label: "Total", cells: bars.map((b) => format(b.value)) }]}
+      />
     </div>
   );
 }

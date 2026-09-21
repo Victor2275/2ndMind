@@ -17,6 +17,97 @@ useful part.
 
 ---
 
+## 2026-09-21 · Gates, performance and accessibility — V4 §7.4
+
+### D-310 · `hidden sm:block` works now, so the five call sites were left alone
+
+**Decision.** The five call sites V4 §4.7 recorded as spelling the responsive display switch the
+broken way — `agenda.tsx`, `case-study-toc.tsx`, `private-link.tsx`, `session-logger.tsx`,
+`task-list.tsx` — **were not changed**. The `laptop-only` / `laptop-hidden` utilities that §4.7
+said they would need were written, measured, and deleted before shipping.
+
+**Why.** The bug no longer reproduces. `scripts/diag-display.mjs` measures the real elements on
+the real pages at 360/390/768/1280, and all three of the five that render unconditionally are
+correct at every width:
+
+| Call site | Spelling | Result |
+| --- | --- | --- |
+| `agenda.tsx:46` — event location | `hidden … sm:block` | `none` below 640, `block` at and above |
+| `case-study-toc.tsx:95` — the rail | `hidden … laptop:block` | `none` below 1024, `block` at 1280 |
+| `private-link.tsx:49` — the word "Private" | `hidden sm:inline` | `none` below 640, `inline` above |
+
+The other two are conditional on data rather than layout — tag chips exist only when a task
+carries tags, the wide set table only during a session — so the script has nothing to measure
+there. Their spellings (`sm:flex`, `lg:block`) are the same two mechanisms the measured three
+prove, at the same two breakpoints.
+
+**What changed underneath.** Nothing in this repo. D-132 measured the failure on a production
+build and it was real then: the base utility and its own variant both set `display`, and the
+base won at every width. The compiled stylesheet today emits `.sm\:block` roughly 75KB *after*
+`.hidden`, so the variant wins on source order — which is what the cascade always specified
+should happen. Tailwind v4 is the likely cause, and the upgrade fixed it silently.
+
+**Why the hand-written switch stays anyway.** `.nav-desktop` / `.nav-mobile` / `.phone-hidden` /
+`.phone-only` are no longer working around a bug, but they are still the mechanism both
+navigations and the page header are built on. Rewriting a working nav switch to prove a point
+about the cascade is all of the risk and none of the benefit. What changed is the *reason* in
+the comment above them, not the rules.
+
+**The general lesson, which is the reason this entry is long.** §4.7 found one instance of a
+known bug, extrapolated to five more, and scoped a new utility to fix them — all without
+re-running the measurement, because the measurement was already in the decision log. A
+measurement in a log is a fact about the day it was taken. This one had been stale for an
+unknown number of weeks, and acting on it would have added a workaround, two unused utility
+classes and five rewritten call sites, all for nothing.
+
+**How to reverse.** If a future upgrade regresses the cascade order, `npm run` the diag script —
+`node scripts/diag-display.mjs` — and it will say so in four lines. The fix at that point is the
+`laptop` pair deleted here, whose full text is in this commit's diff.
+
+### D-311 · The three OS accessibility preferences remove effects; they never add a look
+
+**Decision.** `prefers-contrast: more`, `prefers-reduced-transparency: reduce` and
+`forced-colors: active` are supported in `globals.css`, and every rule in all three blocks is an
+override that *takes something away*. None of them introduces a colour, a size or a layout that
+the app does not already use.
+
+**Why.** Q451 and Q453 both say "minimally", and minimal needed a definition sharper than "not
+much". A preference block that invents its own values is a fourth theme — it has to be designed,
+reviewed and kept in step with the other five every time a token moves, and nothing in the
+sweep renders it, so it rots unseen. Defining these as *subtractive* makes them cheap to own:
+the worst a stale rule can do is fail to remove something.
+
+What each one gives up:
+
+- **contrast** — the tertiary text level (`--faint-foreground` collapses into
+  `--muted-foreground`) and the quiet borders. It collapses to the *middle* level rather than to
+  `--foreground`, because flattening three text levels into one destroys the hierarchy that says
+  what to read first, which is its own accessibility loss. Two levels survive, three do not.
+- **reduced transparency** — every `backdrop-filter`, the alpha on bars that content scrolls
+  under, and the ambient layer, which is decoration made *of* transparency. Scrims keep their
+  alpha, because showing that something is still behind them is a scrim's entire function.
+- **forced colors** — the blurs and the ambient layer again, plus it *adds edges*: under a forced
+  palette, panels separated by their ground alone have nothing separating them, so they get a
+  `CanvasText` border. That is the one place these blocks put something on screen, and it is
+  restoring a boundary the OS removed rather than inventing one.
+
+**Why the translucent bars are matched by attribute substring.** `[class*="bg-background/"]`
+rather than a marker class on ten components. Tailwind writes the utility name into the class
+attribute literally, so the two kinds — bars spelled `bg-background/95` and `bg-card/95`, scrims
+spelled `bg-scrim` and `backdrop:bg-black/80` — separate on their own, with no marker to keep in
+sync as components are added. This is §5.3's rule ("the press is a base rule, not 66 call sites")
+applied again.
+
+**There is deliberately no `forced-color-adjust: none` anywhere.** It is the escape hatch that
+lets any element opt out of the whole mechanism, and the one element with a real claim to it —
+a chart, where colour carries the series — gets a text alternative instead (Q450). An escape
+hatch present in the file would get used.
+
+**How to reverse.** Delete the three `@media` blocks; nothing else references them. The two
+`data-status-dot` attributes on the sidebar and tab-bar badges become inert rather than broken.
+
+---
+
 ## 2026-09-21 · Every chart leads with its number — V4 §5.9
 
 ### D-305 · A chart leads with the figure it exists to show, and the delta carries a verdict
