@@ -688,6 +688,165 @@
 }
 
 /* ---------------------------------------------------------------------------
+   The three OS accessibility preferences — V4 §7.4 (Q451, Q452, Q453)
+
+   All three are "minimally" by Victor's own answers, and minimal here has a specific
+   meaning: **no new design, only the removal of things this design does that the
+   preference exists to switch off.** Each block below is an override of an effect, never a
+   new colour or a new layout. A preference that produced a fourth look would be a fourth
+   theme to maintain, and §2.5 already says themes are a registry.
+
+   None of the three is reachable from the app's own settings, deliberately (Q455: nobody
+   else uses the private app). They are the OS asking, and the app answering.
+   --------------------------------------------------------------------------- */
+
+/* --- prefers-contrast: more (Q451) ---------------------------------------------------
+   The token palette already clears AA everywhere and AAA for body text (Q439) — every
+   value in `tokens.css` carries its measured ratio in a comment. So "more contrast" is not
+   a rescue here, it is a preference, and what it costs us is the *tertiary* text level and
+   the quiet borders.
+
+   `--faint-foreground` is 6.21:1 on dark and 4.63:1 on light; the light value is the one
+   that only just clears AA, and it is the level used for timestamps, units and hints. It
+   collapses to `--muted-foreground` rather than to `--foreground`, because flattening three
+   text levels into one destroys the hierarchy that tells you what to read first — which is
+   an accessibility loss of a different kind. Two levels survive; three do not.
+
+   Borders go from `--border` (a near-ground separator) to a mix carrying real luminance,
+   because at this setting a 1px line the same lightness as its ground is not a line. */
+@media (prefers-contrast: more) {
+  :root,
+  :root[data-theme] {
+    --faint-foreground: var(--muted-foreground);
+    --border: color-mix(in oklab, var(--foreground) 45%, var(--background));
+    --input: color-mix(in oklab, var(--foreground) 55%, var(--background));
+    --ring: var(--foreground);
+  }
+
+  /* The focus ring is the one indicator a keyboard user cannot do without, so it thickens
+     rather than only recolouring. */
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [tabindex="0"]
+  ):focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* --- prefers-reduced-transparency: reduce (Q452) -------------------------------------
+   Ten elements in this app are translucent, and they fall into two kinds that this
+   preference treats in opposite directions.
+
+   **Bars that content scrolls under** — the site header, the tab bar, the form action bar,
+   the sticky exercise-group headings, the session-logger bar, and the two floating pills —
+   are translucent so the page feels continuous. Under this preference they go opaque. The
+   blur was doing the legibility work; take the blur away and leave the alpha and you get
+   the worst of both, which is text over text.
+
+   **Scrims** — the lightbox backdrop and the sheet overlay — are translucent *as their
+   function*: a scrim's job is to show that something is still behind it. Those keep their
+   alpha and only lose the blur.
+
+   Matched by attribute substring rather than by editing ten call sites, which is the §5.3
+   rule ("the press is a base rule, not 66 call sites") applied again. Tailwind writes the
+   utility name into the class attribute literally, so `bg-background/70` is matchable as
+   text. The scrims are not matched because they are spelled `bg-scrim` and
+   `backdrop:bg-black/80`, neither of which contains `bg-background/` or `bg-card/` — the
+   two kinds separate on their own, without a marker attribute to keep in sync. */
+@media (prefers-reduced-transparency: reduce) {
+  /* Every blur, both kinds. This is the part the preference is literally named after. */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* The bars, opaque. */
+  [class*="bg-background/"] {
+    background-color: var(--background) !important;
+  }
+
+  [class*="bg-card/"] {
+    background-color: var(--card) !important;
+  }
+
+  /* The ambient layer is a pair of low-alpha washes over the ground (D-193) — the mesh
+     gradient and the grain over it. It is decoration made *of* transparency, so it is
+     precisely what this preference is asking about. Spelled as the two pseudo-elements
+     rather than a class because that is what it is; the print block above drops the same
+     pair for the same structural reason. */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+}
+
+/* --- forced-colors: active (Q453) ----------------------------------------------------
+   Windows high contrast. The OS replaces every colour with one from a small system palette
+   and ignores ours, so the failure mode here is not "wrong colour" — it is **elements
+   disappearing**, because anything this design draws with colour alone has nothing left
+   once colour is taken away.
+
+   Three things in this app are drawn with colour alone and need a shape under forced
+   colours: the focus ring, which becomes `Highlight`; the panels separated by their ground
+   rather than by a line, which have to be given the line; and the status dots, which are
+   pure colour semantics.
+
+   There is deliberately **no `forced-color-adjust: none`** anywhere in this block. It is
+   the escape hatch that would let any of the above opt out of the whole mechanism, and the
+   one place with a real claim to it — the charts, where colour carries the series — gets a
+   text alternative instead (Q450), which is the better answer for every other reason too. */
+@media (forced-colors: active) {
+  /* Ground separation is gone, so every surface that was distinguished by its ground gets
+     an actual edge in a system colour. */
+  [class*="bg-card"],
+  [class*="bg-raised"],
+  [class*="bg-surface"] {
+    border: 1px solid CanvasText;
+  }
+
+  /* The focus indicator, in the colour the OS reserves for exactly this. */
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [tabindex="0"]
+  ):focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* A status dot is a coloured circle with no text and no border — under forced colours it
+     is a circle filled with Canvas on Canvas, i.e. nothing. The ring is what keeps it on
+     the screen; the fill is allowed to be flattened, because the accompanying label is
+     what carries the meaning (every dot in this app sits beside one). */
+  [data-status-dot] {
+    border: 1px solid CanvasText;
+  }
+
+  /* Backdrop blur renders as a grey film over system colours. */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Decoration made of colour, with nothing to say once the colour is the OS's. */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Resume
    --------------------------------------------------------------------------- */
 
@@ -902,6 +1061,28 @@
     display: none;
   }
 }
+
+/* **No `laptop` pair here, and that is the finding** — V4 §7.4, D-310.
+
+   §4.7 recorded that five call sites still spelled this switch as `hidden sm:block` and that
+   two of them would need a `laptop` equivalent of these utilities before they could be fixed.
+   Both halves of that note turn out to be wrong, and `scripts/diag-display.mjs` is what shows
+   it: measured against the real elements on the real pages, `hidden sm:block`,
+   `hidden sm:inline` and `hidden laptop:block` all resolve correctly at every width now.
+
+   The bug D-132 measured was real when it was measured. It is not real any more — the
+   compiled stylesheet now emits `.sm\:block` some 75KB *after* `.hidden`, so the variant wins
+   on source order, which is what the cascade always said should happen. The upgrade to
+   Tailwind v4 is the likely cause; nothing in this repo changed to fix it.
+
+   So the five call sites were left exactly as they are, and this pair of utilities was written
+   and then deleted rather than shipped. Adding a `laptop-only` with no call site, to work
+   around a bug that no longer reproduces, is the defensive workaround this comment exists to
+   prevent someone re-adding.
+
+   The rules *above* stay. They are not a workaround any more but they are still the mechanism
+   the two navigations are built on, and rewriting a working nav switch to prove a point about
+   the cascade is a change with all of the risk and none of the benefit. See D-310. */
 
 /* ---------------------------------------------------------------------------
    The sidebar rail — V4 §4.1 (Q360–Q363).

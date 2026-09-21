@@ -229,6 +229,7 @@ function Item({
         {badge !== undefined && (
           <span
             aria-hidden
+            data-status-dot
             className={`nav-dot absolute -top-0.5 -right-0.5 hidden size-2 rounded-full ring-2 ring-background ${
               badgeTone === "fault" ? "bg-destructive" : "bg-primary"
             }`}

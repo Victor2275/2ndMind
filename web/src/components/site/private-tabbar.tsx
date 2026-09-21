@@ -414,6 +414,7 @@ export function PrivateTabBar({
               {waiting > 0 && (
                 <span
                   aria-hidden
+                  data-status-dot
                   className={`absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-background ${
                     outbox?.urgency === "failed" ? "bg-destructive" : "bg-primary"
                   }`}
