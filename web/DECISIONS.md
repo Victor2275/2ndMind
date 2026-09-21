@@ -106,6 +106,116 @@ hatch present in the file would get used.
 **How to reverse.** Delete the three `@media` blocks; nothing else references them. The two
 `data-status-dot` attributes on the sidebar and tab-bar badges become inert rather than broken.
 
+### D-312 · A chart carries its data as a table, behind a closed disclosure
+
+**Decision.** `ChartTable` renders under every `TrendChart` and `BarChart`: the data the chart
+was drawn from, as a real `<table>`, inside a `<details>` that is closed by default. The SVG
+keeps its `role="img"` and its `aria-label`.
+
+**Why a table and not a sentence.** A chart is tabular data drawn as a shape, so the honest text
+form is the table. A generated summary — *"rose from 92kg to 104kg over eight sessions"* —
+discards every point in between and asserts a trend the data may not support. The table cannot
+be wrong about the data because it **is** the data.
+
+**Why closed.** Q450 asks for the disclosure and the reason is height: this is the same
+information twice, and open by default it doubles every chart on Athletics. Native `<details>`
+means no hydration boundary and no client JavaScript, which matters because these chart
+components are Server Components and the whole point of drawing them as plain SVG was that no
+charting runtime reaches the browser.
+
+**Why the SVG is not `aria-hidden`.** Leaving the `role="img"` label in place means a screen
+reader gets the chart's subject where the chart sits, and the data right after it. Hiding the
+graphic would make a closed `<details>` the only route to the content, and a closed disclosure
+is easy to pass straight over.
+
+**Two details that are decisions rather than style.** The cells are formatted through the
+chart's own `format` function, so the table reads in the same units as the axis rather than in
+raw numbers. And a missing point renders as an em dash, not an empty cell — a gap in a series
+is a fact about the data, and a blank cell reads as a rendering fault.
+
+**What else this buys.** It is the reason `globals.css` needs no `forced-color-adjust: none`
+(D-311). A chart is the one element with a real claim to opting out of the forced palette,
+because colour carries the series; with the legend and this table both present, it does not need
+to.
+
+**How to reverse.** Remove the two `<ChartTable>` call sites in `chart.tsx`. The component and
+its tests can stay — nothing else imports it.
+
+### D-313 · One live region, because twenty of them mostly did not fire
+
+**Decision.** `Announcer` is mounted once, empty, by the private layout, and is the only
+`aria-live` region for save results in the app. `useAnnounce(state)` is called by every form
+that has an `ActionState`; those forms keep their visible message and no longer carry
+`role="status"` on it.
+
+**Why.** Q449 asks for announcements on async saves and specifies **one** region. There were
+twenty, one per form, and more was strictly worse in three ways:
+
+- **Most of them could not announce at all.** They are rendered conditionally on `state &&`, so
+  the element that is supposed to announce the result is created *by* the result. A live region
+  has to be in the DOM before its content changes; several screen readers announce nothing when
+  the region and the text arrive together. This is the failure that made the count misleading —
+  twenty regions, and an unknown number of them silent.
+- **The saves with no visible message said nothing.** Ticking a task, swiping a row away, the
+  outbox flushing in the background. Those are the saves most worth announcing, because they
+  have no other feedback.
+- **Concurrent regions interleave**, and the usual outcome is that one is dropped.
+
+**The zero-width space.** Announcing the same string twice is a real case — saving the same form
+twice, two tasks ticked with the same confirmation — and setting a live region to the text it
+already holds is not a mutation, so nothing is read. `announce()` appends `​` on a repeat,
+which makes it a different string without making it a different sentence.
+
+**Why the hook takes a structural type rather than `ActionState`.** Three result shapes flow
+through these forms — `ActionState`, `TailorState`, `ProposalState` — and they agree on the two
+fields that matter. Naming the minimum (`{ ok, message?, queued? }`) lets all three pass with no
+cast and keeps this module from importing any of them. `message` is optional because
+`TailorState`'s is; a result whose content is `advice` has nothing to read out and is skipped.
+
+**`queued` is spelled out** rather than left to the message, for §5.2's reason: `ok: true,
+queued: true` is a different outcome from `ok: true`, and the outbox pill that distinguishes
+them is exactly what a screen-reader user cannot glance at.
+
+**Polite, including for errors.** An `assertive` region for failures would mean the one case
+where you are most likely mid-sentence reading the field that failed is the case that cuts you
+off.
+
+**How to reverse.** Drop `<Announcer />` from the layout and the `useAnnounce` calls. The visible
+messages are untouched and would simply stop being announced; restoring `role="status"` on them
+returns the previous behaviour exactly.
+
+### D-314 · Focus order is tested as a property, not as a list of elements
+
+**Decision.** `focus-order.test.tsx` covers the log form (Q442, Q447) with four assertions: no
+positive `tabindex`, tab order equals DOM order, the save button is reachable by tabbing forward
+with nothing trapping focus, and a chip sits immediately after the input it is named for.
+
+**Why the log form.** Q442 says "on the log form at minimum", and it is the right minimum: the
+densest keyboard surface in the app, and the only screen carrying all three of the things that
+break tab order at once — chips, a variable number of set rows, and a sticky save bar that could
+easily end up outside the form's flow.
+
+**Why properties rather than a pinned sequence.** The fields differ per category and the set rows
+are dynamic, so a test asserting the literal element list would fail on every content change
+while saying nothing about focus. What is asserted survives the form being edited.
+
+**Two assumptions that died writing it**, both recorded because both are the kind that produce a
+confidently wrong test:
+
+- `<input type="hidden">` matches every "focusable" selector and is not focusable. The form
+  carries one for `category`, which put every index off by one and made the order look broken
+  when it was not.
+- *"Chips come before the fields they fill"* was my own premise and it is wrong. The chip sits
+  immediately **after** the input it is named for and before the set row it also fills, which is
+  correct — a shortcut belongs beside the fields it is a shortcut for. The test now asserts that,
+  which is a real property: a chip row collected at the top or bottom of the form would pass
+  every other test here while making the keyboard path jump the length of the form and back.
+
+**The measured result: the order was already correct.** Tab order matched DOM order exactly, with
+no positive `tabindex` anywhere. This test is therefore a ratchet rather than a fix.
+
+**How to reverse.** Delete the file. Nothing depends on it.
+
 ---
 
 ## 2026-09-21 · Every chart leads with its number — V4 §5.9
