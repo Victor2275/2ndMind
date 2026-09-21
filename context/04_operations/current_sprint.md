@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-18
+updated: 2026-09-21
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -44,12 +44,26 @@ read_when: Always — anything about current priorities or scheduling.
   two-column on a laptop, and the app gained skip links, single `<main>` landmarks and a visible
   focus ring everywhere. Decisions D-251 to D-258.
 
-  **Phase 5 — the private screens, Milestone C — is next.** 76 points remain, 63 unparked.
+  **2026-09-20 — the fall challenge went on screen**, off-plan and logged into `V4_PLAN.md` §2.14
+  on 2026-09-21. The 76-day erg challenge is parsed out of `fall_2026_challenge.md`, today's
+  session and the ledger are on Today and Athletics, fifteen no-equipment routines are computed
+  from the rotation rather than written out day by day, and the plan is editable — a change to a
+  day lands in `plan_overrides` and is merged over the vault on read, so the app never rewrites
+  the markdown. Decisions D-271 to D-280. **2026-09-21:** `npm run shots` went from 581s to 250s
+  and stopped measuring the fold against the fallback font (D-281 to D-283, plan item 7.0).
 
-  **One thing on Victor:** the local database is behind the Phase 3 migration, so `/private/log`
-  and `/private/academics` render their failure branch locally and `npm run shots` reports eight
-  faults that are not real. `npm run db:migrate` clears it.
-- **Athletics:** Programming resumes at move-in (2026-09-20); nothing scheduled before then.
+  **Phase 5 — the private screens, Milestone C — is in progress** (2026-09-21). The plan now
+  totals **489 points, 429 done**; 60 remain, 47 unparked — Phase 5's five screens (28) and
+  Phase 7's remaining items (19). The 402-done figure the plan carried until 2026-09-21 was eight
+  points of optimism in a heading; §4's table is the authority.
+
+  **One thing on Victor:** the local database is behind `0014_plan_overrides`, so anything that
+  touches the editable plan fails locally and `npm run shots` reports faults that are not real.
+  `npm run db:migrate` clears it.
+- **Athletics:** The fall challenge is running — 76 days from 2026-09-20 to the 2026-11-07 race,
+  plus the 50k/100k. Today's session, the routine and the ledger are on `/private` and
+  `/private/athletics`; the day-by-day plan is at `/private/athletics/plan` and every day is
+  changeable. Source of truth is `context/02_physical_performance/fall_2026_challenge.md`.
 - **Academics:** Fall term starts 2026-09-20. Nothing due this sprint.
 
 ### 2ndMind build status
