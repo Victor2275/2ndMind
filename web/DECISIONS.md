@@ -17,6 +17,98 @@ useful part.
 
 ---
 
+## 2026-09-21 · The log remembers — V4 §5.5
+
+### D-290 · A draft keeps everything, including the measurements — and says so
+
+**Decision.** `lib/log/drafts.ts` stores the whole form per category in `localStorage`, written
+500ms after the last keystroke through the delegated `onInput` the form already had. A restored
+draft renders an amber line — *"Picked up where you left off. Nothing here has been saved yet."*
+— with a **Start fresh** button. A successful save clears it.
+
+**Why it is not `sticky.ts` with a wider allowlist.** D-155's rule for sticky values is
+**context, never measurements**, because a pre-filled weight is a number that reads as measured,
+and the log's whole value is that its numbers can be trusted. Q394 asks for the opposite: an
+entry Victor was in the middle of writing, which is worthless without its numbers.
+
+What makes that safe is the announcement. A sticky value pretends to be a default; a draft says
+it is unfinished and offers to go away. Without that line this decision would be D-155's rule
+quietly broken.
+
+**Why debounced.** Serialising thirty fields is cheap; writing `localStorage` synchronously on
+every keystroke is not, and on a phone it lands on the same thread as the keyboard.
+
+**The store deliberately does not notify on save.** `saveDraft` writes and returns without
+bumping the generation, so typing does not re-render the form; only `clearDraft` notifies,
+because that one has to remount the fields onto empty defaults.
+
+**How to reverse.** Delete the store, the notice and the `keep()` call in `onInput`. The form
+falls back to sticky values alone, which is exactly V3's behaviour.
+
+### D-291 · The log opens on the tab you last used, unless the URL says otherwise
+
+**Decision.** The chosen category is written to `2m_log_tab` and restored in an effect after
+hydration. `?category=` wins outright.
+
+**Why an effect and not initial state.** `localStorage` cannot be read while the server renders,
+so seeding `useState` from it is a hydration mismatch. The first paint is the first tab and the
+remembered one arrives a frame later — invisible, because tab switching is client-side and
+fetches nothing.
+
+**Why the URL wins.** `?category=` comes from the icon's long-press shortcut, which is an
+explicit "open the log on training". A remembered tab overruling it would make the shortcut
+unreliable exactly when it is used deliberately.
+
+**The stored key is validated against the live tabs**, so a retired category (D-159 keeps their
+definitions alive so old entries still read) cannot select a tab that no longer exists.
+
+**How to reverse.** Delete the effect and `choose`'s write; `setActive` alone is V3's behaviour.
+
+### D-292 · Search results mark the words you searched for, approximately and on purpose
+
+**Decision.** `lib/log/highlight.ts` marks word-prefix matches, case-insensitively, inside a
+`<mark>` styled with the primary tint. Terms of one character are dropped, the query is
+regex-escaped, and the longest term wins where two overlap.
+
+**Why approximate.** `searchEntries` runs `plainto_tsquery('english', …)`, so Postgres decides
+what matched, **with stemming**: `run` matches `running`, and stop words match nothing.
+Reproducing that faithfully means shipping an English stemmer to the browser to bold a few
+words. Prefix matching covers the common direction — a searcher types the short form.
+
+**Why that is honest rather than sloppy.** The count line above the list is the database's
+answer ("4 matches"); the marks answer "where do your words appear". A row with no marks is a
+row matched on a stem, and the count is what makes that legible instead of alarming. The
+function never rewrites the line: a test asserts the segments rejoin to the input exactly.
+
+**How to reverse.** Render `summarise(...)` directly instead of `<Marked>`.
+
+### D-293 · The log's undo moves into the toast, four weeks after the task list's did
+
+**Decision.** Removing a log entry raises `notify.undoable` instead of rendering an inline
+"Removed. Undo" form under the list. `EntryRow`'s effect is guarded on the state object's
+identity.
+
+**Why.** D-264 made this argument for tasks and this list was left behind: the row rendered
+*below* a list as long as the day has been, and it stayed until it was used, so yesterday's undo
+sat there ready to restore the wrong entry. The identity guard is the same trap `TaskList`
+documents — two removals produce two states that compare equal, and an effect keyed on the
+object re-fires on any unrelated render.
+
+**How to reverse.** Restore the `undoId` state and the inline form; `undoLogEntry` is unchanged.
+
+### D-294 · The log's two "nothing found" boxes become the shared state
+
+**Decision.** The dashed rectangles under a search with no hits and a tag with no entries are
+`Empty` with `reason="filtered"` and an action that clears the filter.
+
+**Why.** §5.1 rebuilt `Empty` around Q275 and Q277 — name the action that fills it, and
+distinguish *nothing yet* from *nothing matched* — and these two were copies of the box it
+replaced, which is precisely the case `reason="filtered"` exists for.
+
+**How to reverse.** Put the `<p className="border-dashed">` back.
+
+---
+
 ## 2026-09-21 · Today says what to do first — V4 §5.4
 
 ### D-284 · The capture box is the loudest thing on Today, and it does not move

@@ -43,6 +43,7 @@ import {
 import { SaveState } from "@/components/site/states";
 import { buzzSaved } from "@/lib/haptics";
 import type { Chip, ChipSets } from "@/lib/log/chips";
+import { clearDraft, draftStore, saveDraft } from "@/lib/log/drafts";
 import { stickyStore, submittedValues, writeSticky } from "@/lib/log/sticky";
 import type { ActionState } from "@/lib/sprint-goals";
 import { VoiceEntry } from "@/components/site/voice-entry";
@@ -603,6 +604,80 @@ export function LogForm({
   const sticky = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
 
   /**
+   * The half-typed entry, if the app was closed on one (§5.5, Q394).
+   *
+   * Read through a store for the same reason the sticky values are: `localStorage` does not
+   * exist during SSR, so anything read at render time is a hydration mismatch. It is empty on
+   * the server and real one re-render later, which is exactly what `useSyncExternalStore`
+   * promises.
+   *
+   * A draft **outranks a sticky value** where both name the same field. Sticky is what this
+   * category usually is; a draft is what Victor was actually typing.
+   */
+  const drafts = useMemo(() => draftStore(category), [category]);
+  const draft = useSyncExternalStore(
+    drafts.subscribe,
+    drafts.getSnapshot,
+    drafts.getServerSnapshot,
+  );
+
+  const defaults = useMemo(
+    () => ({ ...sticky.values, ...draft.values }),
+    [sticky.values, draft.values],
+  );
+
+  /**
+   * Whether *this mount* restored something, which is not the same question as whether a draft
+   * exists — the fields are uncontrolled, so once they are on screen the store's contents stop
+   * being what the reader sees. Captured at mount and cleared by hand.
+   */
+  const [restored, setRestored] = useState(false);
+  const announced = useRef<string | null>(null);
+  useEffect(() => {
+    if (announced.current === category.key) return;
+    announced.current = category.key;
+    setRestored(Object.keys(draft.values).length > 0);
+    // `draft.values` is read once per category on purpose: this announces a restore, and a
+    // draft saved by the next keystroke is not a restore.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category.key]);
+
+  /**
+   * Keep the draft current, debounced (§5.5, Q394).
+   *
+   * Serialising the whole form on every keystroke is cheap in this form's terms — thirty
+   * fields, not three thousand — but writing `localStorage` synchronously on each one is not,
+   * and on a phone it lands on the same thread as the keyboard. 500ms after the last input is
+   * indistinguishable to a person and turns a burst of typing into one write.
+   */
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keep = useCallback(() => {
+    if (pending.current) clearTimeout(pending.current);
+    pending.current = setTimeout(() => {
+      const element = form.current;
+      if (!element) return;
+      saveDraft(storage(), category, submittedValues(new FormData(element)));
+    }, 500);
+    // `storage` is a stable arrow over `window`; `form` is a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  // A pending write must not outlive the form it describes: switching tabs unmounts this and
+  // the timer would otherwise serialise the *new* category's fields under the old key.
+  useEffect(() => {
+    return () => {
+      if (pending.current) clearTimeout(pending.current);
+    };
+  }, [category]);
+
+  const discardDraft = useCallback(() => {
+    if (pending.current) clearTimeout(pending.current);
+    clearDraft(storage(), category);
+    setRestored(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  /**
    * The value the row shape keys off — `kind`, for Training (D-162).
    *
    * Seeded from the sticky value so a form that opens on "erg" opens with erg's fields. Keyed
@@ -610,8 +685,21 @@ export function LogForm({
    */
   const shapeName = category.rows?.shapeBy;
   const [shape, setShape] = useState<string | undefined>(
-    shapeName ? sticky.values[shapeName] : undefined,
+    shapeName ? (draft.values[shapeName] ?? sticky.values[shapeName]) : undefined,
   );
+
+  /**
+   * Adopt the shape the stored values imply, once they arrive.
+   *
+   * The hydration pass has no `localStorage`, so the seed above can only ever be empty on first
+   * paint — which for Training means the erg fields do not appear until something is touched.
+   * Guarded on `shape === undefined`, so this never overrules a choice already made.
+   */
+  useEffect(() => {
+    if (!shapeName || shape !== undefined) return;
+    const found = defaults[shapeName];
+    if (found) setShape(found);
+  }, [defaults, shapeName, shape]);
 
   /**
    * Blur validation, the error summary and the dirty indicator (§5.2, Q249, Q250, Q252).
@@ -711,6 +799,12 @@ export function LogForm({
       // for, and a completed log entry is neither.
       buzzSaved();
       writeSticky(storage(), category, submitted.current);
+      // The entry exists now, so the draft of it is not a draft of anything (§5.5). This also
+      // bumps the draft generation, which is what remounts the fields onto the new sticky
+      // defaults rather than the ones they were mounted with.
+      if (pending.current) clearTimeout(pending.current);
+      clearDraft(storage(), category);
+      setRestored(false);
       // React has reset the form, so nothing is unsaved and nothing is invalid any more.
       // Neither state clears itself: `useDirty` listens for `input` and a reset fires none,
       // and a blur error outlives the value that produced it (§5.2).
@@ -732,16 +826,41 @@ export function LogForm({
       // Remounts on category change, so switching tabs clears the previous category's values
       // instead of leaving them to be submitted by accident. The generation does the same
       // after a successful save.
-      key={`${category.key}-${sticky.version}`}
+      key={`${category.key}-${sticky.version}-${draft.version}`}
       // Delegated, not per input (§5.2). `blur` does not bubble, but React's synthetic `onBlur`
       // is `focusout` underneath and does — which is the whole reason one handler here can
       // validate ~30 fields, including the ones inside generated row groups that do not exist
       // when this renders.
       onBlur={handlers.onBlur}
-      onInput={handlers.onInput}
+      onInput={(event) => {
+        handlers.onInput(event);
+        // The draft rides the delegated handler that already exists (§5.5). A second listener
+        // — or thirty per-field ones — would be a second place for "what is in this form" to
+        // be computed, and this one is already the answer.
+        keep();
+      }}
       className="space-y-4"
     >
       <input type="hidden" name="category" value={category.key} />
+
+      {/* A restored draft **says so** (§5.5, Q394).
+          Sticky values pretend to be defaults, which is safe because they are context. A draft
+          carries measurements, and a number that was typed yesterday must not read as one
+          measured today — so it is announced, and discarding it is one tap. */}
+      {restored && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-highlight/40 bg-highlight/5 px-3 py-2">
+          <p className="text-xs text-muted-foreground">
+            Picked up where you left off. Nothing here has been saved yet.
+          </p>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="min-h-11 press rounded-control px-2 text-xs text-primary transition-colors duration-fast ease-standard hover:underline"
+          >
+            Start fresh
+          </button>
+        </div>
+      )}
 
       {category.fields.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -749,7 +868,7 @@ export function LogForm({
             <FieldInput
               key={field.name}
               field={field}
-              defaultValue={sticky.values[field.name]}
+              defaultValue={defaults[field.name]}
               chips={chips[field.name]}
               onPick={fill}
               onValueChange={field.name === shapeName ? setShape : undefined}

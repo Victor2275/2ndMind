@@ -1,14 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 
 import { fileLogEntry, removeLogEntry, tagLogEntry, undoLogEntry } from "@/app/private/log/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
+import { notify } from "@/components/site/toasts";
 import { Empty } from "@/components/site/states";
 import { LogForm } from "@/components/site/log-form";
 import { QuickCapture } from "@/components/site/quick-capture";
 import { TagInput } from "@/components/site/tag-input";
 import { categoryByKey, summarise, TAB_CATEGORIES } from "@/lib/log/categories";
+import { readLastCategory, writeLastCategory } from "@/lib/log/drafts";
 import type { ChipSets } from "@/lib/log/chips";
 import type { ActionState } from "@/lib/sprint-goals";
 
@@ -38,8 +40,17 @@ const TIME = new Intl.DateTimeFormat("en-US", {
 function EntryRow({ entry, onUndo }: { entry: EntryView; onUndo: (id: number) => void }) {
   const [state, remove] = useActionState<ActionState | null, FormData>(removeLogEntry, null);
 
+  /**
+   * Guarded on the state object's identity, not on `state.ok` (§5.5, the same trap `TaskList`
+   * documents). Two removals in a row produce two states that compare equal field by field,
+   * and an effect that re-fires on an unrelated re-render puts a second undo toast on screen
+   * pointing at an entry that is already gone.
+   */
+  const settled = useRef<ActionState | null>(null);
   useEffect(() => {
-    if (state?.ok && state.undoId) onUndo(state.undoId);
+    if (!state || state === settled.current) return;
+    settled.current = state;
+    if (state.ok && state.undoId) onUndo(state.undoId);
   }, [state, onUndo]);
 
   // By key, not by tab: a retired category still has a definition so its entries keep their
@@ -244,8 +255,59 @@ export function LogConsole({
   // (§3.5, D-178). Initial state only — switching tabs afterwards is the user's business and
   // must not be fought by the URL.
   const [active, setActive] = useState(initialCategory ?? TAB_CATEGORIES[0].key);
-  const [undoId, setUndoId] = useState<number | null>(null);
+
+  /**
+   * Open on the category last used (§5.5, Q393).
+   *
+   * In an effect rather than in the initial state, and that is not a style choice:
+   * `localStorage` cannot be read while the server renders, so seeding state from it is a
+   * hydration mismatch. The first paint is the first tab, and the remembered one arrives a
+   * frame later — which is invisible, because the tabs are client-switched and nothing is
+   * fetched when one changes.
+   *
+   * `?category=` **wins**. It comes from the icon's long-press shortcut, which is an explicit
+   * "open the log on training"; a remembered tab overruling that would make the shortcut
+   * unreliable exactly when it is used deliberately.
+   */
+  useEffect(() => {
+    if (initialCategory) return;
+    const last = readLastCategory(
+      typeof window === "undefined" ? undefined : window.localStorage,
+      TAB_CATEGORIES,
+    );
+    if (last) setActive(last);
+  }, [initialCategory]);
+
+  /** One place a tab is chosen, so remembering it cannot fall out of step with switching. */
+  const choose = (key: string) => {
+    setActive(key);
+    writeLastCategory(typeof window === "undefined" ? undefined : window.localStorage, key);
+  };
   const [, undo] = useActionState<ActionState | null, FormData>(undoLogEntry, null);
+
+  /**
+   * A removed entry offers its undo in a toast (§5.5, extending D-264 to this list).
+   *
+   * The task list moved off the inline row in §5.2 and this one did not, so the same two
+   * problems were still live here: the row rendered *below* a list that is as long as the day
+   * has been, and it stayed until it was used, so yesterday's undo was still on screen waiting
+   * to restore the wrong entry. The toast is bottom-anchored and expires.
+   *
+   * `undo` is the same Server Action the row dispatched. A second path to restore an entry is a
+   * second thing that can be wrong about which entry it restores.
+   */
+  const offerUndo = useCallback(
+    (id: number) => {
+      notify.undoable("Entry removed.", () => {
+        const data = new FormData();
+        data.set("id", String(id));
+        // Not from a `<form action>`, so React needs the transition told explicitly — without
+        // it `isPending` never updates and nothing downstream can show the undo in flight.
+        startTransition(() => undo(data));
+      });
+    },
+    [undo],
+  );
 
   const category = TAB_CATEGORIES.find((c) => c.key === active) ?? TAB_CATEGORIES[0];
   const missing = TAB_CATEGORIES.filter((c) => !loggedToday.includes(c.key));
@@ -279,7 +341,7 @@ export function LogConsole({
               <button
                 key={c.key}
                 type="button"
-                onClick={() => setActive(c.key)}
+                onClick={() => choose(c.key)}
                 aria-pressed={c.key === active}
                 className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-xs transition-colors ${
                   c.key === active
@@ -311,7 +373,7 @@ export function LogConsole({
               {i > 0 && ", "}
               <button
                 type="button"
-                onClick={() => setActive(c.key)}
+                onClick={() => choose(c.key)}
                 className="text-primary hover:underline"
               >
                 {c.label.toLowerCase()}
@@ -333,25 +395,11 @@ export function LogConsole({
         {entries.length > 0 ? (
           <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
             {entries.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} onUndo={setUndoId} />
+              <EntryRow key={entry.id} entry={entry} onUndo={offerUndo} />
             ))}
           </ul>
         ) : (
           <Empty>Nothing logged yet today.</Empty>
-        )}
-
-        {undoId !== null && (
-          <form
-            action={undo}
-            onSubmit={() => setUndoId(null)}
-            className="mt-2 flex items-center gap-2"
-          >
-            <input type="hidden" name="id" value={undoId} />
-            <span className="text-xs text-muted-foreground">Removed.</span>
-            <button type="submit" className="font-mono text-xs text-primary hover:underline">
-              Undo
-            </button>
-          </form>
         )}
       </div>
     </div>

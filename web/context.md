@@ -319,6 +319,23 @@ is easy to undo by accident:
   does. `nowIndex` compares local day keys, not UTC: the UTC version disappears every evening
   after 5pm in Los Angeles.
 
+## The log, after V4 §5.5 (2026-09-21, D-290 to D-294)
+
+- **`lib/log/drafts.ts` is not `lib/log/sticky.ts`.** Sticky keeps context and never
+  measurements (D-155); a draft keeps everything, because it is an unfinished entry. What makes
+  that safe is that a restored draft **announces itself** and offers to be discarded — do not
+  remove that line while tidying, it is the whole safety argument for D-290.
+- **The draft store does not notify on write**, only on clear. A `useSyncExternalStore` that
+  fired per keystroke would re-render this form on every character for no benefit: the fields
+  are uncontrolled.
+- **The remembered tab is read in an effect, never in `useState`.** `localStorage` does not
+  exist during SSR. `?category=` outranks it (D-291).
+- **Search marks are approximate by design** (D-292). Postgres matched with stemming; the marks
+  are word-prefix only. The count line above the list is the authority, and `markTerms` must
+  always rejoin to the exact input — a test pins that.
+- **Undo is a toast here too now** (D-293). No list in the private app renders an inline undo
+  row any more.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit

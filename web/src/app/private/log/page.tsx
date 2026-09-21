@@ -1,5 +1,6 @@
 import { describeDbError } from "@/lib/db/describe";
-import { Unavailable } from "@/components/site/states";
+import { Empty, Unavailable } from "@/components/site/states";
+import { Marked } from "@/components/site/marked";
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -132,15 +133,18 @@ async function Results({ query }: { query: string }) {
                 {categoryByKey(entry.category)?.label ?? entry.category}
               </span>
               <span className="min-w-0 flex-1 text-sm text-foreground">
-                {summarise(entry.category, entry.data, entry.note)}
+                <Marked text={summarise(entry.category, entry.data, entry.note)} query={query} />
               </span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          Nothing matches.
-        </p>
+        // The shared state (§5.1), with `filtered` rather than `none`: things exist, none
+        // matched, and the way out is clearing the search rather than creating something.
+        <Empty reason="filtered" action={{ href: "/private/log", label: "Clear the search" }}>
+          Nothing matches “{query}”. The search reads every field and every note, so a narrower word
+          usually finds more than a longer phrase.
+        </Empty>
       )}
     </div>
   );
@@ -188,9 +192,9 @@ async function TagResults({ tag }: { tag: string }) {
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          Nothing tagged #{tag}.
-        </p>
+        <Empty reason="filtered" action={{ href: "/private/log", label: "Back to logging" }}>
+          Nothing is tagged #{tag} any more. Tags come and go with the entries that carry them.
+        </Empty>
       )}
     </div>
   );

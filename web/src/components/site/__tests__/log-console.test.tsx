@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +50,10 @@ const note = (id: number, text: string): EntryView => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The console remembers its tab since V4 §5.5, so `localStorage` is now shared state between
+  // tests in this file: a test that switches tabs would otherwise decide which tab the next
+  // test opens on.
+  window.localStorage.clear();
   filed = null;
   file.mockResolvedValue({ ok: true, message: "Filed under Training." });
 });
@@ -165,5 +169,42 @@ describe("opening on a category, from the icon's shortcut", () => {
     // Training was the first tab until Phase 2.7 retired it; Study is now.
     render(<LogConsole entries={[]} loggedToday={[]} />);
     expect(screen.getByRole("button", { name: /log study/i })).toBeInTheDocument();
+  });
+});
+
+describe("the tab you were last on (V4 §5.5, Q393)", () => {
+  it("opens there on the next visit", async () => {
+    render(<LogConsole entries={[]} loggedToday={[]} />);
+    await userEvent.click(screen.getByRole("button", { name: "Reading" }));
+
+    cleanup();
+    render(<LogConsole entries={[]} loggedToday={[]} />);
+
+    // The remembered tab arrives a frame after hydration — it cannot be in the first render,
+    // because the server has no `localStorage` and seeding state from it is a mismatch.
+    expect(await screen.findByRole("button", { name: /log reading/i })).toBeInTheDocument();
+  });
+
+  it("does not overrule the shortcut's own category", async () => {
+    window.localStorage.setItem("2m_log_tab", "reading");
+
+    render(<LogConsole entries={[]} loggedToday={[]} initialCategory="day" />);
+
+    // `?category=` is an explicit "open the log on this"; a remembered tab winning would make
+    // the long-press shortcut unreliable exactly when it is used deliberately.
+    expect(screen.getByRole("button", { name: /log end of day/i })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /log end of day/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("ignores a stored tab that no longer exists", async () => {
+    // A retired category still has a definition so old entries read (D-159); it has no tab.
+    window.localStorage.setItem("2m_log_tab", "athletics");
+
+    render(<LogConsole entries={[]} loggedToday={[]} />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /log study/i })).toBeInTheDocument(),
+    );
   });
 });
