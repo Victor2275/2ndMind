@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { captureQuick } from "@/app/private/log/actions";
+import { CONTROL_FULL } from "@/components/site/field";
 import { SlowSaveNotice } from "@/components/site/slow-save";
 import { buzzSaved } from "@/lib/haptics";
 import type { ActionState } from "@/lib/sprint-goals";
@@ -27,8 +28,9 @@ import type { ActionState } from "@/lib/sprint-goals";
  * Nothing sensitive may be hard-coded here: this compiles into `/_next/static/chunks/`.
  */
 
-const INPUT =
-  "w-full rounded-md border border-border bg-card/60 px-3 py-2 text-sm text-foreground transition-colors focus:border-primary/60 focus:outline-none";
+/* The local `INPUT` constant that used to be here is gone (§5.4). It was a fourth spelling of
+   a control — `py-2 text-sm`, so 36px on the screen where Q245 asked for 48, and 14px text on
+   the one iOS zooms the viewport for. `CONTROL_FULL` is §5.2's shared string. */
 
 function SendButton() {
   const { pending } = useFormStatus();
@@ -36,7 +38,10 @@ function SendButton() {
     <button
       type="submit"
       disabled={pending}
-      className="min-h-10 shrink-0 rounded-md border border-primary/50 px-3 text-sm text-primary transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-60"
+      // Filled, not outlined. This is the primary action of the loudest block on Today, and
+      // §5.2's vocabulary reserves the filled button for exactly that — everything else in
+      // this component is an outline or a text control, so there is one obvious target.
+      className="min-h-12 shrink-0 press rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-fast ease-standard hover:bg-primary/90 disabled:opacity-60"
     >
       {pending ? "…" : "Save"}
     </button>
@@ -98,9 +103,24 @@ export function QuickCapture({
         typed.current = String(formData.get("text") ?? "");
         return action(formData);
       }}
-      className="rounded-xl border border-border bg-card/40 p-3"
+      /* **The loudest thing on Today** (§5.4, Q380).
+       *
+       * Q380 asked for the capture box to be separated from the task list rather than
+       * continuous with it, and Q5 records it as the part of the app Victor would be annoyed
+       * to lose. It was a `border-border bg-card/40` rectangle — the quietest surface in the
+       * app, and visually a footer to the list above it.
+       *
+       * Primary border, primary tint, and its own label. It does **not** move above the Due
+       * list: D-182 measured what that costs (the first task at 495px on a desktop, five pixels
+       * under the limit two decisions exist to defend), and loudness is a property of the thing,
+       * not of its position. Being the brightest block on the page is what makes it findable;
+       * being above the answer is what made it a problem.
+       */
+      className="rounded-xl border border-primary/40 bg-primary/5 p-4"
     >
       <input type="hidden" name="as" value={as} />
+
+      <p className="mb-2 eyebrow text-primary">Capture</p>
 
       <div className="flex items-center gap-2">
         <input
@@ -111,7 +131,7 @@ export function QuickCapture({
           autoComplete="off"
           placeholder={as === "task" ? "Something to do…" : "Something on your mind…"}
           aria-label={as === "task" ? "Capture a task" : "Capture a note"}
-          className={INPUT}
+          className={CONTROL_FULL}
         />
         <SendButton />
       </div>
@@ -124,7 +144,9 @@ export function QuickCapture({
               type="button"
               onClick={() => setAs(mode)}
               aria-pressed={as === mode}
-              className={`min-h-8 rounded-md px-2.5 eyebrow transition-colors ${
+              // `min-h-11` is DESIGN.md §9's 44px. It was `min-h-8` — 32px — on the one
+              // control in this box that is tapped before typing.
+              className={`min-h-11 press rounded-control px-3 eyebrow transition-colors duration-fast ease-standard ${
                 as === mode
                   ? "bg-primary/12 text-primary"
                   : "text-muted-foreground hover:text-foreground"

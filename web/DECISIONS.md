@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-20
+updated: 2026-09-21
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,114 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-21 · Today says what to do first — V4 §5.4
+
+### D-284 · The capture box is the loudest thing on Today, and it does not move
+
+**Decision.** `QuickCapture` is a primary-bordered, primary-tinted block with its own `Capture`
+label, a 48px field from §5.2's `CONTROL_FULL`, a **filled** Save button and 44px mode buttons.
+Its position is unchanged: below the Due list, where D-182 put it.
+
+**Why.** Q380 asked for it to be separated from the task list rather than continuous with it,
+and Q5 records the quick log as the one thing Victor would be annoyed to lose. It was
+`border-border bg-card/40` — the quietest surface the app has — directly under a list of rows
+that use the same one, so it read as the list's footer.
+
+**Why it does not move up.** D-182 measured what that costs: the first task at 418px on a phone
+and 495px on a desktop, five pixels under the limit D-083 and D-132 both exist to defend. Being
+loud is a property of the block; being above the answer is what made it a problem. §5.4's brief
+asked for "the capture box made the loudest thing", and loud is exactly what it got — not
+higher.
+
+**How to reverse.** Put `border-border bg-card/40 p-3` back on the form and restore the local
+`INPUT` constant. Reversing the control size instead means reversing §5.2's Q245, which is a
+different decision.
+
+### D-285 · The summary archive is a route, not a panel
+
+**Decision.** `/private/log/archive` holds every stored daily and weekly summary, newest first,
+in one list. The fourteen-day panel at the bottom of Today is gone, replaced by a one-line
+"Earlier summaries" link under the two summary panels.
+
+**Why.** Q390 said the archive should move to the log, and the 2026-09-19 answer made it its own
+route. The three alternatives each fail differently: a tab adds to a row Q258 already calls too
+busy; a section at the bottom of `/private/log` puts read-only prose under the app's most-used
+write surface, which is Q130's complaint arranged vertically; and staying on Today keeps
+fourteen model-written paragraphs on the page that answers "what do I do now".
+
+**Both kinds in one list**, ordered by the period each describes, so a week sits directly above
+the days inside it. Today's daily row is filtered out — it is on Today, still being written.
+
+**How to reverse.** Delete the route and put `SummaryArchive` back in the Tasks tree; it was a
+`Panel` with `collapsible defaultOpen={false}` over `recentSummaries(db, { kind: "daily",
+limit: 14 })`.
+
+### D-286 · Summaries are quiet, closed, and say which model wrote them
+
+**Decision.** `SummaryPanel` renders both summaries and every archive row: `Panel` with a new
+`tone="quiet"` surface, closed by default, body text in `muted-foreground`, and a `meta` that is
+a sparkle glyph plus the model name with an `sr-only` "Written by".
+
+**Why.** Q378 (the summaries are the thing that collapses), Q388 (marked as machine-written, the
+model name stays) and Q389 (quieter than a data panel) are three answers about one object, so
+they are one component. The glyph never carries the message alone — rule 10 — and the model name
+is real text, so a screen reader hears "written by gemini-2.5-flash".
+
+`Panel.meta` became a `ReactNode` for this. Every older call site passes a string, which is one.
+
+**How to reverse.** Render the two panels inline again with `meta={MODEL}` and `text-foreground`.
+`tone` defaults to `default`, so nothing else on the app changes if `quiet` is deleted.
+
+### D-287 · Overdue is loud in weight and edge, never in red
+
+**Decision.** An overdue task keeps `highlight` (amber), gains `font-semibold`, and the row gets
+a 2px amber left rule and a 4% amber wash. `destructive` is no longer used for lateness anywhere
+in the task list.
+
+**Why.** Q382, in Victor's words: *yes, but not red — red is for failure, late is not failure*.
+The app uses `destructive` for a query that fell over and a save that was lost, and a task being
+three days late must not look like either. The left rule is what makes it visible while scanning
+fifteen rows, where a word at the far right is not, and it means the signal is never hue alone.
+
+**How to reverse.** `dueLabel`'s overdue branch back to `text-destructive`, and drop the
+`due?.overdue` branch on `SwipeRow`'s class.
+
+### D-288 · Domain is an icon **and** a word, borrowed from the sidebar
+
+**Decision.** A task with a domain shows a bordered badge: briefcase/dumbbell/graduation-cap plus
+the word, the word hidden below `phone` with the icon keeping an `aria-label`. A task with a
+course code shows that instead — never both.
+
+**Why.** Q381 asked for icon plus text. The icons are the nav's own, so the app teaches one
+vocabulary rather than two; a second set for the same three ideas is how a design system starts
+disagreeing with itself. The course code is the academics domain said precisely, and a 360px row
+cannot carry two badges, a date and a title.
+
+**How to reverse.** Delete `DomainBadge` and its branch; the course-code badge is unchanged
+apart from its text size moving off `0.55rem`, which §7.1's 11px floor was going to catch.
+
+### D-289 · The agenda draws a "now" line, rendered on the server
+
+**Decision.** `Agenda` takes an optional `now` and draws a rule with the time and the word "now"
+before the first event that has not started, or at the bottom once they all have. `nowIndex` is
+exported and tested; Today is the only caller that passes a time.
+
+**Why.** Q387. A line rather than a highlighted "next" row: now is a moment *between* two events,
+and the next event is not necessarily soon — at 9pm the next one is tomorrow.
+
+**Why not a ticking client component.** That is a timer on the app's most-opened screen to move a
+line a few pixels an hour. The page is `force-dynamic`, so the marker is right on arrival and a
+reload is the refresh.
+
+**The bug that would have shipped:** the same-day guard compared UTC dates, which is wrong for
+every Los Angeles evening after 5pm — a 6pm event is tomorrow in UTC, so the marker would have
+vanished exactly when the agenda is worth reading. It compares `en-CA` day keys in
+`America/Los_Angeles`, and a test pins the 6pm case.
+
+**How to reverse.** Stop passing `now` from Today; the component draws nothing without it.
 
 ---
 

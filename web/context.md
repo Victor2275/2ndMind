@@ -298,6 +298,27 @@ width**: a touch tablet is over 640px and has no mouse. `can-hover:` is the vari
 hidden-until-hovered, and `touch.test.ts` fails if a `sm:opacity-0 sm:group-hover:` pair
 reappears.
 
+## Today, after V4 §5.4 (2026-09-21, D-284 to D-289)
+
+The page Victor opens most, and the one §5.4 was written against. Five things changed and each
+is easy to undo by accident:
+
+- **The capture box is the loudest block on the page, and it is still below the Due list.**
+  Those two facts are one decision (D-284). Position is D-182's, measured; loudness is Q380's.
+  Do not "fix" the hierarchy by moving it up — that is the 495px regression two earlier
+  decisions exist to prevent.
+- **The summary archive is a route**, `/private/log/archive` (D-285), not a panel on Today. It
+  holds daily and weekly rows in one list, ordered by the period each describes. Today links to
+  it in one line.
+- **`SummaryPanel` is the only way an AI summary is rendered** (D-286) — quiet surface, closed,
+  model name on the `meta`. It is used by Today and by the archive, so the two cannot drift.
+  `Panel` grew `tone="quiet"` and its `meta` became a `ReactNode` for this.
+- **Overdue is amber, bold and edged — never red** (D-287). `destructive` in this app means
+  something broke.
+- **`Agenda` draws its "now" line only when a caller passes `now`** (D-289), which only Today
+  does. `nowIndex` compares local day keys, not UTC: the UTC version disappears every evening
+  after 5pm in Los Angeles.
+
 ## Testing expectations
 
 `ai_directives.md` §6 requires automated tests after any feature. For V1 that means **unit

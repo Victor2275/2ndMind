@@ -3,6 +3,8 @@
 import { startTransition, useActionState, useCallback, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
+import { BriefcaseIcon, DumbbellIcon, GraduationCapIcon } from "lucide-react";
+
 import { addTask, removeTask, toggleTask, undoTask } from "@/app/private/actions";
 import { SwipeRow } from "@/components/site/swipe-row";
 import { Empty } from "@/components/site/states";
@@ -40,13 +42,29 @@ function daysUntil(iso: string): number {
   return Math.round((then - now) / 86_400_000);
 }
 
-function dueLabel(iso: string): { text: string; tone: string } {
+/**
+ * The due label, and **overdue is loud without being red** (V4 §5.4, Q382).
+ *
+ * Victor's reasoning, verbatim: *red is for failure, late is not failure*. So overdue keeps
+ * `highlight` — the amber the app already uses for "tomorrow" — and gets its emphasis from
+ * weight and from the row's left edge instead of from hue. `destructive` stays what it has
+ * always been in this app: something broke.
+ *
+ * `overdue` is returned rather than re-derived by the row, because two places computing
+ * "is this late" is two places to get the boundary wrong.
+ */
+function dueLabel(iso: string): { text: string; tone: string; overdue: boolean } {
   const days = daysUntil(iso);
-  if (days < 0) return { text: `${Math.abs(days)}d overdue`, tone: "text-destructive" };
-  if (days === 0) return { text: "today", tone: "text-primary" };
-  if (days === 1) return { text: "tomorrow", tone: "text-highlight" };
-  if (days <= 7) return { text: `${days}d`, tone: "text-muted-foreground" };
-  return { text: iso.slice(0, 10), tone: "text-muted-foreground" };
+  if (days < 0)
+    return {
+      text: `${Math.abs(days)}d overdue`,
+      tone: "text-highlight font-semibold",
+      overdue: true,
+    };
+  if (days === 0) return { text: "today", tone: "text-primary", overdue: false };
+  if (days === 1) return { text: "tomorrow", tone: "text-highlight", overdue: false };
+  if (days <= 7) return { text: `${days}d`, tone: "text-muted-foreground", overdue: false };
+  return { text: iso.slice(0, 10), tone: "text-muted-foreground", overdue: false };
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -54,6 +72,41 @@ const SOURCE_LABEL: Record<string, string> = {
   canvas: "canvas",
   calendar: "calendar",
 };
+
+/**
+ * Domains, as an icon **and** a word (V4 §5.4, Q381).
+ *
+ * The icons are the sidebar's, not a second set: Athletics and Academics are already those two
+ * glyphs in the nav, and engineering tasks are the ones that belong to `/private/work`. A task
+ * list that invented its own iconography would teach two vocabularies for one idea.
+ *
+ * The word is dropped below `phone` and the icon keeps an `aria-label`, so the row still says
+ * which domain it is on a 360px screen where the title is what matters. That is the one place
+ * this leans on the icon alone visually, and it is a label on a row, not a signal — rule 10 is
+ * about status, and nothing here is status.
+ */
+const DOMAIN = {
+  engineering: { Icon: BriefcaseIcon, label: "engineering" },
+  athletics: { Icon: DumbbellIcon, label: "athletics" },
+  academics: { Icon: GraduationCapIcon, label: "academics" },
+} as const;
+
+function DomainBadge({ domain }: { domain: string }) {
+  const found = DOMAIN[domain as keyof typeof DOMAIN];
+  if (!found) return null;
+  const { Icon, label } = found;
+
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className="flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[0.65rem] text-muted-foreground"
+    >
+      <Icon aria-hidden className="size-3" />
+      <span className="phone-hidden">{label}</span>
+    </span>
+  );
+}
 
 function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => void }) {
   const [, toggle] = useActionState<ActionState | null, FormData>(toggleTask, null);
@@ -93,7 +146,15 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
   return (
     <li>
       <SwipeRow
-        className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/30"
+        // The left edge is the other half of Q382's "loud, but not red". A 2px amber rule down
+        // the row is visible in peripheral vision while scanning a list of fifteen, which a
+        // word at the far right is not — and it costs the title nothing, because the padding
+        // below compensates for it rather than the text moving.
+        className={`group flex items-center gap-3 py-2.5 transition-colors hover:bg-accent/30 ${
+          due?.overdue
+            ? "border-l-2 border-highlight/70 bg-highlight/[0.04] pr-4 pl-[calc(1rem-2px)]"
+            : "px-4"
+        }`}
         onSwipeRight={submit(toggle, { id: String(task.id), done: String(!task.done) })}
         onSwipeLeft={submit(remove, { id: String(task.id) })}
         rightLabel={task.done ? "Reopen" : "Complete"}
@@ -127,10 +188,15 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
           </span>
         </form>
 
-        {task.courseCode && (
-          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+        {/* The course code is the academics domain said more precisely, so the two never both
+            appear: "PHYS 260" already tells you which domain this belongs to, and a row with
+            three badges and a date before the title has run out of width at 360px. */}
+        {task.courseCode ? (
+          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground">
             {task.courseCode}
           </span>
+        ) : (
+          task.domain && <DomainBadge domain={task.domain} />
         )}
         {badge && (
           <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">

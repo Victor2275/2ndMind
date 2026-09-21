@@ -108,6 +108,10 @@ const FOLD_LIMIT = 500;
 const PRIVATE_PAGES = [
   { name: "private-today", url: "/private", gated: true },
   { name: "private-log", url: "/private/log", gated: true },
+  // The summary archive (V4 §5.4, D-285). Ungated: it is a record you read, and the one thing
+  // you can do on it is leave. Swept because it is a new route rendering a stack of panels
+  // whose height is written by a model, which is the shape most likely to overflow.
+  { name: "private-log-archive", url: "/private/log/archive", gated: false },
   { name: "private-athletics", url: "/private/athletics", gated: true },
   { name: "private-academics", url: "/private/academics", gated: true },
   { name: "private-calendar", url: "/private/calendar", gated: true },

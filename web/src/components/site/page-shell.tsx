@@ -84,13 +84,29 @@ export function Panel({
   children,
   collapsible = false,
   defaultOpen = true,
+  tone = "default",
 }: {
   title: string;
-  meta?: string;
+  /**
+   * A node rather than a string since V4 §5.4, which needs the model name to arrive with the
+   * mark that says a machine wrote the panel (Q388). Every older call site passes a string,
+   * which is a `ReactNode` already.
+   */
+  meta?: ReactNode;
   children: ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  /**
+   * `quiet` is Q389: a summary panel must not look like a data panel.
+   *
+   * The difference is surface, not type — a softer border and a thinner ground — because the
+   * one thing that must not change is the heading. Two heading weights on one page is how a
+   * screen stops having an obvious order, and Today already has five panels.
+   */
+  tone?: "default" | "quiet";
 }) {
+  const surface = tone === "quiet" ? "border-border/50 bg-card/25" : "border-border bg-card/60";
+
   const heading = (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
@@ -100,7 +116,7 @@ export function Panel({
 
   if (!collapsible) {
     return (
-      <section className="rounded-xl border border-border bg-card/60 p-6">
+      <section className={`rounded-xl border p-6 ${surface}`}>
         {heading}
         <div className="mt-5">{children}</div>
       </section>
@@ -110,7 +126,7 @@ export function Panel({
   return (
     <details
       open={defaultOpen}
-      className="group rounded-xl border border-border bg-card/60 [&[open]>summary]:border-b [&[open]>summary]:border-border"
+      className={`group rounded-xl border [&[open]>summary]:border-b [&[open]>summary]:border-border ${surface}`}
     >
       <summary className="cursor-pointer list-none px-6 py-4 transition-colors hover:bg-accent/40 [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-3">

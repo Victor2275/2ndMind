@@ -1,3 +1,6 @@
+import { ArrowRightIcon } from "lucide-react";
+import Link from "next/link";
+
 import { describeDbError } from "@/lib/db/describe";
 import { openErrors } from "@/lib/errors/queries";
 import type { ErrorReport } from "@/lib/db/schema";
@@ -16,6 +19,7 @@ import { QuickCapture } from "@/components/site/quick-capture";
 import { RoutineChecklist } from "@/components/site/routine-checklist";
 import { ChallengeToday } from "@/components/site/challenge-panels";
 import { SkeletonPanel, SkeletonStats } from "@/components/site/skeleton";
+import { SummaryPanel } from "@/components/site/summary-panel";
 import { TaskList, type TaskView } from "@/components/site/task-list";
 import type { Task } from "@/lib/db/schema";
 import { db, isDatabaseConfigured } from "@/lib/db/client";
@@ -39,7 +43,7 @@ import { loadPlan } from "@/lib/athletics/plan";
 import { isoDay, shiftDay } from "@/lib/athletics/trends";
 import { readVaultFileCached } from "@/lib/vault/write";
 import { generateDailySummary, generateWeeklySummary, MODEL } from "@/lib/ai/gemini";
-import { localDay, recentSummaries, recordSummary } from "@/lib/ai/summaries";
+import { localDay, recordSummary } from "@/lib/ai/summaries";
 import { entriesBetween } from "@/lib/log/queries";
 import { summarise } from "@/lib/log/categories";
 
@@ -275,10 +279,6 @@ async function Tasks({ focusCapture }: { focusCapture: boolean }) {
             <TaskList tasks={doneToday.map(toView)} emptyMessage="" showAdd={false} />
           </Panel>
         )}
-
-        <Suspense fallback={null}>
-          <SummaryArchive />
-        </Suspense>
       </div>
     </>
   );
@@ -310,7 +310,9 @@ async function Today() {
 
   return (
     <Panel title="Schedule" meta={`${google.events.length} today`}>
-      <Agenda events={google.events} />
+      {/* `now` draws the marker (§5.4, Q387). This is the one caller that passes it: the list
+          is today's by construction — the window above is `dayBounds` of this moment. */}
+      <Agenda events={google.events} now={now} />
     </Panel>
   );
 }
@@ -396,13 +398,10 @@ async function AiSummary() {
     return <p className="px-1 text-xs text-muted-foreground">{summary.text}</p>;
   }
 
-  return (
-    <Panel title="Today, summarised" meta={MODEL}>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-        {summary.text}
-      </div>
-    </Panel>
-  );
+  // Closed, quiet, and marked as machine-written (§5.4, Q378, Q388, Q389). It was an open
+  // panel in `foreground` text, which on a page of five panels made the one paragraph nobody
+  // acts on the largest block of prose on the screen.
+  return <SummaryPanel title="Today, summarised" model={MODEL} text={summary.text} />;
 }
 
 /**
@@ -493,52 +492,7 @@ async function WeeklySummary() {
     return <p className="px-1 text-xs text-muted-foreground">{summary.text}</p>;
   }
 
-  return (
-    <Panel title="This week, summarised" meta={MODEL}>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-        {summary.text}
-      </div>
-    </Panel>
-  );
-}
-
-/**
- * The summary archive.
- *
- * Storing summaries only matters if they can be read back, and the place to read them is the
- * page that writes them. Closed by default and capped at fourteen days: this is a record, and
- * a record does not open itself on a page Victor already found too dense.
- */
-async function SummaryArchive() {
-  if (!isDatabaseConfigured()) return null;
-
-  let rows: Awaited<ReturnType<typeof recentSummaries>> = [];
-  try {
-    rows = await recentSummaries(db(), { kind: "daily", limit: 14 });
-  } catch (error) {
-    console.error("Summary archive: could not read stored summaries:", error);
-    return null;
-  }
-
-  // Today's is already on the page above, in its own panel.
-  const now = new Date();
-  const earlier = rows.filter((r) => r.periodStart !== localDay(now, zoneOffsetMinutes(now)));
-  if (earlier.length === 0) return null;
-
-  return (
-    <Panel title="Earlier summaries" meta={`${earlier.length}`} collapsible defaultOpen={false}>
-      <ol className="space-y-4">
-        {earlier.map((row) => (
-          <li key={row.id} className="border-l border-border pl-4">
-            <p className="tabular eyebrow text-muted-foreground">{row.periodStart}</p>
-            <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-              {row.summary}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </Panel>
-  );
+  return <SummaryPanel title="This week, summarised" model={MODEL} text={summary.text} />;
 }
 
 /**
@@ -744,6 +698,19 @@ export default async function TodayPage({ searchParams }: PageProps<"/private">)
               <WeeklySummary />
             </div>
           </Suspense>
+
+          {/* Where the fourteen-day archive panel used to be (§5.4, Q390).
+              A link, not a list: the panel it replaces held fourteen model-written paragraphs
+              at the bottom of the page this phase exists to shorten, and it was collapsed — so
+              what it actually contributed to Today was one closed row saying "Earlier
+              summaries". This is that row, costing one line instead of a query. */}
+          <Link
+            href="/private/log/archive"
+            className="mt-3 inline-flex min-h-11 press items-center gap-1.5 text-xs text-muted-foreground transition-colors duration-fast ease-standard hover:text-foreground"
+          >
+            Earlier summaries
+            <ArrowRightIcon aria-hidden className="size-3" />
+          </Link>
         </div>
       </div>
     </div>
