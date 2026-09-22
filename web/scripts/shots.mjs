@@ -911,6 +911,43 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
    The theme is set by writing `data-theme` on `<html>`, which is what `next-themes` does
    (`theme-provider.tsx`); the public site pins itself to one theme with `forcedTheme`, so
    overriding the attribute directly is the only way to see the others on a public page. */
+/**
+ * The contrast backlog, per theme and page — V4 §7.1 (Q463), D-323.
+ *
+ * Same mechanism as `TAP_BUDGET` and for the same reason: what the sweep found is thirty real
+ * AA shortfalls, every one of them a *near* miss between 3.74:1 and 4.41:1, and closing them
+ * means moving palette tokens in the generator — which changes all five themes at once and is a
+ * colour decision rather than a mechanical edit. The budget gates every one of them against
+ * regression while leaving the fix to a pass that should be looked at.
+ *
+ * Measured 2026-09-22 at 1280, and **byte-identical across two consecutive runs**, which is the
+ * property that makes it safe to gate on. It was not stable until the theme was pinned against
+ * `next-themes` — see the init script below, and D-323 for what an unstable version of this
+ * reported.
+ *
+ * What is in it, so the numbers are not anonymous: the `destructive` button and badge at 3.74:1
+ * on the dark themes (white on the destructive red), the sidebar's inactive nav labels at
+ * 4.31:1 on the light themes, and three single controls — a "stale" count, a capture-mode
+ * button, a Records tab — between 4.03:1 and 4.41:1.
+ */
+const CONTRAST_BUDGET = {
+  "dark-magenta/kitchen-sink": 4,
+  "dark-magenta/today": 1,
+  "dark-magenta/athletics": 0,
+  "light-teal/kitchen-sink": 4,
+  "light-teal/today": 3,
+  "light-teal/athletics": 2,
+  "hc-dark/kitchen-sink": 4,
+  "hc-dark/today": 0,
+  "hc-dark/athletics": 0,
+  "carbon/kitchen-sink": 4,
+  "carbon/today": 0,
+  "carbon/athletics": 0,
+  "steel-light/kitchen-sink": 4,
+  "steel-light/today": 3,
+  "steel-light/athletics": 1,
+};
+
 let contrastFaults = 0;
 if (!only && process.env.SHOTS_THEMES !== "0") {
   console.log("");
@@ -918,12 +955,26 @@ if (!only && process.env.SHOTS_THEMES !== "0") {
   const themeToken = secretForThemes ? await mintSession(secretForThemes) : null;
   const origin = new URL(BASE).origin;
 
+  /**
+   * **Private pages only, and that is a correction.**
+   *
+   * The public site is pinned to one theme by `forcedTheme` (D-197, `theme-provider.tsx`), so
+   * `next-themes` rewrites `data-theme` back on render and a sweep that sets the attribute is
+   * racing it. The first version of this swept `/` and `/projects` too, and the result was
+   * exactly what a race looks like once you read it: four themes returning byte-identical
+   * counts, because four of them measured the pinned theme, and the fifth returning thirty-odd
+   * contrast failures, because that one happened to win the race and measured a half-applied
+   * palette. None of it was real, and all of it would have been believed.
+   *
+   * The theme picker applies in the private app and nowhere else, so this is also the only
+   * place the question means anything. The public site has one theme; it is swept in it by the
+   * main sweep above.
+   */
   const THEME_PAGES = [
-    { name: "kitchen-sink", url: "/private/kitchen-sink", private: true },
-    { name: "today", url: "/private", private: true },
-    { name: "home", url: "/", private: false },
-    { name: "projects", url: "/projects", private: false },
-  ].filter((p) => !p.private || themeToken);
+    { name: "kitchen-sink", url: "/private/kitchen-sink" },
+    { name: "today", url: "/private" },
+    { name: "athletics", url: "/private/athletics" },
+  ].filter(() => Boolean(themeToken));
 
   const jobs = THEME_IDS.flatMap((theme) => THEME_PAGES.map((target) => ({ theme, target })));
 
@@ -934,24 +985,71 @@ if (!only && process.env.SHOTS_THEMES !== "0") {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
       });
-      if (target.private)
-        await context.addCookies([
-          { name: "2m_session", value: themeToken, url: origin, httpOnly: true, sameSite: "Lax" },
-        ]);
+      await context.addCookies([
+        { name: "2m_session", value: themeToken, url: origin, httpOnly: true, sameSite: "Lax" },
+      ]);
 
       const page = await context.newPage();
+
+      // **Pin the theme against `next-themes`, before the page's own scripts run.**
+      //
+      // Setting `data-theme` after load and checking it once is a race, and it lost often
+      // enough to produce confident nonsense: two consecutive runs reported `dark-magenta`
+      // athletics at 49 failures and then at 0, while `carbon` went 5 and then 44 — the same
+      // 231 elements both times. `next-themes` writes the stored theme onto `<html>` when it
+      // mounts, which can land after the attribute has been set and verified but before
+      // anything is measured.
+      //
+      // An observer that re-applies the attribute whenever anything changes it is the only
+      // version of this that does not depend on timing. Installed as an init script so it is
+      // running before React is.
+      await page.addInitScript((id) => {
+        const pin = () => {
+          const html = document.documentElement;
+          if (html && html.getAttribute("data-theme") !== id) html.setAttribute("data-theme", id);
+        };
+
+        // An init script runs before the page's own scripts, which can be before
+        // `document.documentElement` exists at all — the first version threw here, installed
+        // no observer, and every job silently measured whatever `next-themes` chose. With
+        // `enableSystem` and Playwright's default light preference, that was `light-teal` for
+        // all five, which the verification below caught and named.
+        const start = () => {
+          if (!document.documentElement) return void requestAnimationFrame(start);
+          pin();
+          new MutationObserver(pin).observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["data-theme"],
+          });
+        };
+        start();
+        document.addEventListener("DOMContentLoaded", pin);
+      }, theme);
+
       await page.goto(BASE + target.url, { waitUntil: "networkidle", timeout: 90_000 });
       await hideDevOverlay(page);
 
-      // Set the theme, then wait for a frame so the new custom properties are resolved before
-      // anything is read. Without the wait the first job in each context reads the old palette.
-      await page.evaluate((id) => {
-        document.documentElement.setAttribute("data-theme", id);
-      }, theme);
+      // Two frames, so the new custom properties are resolved before anything is read.
       await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
       );
       await fontsReady(page);
+
+      // **Verify it stuck, and fail loudly when it does not.** This is the check whose absence
+      // made the first version of this sweep report confident nonsense. A contrast number taken
+      // against a theme that is not the one named is worse than no number, because it is
+      // indistinguishable from a real finding.
+      const applied = await page.evaluate(() =>
+        document.documentElement.getAttribute("data-theme"),
+      );
+      if (applied !== theme) {
+        contrastFaults += 1;
+        say(
+          ` ${theme.padEnd(13)} ${target.name.padEnd(14)}  <-- theme did not apply (got ${applied})`,
+        );
+        await context.close();
+        return { out };
+      }
 
       await shoot(page, {
         path: path.join(OUT, `theme-${theme}-${target.name}.png`),
@@ -959,14 +1057,16 @@ if (!only && process.env.SHOTS_THEMES !== "0") {
       });
 
       const contrast = await page.evaluate(auditContrast);
-      const bad = contrast.offenders.length > 0;
+      const allowed = CONTRAST_BUDGET[`${theme}/${target.name}`] ?? 0;
+      const bad = contrast.offenders.length > allowed;
       if (bad) contrastFaults += 1;
 
       say(
         ` ${theme.padEnd(13)} ${target.name.padEnd(14)}` +
           ` checked=${String(contrast.checked).padStart(4)}` +
           ` unknown=${String(contrast.unknown).padStart(3)}` +
-          ` below-AA=${String(contrast.offenders.length).padStart(3)}`,
+          ` below-AA=${String(contrast.offenders.length).padStart(3)}/${allowed}` +
+          (bad ? `  <-- over its contrast budget (${allowed})` : ""),
       );
       for (const o of contrast.offenders.slice(0, 4))
         say(`        ${o.ratio}:1 (needs ${o.need}) ${o.px}px  ${o.tag}.${o.cls}  "${o.text}"`);

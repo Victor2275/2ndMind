@@ -306,6 +306,19 @@ export function auditContrast() {
       continue;
     }
 
+    // **Invisible text is not low-contrast text.** `text-transparent` is a real technique in
+    // this app — the routine checklist's tick is transparent until the row is ticked, and the
+    // exercise picker uses the same trick for its check glyph — and compositing a fully
+    // transparent colour onto its ground gives 1:1, which this reported as the worst contrast
+    // failure on the page. It is not a failure; there is nothing there to read. Checked before
+    // compositing, because compositing is what destroys the alpha.
+    const raw = resolve(style.color);
+    if (!raw) {
+      unknown += 1;
+      continue;
+    }
+    if (raw.a < 0.05) continue;
+
     // Resolved *over its own ground*, so a translucent text colour is composited rather than
     // compared as if it were opaque.
     const text = resolve(style.color, ground);

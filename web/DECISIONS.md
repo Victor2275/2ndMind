@@ -229,6 +229,89 @@ else depending on it.
 
 ---
 
+### D-322 · Three of the five themes did nothing, because the default's block used a bare `:root`
+
+**The bug.** `dark-magenta`, `light-teal` and `hc-dark` rendered as `carbon` — every token, on
+every page, for anyone who picked them. Only `steel-light` worked. The picker set `data-theme`
+correctly, the palette blocks were all present in the stylesheet, and the app looked like a
+working theme system.
+
+**Why.** `build-tokens.mts` emitted the default theme's block as:
+
+```css
+:root,
+[data-theme="carbon"] { … }
+```
+
+A bare `:root` matches **every** `<html>`, whatever `data-theme` says. And its specificity is
+(0,1,0) — one pseudo-class — which is *exactly* the same as `[data-theme="light-teal"]`, one
+attribute selector. Equal specificity falls through to source order, and the blocks are emitted
+in registry order, so the default's block sits fourth of five. Every theme defined above it lost
+to it on every page. `steel-light` survived for no better reason than being fifth.
+
+**The fix** is one selector: `:root:not([data-theme])`. That matches only a page which has not
+chosen a theme, which is what "the default" was always supposed to mean, and it is
+order-independent — a sixth theme added anywhere in the registry cannot reintroduce this.
+
+**Measured before and after**, in a browser, reading `--background` off `<html>` for each of the
+five ids: four distinct values before (four ids resolving to the same near-black), five after.
+
+**How it hid for so long.** Nothing could see it. `tokens.test.ts` checks that every theme's
+*block* is complete and that its pairs clear contrast — and every block was complete and correct;
+the blocks were never the problem. `npm run shots` rendered one theme. The picker changes an
+attribute and the attribute changed. The only thing that could have caught it is rendering a page
+in each theme and comparing, which is precisely what Q464 asked for and what §7.1 built.
+
+**Two tests now pin it**: the stylesheet may not contain a bare `:root,` at all, and the five
+themes must declare five *distinct* backgrounds. The second is deliberately a property rather
+than a selector check — if a future theme silently inherits another's palette for some different
+reason, that still fails.
+
+**How to reverse.** One ternary in `scripts/build-tokens.mts`, then `npm run tokens`. Reversing
+it reinstates the bug, which is why the tests are there.
+
+### D-323 · Contrast lands as a ratchet, and only after the sweep was made deterministic
+
+**Decision.** The contrast sweep gates against a per-theme-per-page budget — **30 shortfalls
+across 15 combinations**, every one between 3.74:1 and 4.41:1 against AA's 4.5.
+
+**Why a budget and not zero**, the same argument as D-318's: these are near misses, and closing
+them means moving palette tokens in the generator, which changes all five themes at once and is a
+colour decision rather than a mechanical edit. Named rather than left anonymous: the `destructive`
+button and badge at 3.74:1 on the dark themes, the sidebar's inactive nav labels at 4.31:1 on the
+light ones, and three single controls between 4.03:1 and 4.41:1.
+
+**The part worth recording is what it took to make the numbers real.** Three separate defects in
+this sweep, each of which produced confident output:
+
+1. **It measured nothing.** A regex over `rgba(...)` against a palette authored in OKLCH matched
+   no colour at all, and reported zero elements checked on every page — which reads as a pass
+   (D-316).
+2. **It measured the wrong theme, inconsistently.** Setting `data-theme` after load and checking
+   it once is a race with `next-themes`, which writes the stored theme when it mounts. Two
+   consecutive runs reported `dark-magenta` athletics at **49** failures and then at **0**, while
+   `carbon` went **5** and then **44** — the same 231 elements both times. Either run, read
+   alone, looks like a finding. The theme is pinned by a `MutationObserver` installed before the
+   page's own scripts now, and the first version of *that* threw because
+   `document.documentElement` does not exist yet when an init script runs, so every job silently
+   fell back to whatever `next-themes` chose — `light-teal`, from Playwright's default light
+   preference. The sweep verifies the theme actually applied and says so loudly when it did not,
+   which is how that was caught rather than believed.
+3. **It counted invisible text.** `text-transparent` is a real technique here — the routine
+   checklist's tick is transparent until the row is ticked — and compositing a fully transparent
+   colour onto its ground gives 1:1, which the sweep reported as the worst failure on the page.
+   Alpha is checked before compositing now, because compositing is what destroys it.
+
+**The acceptance test for this gate is not "it passes", it is "it repeats".** The committed
+budget was taken from two consecutive runs that agreed byte for byte. A racy gate is worse than
+no gate — it passes often enough to look healthy and fails often enough to be dismissed as
+flaky — and this one was racy in three different ways before it was stable.
+
+**How to reverse.** Delete `CONTRAST_BUDGET` and the comparison, or set `SHOTS_THEMES=0` to skip
+the sweep entirely.
+
+---
+
 ## 2026-09-21 · Gates, performance and accessibility — V4 §7.4
 
 ### D-310 · `hidden sm:block` works now, so the five call sites were left alone
