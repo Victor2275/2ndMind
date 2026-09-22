@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-20
+updated: 2026-09-22
 domain: engineering
 stability: volatile
 summary: Project expectations for the 2ndMind web app — scope, architecture, conventions.
@@ -399,8 +399,14 @@ will live in pure logic, not in browser choreography. Required coverage:
 - freshness thresholds, including parity with `scripts/audit_freshness.py`
 - the database layer, against real Postgres (see below)
 
-Run with `npm test`. Typecheck with `npm run typecheck`. **1,970 tests across 132 files** as of
-2026-09-20, all passing. A drop from that count is a regression, not noise.
+Run with `npm test`. Typecheck with `npm run typecheck`. **2,089 tests across 144 files** as of
+2026-09-22, all passing. A drop from that count is a regression, not noise.
+
+**One known flake, and it is a real one rather than a mystery.** `cached-app.test.tsx` →
+*"renders the browser for the exercises list"* times out at the 5s default under full parallel
+load and passes 30/30 in isolation. It is a load-sensitive timeout, not a broken assertion — the
+same shape as the ten-PGlite-instance problem V3 Round 1 fixed by measuring rather than by
+waiting longer. Do not raise the timeout to hide it; find what it is contending for.
 
 (It read "582 across 36 files as of 2026-08-30" until 2026-09-06, then "1,240 across 86", then
 "1,375 across 90", then "1,452 across 97" until V4 Phase 2, then "1,502 across 100" until Phase
