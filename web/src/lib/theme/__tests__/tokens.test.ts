@@ -27,7 +27,9 @@ const CSS = readFileSync(path.join(ROOT, "src", "app", "tokens.css"), "utf8");
 /** Every `--token: value` inside one theme's block. */
 function blockFor(id: string): Record<string, string> {
   const selector =
-    id === DEFAULT_THEME ? `:root,\\s*\\[data-theme="${id}"\\]` : `\\[data-theme="${id}"\\]`;
+    id === DEFAULT_THEME
+      ? `:root:not\\(\\[data-theme\\]\\),\\s*\\[data-theme="${id}"\\]`
+      : `\\[data-theme="${id}"\\]`;
   const match = CSS.match(new RegExp(`${selector}\\s*\\{([\\s\\S]*?)\\n\\}`));
   if (!match) throw new Error(`no block in tokens.css for theme "${id}"`);
 
@@ -356,4 +358,40 @@ describe("the committed CSS is what the generator produces", () => {
       }),
     ).not.toThrow();
   }, 30_000);
+});
+
+describe("a chosen theme actually wins", () => {
+  /**
+   * The bug this pins shipped, and it silenced three of the five themes — V4 §7.1, D-322.
+   *
+   * The default theme owns the fallback block for a page that has not chosen one. It was
+   * written as a bare `:root`, which matches **every** `<html>` regardless of `data-theme`, at
+   * exactly the same specificity as `[data-theme="light-teal"]` — one pseudo-class against one
+   * attribute selector, (0,1,0) either way. Equal specificity falls through to source order,
+   * and the default's block is emitted in registry order rather than first, so every theme
+   * defined above it lost on every page: `dark-magenta`, `light-teal` and `hc-dark` all
+   * rendered as `carbon`. `steel-light` worked, and only because it sits below the default in
+   * the registry.
+   *
+   * Measured in a browser before the fix: four of the five ids resolved `--background` to the
+   * same near-black. None of that is visible in the stylesheet unless you are looking for it,
+   * and nothing in the app reports it — the picker sets the attribute, so it looks like it
+   * worked. It took the theme sweep §7.1 added (Q464) to see it.
+   */
+  it("never lets the default's fallback match a page that chose a theme", () => {
+    // The whole of the fix. A bare `:root,` in this file is the bug coming back.
+    expect(CSS).not.toMatch(/^:root\s*,/m);
+    expect(CSS).toContain(":root:not([data-theme]),");
+  });
+
+  it("gives every theme its own background, so no two can render identically", () => {
+    // The property the selector bug broke, checked as a property rather than as a selector:
+    // five themes, five distinct grounds. A theme that silently inherits another's palette is
+    // caught here even if the cause is something other than specificity next time.
+    const grounds = THEME_IDS.map((id) => blockFor(id)["background"]);
+    for (const [i, ground] of grounds.entries()) {
+      expect([THEME_IDS[i], typeof ground]).toEqual([THEME_IDS[i], "string"]);
+    }
+    expect(new Set(grounds).size).toBe(THEME_IDS.length);
+  });
 });

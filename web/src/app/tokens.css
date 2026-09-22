@@ -205,7 +205,7 @@
 
 /* Carbon (carbon) — dark
  * The default. A hueless near-black: nothing in the grounds carries an accent hue, so any component that assumes a tinted surface shows itself immediately. */
-:root,
+:root:not([data-theme]),
 [data-theme="carbon"] {
   color-scheme: dark;
   --ambient-opacity: 1;

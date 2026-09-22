@@ -358,8 +358,28 @@ lines.push("");
 
 for (const { spec, tokens } of built) {
   const scheme = spec.scheme;
+  /**
+   * **`:root:not([data-theme])`, never a bare `:root`** — V4 §7.1, D-322.
+   *
+   * The default theme owns the fallback block, for the page that has not chosen one yet. It
+   * was written as a bare `:root`, and that shipped a bug that made three of the five themes
+   * do nothing at all.
+   *
+   * `:root` and `[data-theme="light-teal"]` have the *same* specificity — one pseudo-class
+   * against one attribute selector, (0,1,0) either way — so the cascade falls through to
+   * source order, and the default's block is emitted in registry order rather than first. Any
+   * theme defined *above* the default therefore lost to it on every page, whatever the
+   * attribute said: `dark-magenta`, `light-teal` and `hc-dark` all rendered as `carbon`, while
+   * `steel-light` worked purely because it happens to sit below it in the registry.
+   *
+   * Qualifying the fallback makes it order-independent: it matches only when no theme has been
+   * chosen, which is what "the default" was always supposed to mean. `tokens.test.ts` pins it,
+   * because this failed silently and looked exactly like a theme picker that worked.
+   */
   const selector =
-    spec.id === DEFAULT_THEME ? `:root,\n[data-theme="${spec.id}"]` : `[data-theme="${spec.id}"]`;
+    spec.id === DEFAULT_THEME
+      ? `:root:not([data-theme]),\n[data-theme="${spec.id}"]`
+      : `[data-theme="${spec.id}"]`;
 
   lines.push(`/* ${spec.label} (${spec.id}) — ${scheme}`);
   lines.push(` * ${spec.note} */`);
