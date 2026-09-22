@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-21
+updated: 2026-09-22
 domain: operations
 stability: volatile
 summary: This week's goals, operating rules, and academic tracker.
@@ -15,14 +15,30 @@ read_when: Always — anything about current priorities or scheduling.
   **V3 complete 2026-09-06** — the phone app, every phase, scoped 2026-08-30 in
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
-  **V4 is under way** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  **454 points, 378 done**, no deadline. Done so far: Phase 0, **Phase 1 (Milestone A)** — every
-  colour, size, space and motion value comes from one place and a test fails if it does not — the
-  settings screen pulled forward, **Phase N** (the plane-wifi freeze), **Phase 2 — Milestone B**
-  (training logged as sessions on the phone, offline, proven end to end against the real
-  database), **Phase 2++** (the logger rebuilt to Hevy standard, routines, the dashboard),
-  **Phase 6 — Milestone D, done 2026-09-10: the portfolio is finished**, **Phase 3** (tags,
-  2026-09-13) and **Phase 4** (the private shell, 2026-09-18).
+  **V4 is nearly done** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
+  **489 points, 467 done**, no deadline. **All four milestones are reached.** Done: Phase 0,
+  **Phase 1 (Milestone A)** — every colour, size, space and motion value comes from one place and
+  a test fails if it does not — the settings screen pulled forward, **Phase N** (the plane-wifi
+  freeze), **Phase 2 — Milestone B** (training logged as sessions on the phone, offline, proven
+  end to end against the real database), **Phase 2++** (the logger rebuilt to Hevy standard,
+  routines, the dashboard), **Phase 6 — Milestone D, done 2026-09-10: the portfolio is
+  finished**, **Phase 3** (tags, 2026-09-13), **Phase 4** (the private shell, 2026-09-18),
+  **Phase 5 — Milestone C, 2026-09-21: the private app is finished**, and most of **Phase 7**
+  (7.0, 7.1, 7.2, 7.4 — the gates and the accessibility work, 2026-09-22).
+
+  **What is left is 9 points**: 7.3 (performance), 7.5 (a before/after screenshot compare mode)
+  and 7.6 (two review rounds, which need Victor's eyes rather than more code).
+
+  **Phase 7's gates found things nothing else could.** The largest: **three of the five themes
+  did nothing** — dark-magenta, light-teal and hc-dark all rendered as carbon, for anyone who
+  picked them, because the default theme's CSS block used a bare `:root` that outranked them.
+  Fixed. Also: a shared `Badge` shrunk below its design size on the two pages a stranger sees
+  first, two heading-order faults on the Training screens, and a bundle gate that Phase 7 had
+  recorded as built and never was. Three numbers are knowingly left red and gated against
+  getting worse — 308 tap targets under 44px, 30 near-miss contrast shortfalls, and public
+  JavaScript at 232–239KB against a 90KB budget that turns out not to be reachable with Next and
+  React. All three need a design call rather than a mechanical fix; see `web/DECISIONS.md`
+  D-315 to D-323.
 
   Phase 6 was taken out of order. The plan recorded "the portfolio stays untouched through peak
   application season" as an accepted risk (§7 R1); that was reversed on 2026-09-10. All nine items

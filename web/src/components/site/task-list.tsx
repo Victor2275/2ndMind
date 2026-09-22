@@ -98,9 +98,12 @@ function DomainBadge({ domain }: { domain: string }) {
   const { Icon, label } = found;
 
   return (
+    // 7.1 text-floor allowlist (Q113): the domain chip beside a task. An icon and one word,
+    // sized to sit inside a task row without pushing the task title onto a second line.
     <span
       title={label}
       aria-label={label}
+      data-tiny-text="domain chip beside a task: an icon and one word"
       className="flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[0.65rem] text-muted-foreground"
     >
       <Icon aria-hidden className="size-3" />
@@ -200,8 +203,13 @@ function TaskRow({ task, onUndo }: { task: TaskView; onUndo: (id: number) => voi
         ) : (
           task.domain && <DomainBadge domain={task.domain} />
         )}
+        {/* 7.1 text-floor allowlist (Q113): the source chip — "goal", "course" — saying where
+            a task came from. One word, in a row that already carries the task itself. */}
         {badge && (
-          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground">
+          <span
+            data-tiny-text="source chip on a task row"
+            className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.55rem] text-muted-foreground"
+          >
             {badge}
           </span>
         )}
