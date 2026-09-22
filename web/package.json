@@ -31,6 +31,8 @@
     "e2e:degraded": "npm run build && node --env-file-if-exists=.env.local scripts/e2e-degraded.mjs",
     "push:keys": "node scripts/push-keys.mjs",
     "bundle": "node scripts/bundle-budget.mjs",
+    "shots:save": "node scripts/shots-compare.mjs save",
+    "shots:compare": "node scripts/shots-compare.mjs compare",
     "freeze": "node scripts/freeze.mjs"
   },
   "dependencies": {

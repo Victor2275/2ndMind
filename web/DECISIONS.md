@@ -229,6 +229,37 @@ else depending on it.
 
 ---
 
+### D-324 · Before/after is a record you look at, not a diff that fails
+
+**Decision.** `npm run shots:save -- <label>` keeps the current `.shots/*.png` as a named
+baseline; `npm run shots:compare -- <label>` writes `.shots/compare.html`, every screen before
+and after, side by side. It computes no difference, carries no threshold, and cannot fail.
+
+**Why it is not a pixel diff**, which is the obvious thing to build and the thing Q465 was asked
+about directly. Q29 said yes to a before/after record; **Q465 said no to a pixel baseline** —
+*"a pixel baseline for a design in flux is a full-time job"*. Those two answers are one design
+once you take them together, and collapsing them into a visual-regression gate would invert the
+second. A pixel gate over a design being actively redrawn is red on every intentional change,
+and the only way to keep working is to approve each diff without reading it — which is worse
+than having no record, because it looks like review happened.
+
+**What it is actually for:** finish a phase, save the set, do the work, then look at
+twenty-four screens before and after on one page instead of trying to remember. That is what
+§7.6's two review rounds need, and it is what nobody has had so far — the 2026-08-29 round was
+done from memory and a live site.
+
+**Three states, not two.** A screen that changed, a screen that is new since the baseline, and a
+screen that has **gone**. The third is the one a pixel diff cannot express and is usually the
+most interesting: a route that stopped rendering does not produce a different picture, it
+produces no picture, and a differ with nothing to compare reports nothing at all.
+
+**Baselines are local.** They live in `.shots/_baselines/<label>/`, and `.shots/` is gitignored.
+These are a review aid for the person doing the review, not an artefact anyone else needs, and
+committing a few hundred PNGs per phase would be its own problem.
+
+**How to reverse.** Delete `scripts/shots-compare.mjs` and the two `package.json` scripts.
+Nothing depends on it; `npm run shots` is unchanged and unaware of it.
+
 ### D-322 · Three of the five themes did nothing, because the default's block used a bare `:root`
 
 **The bug.** `dark-magenta`, `light-teal` and `hc-dark` rendered as `carbon` — every token, on

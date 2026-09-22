@@ -2,7 +2,7 @@
 updated: 2026-09-22
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 489 points, 467 done. Every phase except 7 is done, all four milestones are reached, and Phase 7 is most of the way there — 7.0, 7.1, 7.2 and 7.4 are in. What remains is 7.3 (performance), 7.5 (compare mode) and 7.6 (two review rounds).
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 489 points, 469 done. Every phase except 7 is done, all four milestones are reached, and Phase 7 is most of the way there — 7.0, 7.1, 7.2 and 7.4 are in. What remains is 7.3 (performance) and 7.6 (two review rounds).
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,7 +30,7 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **489 points** (311 + Phase 2++'s 119, plus §2.12's 13, §2.13's 11, §2.14's 30 and 7.0's 5). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. Plus §2.14's 30 and 7.0's 5, logged on 2026-09-21 after the fact. **467 done** — §4 has the authoritative table, and the 402 this row carried until 2026-09-21 was 8 points of optimism in Phase 5's header. |
+| **Budget**       | **489 points** (311 + Phase 2++'s 119, plus §2.12's 13, §2.13's 11, §2.14's 30 and 7.0's 5). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. Plus §2.14's 30 and 7.0's 5, logged on 2026-09-21 after the fact. **469 done** — §4 has the authoritative table, and the 402 this row carried until 2026-09-21 was 8 points of optimism in Phase 5's header. |
 | **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor. **Phase 5's foundations done** (2026-09-19) — the four shared states, the form vocabulary, the toast system mounted for the first time since V1, and the pressed state as a base rule. **§2.14 done** (2026-09-20) — the fall challenge on screen and the plan made editable, off-plan and logged here on 2026-09-21. **7.0 done** (2026-09-21) — `npm run shots` at 250s instead of 581s. **Phase 5 done** (2026-09-21) — **Milestone C**: Today, the log, academics, work, the calendar, hobbies, sync and every chart.<br>Next: **Phase 7**, the only phase left — gates, performance, accessibility, two review rounds. N9 still parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
@@ -846,7 +846,7 @@ grid stop being a Client Component, so the two were one change rather than two.
 
 ---
 
-### Phase 7 · Gates, performance, review — **27 pts** — 🟡 **7.0, 7.1, 7.2, 7.4 done** (18 pts)
+### Phase 7 · Gates, performance, review — **27 pts** — 🟡 **7.0, 7.1, 7.2, 7.4, 7.5 done** (20 pts)
 
 The work that stops V4 decaying the way V1's resume did before D-077.
 
@@ -857,7 +857,7 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 7.2 | ✅ **Done 2026-09-22** — and it was **not** done before, which is the correction. D-223 shipped the client boundary and recorded the item complete; the **bundle gate was never built**. `npm run bundle` exists now and measures what a browser actually downloads. D-320                                                        |   3 |
 | 7.3 | 🟡 **Part.** The JS budget is now measured and **every public route fails it: 232–239KB gzipped against 90** (Q459). Most is the Next 16 / React 19 hydration floor and is not reachable by application work — the number was set without measuring. **One 64.1KB chunk is `zod`**, on a portfolio that validates nothing, and that is where this starts. LCP on a mid-range phone over 4G and the ambient paint re-measure are still owed (Q457, Q458, Q462) |   4 |
 | 7.4 | ✅ **Done 2026-09-21.** `prefers-contrast`, `prefers-reduced-transparency` and `forced-colors` — all three **subtractive**, never a fourth look. The `px` audit came back clean and is now a test. One live region replacing twenty that mostly could not fire. Chart data as a table behind a disclosure. Focus order tested on the log form. Heading order audited — **two real faults**, both invisible. D-311 to D-314, D-321 |   4 |
-| 7.5 | **Before/after screenshot compare mode** in `.shots/` — recorded, not gated (Q29, Q465)                                                                                                                                               |   2 |
+| 7.5 | ✅ **Done 2026-09-22.** `npm run shots:save -- <label>` keeps a named baseline; `npm run shots:compare -- <label>` writes `.shots/compare.html`, every screen before and after. **No pixel diff and no threshold** — Q465 said no to a baseline for a design in flux, and a gate that is red on every intentional change trains everyone to approve without reading. Three states, because a screen that has *gone* is the one a differ cannot express. D-324 |   2 |
 | 7.6 | **Two review rounds** — `npm run freeze` snapshot, notes to `web/SITE-REVIEW.md`, as on 2026-08-29 (Q480, Q481)                                                                                                                       |   3 |
 
 **Ends with:** V4 cannot rot silently.
@@ -921,7 +921,7 @@ edit:
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | ✅ done · 4.7 part     |
 | 5     | The private screens                                 |      50 | ✅ done · Milestone C  |
 | 6     | Brand and the public site                           |      36 | ✅ done · Milestone D  |
-| 7     | Gates, performance, review                          |      27 | part · 7.0, 7.1, 7.2, 7.4 done |
+| 7     | Gates, performance, review                          |      27 | part · all but 7.3 and 7.6 |
 | 2.13  | The picker on a phone, and licensed art             |      11 | ✅ done                |
 | 2.14  | **The fall challenge** — on screen, and the plan editable | **30** | ✅ done            |
 |       | **Total**                                           | **489** |                        |
@@ -934,9 +934,9 @@ the thing §2.12 fixed**, §2.14 is the fall challenge he started on move-in day
 sweep rewrite that 7.1 was going to need anyway — none of it scope creep, all of it the
 difference between a mechanism and a product becoming visible.
 
-**467 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, §2.14, 3, **4**, **5**, 6, and Phase
-7's 7.0, **7.1**, **7.2** and **7.4**). **22 remain, 9 of them unparked** — 7.3's performance
-work, 7.5's compare mode and 7.6's two review rounds. N9's 13 points are still parked (§7 R5).
+**469 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, §2.14, 3, **4**, **5**, 6, and Phase
+7's 7.0, **7.1**, **7.2**, **7.4** and **7.5**). **20 remain, 7 of them unparked** — 7.3's
+performance work and 7.6's two review rounds, and 7.6 needs Victor's eyes rather than more code. N9's 13 points are still parked (§7 R5).
 
 **7.2 moved from done to done**, which needs saying rather than quietly correcting: it was
 recorded complete on the strength of D-223, which shipped one of its two halves. The bundle gate
@@ -1102,7 +1102,7 @@ Small, and none of it blocks Phase 1 or Phase N.
 6. **Q482 — does anyone review the public site but you?** Affects how Phase 7's review rounds are
    run, nothing else.
 7. **R2 — which reading of the budget?** ✅ **Answered and spent, 2026-09-21.** Victor took the
-   first reading and Phase 5 was finished the same day. The total is **489**, **467 is done**,
-   and the only question left is when Phase 7's remaining 9 points happen — which is what §7's own
+   first reading and Phase 5 was finished the same day. The total is **489**, **469 is done**,
+   and the only question left is when Phase 7's remaining 7 points happen — which is what §7's own
    argument is about, not a budget call. "Stop after Phase 5 with the portfolio untouched" is no longer one of the readings —
    the portfolio is finished, and so is the shell.
