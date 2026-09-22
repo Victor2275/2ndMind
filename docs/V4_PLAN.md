@@ -2,7 +2,7 @@
 updated: 2026-09-22
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Ten phases, 489 points, 469 done. Every phase except 7 is done, all four milestones are reached, and Phase 7 is most of the way there — 7.0, 7.1, 7.2 and 7.4 are in. What remains is 7.3 (performance) and 7.6 (two review rounds).
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Eleven phases, 536 points, 472 done. Every phase through 7 is done and all four milestones are reached. What remains is Phase 8 — speed and the write path, scoped 2026-09-22, which absorbs 7.3's performance remainder and unparks N9.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,14 +30,14 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **489 points** (311 + Phase 2++'s 119, plus §2.12's 13, §2.13's 11, §2.14's 30 and 7.0's 5). You said 120–140. The gap is real, it is §7 R2, and Phase 2++ widened it deliberately: it is larger than Phase 2 (45) and Phase 5 (50) together, and it is the phase that answers what Victor actually asked for after using Phase 2. Plus §2.14's 30 and 7.0's 5, logged on 2026-09-21 after the fact. **469 done** — §4 has the authoritative table, and the 402 this row carried until 2026-09-21 was 8 points of optimism in Phase 5's header. |
-| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor. **Phase 5's foundations done** (2026-09-19) — the four shared states, the form vocabulary, the toast system mounted for the first time since V1, and the pressed state as a base rule. **§2.14 done** (2026-09-20) — the fall challenge on screen and the plan made editable, off-plan and logged here on 2026-09-21. **7.0 done** (2026-09-21) — `npm run shots` at 250s instead of 581s. **Phase 5 done** (2026-09-21) — **Milestone C**: Today, the log, academics, work, the calendar, hobbies, sync and every chart.<br>Next: **Phase 7**, the only phase left — gates, performance, accessibility, two review rounds. N9 still parked. |
+| **Budget**       | **536 points**, **472 done**. You said 120–140. The gap is real, it is §7 R2, and it has widened four times for the same reason each time — Phase 2++ (119), §2.14 (30), and now **Phase 8 (64)**, each scoped after Victor used the thing the previous phase built and said what was actually wrong with it. Phase 8 is only **47 new points**: 7.3's remaining 4 and N9's parked 13 moved into it rather than being counted twice. §4 has the authoritative table. |
+| **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates → **speed**.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor. **Phase 5's foundations done** (2026-09-19) — the four shared states, the form vocabulary, the toast system mounted for the first time since V1, and the pressed state as a base rule. **§2.14 done** (2026-09-20) — the fall challenge on screen and the plan made editable, off-plan and logged here on 2026-09-21. **7.0 done** (2026-09-21) — `npm run shots` at 250s instead of 581s. **Phase 5 done** (2026-09-21) — **Milestone C**: Today, the log, academics, work, the calendar, hobbies, sync and every chart. **Phase 7 done** (2026-09-22) — the gates, the accessibility work, before/after compare, and §7.6's review round, whose findings became Phase 8.<br>Next: **Phase 8**, the only phase left — the write path through the outbox, the public bundle, the queries and the assets. Scoped 2026-09-22. Nothing is parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
 | **Milestone C**  | End of Phase 5 — the private app is finished. This is the one that matters daily. ✅ **Reached 2026-09-21.**                                                                                                                                                                                                                                                                                                                                                                                |
 | **Milestone D**  | End of Phase 6 — the portfolio is finished. ✅ **Reached 2026-09-10.** |
 | **Done when**    | You open the app on a term morning and the first thing you see is the thing you have to do. And a stranger opens victorgusev.com and does not think "student project".                                                                                                                                                                                                                                                                                           |
-| **Biggest risk** | ~~Phase 2 is a feature, not a redesign, and it reverses a decision declined twice.~~ **Spent, and it held** — see §7 R3. The largest remaining risk is R7: Q130 — "too much read-only text defeats the point" — is the hardest thing here to verify, and Phase 5 is where it is either answered or missed. |
+| **Biggest risk** | ~~Phase 2 is a feature, not a redesign.~~ **Spent, and it held** (§7 R3). ~~R7: Q130 is the hardest thing here to verify.~~ **Answered** — §7.6's review round came back asking for speed and save feedback, not for less prose. The largest remaining risk is **R8**: §8.1 is 13 points touching every form in the app, and N5 parked it for exactly that reason. |
 
 **Points are difficulty, not schedule** (Q28). One point ≈ one hour of focused work, used to
 compare items against each other. Do not plan a calendar from them.
@@ -846,7 +846,7 @@ grid stop being a Client Component, so the two were one change rather than two.
 
 ---
 
-### Phase 7 · Gates, performance, review — **27 pts** — 🟡 **7.0, 7.1, 7.2, 7.4, 7.5 done** (20 pts)
+### Phase 7 · Gates and review — **23 pts** — ✅ **DONE 2026-09-22**
 
 The work that stops V4 decaying the way V1's resume did before D-077.
 
@@ -855,12 +855,12 @@ The work that stops V4 decaying the way V1's resume did before D-077.
 | 7.0 | ✅ **The sweep becomes affordable** (2026-09-21, off-plan) — four sweeps through a bounded-concurrency runner with buffered output, `SHOTS_PNG=0` for gate-only runs, **581s → ~250s**. And a real bug: every measurement now waits for `document.fonts.ready`, because the fold readings were taken against the fallback font (D-281, D-282, D-283). This is what makes 7.1 affordable — it adds two widths and a theme sweep to a run that was already ten minutes |   5 |
 | 7.1 | ✅ **Done 2026-09-22.** Text, tap, heading order and contrast are **gates** now, on the public site *and* the private app, at six widths. Each returns **offenders, not a count** — D-190's lesson. Text floor 11px, landed at **zero** from 375. Tap floor 44px against a per-page budget that only ratchets down (**308**, the real backlog). Fold 500→350 with Athletics grandfathered. Contrast to AA across five themes, against a budget of **30**. Widths 1440 and 1920 added. D-315 to D-319, D-323 |   6 |
 | 7.2 | ✅ **Done 2026-09-22** — and it was **not** done before, which is the correction. D-223 shipped the client boundary and recorded the item complete; the **bundle gate was never built**. `npm run bundle` exists now and measures what a browser actually downloads. D-320                                                        |   3 |
-| 7.3 | 🟡 **Part.** The JS budget is now measured and **every public route fails it: 232–239KB gzipped against 90** (Q459). Most is the Next 16 / React 19 hydration floor and is not reachable by application work — the number was set without measuring. **One 64.1KB chunk is `zod`**, on a portfolio that validates nothing, and that is where this starts. LCP on a mid-range phone over 4G and the ambient paint re-measure are still owed (Q457, Q458, Q462) |   4 |
+| 7.3 | ➡️ **Moved to Phase 8** (2026-09-22). Its measurement half is done and stands: the JS budget is measured and **every public route fails it** (Q459). Its remaining 4 points — the `zod` chunk, LCP on a mid-range phone over 4G, the ambient paint re-measure (Q457, Q458, Q462) — are **§8.4 and §8.7**, because Victor extended the brief on 2026-09-22 from "the JS budget" to the whole speed surface. Nothing was dropped; the row moved |   — |
 | 7.4 | ✅ **Done 2026-09-21.** `prefers-contrast`, `prefers-reduced-transparency` and `forced-colors` — all three **subtractive**, never a fourth look. The `px` audit came back clean and is now a test. One live region replacing twenty that mostly could not fire. Chart data as a table behind a disclosure. Focus order tested on the log form. Heading order audited — **two real faults**, both invisible. D-311 to D-314, D-321 |   4 |
 | 7.5 | ✅ **Done 2026-09-22.** `npm run shots:save -- <label>` keeps a named baseline; `npm run shots:compare -- <label>` writes `.shots/compare.html`, every screen before and after. **No pixel diff and no threshold** — Q465 said no to a baseline for a design in flux, and a gate that is red on every intentional change trains everyone to approve without reading. Three states, because a screen that has *gone* is the one a differ cannot express. D-324 |   2 |
-| 7.6 | **Two review rounds** — `npm run freeze` snapshot, notes to `web/SITE-REVIEW.md`, as on 2026-08-29 (Q480, Q481)                                                                                                                       |   3 |
+| 7.6 | ✅ **Closed 2026-09-22, Victor's call** — and closed by a review happening, not by a snapshot being generated. He reviewed the running app and returned a change list; it is in `web/SITE-REVIEW.md` under *Round 2*, and it **is Phase 8's brief**. The `npm run freeze` half (Q480, Q481) was **not run** and is not owed: freezing exists to review without a connection, and this review was done against the live app. What the round returned is the finding — it asked for speed and for save feedback, and **not for more visual work**, which is the strongest evidence Milestones C and D actually landed |   3 |
 
-**Ends with:** V4 cannot rot silently.
+**Ends with:** V4 cannot rot silently. ✅
 
 ---
 
@@ -903,6 +903,62 @@ edit:
 | Tap targets under 44px | **308** across 23 pages | Design changes — a 51×32 header link, a 47×36 tab, a 40×40 icon button. Worst: `private-plan` at 84, `private-training-log` at 32 |
 | Text below AA contrast | **30** across 15 theme/page pairs | All near misses, 3.74:1 to 4.41:1. Closing them moves palette tokens, which changes all five themes at once |
 | Public JS, gzipped | **232–239KB** against 90 | Most is the framework floor; the actionable part is one 64.1KB `zod` chunk |
+
+---
+
+### Phase 8 · Speed, and the write path — **64 pts** — ⬜ **scoped 2026-09-22**
+
+**Where it came from.** §7.6's review round. Victor's words: *"the performance of certain
+aspects of the website is slow, and it is unclear when something is logged/saved."* Plus a
+seventeen-item audit list he supplied, and one hypothesis he explicitly asked to have checked
+rather than accepted — that git is in the write path and a database plus a push button would be
+faster.
+
+**The hypothesis was right in kind and wrong in scale, and the correction is the phase.**
+Only **two** write paths still commit to git: publishing a project update (`/private/now`) and
+saving the course plan. Everything else moved to Postgres in V2 (D-036, D-037) — tasks, log
+entries, workouts, sets, exercises, bodyweight, rehab, tags, `plan_overrides`. So "move it all to
+a faster database" is a migration that has **already happened**, and re-doing it would move two
+rare writes and nothing else.
+
+**What the check actually found is worse than what he asked about, and it is on the read side.**
+Eight call sites render private pages off `readVaultFileCached`, and the public portfolio ships
+**220.7 KB** of gzipped JavaScript against a 90 KB budget, of which **64.1 KB is `zod`** on a
+site that validates nothing at runtime. Measured 2026-09-22, not estimated — `npm run bundle`
+against a production build, and the chunk identified by reading it (485 `zod` markers,
+`ZodError`, `invalid_union`).
+
+**Two structural decisions, both Victor's, both 2026-09-22: D-325 and D-326.**
+
+| #    | Item                                                                                                                                                                                                                                                                                                                              | Pts |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
+| 8.1  | **N9, unparked — every write through the outbox, vault commits included** (D-325). The answer to *"it is unclear when something is saved"*, and it is the deferred half of N5 rather than new machinery. A save enqueues and acks locally; the commit pushes behind it, retries on failure, and survives a dead connection. Git stays the source of truth and there is no divergence window to reconcile |  13 |
+| 8.2  | **Save feedback everywhere the outbox now reaches.** `SaveState`'s `queued` (D-259 rule 4) stops being set by `lib/offline/write.ts` alone. The update composer's *"Committing…"* becomes a queued ack — it was honest about a 2-round-trip GitHub wait and that wait is what 8.1 removes. Every write path names its state          |   5 |
+| 8.3  | **The vault read path.** Eight call sites hit `readVaultFileCached`; the cache is `unstable_cache` at `revalidate: 300` with tag invalidation. Measure a cold miss per screen before changing anything — the tag invalidation may already make this a non-issue, and D-193's lesson is that an unmeasured performance argument is a guess |   5 |
+| 8.4  | **`zod` off the public bundle** — 64.1 KB of 220.7, **29% of public JS**. The path is `layout.tsx` → `ErrorWatch` → `lib/errors/client.ts` → `lib/errors/report.ts` → `zod`. The schema is only ever used by the *server* route (`api/errors`); the client needs `clean` and the types. Split the module so the boundary is real. Expected: home 220.7 → ~156 KB |   5 |
+| 8.5  | **Unused dependencies, and there are four.** `@sentry/nextjs` (zero imports — V3 §2.4 chose a first-party endpoint and the package stayed), `recharts` (zero — `chart.tsx` carries a comment saying so), `react-hook-form` + `@hookform/resolvers` (zero — D-200 found `form.tsx` never existed). `shadcn` is a **CLI in `dependencies`** and belongs in dev or nowhere |   3 |
+| 8.6  | **Code splitting and lazy loading.** `next/dynamic` appears **zero** times in this codebase. Route-level splitting is automatic and already working; what is not split is the heavy client islands — `session-logger`, `exercise-list`, `cached-app`, `course-planner`. Below-the-fold and behind-interaction only; nothing above the fold, which is D-171's rule |   4 |
+| 8.7  | **7.3's remainder** — LCP on a mid-range phone over 4G, and the ambient-paint re-measure on the Samsung that §0.6 recorded as still owed (Q457, Q458, Q462). Both are device numbers this laptop structurally cannot produce                                                                                                        |   4 |
+| 8.8  | **GIN indexes on the two `tags` columns** (D-248). `log_entries.tags` and `tasks.tags` are filtered with `@>` and **neither has a GIN index** — confirmed, there is no `gin` anywhere in `drizzle/`. A sequential scan is invisible at today's row counts and is exactly the thing that stops being invisible without warning. Audit the other indexes with it: every synced table already carries `client_id`, `server_seq` and its own hot column |   3 |
+| 8.9  | **Cache the derived-on-read queries.** D-025 makes records derived and never stored, which is right and is also the expensive path: `prs.ts` and `allEfforts()` recompute the whole record board per render. Cache the derivation, not the result — keyed so a new set invalidates it. **Do not store a PR** (D-025) |   5 |
+| 8.10 | **Pagination.** Every list query already takes a `.limit()`, so nothing is unbounded — but a limit is a truncation, not a page, and there is no cursor and no "load more" anywhere. The log timeline and the session history are the two that will hit it first |   5 |
+| 8.11 | **Image compression.** Three hero PNGs are **792 KB, 582 KB and 542 KB** on disk. `next/image` optimises those on Vercel and the Hobby plan meters transformations, so the source size is a real cost twice over. The lab images are served as plain `<img>` through the lightbox (deliberately, per its own comment) and are **not** optimised at all — five are over 200 KB |   4 |
+| 8.12 | **Debounce the search handlers, and the re-render audit under it.** Exactly one debounce exists in the app (`log-form.tsx`, drafts). Three search inputs filter synchronously per keystroke — `exercise-list` over the merged 139-row catalogue, `pr-table`, `tag-input`. Debounce is the symptom fix; the re-render count is the measurement that says whether it was the real one |   5 |
+| 8.13 | **Request payload compression on `/api/sync`.** Vercel gzips *responses* at the edge already, so the pull half is covered and the push half is not — an outbox flush after a week offline is the case that matters                                                                                                                   |   2 |
+| 8.14 | **The four items that are already true, recorded rather than silently skipped.** Load balancing and the CDN are Vercel's edge network and need no work at $0. JS and CSS minification is `next build`, verified in this build's output. `neon-http` is stateless HTTP with no pool to size (`lib/db/client.ts` says so) — **connection pooling is a non-question on this driver**, and the answer changes only if the driver does |   1 |
+
+**Ends with:** the app is fast enough that nobody reaches for the laptop, and every save says
+what happened to it.
+
+**The honest risk (R8).** 8.1 is 13 points touching every form in the app, and it is parked
+*because* N5 deferred it for that reason. It is first here because 8.2 is meaningless without it
+and because "is it saved?" is the complaint Victor actually raised. If it slips, **8.4 and 8.5
+are 8 points that are pure profit and depend on nothing** — do those.
+
+**What this phase must not do.** Undo D-025 by storing a PR, undo D-159 by adding a third reader
+of training data, or put an entrance animation above the fold in the name of perceived speed
+(D-171 measured 900ms of delayed FCP the last time that was tried).
+
 ---
 
 ## 4. Ordered summary
@@ -916,15 +972,16 @@ edit:
 | 2+    | The catalogue gets pictures — diagram, written how-to |      12 | ✅ done                |
 | 2.12  | Four bugs Victor found — one older than Phase 2      |      13 | ✅ done                |
 | 2++   | **Training, properly** — the figure, the audit, the browser, the logger, routines, the dashboard | **119** | ✅ done |
-| N9    | Every write through the outbox — deferred from N5   |      13 | ⏸ parked (§7 R5)       |
+| N9    | Every write through the outbox — deferred from N5   |       — | ➡️ **unparked → §8.1** |
 | 3     | Tags                                                |      12 | ✅ done **[FEATURE]**  |
 | 4     | The private shell — sidebar, settings, tab bar      |      28 | ✅ done · 4.7 part     |
 | 5     | The private screens                                 |      50 | ✅ done · Milestone C  |
 | 6     | Brand and the public site                           |      36 | ✅ done · Milestone D  |
-| 7     | Gates, performance, review                          |      27 | part · all but 7.3 and 7.6 |
+| 7     | Gates and review                                    |      23 | ✅ done                |
 | 2.13  | The picker on a phone, and licensed art             |      11 | ✅ done                |
 | 2.14  | **The fall challenge** — on screen, and the plan editable | **30** | ✅ done            |
-|       | **Total**                                           | **489** |                        |
+| **8** | **Speed, and the write path** — outbox writes, the bundle, the queries | **64** | ⬜ scoped 2026-09-22 |
+|       | **Total**                                           | **536** |                        |
 
 **489, not 286.** Seven rows were promoted out of footnotes or added after use rather than
 invented: N9 is the 13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the
@@ -934,9 +991,14 @@ the thing §2.12 fixed**, §2.14 is the fall challenge he started on move-in day
 sweep rewrite that 7.1 was going to need anyway — none of it scope creep, all of it the
 difference between a mechanism and a product becoming visible.
 
-**469 points are done** (0, 1, N, 2, 2+, §2.12, 2++, §2.13, §2.14, 3, **4**, **5**, 6, and Phase
-7's 7.0, **7.1**, **7.2**, **7.4** and **7.5**). **20 remain, 7 of them unparked** — 7.3's
-performance work and 7.6's two review rounds, and 7.6 needs Victor's eyes rather than more code. N9's 13 points are still parked (§7 R5).
+**472 points are done** — every phase from 0 through 7. **64 remain, and all 64 are Phase 8**,
+scoped 2026-09-22 from §7.6's review round. Nothing is parked any more: N9's 13 points were the
+last parked row and they are §8.1.
+
+**The total moved 489 → 536, and only 47 of that is new.** 7.3's 4 points and N9's 13 moved into
+Phase 8 rather than being counted twice, so Phase 8's 64 is 47 genuinely new points against a
+brief Victor extended deliberately — the same pattern as Phase 2++ and §2.14, and the same
+reason: a mechanism was built and the product complaint that followed was about something else.
 
 **7.2 moved from done to done**, which needs saying rather than quietly correcting: it was
 recorded complete on the strength of D-223, which shipped one of its two halves. The bundle gate

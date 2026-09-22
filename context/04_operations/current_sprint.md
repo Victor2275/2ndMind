@@ -15,20 +15,35 @@ read_when: Always — anything about current priorities or scheduling.
   **V3 complete 2026-09-06** — the phone app, every phase, scoped 2026-08-30 in
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
-  **V4 is nearly done** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  **489 points, 469 done**, no deadline. **All four milestones are reached.** Done: Phase 0,
+  **V4 is in its last phase** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions,
+  **536 points, 472 done**, no deadline. **All four milestones are reached, and every phase
+  through 7 is done.** Done: Phase 0,
   **Phase 1 (Milestone A)** — every colour, size, space and motion value comes from one place and
   a test fails if it does not — the settings screen pulled forward, **Phase N** (the plane-wifi
   freeze), **Phase 2 — Milestone B** (training logged as sessions on the phone, offline, proven
   end to end against the real database), **Phase 2++** (the logger rebuilt to Hevy standard,
   routines, the dashboard), **Phase 6 — Milestone D, done 2026-09-10: the portfolio is
   finished**, **Phase 3** (tags, 2026-09-13), **Phase 4** (the private shell, 2026-09-18),
-  **Phase 5 — Milestone C, 2026-09-21: the private app is finished**, and most of **Phase 7**
-  (7.0, 7.1, 7.2, 7.4, 7.5 — the gates, the accessibility work and the before/after compare
-  mode, 2026-09-22).
+  **Phase 5 — Milestone C, 2026-09-21: the private app is finished**, and **Phase 7, done
+  2026-09-22** — the gates, the accessibility work, the before/after compare mode, and §7.6's
+  review round.
 
-  **What is left is 7 points**: 7.3 (performance) and 7.6 (two review rounds, which need
-  Victor's eyes rather than more code).
+  **What is left is Phase 8 — 64 points, scoped 2026-09-22: speed, and the write path.**
+  It came out of §7.6's review, which returned two complaints and nothing visual: the app is
+  slow in places, and it is unclear when something is saved. Victor's hypothesis — that git is
+  in the write path and a database plus a push button would be faster — was checked and is
+  **right in kind, wrong in scale**: only two write paths still commit to git, and the commit is
+  what publishes to the public site, so buffering it would change *when the public page updates*
+  rather than just deferring latency. The answer is **N9 unparked** (D-325): vault writes go
+  through the sync outbox that already exists, so a save acks instantly and the commit pushes
+  behind it, with git still the source of truth.
+  **The measured problem is elsewhere** (D-326): the public portfolio ships **220.7KB** of
+  gzipped JavaScript against a 90KB budget and **64.1KB of it is `zod`**, on a site that
+  validates nothing — reaching the bundle through the crash reporter in the root layout. Four
+  unused runtime dependencies, zero GIN indexes on the two tag columns, zero `next/dynamic` call
+  sites, one debounced input in the whole app, and three hero PNGs over half a megabyte. Four of
+  Victor's seventeen audit items were already true (Vercel's edge network, `next build`'s
+  minification, and `neon-http` having no pool) and are recorded as checked rather than dropped.
 
   **Phase 7's gates found things nothing else could.** The largest: **three of the five themes
   did nothing** — dark-magenta, light-teal and hc-dark all rendered as carbon, for anyone who
@@ -78,9 +93,10 @@ read_when: Always — anything about current priorities or scheduling.
   state; sync leads with how long something has waited; and every chart leads with its number.
   Decisions D-284 to D-309.
 
-  The plan now totals **489 points, 457 done**. **32 remain, 19 unparked** — all of Phase 7
-  (gates, performance, accessibility, two review rounds), plus N9's parked 13. All four
-  milestones are reached.
+  The plan now totals **536 points, 472 done**. **64 remain, and all 64 are Phase 8** — nothing
+  is parked any more, because N9's 13 were the last parked row and they are now §8.1. The total
+  moved 489 → 536 on 2026-09-22, but only 47 of that is new: 7.3's remaining 4 points and N9's
+  13 moved into Phase 8 rather than being counted twice. All four milestones are reached.
 - **Athletics:** The fall challenge is running — 76 days from 2026-09-20 to the 2026-11-07 race,
   plus the 50k/100k. Today's session, the routine and the ledger are on `/private` and
   `/private/athletics`; the day-by-day plan is at `/private/athletics/plan` and every day is
