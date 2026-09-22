@@ -158,21 +158,29 @@ export function ExerciseDetail({ slug }: { slug: string }) {
       <div className="flex flex-col items-start gap-4 sm:flex-row">
         <MuscleMap primary={entry.primaryMuscles} secondary={entry.secondaryMuscles} size={200} />
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
+          {/* `h2`, not `h1` — V4 7.4/7.1 (Q446). The page already has an `h1` from
+              `PageHeader` ("Exercise"), so this was the second on the page and the
+              outline had two roots. The size is unchanged; only the level moved. */}
+          <h2 className="text-2xl font-bold tracking-tight">
             {entry.name}
             {entry.archivedAt && (
               <span className="ml-2 rounded border border-border/70 px-1.5 py-0.5 align-middle font-mono text-xs text-muted-foreground">
                 archived
               </span>
             )}
-          </h1>
+          </h2>
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             {entry.modality} · {entry.equipment}
             {entry.primaryMuscles.length > 0 && ` · ${entry.primaryMuscles.join(", ")}`}
             {entry.secondaryMuscles.length > 0 && ` (+ ${entry.secondaryMuscles.join(", ")})`}
           </p>
           {entry.aliases.length > 0 && (
-            <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground">
+            // 7.1 text-floor allowlist (Q113): the alias line under the exercise name,
+            // which is what the search matches on rather than what anyone reads.
+            <p
+              data-tiny-text="alias line under the exercise name"
+              className="mt-1 font-mono text-[0.65rem] text-muted-foreground"
+            >
               Also: {entry.aliases.join(", ")}
             </p>
           )}
@@ -300,7 +308,12 @@ export function ExerciseDetail({ slug }: { slug: string }) {
             free, since a PR was always bucketed by distance, not by name.
           </p>
           <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card/70">
-            <table className="w-full min-w-[28rem] text-left">
+            {/* 7.1 text-floor allowlist (Q113): set-by-set history. Mono numbers in a
+                table, per DESIGN.md section 2 — scanned down a column rather than read. */}
+            <table
+              data-tiny-text="training data: dates, weights, reps and splits, read as a table"
+              className="w-full min-w-[28rem] text-left"
+            >
               <thead>
                 <tr className="border-b border-border">
                   {["Distance", "Time", "Split /500m", "Date"].map((h) => (
@@ -338,7 +351,12 @@ export function ExerciseDetail({ slug }: { slug: string }) {
         {history.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Nothing logged yet on this device.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-card/70">
+          // §7.1 text-floor allowlist (Q113): the per-session rows under the tables — the same
+          // numbers in a list, because a table does not fit a phone.
+          <ul
+            data-tiny-text="training data: dates, weights, reps and splits, read as a table"
+            className="mt-3 divide-y divide-border rounded-lg border border-border bg-card/70"
+          >
             {[...history]
               .sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
               .map((set, i) => {

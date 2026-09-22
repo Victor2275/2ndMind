@@ -172,7 +172,7 @@ function UnsortedRow({
             <input type="hidden" name="category" value={c.key} />
             <button
               type="submit"
-              className="min-h-8 rounded-md border border-border px-2.5 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              className="min-h-8 rounded-md border border-border px-2.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
             >
               {c.label}
             </button>
@@ -189,7 +189,7 @@ function UnsortedRow({
         </div>
         <button
           type="submit"
-          className="min-h-8 shrink-0 rounded-md border border-border px-2.5 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+          className="min-h-8 shrink-0 rounded-md border border-border px-2.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
         >
           Tag
         </button>
@@ -219,7 +219,12 @@ function Unsorted({
 }) {
   return (
     <div>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+      {/* 7.1 text-floor allowlist (Q113): the count beside the heading. A number set
+          against a `text-base` title, not text to read. */}
+      <div
+        data-tiny-text="entry count beside a section heading"
+        className="mb-2 flex items-baseline justify-between gap-3"
+      >
         <h2 className="text-base font-semibold tracking-tight">Unsorted</h2>
         <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
           {entries.length}
@@ -388,7 +393,12 @@ export function LogConsole({
       )}
 
       <div>
-        <div className="mb-3 flex items-baseline justify-between gap-3">
+        {/* 7.1 text-floor allowlist (Q113): the count beside the heading, same as
+            "Unsorted" above. A number against a `text-base` title. */}
+        <div
+          data-tiny-text="entry count beside a section heading"
+          className="mb-3 flex items-baseline justify-between gap-3"
+        >
           <h2 className="text-base font-semibold tracking-tight">Today</h2>
           <span className="tabular font-mono text-[0.65rem] text-muted-foreground">
             {entries.length} {entries.length === 1 ? "entry" : "entries"}

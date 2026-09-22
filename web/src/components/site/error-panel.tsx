@@ -70,7 +70,7 @@ function Row({ error }: { error: ErrorView }) {
           <input type="hidden" name="id" value={error.id} />
           <button
             type="submit"
-            className="min-h-8 rounded-md border border-border px-2.5 font-mono text-[0.6rem] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            className="min-h-8 rounded-md border border-border px-2.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
           >
             dealt with
           </button>

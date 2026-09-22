@@ -364,10 +364,23 @@ export function ExerciseRows({
         <div key={section.label}>
           {/* Sticky, Hevy-style — the header you are scrolling past is the one answering
               "what am I looking at" for the rows currently on screen. */}
-          <h3 className="sticky top-0 z-10 bg-background/95 py-1.5 eyebrow text-muted-foreground backdrop-blur-sm">
+          {/* `h2`, not `h3` — V4 7.4/7.1 (Q446). These sit directly under the page's one
+              `h1` from `PageHeader`, and at `h3` the outline skipped a level on every
+              section of the catalogue. Caught by the heading audit the sweep gained in 7.1;
+              nothing about it is visible, which is why it survived Stage 4 and 4.7. */}
+          <h2 className="sticky top-0 z-10 bg-background/95 py-1.5 eyebrow text-muted-foreground backdrop-blur-sm">
             {section.label} · {section.entries.length}
-          </h3>
-          <ul className="divide-y divide-border/60 rounded-lg border border-border bg-card/40">
+          </h2>
+          {/* The §7.1 text-floor allowlist (Q113). Every row carries a second line of mono
+              metadata — the muscle group and the equipment — under the exercise name, and at
+              140 exercises that line is the difference between a list you can scan and one you
+              scroll. Raising it to the 11px floor does not make the catalogue more readable; it
+              makes it a third longer. The name above it is `text-sm`, which is what the eye
+              lands on. */}
+          <ul
+            data-tiny-text="exercise metadata line; the floor would make the catalogue a third longer"
+            className="divide-y divide-border/60 rounded-lg border border-border bg-card/40"
+          >
             {section.entries.map((entry) => {
               const pr = prLine(entry, records);
               const selected = selectedKeys?.has(keyFor(entry)) ?? false;

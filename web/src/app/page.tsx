@@ -266,8 +266,12 @@ export default function AboutPage() {
             {projects.length} builds across software, robotics, and simulation.
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
+            {/* No size override on the badges below — V4 §7.1. `Badge` sets `text-xs`, and
+                `text-[0.65rem]` here was 10.4px: under both the component's design size and
+                the 11px floor (Q113). One of two call sites that did this; the other was in
+                `project-grid`. */}
             {[...new Set(projects.map((p) => p.category))].map((c) => (
-              <Badge key={c} variant="outline" className="text-[0.65rem]">
+              <Badge key={c} variant="outline">
                 {c}
               </Badge>
             ))}

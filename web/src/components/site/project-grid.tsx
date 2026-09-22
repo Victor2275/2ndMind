@@ -238,15 +238,18 @@ function ProjectTile({
 
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           <StatusBadge status={p.status} />
+          {/* No size override here — V4 §7.1. `Badge` sets `text-xs`, and this call site was
+              passing `text-[0.65rem]`, which is 10.4px and took the component below both its
+              own design size and the 11px floor (Q113). One of two that did it — the other is
+              on the home page — and it is exactly what the text gate exists to find: a shared
+              primitive quietly shrunk by a caller, on the page a stranger sees first. */}
           {p.stack.slice(0, 3).map((s) => (
-            <Badge key={s} variant="secondary" className="text-[0.65rem]">
+            <Badge key={s} variant="secondary">
               {s}
             </Badge>
           ))}
           {p.stack.length > 3 && (
-            <span className="font-mono text-[0.65rem] text-muted-foreground">
-              +{p.stack.length - 3}
-            </span>
+            <span className="font-mono text-xs text-muted-foreground">+{p.stack.length - 3}</span>
           )}
         </div>
       </div>
