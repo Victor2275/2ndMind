@@ -16,7 +16,7 @@ read_when: Always — anything about current priorities or scheduling.
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
   **V4 is nearly done** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions, ten phases,
-  **489 points, 467 done**, no deadline. **All four milestones are reached.** Done: Phase 0,
+  **489 points, 469 done**, no deadline. **All four milestones are reached.** Done: Phase 0,
   **Phase 1 (Milestone A)** — every colour, size, space and motion value comes from one place and
   a test fails if it does not — the settings screen pulled forward, **Phase N** (the plane-wifi
   freeze), **Phase 2 — Milestone B** (training logged as sessions on the phone, offline, proven
@@ -24,10 +24,11 @@ read_when: Always — anything about current priorities or scheduling.
   routines, the dashboard), **Phase 6 — Milestone D, done 2026-09-10: the portfolio is
   finished**, **Phase 3** (tags, 2026-09-13), **Phase 4** (the private shell, 2026-09-18),
   **Phase 5 — Milestone C, 2026-09-21: the private app is finished**, and most of **Phase 7**
-  (7.0, 7.1, 7.2, 7.4 — the gates and the accessibility work, 2026-09-22).
+  (7.0, 7.1, 7.2, 7.4, 7.5 — the gates, the accessibility work and the before/after compare
+  mode, 2026-09-22).
 
-  **What is left is 9 points**: 7.3 (performance), 7.5 (a before/after screenshot compare mode)
-  and 7.6 (two review rounds, which need Victor's eyes rather than more code).
+  **What is left is 7 points**: 7.3 (performance) and 7.6 (two review rounds, which need
+  Victor's eyes rather than more code).
 
   **Phase 7's gates found things nothing else could.** The largest: **three of the five themes
   did nothing** — dark-magenta, light-teal and hc-dark all rendered as carbon, for anyone who
