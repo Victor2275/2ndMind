@@ -17,6 +17,218 @@ useful part.
 
 ---
 
+## 2026-09-21 · The sweep becomes a gate — V4 §7.1
+
+### D-315 · Four new checks, and every one of them returns offenders rather than a count
+
+**Decision.** `npm run shots` now gates on **text size, tap targets, heading order and contrast**,
+on the public pages *and* the private app, at six widths. The checks live in
+`scripts/lib/audit.mjs` and each returns a list of offending elements — tag, classes, measured
+value, the first few words of its text — rather than a number.
+
+**Why a list and not a number.** D-190 is the whole argument. `shots.mjs` spent V1 to V3
+computing `tap<40px` and `text<12px`, printing them, and summing neither: sixty-eight too-small
+elements and sixteen too-small targets, exit code 0, on every run, for three versions. A count
+cannot be acted on and cannot honestly be gated on — "28 elements at the same size as every
+other label on the page" is a style and "one element at 9px" is a bug, and the count reads
+identically. The list is what makes a failure fixable in the minute after it appears.
+
+**The private app is measured for the first time.** D-190's second finding was that the private
+loop asked neither question at all, which is why the tab bar's 8.8px labels went unmeasured for
+three versions — on the one screen Victor opens every day and the only one he uses under a
+thumb.
+
+**Every gate was verified against an injected fault before being trusted**, because a checker
+that silently checks nothing is exactly the failure being fixed and looks identical to a pass.
+With a deliberately broken element added to a real page: contrast caught it at 1.19:1, the text
+floor at 9px, the tap floor at 20×20, and the heading audit caught an `h3` → `h5` jump. That
+verification found two real bugs in the contrast checker (below), both of which had it reporting
+a clean sweep while measuring nothing.
+
+**How to reverse.** Each check is one `page.evaluate` call and one boolean in the fault tally.
+Removing a check is deleting its pair; the floors are named constants at the top of the file.
+
+### D-316 · The contrast sweep parses colour with a canvas, after a regex measured nothing
+
+**Decision.** `auditContrast` resolves every colour through a 1×1 `<canvas>` — fill with the
+ground, fill the text colour over it, read the pixel — rather than parsing the string.
+
+**Why.** It was a regex over `rgba(...)` and it reported **zero elements checked on every page**.
+That looked like a clean sweep and was a broken one: this app's palette is authored in OKLCH, so
+`getComputedStyle` returns `lab(97.05 …)` and `oklch(0.155 …)`, the regex matched none of it, and
+every element on every page was skipped as unparseable. A canvas handles every colour space the
+browser does, including ones that do not exist yet, and composites alpha for free.
+
+**The second bug, found the same way.** The ground walk stopped at `<body>` and found
+`rgba(0,0,0,0)` everywhere, because `globals.css` deliberately keeps `body` transparent so the
+ambient layer can sit between it and `<html>`. The real ground of this app is on `<html>`. The
+walk now includes it, and composites the whole stack rather than giving up at the first
+translucent layer.
+
+**What it adds over `tokens.test.ts`,** which already checks every token pair: a pair being
+solvable says nothing about which pairs actually *meet on screen*. Text lands on grounds it was
+never paired with — a muted label on a raised card inside a tinted panel — and only a rendered
+page knows which combinations occurred. Measured across all five themes: **no text below AA**.
+
+**How to reverse.** Delete `auditContrast` and the theme sweep that calls it.
+
+### D-317 · The text floor is 11px and it landed at zero, by allowlisting the design language
+
+**Decision.** Text under 11px fails the sweep (Q113), with `data-tiny-text="<reason>"` as the
+allowlist, honoured on the element or any ancestor. **375 offenders across 37 patterns at the
+start; zero now.**
+
+**Two of them were bugs, not style.** `Badge` sets `text-xs` (12px) and two call sites — the
+projects grid and the home page — passed `className="text-[0.65rem]"`, taking a shared primitive
+to 10.4px on the two pages a stranger sees first. Both overrides are deleted. The log console
+and error panel's filter buttons were 9.6px *button labels*, which is interactive text and not a
+candidate for an allowlist; they are `text-xs` now. This is the gate doing the job it was built
+for: a component quietly shrunk by a caller is invisible in review and obvious to a sweep.
+
+**The rest is the app's design language, and the allowlist says so.** Dense mono metadata —
+dates, splits, reps, course codes, muscle groups, file paths — is what DESIGN.md §2 has always
+described, and the reason it is small is usually structural rather than aesthetic. The attribute
+takes a reason as its value and the reasons are the record: *"seven columns fix the width, so the
+title is sized by the grid"*, *"the floor would make the catalogue a third longer"*, *"bigger
+means fewer ticks"*. Nothing enforces that a reason is good. What is enforced is that somebody
+wrote one down, on a container, where the next person reads it.
+
+**Why 11 and not 12.** `--text-xs` is 12px and is the scale's smallest step; `build-scale.mts`
+records why it is not the geometric 11.11px. A floor *at* 12 could not be satisfied by anything
+landing on the step below the scale's bottom. 11 sits under the scale and above the point where
+text stops being readable on a phone.
+
+**How to reverse.** Raise `TEXT_FLOOR` in `shots.mjs`, or delete the check. The `data-tiny-text`
+attributes become inert rather than broken.
+
+### D-318 · The tap floor is 44px and lands as a per-page budget that only ratchets down
+
+**Decision.** The tap-target floor rises from 40px to 44px (Q441) and **gates for the first
+time**, against a per-page budget recorded in `shots.mjs`. A page over its budget fails.
+Measured 2026-09-21 against a production build at 360 and 390: **308 across 23 pages.**
+
+**Why a budget and not zero.** Unlike the text floor, most of what this found is not an
+allowlist candidate and not a bug — it is a backlog of near-misses that are real and are design
+changes: a 51×32 header link, a 47×36 tab, a 40×40 icon button. Fixing them alters the public
+header and several private screens, which is Victor's call to look at, not a mechanical edit. And
+a gate that is red on the day it ships is a gate switched off within a week.
+
+**This is not "report only", which is the thing D-190 condemned.** Every number is enforced. A
+new small control fails the build the moment it is added, which is the regression that actually
+matters, while the existing ones are a number somebody can work down.
+`node scripts/diag-tap-budget.mjs` re-measures and prints the block when a page comes in under.
+
+**Two exemptions are real and are not in the budget.** The skip link carries
+`data-small-target` because it is reached by Tab and never by a thumb; the component gallery
+carries it because its specimens are sized to demonstrate rather than to ship, and the components
+are gated where they are actually used. **Links inside a sentence are excluded by WCAG 2.5.8's
+own exception**, detected rather than allowlisted — the element's `display` must be inline and
+its parent must hold text outside the link, so a button that merely looks inline cannot claim it.
+
+**The two worst pages, named because they are the two to fix first:** `private-plan` at 84
+(seventy-six day rows, each with an edit link) and `private-training-log` at 32 (the set inputs,
+at 80×27).
+
+**How to reverse.** Delete `TAP_BUDGET` and the comparison; the floor becomes advisory again.
+
+### D-319 · The fold limit tightens to 350, and Athletics is grandfathered at 460
+
+**Decision.** `FOLD_LIMIT` falls from 500px to **350px** (Q467), with one override:
+`private-athletics` at 460.
+
+**Why now.** Q467 asked for this "once the header collapses", and §4.2 collapsed it —
+`PageHeader` is a title bar on a phone, and it bought Today 334→297, Athletics 392→235, Calendar
+293→179. Leaving the limit at 500 left the gate 150px of slack it was never meant to have, and
+slack is how a gate lets the thing it watches drift back most of the way.
+
+**The number is read off the sweep, not chosen.** Measured at 360 and 390: plan 149, today 171,
+academics 171, log 206, calendar 249–291, athletics 437. Five of the six gated pages sit at or
+under 291, so 350 clears them with room and still fails on a panel creeping above the action.
+
+**Athletics is the app's worst fold and the override is the only thing keeping it passing.**
+D-276 put the fall-challenge card above the rehab checklist deliberately — the challenge is what
+is being trained for and the checklist is how today contributes to it. The allowance is 23px over
+the measurement: enough for the card's text to reflow, not enough for a second panel to appear.
+If Athletics is ever reordered, that line should be deleted rather than raised.
+
+**How to reverse.** Both numbers are named constants with their measurements in the comment above
+them.
+
+### D-321 · Two heading-order bugs, found by the audit the moment it existed
+
+**Decision.** The exercise browser's muscle-group headings move from `h3` to `h2`, and the
+exercise detail screen's title moves from `h1` to `h2`.
+
+**Why.** Q446 asked for heading levels to be audited; §4.7 did the landmark half and recorded
+that heading order had **not** been audited mechanically, moving it here. The audit found two
+real faults on its first run, both on the Training screens:
+
+- `/private/athletics/exercises` — `PageHeader` renders the page's `h1`, and every section
+  heading under it was an `h3`. The outline skipped a level on every muscle group in the
+  catalogue.
+- `/private/athletics/exercises/[slug]` — `PageHeader` renders `h1` "Exercise" and
+  `ExerciseDetail` rendered a second `h1` with the exercise name. Two roots on one page.
+
+**Neither is visible.** Both screens look exactly the same before and after — the sizes are
+unchanged and only the levels moved. That is the whole argument for auditing this mechanically
+rather than by eye, and it is why both survived Phase 2++ Stage 4, which built these screens, and
+§4.7, which audited the landmarks beside them.
+
+**A jump *down* is the fault; a jump up is not.** `h2` → `h4` leaves a hole in the outline;
+`h4` → `h2` is the next section starting, which is ordinary. Flagging both is how an audit like
+this earns a reputation for crying wolf and stops being read.
+
+**How to reverse.** Two tag names, in `exercise-list.tsx` and `exercise-detail.tsx`.
+
+### D-320 · 7.2's bundle gate was never built, and the 90KB budget is not reachable
+
+**Decision.** `npm run bundle` exists (`scripts/bundle-budget.mjs`), measures the gzipped
+JavaScript each public route actually downloads, and fails over budget. The budget stays at
+Q459's 90KB, and **every public route currently fails it.**
+
+**The first half of this is a correction.** V4 item 7.2 is two things — "bundle gate + drop
+`ProjectGrid`'s client boundary" — and D-223 shipped the second, noting that moving the filter
+into the URL removed the boundary as a side effect, and the item was recorded as done. The gate
+was never built. Nothing in this repo measured a bundle until now, so the 90KB budget has been a
+number in a planning document rather than a constraint on the code for the whole of V4. The plan
+is corrected rather than the history rewritten.
+
+**The measurement, and it is not close.** Gzipped, per public route, cold:
+
+| route | JS |
+| --- | --- |
+| home | 232.1 KB |
+| now / projects / project-detail | 239.0 KB |
+| resume | 232.1 KB |
+
+That is **2.6× the budget**. Two things are worth separating. Most of it is the floor a Next 16 /
+React 19 app pays to hydrate at all, and no amount of application-level work moves it — which
+means Q459's number was set without measuring and is not reachable while the public site is
+rendered by this stack. But **one 64.1KB chunk is `zod`**, a validation library, loaded on the
+home page of a portfolio that validates nothing, and that one is worth chasing.
+
+**What this is measuring, and why not `next build`'s table.** That table is a static accounting
+of the chunks a route imports. This drives a real browser and sums what it downloads, because a
+chunk fetched by a dynamic `import()` never appears in the table and is still bytes on the wire.
+It counts only resources the document loads as `script`: counting everything measured Next's
+route prefetching as well, which is the whole site rather than the page.
+
+**Gzip rather than brotli**, and re-compressed here rather than trusting `content-encoding`: both
+are served in practice, brotli is smaller, so gzip is the conservative read, and the local
+`next start` serves some assets uncompressed, which would fail the gate for a reason that does
+not exist in production.
+
+**The private app is deliberately not budgeted.** It is an installed PWA behind a passkey, opened
+by one person on a phone he owns, precached by a service worker after the first visit, and it
+does things that cannot be done without JavaScript. The public site is the opposite on every
+count. A budget covering both would be too loose to mean anything for the half that matters.
+
+**How to reverse.** `BUNDLE_BUDGET=250 npm run bundle` sets the number from the environment;
+changing the default is one constant. Removing `npm run bundle` from the scripts leaves nothing
+else depending on it.
+
+---
+
 ## 2026-09-21 · Gates, performance and accessibility — V4 §7.4
 
 ### D-310 · `hidden sm:block` works now, so the five call sites were left alone
