@@ -19,6 +19,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 
+import { auditContrast, auditHeadings, auditTap, auditText } from "./lib/audit.mjs";
 import { mintSession } from "./lib/session.mjs";
 
 const BASE = process.env.SHOTS_BASE ?? "http://localhost:3000";
@@ -39,8 +40,44 @@ const CRAMPED_PX = (() => {
   return Number(found[1]) * 16;
 })();
 
-/** Real device widths, not round numbers: 360 is the common Android floor, 390 is an iPhone. */
-const WIDTHS = [360, 390, 768, 1280];
+/**
+ * Every theme id, read out of the generated `tokens.css` — V4 §7.1 (Q464).
+ *
+ * `lib/theme/registry.ts` is the register of record, and this script cannot import it: it is
+ * plain ESM and that is TypeScript. The options were to duplicate the five ids here, as
+ * `render-icons.mjs` duplicates the ground colour and needs a test to pin it, or to read them
+ * from the artefact the registry generates. This reads them, for the same reason `CRAMPED_PX`
+ * above reads the breakpoint out of `scale.css`: a sweep carrying its own copy of a list is a
+ * sweep that will one day pass a theme it never rendered.
+ *
+ * A theme added to the registry appears here on the next `npm run tokens`, with no edit.
+ */
+const THEME_IDS = (() => {
+  const css = fs.readFileSync(path.join("src", "app", "tokens.css"), "utf8");
+  const ids = [...css.matchAll(/^\[data-theme="([^"]+)"\]\s*\{/gm)].map((m) => m[1]);
+  if (ids.length === 0)
+    throw new Error("tokens.css has no [data-theme] blocks; run `npm run tokens`");
+  return [...new Set(ids)];
+})();
+
+/**
+ * Real device widths, not round numbers: 360 is the common Android floor, 390 is an iPhone.
+ *
+ * **1440 and 1920 are new in §7.1 (Q466).** The sweep stopped at 1280, which is the width this
+ * script has always called "desktop" — and which is a laptop. Victor's external monitor is
+ * neither, and §4.6's two-column layouts and §4.1's 80rem column are exactly the kind of thing
+ * that looks considered at 1280 and becomes a pair of narrow strips with a field of empty
+ * ground between them at 1920. Nothing in the app had ever been measured there.
+ *
+ * Two widths rather than one, because they fail differently: 1440 is just past the 80rem
+ * content cap, where the question is whether the page still looks composed once the column
+ * stops growing; 1920 is far enough past it to ask whether it still looks *intentional*.
+ *
+ * This is what 7.0 bought. Six widths over twenty-four pages is fifty per cent more page loads
+ * than the sweep did before, and it costs less wall clock than the four-width sequential sweep
+ * did, because that rewrite took it from 581s to roughly 250.
+ */
+const WIDTHS = [360, 390, 768, 1280, 1440, 1920];
 
 const PAGES = [
   { name: "home", url: "/" },
@@ -81,8 +118,119 @@ const widths = only ? WIDTHS.filter((w) => w === only) : WIDTHS;
 
    Run with `SHOTS_PRIVATE=0` to skip it deliberately. */
 
-/** How far down a private page the first actionable item may sit on a phone. See the check below. */
-const FOLD_LIMIT = 500;
+/**
+ * How far down a private page the first actionable item may sit on a phone — V4 §7.1 (Q467).
+ *
+ * **350, down from 500.** Q467 asked for this to tighten "once the header collapses", and §4.2
+ * collapsed it: `PageHeader` is a title bar on a phone now, and the measured savings were Today
+ * 334→297, Athletics 392→235, Calendar 293→179. The 500 was set when those numbers were the
+ * numbers; leaving it there means the gate has 150px of slack it was never meant to have, and a
+ * gate with slack is one that lets the thing it watches drift back most of the way.
+ *
+ * The new number is read off the sweep rather than chosen. Measured 2026-09-21 at 360 and 390:
+ *
+ *   plan 149 · today 171 · academics 171 · log 206 · calendar 249–291 · athletics 437
+ *
+ * Five of the six gated pages sit at or under 291, so 350 clears every one of them with room
+ * and still fails on a panel creeping back above the action. Athletics is the exception and
+ * gets its own number below rather than being allowed to set everyone else's.
+ */
+const FOLD_LIMIT = 350;
+
+/**
+ * The pages that do not meet the default, with the reason and the measurement.
+ *
+ * This is a grandfather list and it is meant to look like one — a page here is a page whose
+ * fold is worse than the app's standard and which has an argued reason, not a page that has
+ * been excused. §5.1's per-subject staleness thresholds are the same idea: one number for
+ * everything is either too loose for the good cases or wrong for the justified ones.
+ *
+ * **athletics, 460.** Measured 437 at 360 and 390. D-276 put the fall-challenge card above the
+ * rehab checklist deliberately — the challenge is the thing being trained for, and the
+ * checklist is how today contributes to it, so the card reading first is the design. The
+ * allowance is 23px over the measurement, which is enough for the card's text to reflow onto
+ * another line and not enough for a second panel to appear above it.
+ *
+ * It is worth writing down that this page is the app's worst fold and that this entry is the
+ * only thing keeping it passing. If Athletics is ever reordered, this line should be deleted
+ * rather than raised.
+ */
+const FOLD_OVERRIDES = {
+  "private-athletics": 460,
+};
+
+/**
+ * The tap-target floor — Q441, raised from 40px to 44px.
+ *
+ * D-190 found this had never been a gate at all: `shots.mjs` computed the count, printed it,
+ * and summed nothing. So this is two changes at once — the floor moves up, and for the first
+ * time a run that fails it exits non-zero. See `auditTap` for what is measured, which is not
+ * quite "every control's own box".
+ */
+const TAP_FLOOR = 44;
+
+/**
+ * The per-page tap-target budget — how many sub-44px controls each page is currently allowed.
+ *
+ * **This is a ratchet, not an exemption.** The floor lands on an app with a real backlog of
+ * near-misses — a 51x32 header link, a 47x36 tab, a 40x40 icon button — and every one of those
+ * is a design change rather than an allowlist entry. A gate that is red on the day it ships is
+ * a gate somebody switches off inside a week, and D-190 is this repo's record of what that
+ * costs: the tap and text counts were printed and summed by nothing for three versions, and
+ * read as a pass the entire time.
+ *
+ * So every number below is **enforced**. A page over its budget fails the run, which means a
+ * new small control is a failure the moment it is added, while the existing ones are a number
+ * somebody can work down. The numbers only ever go down: `node scripts/diag-tap-budget.mjs`
+ * re-measures and prints this block, and it is edited when a page comes in under.
+ *
+ * Measured 2026-09-21 against a production build, at 360 and 390 (the widths where the pointer
+ * is a thumb), taking the worse of the two. **308 across 23 pages.** The two worst are worth
+ * naming because they are the two to fix first:
+ *
+ *   private-plan          84   seventy-six day rows, each with an edit link
+ *   private-training-log  32   the set inputs, at 80x27
+ *
+ * Legitimate exemptions are not in here — they carry `data-small-target` with a reason at the
+ * call site (the skip link, the component gallery), and links inside a sentence are excluded by
+ * `auditTap` under WCAG 2.5.8's own exception rather than by any list.
+ */
+const TAP_BUDGET = {
+  "private-plan": 84,
+  "private-training-log": 32,
+  "private-work": 21,
+  projects: 17,
+  resume: 17,
+  "private-today": 17,
+  "private-log": 17,
+  home: 15,
+  now: 13,
+  "private-athletics": 13,
+  "private-training-history": 11,
+  "project-detail": 10,
+  "private-exercises": 9,
+  "private-settings": 7,
+  "private-tailor": 6,
+  "private-academics": 5,
+  "private-exercise-detail": 4,
+  "private-calendar": 3,
+  "private-now": 3,
+  "private-hobbies": 2,
+  "private-log-archive": 1,
+  "private-sync": 1,
+  "private-kitchen-sink": 0,
+};
+
+/**
+ * The text floor — Q113, 11px, with `data-tiny-text` as the allowlist.
+ *
+ * Also never a gate before D-190. 11 rather than 12 is deliberate and is the number Q113 gives:
+ * `--text-xs` is 12px and is the smallest step on the scale, and `build-scale.mts` records why
+ * it is not the geometric 11.11px — so a floor *at* 12 would fail on any element that ever
+ * lands on the step below the scale's bottom, which is a floor that cannot be satisfied. 11 is
+ * below the scale and above the point where text stops being readable on a phone.
+ */
+const TEXT_FLOOR = 11;
 
 /* Every private screen is swept (V3 §3.2). `gated` says whether the fold check applies.
  *
@@ -467,44 +615,51 @@ flush(
           }
         }
 
-        // Tap targets below ~40px are hard to hit accurately on a phone.
-        const small = [...document.querySelectorAll("a, button, input, select")].filter((el) => {
-          const r = el.getBoundingClientRect();
-          return r.height > 0 && r.height < 40;
-        }).length;
-
-        // Text under 12px is uncomfortable on a phone regardless of how tidy it looks.
-        // Grouped by size and class, because a bare count cannot be acted on: 28 elements at
-        // the same 0.62rem as every other eyebrow label on the page is a style, and one
-        // element at 9px is a bug, and the count reads identically for both.
-        const tinyEls = [...document.querySelectorAll("body *")].filter((el) => {
-          if (!el.textContent?.trim() || el.children.length > 0) return false;
-          return parseFloat(getComputedStyle(el).fontSize) < 12;
-        });
-        const tinyBy = {};
-        for (const el of tinyEls) {
-          const px = parseFloat(getComputedStyle(el).fontSize).toFixed(1);
-          tinyBy[px] = (tinyBy[px] ?? 0) + 1;
-        }
-
-        return { overflow, wide: wide.slice(0, 4), small, tiny: tinyEls.length, tinyBy };
+        return { overflow, wide: wide.slice(0, 4) };
       });
 
-      const bad = report.overflow > 0;
-      if (bad) faults += 1;
+      // The three §7.1 audits, each run in the page and each returning offenders rather than a
+      // count (D-190's lesson: a number nothing sums is a diagnostic wearing a gate's clothes).
+      const text = await page.evaluate(auditText, TEXT_FLOOR);
+      const tap = await page.evaluate(auditTap, TAP_FLOOR);
+      const headings = await page.evaluate(auditHeadings);
+
+      const over = report.overflow > 0;
+      // The tap floor applies where a thumb is the pointer. At 1280 and up the pointer is a
+      // mouse, and holding a desktop toolbar to a 44px minimum would either bloat it or teach
+      // everyone to allowlist it — both worse than not measuring it there.
+      const tapGated = width < 768;
+      const budget = TAP_BUDGET[target.name] ?? 0;
+      const badTap = tapGated && tap.offenders.length > budget;
+      const badText = text.offenders.length > 0;
+      const badHeadings = headings.jumps.length > 0 || headings.h1s > 1;
+
+      if (over || badTap || badText || badHeadings) faults += 1;
+
       say(
         `${String(width).padStart(4)}px ${target.name.padEnd(15)}` +
           ` overflow=${String(report.overflow).padStart(4)}px` +
-          ` tap<40px=${String(report.small).padStart(3)}` +
-          ` text<12px=${String(report.tiny).padStart(3)}` +
-          (report.tiny > 0
-            ? ` (${Object.entries(report.tinyBy)
-                .sort((a, b) => Number(a[0]) - Number(b[0]))
-                .map(([px, n]) => `${n}@${px}px`)
-                .join(" ")})`
-            : "") +
-          (bad ? "  <-- " + report.wide.map((w) => `${w.tag}.${w.cls}`).join(" | ") : ""),
+          ` tap<${TAP_FLOOR}=${String(tap.offenders.length).padStart(3)}/${budget}${tapGated ? "" : "-"}` +
+          ` text<${TEXT_FLOOR}=${String(text.offenders.length).padStart(3)}` +
+          ` h=${headings.count}` +
+          (badTap ? `  <-- over its tap budget (${budget})` : "") +
+          (over ? "  <-- " + report.wide.map((w) => `${w.tag}.${w.cls}`).join(" | ") : ""),
       );
+
+      // Offenders are printed underneath the row rather than on it, because the row is the
+      // thing that gets diffed between runs and a row that grows a list is a row that cannot be.
+      for (const o of text.offenders.slice(0, 5))
+        say(`        text ${o.px}px  ${o.tag}.${o.cls}  "${o.text}"`);
+      if (text.offenders.length > 5) say(`        text … and ${text.offenders.length - 5} more`);
+
+      if (badTap) {
+        for (const o of tap.offenders.slice(0, 5))
+          say(`        tap  ${o.w}x${o.h}  ${o.tag}.${o.cls}  "${o.label}"`);
+        if (tap.offenders.length > 5) say(`        tap  … and ${tap.offenders.length - 5} more`);
+      }
+
+      for (const j of headings.jumps) say(`        heading h${j.from} -> h${j.to}  "${j.text}"`);
+      if (headings.h1s > 1) say(`        heading ${headings.h1s} <h1>s on one page`);
 
       await page.close();
       return { out };
@@ -663,26 +818,59 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
           fullPage: true,
         });
 
-        // A 390x844 phone shows roughly 690px once browser chrome is taken off, so 500px leaves
-        // margin and still fails loudly if a panel creeps back above the action. /private was
-        // 791px before feature 3 was closed out and 265px after D-132.
-        const buried = width < 768 && fold !== null && fold > FOLD_LIMIT;
+        // A 390x844 phone shows roughly 690px once browser chrome is taken off. /private was
+        // 791px before feature 3 was closed out and 265px after D-132. §7.1 tightened the
+        // limit to 350 and gave the one page that cannot meet it its own number — see
+        // `FOLD_LIMIT` and `FOLD_OVERRIDES` for both measurements and the reason.
+        const limit = FOLD_OVERRIDES[target.name] ?? FOLD_LIMIT;
+        const buried = width < 768 && fold !== null && fold > limit;
+
+        // The same three audits the public sweep runs. D-190's second finding was that the
+        // private loop asked neither the text nor the tap question at all — which is why the
+        // 8.8px tab bar went unmeasured for three versions, on the one screen Victor opens
+        // every day and the only one he uses under a thumb.
+        const text = await page.evaluate(auditText, TEXT_FLOOR);
+        const tap = await page.evaluate(auditTap, TAP_FLOOR);
+        const headings = await page.evaluate(auditHeadings);
+
+        const tapGated = width < 768;
+        const budget = TAP_BUDGET[target.name] ?? 0;
+        const badTap = tapGated && tap.offenders.length > budget;
+        const badText = text.offenders.length > 0;
+        const badHeadings = headings.jumps.length > 0 || headings.h1s > 1;
 
         // A gated page with no marker is a fault in its own right, and a quiet one: the check
         // would otherwise report nothing and the page would pass by having lost the very thing
         // being measured. That is how a page stops being checked without anyone noticing —
         // see the migration test that spent a release testing nothing (D-165's commit).
         const unmarked = target.gated && !rejected && fold === null;
-        if (buried || rejected || unmarked) privateFaults += 1;
+        if (buried || rejected || unmarked || badTap || badText || badHeadings) privateFaults += 1;
 
         say(
           `${String(width).padStart(4)}px ${target.name.padEnd(18)}` +
             ` status=${response?.status() ?? "?"}` +
             (fold === null ? "" : ` first-action-at=${String(fold).padStart(4)}px`) +
+            ` tap<${TAP_FLOOR}=${String(tap.offenders.length).padStart(3)}/${budget}${tapGated ? "" : "-"}` +
+            ` text<${TEXT_FLOOR}=${String(text.offenders.length).padStart(3)}` +
+            ` h=${headings.count}` +
+            (badTap ? `  <-- over its tap budget (${budget})` : "") +
             (rejected ? `  <-- redirected to ${landed}` : "") +
             (unmarked ? `  <-- gated, but no [data-first-action] on the page` : "") +
-            (buried ? `  <-- below the fold (limit ${FOLD_LIMIT}px)` : ""),
+            (buried ? `  <-- below the fold (limit ${limit}px)` : ""),
         );
+
+        for (const o of text.offenders.slice(0, 5))
+          say(`        text ${o.px}px  ${o.tag}.${o.cls}  "${o.text}"`);
+        if (text.offenders.length > 5) say(`        text … and ${text.offenders.length - 5} more`);
+
+        if (badTap) {
+          for (const o of tap.offenders.slice(0, 5))
+            say(`        tap  ${o.w}x${o.h}  ${o.tag}.${o.cls}  "${o.label}"`);
+          if (tap.offenders.length > 5) say(`        tap  … and ${tap.offenders.length - 5} more`);
+        }
+
+        for (const j of headings.jumps) say(`        heading h${j.from} -> h${j.to}  "${j.text}"`);
+        if (headings.h1s > 1) say(`        heading ${headings.h1s} <h1>s on one page`);
 
         await context.close();
         return { out };
@@ -693,19 +881,124 @@ if (process.env.SHOTS_PRIVATE !== "0" && secret) {
   console.log("\nSESSION_SECRET not set, so the private pages were skipped.");
 }
 
+/* --- Themes, and the contrast they actually render — V4 §7.1 (Q463, Q464) ---------------
+   Two of §7.1's items, done as one sweep, because they are the same question asked once per
+   theme: **does the text on this screen clear AA against the ground it landed on.**
+
+   `tokens.test.ts` already checks every token *pair* for contrast, and the palettes are
+   generated from contrast targets rather than chosen by eye — so it is worth being clear about
+   what this adds, or it looks like the same check twice. A pair being solvable says nothing
+   about which pairs actually meet on screen. Text lands on grounds it was never paired with: a
+   muted label on a raised card inside a tinted panel composites to something no pair in the
+   generator describes. Only a rendered page knows which combinations occurred, which is exactly
+   why Q463 asks for this as a sweep rather than as another unit test.
+
+   **Capped, per Q464's "capped".** Five themes over every page and width is 570 page loads and
+   would triple the sweep. What runs instead is five themes over four pages at one width, and
+   the four are chosen so that between them they render every token the app has:
+
+     kitchen-sink   every component and every state on one page — the reason it exists (§1.11)
+     private-today  the densest real screen, and the one with the most semantic colour on it
+     home           the public ground, which is pinned to `carbon` in the app and therefore
+                    never sees the other four in normal use
+     projects       cards and badges over the ambient layer, the one place text sits on a
+                    composited ground rather than a flat one
+
+   1280 rather than a phone width: this sweep is about colour, and at 1280 every page renders
+   its full desktop furniture — sidebar, two columns, the footer — so there is simply more text
+   on screen per load to check.
+
+   The theme is set by writing `data-theme` on `<html>`, which is what `next-themes` does
+   (`theme-provider.tsx`); the public site pins itself to one theme with `forcedTheme`, so
+   overriding the attribute directly is the only way to see the others on a public page. */
+let contrastFaults = 0;
+if (!only && process.env.SHOTS_THEMES !== "0") {
+  console.log("");
+  const secretForThemes = process.env.SESSION_SECRET?.trim();
+  const themeToken = secretForThemes ? await mintSession(secretForThemes) : null;
+  const origin = new URL(BASE).origin;
+
+  const THEME_PAGES = [
+    { name: "kitchen-sink", url: "/private/kitchen-sink", private: true },
+    { name: "today", url: "/private", private: true },
+    { name: "home", url: "/", private: false },
+    { name: "projects", url: "/projects", private: false },
+  ].filter((p) => !p.private || themeToken);
+
+  const jobs = THEME_IDS.flatMap((theme) => THEME_PAGES.map((target) => ({ theme, target })));
+
+  flush(
+    await mapPool(jobs, CONCURRENCY, async ({ theme, target }) => {
+      const { say, out } = buffer();
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+      });
+      if (target.private)
+        await context.addCookies([
+          { name: "2m_session", value: themeToken, url: origin, httpOnly: true, sameSite: "Lax" },
+        ]);
+
+      const page = await context.newPage();
+      await page.goto(BASE + target.url, { waitUntil: "networkidle", timeout: 90_000 });
+      await hideDevOverlay(page);
+
+      // Set the theme, then wait for a frame so the new custom properties are resolved before
+      // anything is read. Without the wait the first job in each context reads the old palette.
+      await page.evaluate((id) => {
+        document.documentElement.setAttribute("data-theme", id);
+      }, theme);
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      await fontsReady(page);
+
+      await shoot(page, {
+        path: path.join(OUT, `theme-${theme}-${target.name}.png`),
+        fullPage: true,
+      });
+
+      const contrast = await page.evaluate(auditContrast);
+      const bad = contrast.offenders.length > 0;
+      if (bad) contrastFaults += 1;
+
+      say(
+        ` ${theme.padEnd(13)} ${target.name.padEnd(14)}` +
+          ` checked=${String(contrast.checked).padStart(4)}` +
+          ` unknown=${String(contrast.unknown).padStart(3)}` +
+          ` below-AA=${String(contrast.offenders.length).padStart(3)}`,
+      );
+      for (const o of contrast.offenders.slice(0, 4))
+        say(`        ${o.ratio}:1 (needs ${o.need}) ${o.px}px  ${o.tag}.${o.cls}  "${o.text}"`);
+      if (contrast.offenders.length > 4) say(`        … and ${contrast.offenders.length - 4} more`);
+
+      await context.close();
+      return { out };
+    }),
+  );
+}
+
 // Paper has no viewport width, so this runs once rather than inside the sweep. Skipped when
 // a single width was requested, because that invocation is a targeted layout check.
 const overLong = only ? 0 : await measureResumes(browser);
 
 await browser.close();
-console.log(`\n${faults} page/width combination(s) scroll sideways. Written to ${OUT}/`);
+console.log(
+  `\n${faults} public page/width combination(s) with a layout, text, tap or heading fault.` +
+    ` Written to ${OUT}/`,
+);
 if (!only) console.log(`${overLong} resume variant(s) print to more than one page.`);
 if (privateFaults > 0)
-  console.log(`${privateFaults} private page(s) bury the answer or refused the session.`);
+  console.log(`${privateFaults} private page/width combination(s) with a fault.`);
 if (returningFaults > 0)
   console.log(
     `${returningFaults} width(s) where the signed-in header is missing its link or does not fit.`,
   );
+if (contrastFaults > 0)
+  console.log(`${contrastFaults} theme/page combination(s) with text below AA.`);
 
 // A non-zero exit is what lets this gate a commit, rather than being advice nobody reads.
-if (faults > 0 || overLong > 0 || privateFaults > 0 || returningFaults > 0) process.exitCode = 1;
+// §7.1 added text, tap, heading and contrast to the list; before it, only the first four
+// counted and the other two were printed and summed by nothing at all (D-190).
+if (faults > 0 || overLong > 0 || privateFaults > 0 || returningFaults > 0 || contrastFaults > 0)
+  process.exitCode = 1;
