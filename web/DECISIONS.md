@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-21
+updated: 2026-09-22
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,101 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-22 · The write path, and what the speed complaint turned out to be — V4 Phase 8
+
+### D-325 · Vault writes go through the outbox, not through a Postgres buffer and a push button
+
+**Decision.** N9 — *every write through the outbox*, parked since Phase N — is unparked and is
+V4 §8.1. The two remaining git write paths (publishing a project update, saving the course plan)
+enqueue into the existing sync outbox and ack locally; the GitHub commit pushes behind them and
+retries on failure. **The vault stays the source of truth and Postgres gains no copy of it.**
+
+**Why this was a decision and not an implementation detail.** Victor proposed the opposite
+shape and explicitly asked for it to be checked: save everything to a faster database, then push
+to git with a single button. Checking it found three things.
+
+*The premise is mostly already built.* Only two write paths still commit to git. Tasks, log
+entries, workouts, sets, exercises, bodyweight, rehab completions, tags and `plan_overrides` are
+all Postgres and have been since V2 (D-036, D-037). "Move it to a database" describes a
+migration that happened fourteen months of plan-time ago; redoing it would move two rare writes.
+
+*The commit is load-bearing, and the proposal would have changed behaviour nobody asked to
+change.* `/now` is statically generated from the vault on disk — it renders `○` in the build
+output, with no `revalidate` and no `dynamic`. A commit and the Vercel rebuild behind it are the
+**only** path by which a published update reaches the public site. A Postgres buffer with a
+manual push does not merely defer latency; it decides when the public page changes, and it opens
+a window in which the vault and the database disagree about what Victor has written.
+
+*The latency it was aimed at is real but small, and is not where the slowness is.* The composer
+waits on two sequential GitHub round trips — read the blob SHA, then write — each under an 8s
+deadline (`lib/vault/write.ts`). That is genuinely slow. It is also two screens, used rarely,
+against a public portfolio shipping 220.7 KB of JavaScript on every visit.
+
+**Why the outbox is the better answer to the same complaint.** The second half of Victor's
+report was *"it is unclear when something is logged/saved"*, and the outbox is the machinery
+this app already built for exactly that question: a queued state (`SaveState.queued`, D-259), a
+screen listing everything unsent and why (`/private/sync`, with no delete button by design), a
+badge that escalates with age, and automatic retry. Routing vault writes through it answers both
+complaints with one mechanism and no new vocabulary. A push button would have been a second
+way to find out whether something was saved, with different rules from the first.
+
+**What it costs.** N5 deferred N9 for a real reason: it touches every form in the app, and
+Phase 2 was rebuilding one of them at the time. That reason has expired — Phase 2, 2++ and 5 are
+all done and the forms are stable — but the 13 points are still 13 points, and this is logged as
+Phase 8's risk R8.
+
+**How to reverse.** Leave `lib/vault/write.ts` as the synchronous path it is today and do not
+register the vault entities in `ENTITIES`. The Postgres-buffer design is not refuted, only
+declined: if the public site ever stops being statically generated from the vault — an ISR
+`/now`, or vault content served from the database — the argument above loses its load-bearing
+half and the push button becomes reasonable. Revisit it then, not before.
+
+### D-326 · The speed complaint was measured before it was scoped, and it moved the work
+
+**Decision.** V4 §7.3 is closed and its remaining 4 points move into Phase 8, which is scoped
+from measurement rather than from the seventeen-item list as given.
+
+**Why.** The list was a good list and it was not ordered by this codebase's actual problems.
+Measuring first — `npm run bundle` against a production build on 2026-09-22 — reordered it:
+
+| what was measured | number | where it went |
+| --- | --- | --- |
+| Public JS, home | **220.7 KB** gzipped vs 90 budget | §8.4 |
+| The largest single chunk | **64.1 KB, and it is `zod`** | §8.4 |
+| Unused runtime dependencies | **four** | §8.5 |
+| GIN indexes on the two `@>`-filtered `tags` columns | **zero** | §8.8 |
+| `next/dynamic` call sites | **zero** | §8.6 |
+| Debounced input handlers | **one**, and it is drafts | §8.12 |
+| Hero PNGs on disk | **792 / 582 / 542 KB** | §8.11 |
+
+**The `zod` chunk is the finding worth repeating**, because nothing about it is visible from any
+screen. The root layout mounts `ErrorWatch` so a stranger's crash on the public site gets
+reported (D-165, and that is still right). `ErrorWatch` → `lib/errors/client.ts` →
+`lib/errors/report.ts` → `zod`. The schema in that module is only ever used by the *server*
+route; the client needs `clean` and the types. So a validation library is shipped to every
+visitor of a portfolio that validates nothing, and it is **29% of the public JavaScript**.
+Identified by reading the chunk, not by inference: 485 `zod` markers, `ZodError`,
+`invalid_union`.
+
+**Four items on the list were already true and are recorded rather than skipped** (§8.14).
+Load balancing and the CDN are Vercel's edge network. Minification is `next build`.
+**Connection pooling is a non-question on `neon-http`** — it is stateless HTTP with no pool to
+exhaust, which `lib/db/client.ts` already says in a comment; the answer changes only if the
+driver changes. Recording these matters: an audit item that is silently dropped reads later as
+an audit item that was forgotten.
+
+**One thing the measurement did *not* settle**, and it is flagged rather than guessed: whether
+the eight `readVaultFileCached` call sites are actually slow. They are cached at
+`revalidate: 300` with tag invalidation on write, so the cold-miss cost may already be rare.
+§8.3 is written as *measure, then decide* for that reason — D-193 is the precedent, where the
+ambient layer's cost was argued from first principles, measured, and came back inside the noise.
+
+**How to reverse.** Phase 8's ordering is a recommendation, not a dependency graph, with one
+exception: §8.2 is meaningless before §8.1. Everything else can be taken in any order, and §8.4
+and §8.5 depend on nothing at all.
 
 ---
 
