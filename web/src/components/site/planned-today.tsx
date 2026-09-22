@@ -43,7 +43,12 @@ export async function PlannedToday() {
   const routine = routines.get(day.day) ?? null;
 
   return (
-    <section className="mt-6 rounded-lg border border-border bg-card/60 p-4">
+    // 7.1 text-floor allowlist (Q113): the prescription line for today's session, under
+    // the session name. Same role as the routine checklist's, and the same reason.
+    <section
+      data-tiny-text="today's prescription line, under the session name"
+      className="mt-6 rounded-lg border border-border bg-card/60 p-4"
+    >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="eyebrow text-muted-foreground">Today&apos;s session</span>
         <span className="tabular font-mono text-xs text-muted-foreground">

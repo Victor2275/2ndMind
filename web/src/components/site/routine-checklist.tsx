@@ -117,14 +117,26 @@ export function RoutineChecklist({
 
   return (
     <div data-first-action={firstAction ? "" : undefined}>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      {/* §7.1 text-floor allowlist (Q113): the routine's duration and pool, set opposite its
+          name. The name is the heading; this is the shape of the session beside it. */}
+      <div
+        data-tiny-text="routine duration and pool, opposite the routine name"
+        className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"
+      >
         <p className="text-sm font-semibold text-foreground">{routine.name}</p>
         <p className="tabular font-mono text-[0.65rem] text-muted-foreground">
           {routine.minutes} min · {routine.pool}
         </p>
       </div>
 
-      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
+      {/* The 7.1 text-floor allowlist (Q113). Two things under the floor here: the tick
+          glyph, which is sized by its 16px box rather than chosen, and the prescription
+          under each movement ("15 per side, knee travel"), which is detail you read once
+          and then stop reading. The movement name above it is `text-sm`. */}
+      <ul
+        data-tiny-text="tick glyph sized by its box; prescription is read-once detail"
+        className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60"
+      >
         {routine.movements.map((movement) => (
           <Movement
             key={movement.slug}
@@ -136,7 +148,12 @@ export function RoutineChecklist({
         ))}
       </ul>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      {/* 7.1 text-floor allowlist (Q113): the progress line and the fortnight strip. The
+          checklist above is the screen; this is its footer. */}
+      <div
+        data-tiny-text="routine progress footer and fortnight strip"
+        className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+      >
         <p className="font-mono text-[0.6rem] text-muted-foreground">
           {complete ? (
             <span className="text-primary">Routine done.</span>

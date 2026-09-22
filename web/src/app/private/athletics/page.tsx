@@ -109,7 +109,13 @@ function Unconfigured() {
 
 function StrengthCard({ record }: { record: StrengthRecord }) {
   return (
-    <div className="card-scan rounded-lg border border-border bg-card/70 p-4">
+    // 7.1 text-floor allowlist (Q113). The card leads with the exercise and its heaviest
+    // and best sets at text-sm; the rep-PR chips and the working-set count under them are
+    // the supporting detail.
+    <div
+      data-tiny-text="training data: dates, reps, weights and splits, scanned as a column"
+      className="card-scan rounded-lg border border-border bg-card/70 p-4"
+    >
       <h3 className="text-sm font-semibold text-foreground">{record.exercise}</h3>
 
       <dl className="mt-3 grid grid-cols-2 gap-3">
@@ -149,7 +155,12 @@ function StrengthCard({ record }: { record: StrengthRecord }) {
 
 function ErgTable({ records, readings }: { records: ErgRecord[]; readings: BodyweightReading[] }) {
   return (
-    <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card/70">
+    // 7.1 text-floor allowlist (Q113). The erg table: the splits are `text-sm` because
+    // they are the answer, and the date column beside them is the label.
+    <div
+      data-tiny-text="training data: dates, reps, weights and splits, scanned as a column"
+      className="mt-4 overflow-x-auto rounded-lg border border-border bg-card/70"
+    >
       <table className="w-full min-w-[34rem] text-left">
         <thead>
           <tr className="border-b border-border">
@@ -199,7 +210,13 @@ function ErgTable({ records, readings }: { records: ErgRecord[]; readings: Bodyw
 
 function History({ workouts }: { workouts: WorkoutSummary[] }) {
   return (
-    <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-card/70">
+    // 7.1 text-floor allowlist (Q113). Date on the left, set count and volume on the
+    // right, the workout title between them at text-sm. The numbers flank the thing you
+    // are reading; they are not the thing you are reading.
+    <ul
+      data-tiny-text="training data: dates, reps, weights and splits, scanned as a column"
+      className="mt-4 divide-y divide-border rounded-lg border border-border bg-card/70"
+    >
       {workouts.map((workout) => (
         <li key={workout.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5">
           <span className="tabular font-mono text-[0.65rem] text-muted-foreground">

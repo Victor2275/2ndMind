@@ -40,7 +40,11 @@ export function PublicChrome({
           It is the first focusable thing in the document on purpose: a skip link that is not
           first has already been skipped. */}
       {show && (
-        <a href="#main" className="skip-link">
+        <a
+          href="#main"
+          data-small-target="keyboard-only: reached by Tab, never by a thumb"
+          className="skip-link"
+        >
           Skip to content
         </a>
       )}

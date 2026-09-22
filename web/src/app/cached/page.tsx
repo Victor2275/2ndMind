@@ -35,7 +35,11 @@ export default function CachedPage() {
     <>
       {/* `/cached` is the private app (D-174) but sits outside its layout, so it carries its
           own skip link — §4.7, Q444: one per layout, and this route is one. */}
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        data-small-target="keyboard-only: reached by Tab, never by a thumb"
+        className="skip-link"
+      >
         Skip to content
       </a>
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-5 pt-8 pb-24 sm:px-6">

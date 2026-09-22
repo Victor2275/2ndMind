@@ -87,7 +87,10 @@ export function PipelineBoard({
               // Said, not hidden. The shortlist column lists high-priority rows only, and 173
               // of 178 postings sit behind this line — a board that silently dropped them would
               // be a different claim about the sheet.
-              <p className="mt-2 text-[0.65rem] text-muted-foreground">
+              <p
+                data-tiny-text="the count of rows not shown in this column"
+                className="mt-2 text-[0.65rem] text-muted-foreground"
+              >
                 + {hidden} more in the sheet
               </p>
             )}
@@ -123,8 +126,16 @@ function Card({ application }: { application: Application }) {
         <p className="mt-1.5 eyebrow text-muted-foreground">{application.status}</p>
       )}
 
+      {/* §7.1 text-floor allowlist (Q113) on the line below: the application's company and
+          date under its title, on a board column narrow enough that four fit across a
+          laptop. */}
       {meta !== "" && (
-        <p className="mt-0.5 font-mono text-[0.65rem] text-faint-foreground">{meta}</p>
+        <p
+          data-tiny-text="application meta under its title; four columns must fit across"
+          className="mt-0.5 font-mono text-[0.65rem] text-faint-foreground"
+        >
+          {meta}
+        </p>
       )}
     </li>
   );

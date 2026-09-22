@@ -83,7 +83,15 @@ function DayRow({
         isToday ? "bg-primary/5" : ""
       }`}
     >
-      <div className={`px-4 py-3 ${past && !isToday ? "opacity-60" : ""}`}>
+      {/* 7.1 text-floor allowlist (Q113). Seventy-six day rows. The weekday and date are
+          `text-xs` and the session name is `text-sm`; what is under the floor is the day
+          index and the routine line beneath it, which are the row's footnotes. At the floor
+          a row grows tall enough that a week stops fitting on a phone screen, and the whole
+          point of this page is seeing the shape of the block. */}
+      <div
+        data-tiny-text="day index and routine line in a 76-row plan"
+        className={`px-4 py-3 ${past && !isToday ? "opacity-60" : ""}`}
+      >
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="tabular w-12 shrink-0 font-mono text-xs text-muted-foreground">
             {weekdayOf(day.date)}

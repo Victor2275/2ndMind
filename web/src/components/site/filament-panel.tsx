@@ -113,6 +113,7 @@ function SpoolRow({ spool }: { spool: FilamentSpool }) {
         </span>
 
         <span
+          data-tiny-text="spool weight and level chip beside its name"
           className={`tabular shrink-0 rounded border px-1.5 py-0.5 font-mono text-[0.65rem] ${LEVEL_TONE[level]}`}
         >
           {level === "empty" ? "empty" : `${spool.gramsRemaining}g · ${percent}%`}

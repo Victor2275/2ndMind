@@ -71,7 +71,13 @@ function SectionHead({
 }) {
   const treatment = TREATMENT[role];
   return (
-    <div className="flex items-center gap-3">
+    // The §7.1 text-floor allowlist (Q113). The section number is a tracked ordinal set beside
+    // the heading and deliberately quieter than it — at the floor it competes with the heading
+    // it exists to number.
+    <div
+      className="flex items-center gap-3"
+      data-tiny-text="section ordinal, set quieter than its heading"
+    >
       {index && (
         <span className="tabular font-mono text-[0.62rem] tracking-[0.16em] text-muted-foreground">
           {index}

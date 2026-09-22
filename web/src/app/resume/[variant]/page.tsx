@@ -97,7 +97,15 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
           margin, which is what made the phone version a Letter sheet scaled down.
 
           @media print in globals.css is untouched and stays frozen (Q355, V4 rule 5). */}
-      <article className="resume-sheet rounded-card border border-border bg-card p-5 shadow-floating phone:p-8 tablet:p-10 print:shadow-none">
+      {/* 7.1 text-floor allowlist (Q113). A resume is a one-page document (the sweep
+          gates that separately) and its section rules are set small and tracked on
+          purpose — the entries under them are what is read. The print rules in
+          globals.css size this sheet in points for paper, which is the output that
+          matters; on screen it is a preview of that. */}
+      <article
+        data-tiny-text="resume section rules; the sheet is sized for paper, in points"
+        className="resume-sheet rounded-card border border-border bg-card p-5 shadow-floating phone:p-8 tablet:p-10 print:shadow-none"
+      >
         <header className="resume-block">
           <h1 className="text-3xl font-extrabold tracking-tight">{doc.name}</h1>
           <p className="mt-2 max-w-[70ch] text-sm text-muted-foreground">{doc.headline}</p>

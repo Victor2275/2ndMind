@@ -209,7 +209,13 @@ export function TrendChart({
   }));
 
   return (
-    <figure className="m-0">
+    // `data-tiny-text` is the §7.1 text-floor allowlist (Q113), and a chart is the case it was
+    // added for. Axis labels, tick values and the legend are all below 11px, and the trade
+    // there is not size against readability — it is size against *how many* ticks fit. Bigger
+    // labels on a 600-unit viewBox mean fewer of them, which is less information on the chart,
+    // not more. This is also why `globals.css` needs no `forced-color-adjust` escape hatch:
+    // the disclosure table below carries every one of these numbers at full size (D-312).
+    <figure className="m-0" data-tiny-text="chart axis, ticks and legend; bigger means fewer ticks">
       {lead && <ChartHeadline lead={lead} />}
 
       <div className="relative">
@@ -368,7 +374,10 @@ export function BarChart({ bars, format, height = 120, lead }: BarChartProps) {
   const max = Math.max(...bars.map((b) => b.value), 1);
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-x-auto"
+      data-tiny-text="bar labels and week stamps; bigger means fewer bars"
+    >
       {lead && <ChartHeadline lead={lead} />}
       <div
         className="flex min-w-[18rem] items-end gap-1.5"

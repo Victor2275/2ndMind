@@ -60,7 +60,10 @@ export function AgendaDayBlock({ day }: { day: AgendaDay }) {
   return (
     <div>
       <h3 className="mb-2 eyebrow text-muted-foreground">{HEADING.format(date)}</h3>
-      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
+      <ul
+        data-tiny-text="agenda row: time and location beside the event; the summary is text-sm"
+        className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60"
+      >
         {day.events.map((event) => (
           <EventRow key={`${event.uid}-${event.start.toISOString()}`} event={event} />
         ))}
@@ -161,6 +164,7 @@ export function Agenda({
   return (
     <ul
       data-first-action={firstAction || undefined}
+      data-tiny-text="agenda row: time and location beside the event; the summary is text-sm"
       className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60"
     >
       {events.map((event, index) => (

@@ -20,7 +20,13 @@ export function FreshnessBadge({ report }: { report: FreshnessReport }) {
   if (problems.length === 0) return null;
 
   return (
-    <details className="group relative">
+    // The 7.1 text-floor allowlist (Q113). What opens here is a vault file path and a
+    // commit date — provenance, shown on demand, and a path that wraps is harder to read
+    // than a path that is small.
+    <details
+      className="group relative"
+      data-tiny-text="vault path and commit stamp, shown on demand"
+    >
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-highlight/40 bg-highlight/10 px-2.5 py-1 transition-colors hover:border-highlight/70 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="size-1.5 rounded-full bg-highlight" />
         <span className="font-mono text-[0.65rem] text-highlight">{problems.length} stale</span>

@@ -179,7 +179,12 @@ export function ChallengeLedger({
           />
         </div>
 
-        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        {/* 7.1 text-floor allowlist (Q113): the two readings under the pace bar. The bar
+            is the answer; these are the metres behind it. */}
+        <div
+          data-tiny-text="metres and day count under the pace bar"
+          className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+        >
           <p className="tabular font-mono text-[0.65rem] text-muted-foreground">
             {progress.loggedM.toLocaleString()} / {progress.requiredTotalM.toLocaleString()} m · day{" "}
             {progress.daysElapsed} of {progress.daysTotal}
@@ -214,7 +219,10 @@ export function ChallengeGoals({ goals }: { goals: ChallengeGoal[] }) {
   }
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
+    // The 7.1 text-floor allowlist (Q113). Each card leads with the goal and its target;
+    // the line underneath says over what window and how it is measured, which is the
+    // footnote to the number above it.
+    <ul className="grid gap-3 sm:grid-cols-2" data-tiny-text="goal footnote: window and method">
       {goals.map((goal) => (
         <li key={goal.key} className="card-scan rounded-lg border border-border bg-card/70 p-4">
           <p className="eyebrow text-muted-foreground">{goal.key}</p>

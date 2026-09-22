@@ -154,7 +154,10 @@ export function OutboxConsole() {
               identical at four minutes and at four weeks, on the screen whose entire subject is
               how long something has been waiting. */}
           {lastSyncAt === null ? (
-            <p className="font-mono text-[0.65rem] text-muted-foreground">
+            <p
+              data-tiny-text="the never-synced stamp, matching AsOf's size beside it"
+              className="font-mono text-[0.65rem] text-muted-foreground"
+            >
               never synced on this device
             </p>
           ) : (

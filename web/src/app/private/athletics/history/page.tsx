@@ -61,7 +61,12 @@ async function History() {
         {sessions.length === 0 ? (
           <Empty>Nothing logged yet. Sessions written at Log land here.</Empty>
         ) : (
-          <ul className="divide-y divide-border">
+          // 7.1 text-floor allowlist (Q113): session rows, date and volume flanking the
+          // title. Same shape and same reason as the list on the Athletics page.
+          <ul
+            data-tiny-text="training data: dates, reps, weights and splits, scanned as a column"
+            className="divide-y divide-border"
+          >
             {sessions.map((session) => (
               <li key={session.id} className="flex flex-wrap items-baseline gap-x-3 py-2.5">
                 <span className="tabular font-mono text-[0.65rem] text-muted-foreground">

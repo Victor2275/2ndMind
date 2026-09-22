@@ -202,7 +202,10 @@ export function SpmPanel({
   }
 
   return (
-    <div>
+    // The 7.1 text-floor allowlist (Q113). These are split and stroke-rate chips — real
+    // data in mono, per DESIGN.md section 2 — and they are read as a row of numbers rather
+    // than as sentences.
+    <div data-tiny-text="split and stroke-rate chips; a row of numbers, not prose">
       <ul className="flex flex-wrap gap-2">
         {targets.map((target) => (
           <li
@@ -278,7 +281,10 @@ export function WeekReview({ days, planFound }: { days: PlanDay[]; planFound: bo
   const missed = days.filter((day) => day.missed).length;
 
   return (
-    <div>
+    // 7.1 text-floor allowlist (Q113). The week review: each row is a day name at text-sm
+    // with its status beside it — "3 logged", "planned", "rest". The status is the smaller
+    // half of a pair, and the pair has to stay on one line on a phone.
+    <div data-tiny-text="week review: per-day status beside the day name">
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card/60">
         {days.map((day) => (
           <li

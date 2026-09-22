@@ -61,7 +61,10 @@ export default async function TailorPage() {
         >
           {/* Shown so every tool above is checkable: if a bullet is not in this list, nothing
               can cite it or mention it, and the parser rejects any response that tries. */}
-          <ul className="space-y-1.5">
+          {/* 7.1 text-floor allowlist (Q113): the entry id in front of each bullet. It is a
+              citation key, there so the tools above are checkable, and the bullet it labels
+              is `text-sm`. */}
+          <ul data-tiny-text="citation keys in front of each bullet" className="space-y-1.5">
             {bullets.map((b) => (
               <li key={b.id} className="text-sm text-muted-foreground">
                 <span className="font-mono text-[0.62rem] text-foreground">{b.entry}</span> {b.text}

@@ -75,7 +75,12 @@ function RecordRow({ record, split }: { record: TimeTrialRecord; split: boolean 
   const { preset, best, history } = record;
 
   return (
-    <div className="rounded-lg border border-border bg-card/70 p-4">
+    // 7.1 text-floor allowlist (Q113). The time itself is `text-lg`; the dates beside and
+    // under it are when it was set.
+    <div
+      data-tiny-text="training data: dates, reps, weights and splits, scanned as a column"
+      className="rounded-lg border border-border bg-card/70 p-4"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 className="text-sm font-semibold text-foreground">{preset.label}</h3>
         {best ? (

@@ -38,7 +38,11 @@ export default async function PrivateLayout({ children }: LayoutProps<"/private"
       {/* One skip link per layout (§4.7, Q444). First in the DOM, visible only on focus, and
           pointing at `<main>` — which `ContentWidth` renders below the navigation, so the skip
           actually skips something. */}
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        data-small-target="keyboard-only: reached by Tab, never by a thumb"
+        className="skip-link"
+      >
         Skip to content
       </a>
 

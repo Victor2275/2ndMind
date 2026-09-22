@@ -785,8 +785,14 @@ function ExerciseBlock({
           <h3 className="text-sm text-foreground">{block.exercise}</h3>
           {/* Q409: the record, while you are working. A PR you can only see afterwards is a PR
               you find out about too late to chase. */}
+          {/* §7.1 text-floor allowlist (Q113) on the line below: the record, shown while you
+              work. It sits under a `text-sm` exercise name and has to stay on one line beside
+              a row of inputs. */}
           {record?.heaviest && (
-            <p className="mt-0.5 font-mono text-[0.65rem] text-muted-foreground">
+            <p
+              data-tiny-text="the record line under an exercise while logging"
+              className="mt-0.5 font-mono text-[0.65rem] text-muted-foreground"
+            >
               best {record.heaviest.weightLbs} × {record.heaviest.reps}
               {record.bestE1rm ? ` · e1RM ${record.bestE1rm.e1rm}` : ""}
             </p>

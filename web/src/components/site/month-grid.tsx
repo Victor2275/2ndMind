@@ -88,7 +88,15 @@ export function MonthGrid({
         <Legend />
       </div>
 
-      <div className="mt-3 grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-border bg-border">
+      {/* The §7.1 text-floor allowlist (Q113). A month grid is seven columns wide whatever the
+          screen, so a cell on a phone is about 50px across and the event titles inside it are
+          sized by the grid rather than by choice. The floor would fit two fewer characters per
+          cell, which on a month view is the difference between recognising an entry and not.
+          The day numbers are the thing being read at a glance and they clear the floor. */}
+      <div
+        data-tiny-text="month cell: seven columns fix the width, so the title is sized by the grid"
+        className="mt-3 grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-border bg-border"
+      >
         {WEEKDAYS.map((weekday, index) => (
           <div
             key={`${weekday}-${index}`}

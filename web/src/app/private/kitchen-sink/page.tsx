@@ -425,7 +425,21 @@ const NEW_REGION_CASES: Array<[string, string[], number]> = [
 
 export default function KitchenSinkPage() {
   return (
-    <div className="flex flex-col gap-8" id="top">
+    // 7.1 tap-target exemption (Q441) for the whole gallery. This page is not a screen —
+    // it renders every component, in every state, in all five themes, at whatever size
+    // demonstrates the component rather than the size it ships at. Holding a specimen to a
+    // 44px floor would mean either resizing the specimens, which stops them being
+    // specimens, or allowlisting ninety of them one at a time. The components are gated
+    // where they are actually used, which is the measurement that means something.
+    //
+    // The text floor is deliberately NOT exempted here: a component whose type is too
+    // small is too small wherever it renders, and this page is the one place every
+    // component is on screen at once.
+    <div
+      className="flex flex-col gap-8"
+      id="top"
+      data-small-target="component gallery: specimens are sized to demonstrate, not to ship"
+    >
       <PageHeader
         eyebrow="V4 §1.11"
         title="Kitchen sink"

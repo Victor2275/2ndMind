@@ -55,7 +55,13 @@ import { useAnnounce } from "@/components/site/announcer";
  */
 function PlanTable({ plan, loads }: { plan: Plan; loads: TermLoad[] }) {
   return (
-    <table className="w-full border-collapse overflow-hidden rounded-lg border border-border bg-card/60 text-left">
+    // 7.1 text-floor allowlist (Q113). Course codes and unit counts in mono, four terms
+    // across on a phone. The codes are identifiers to match against the audit, not prose,
+    // and at the floor four terms stop fitting side by side.
+    <table
+      data-tiny-text="course codes and unit counts; four terms must fit across a phone"
+      className="w-full border-collapse overflow-hidden rounded-lg border border-border bg-card/60 text-left"
+    >
       <thead>
         <tr className="border-b border-border">
           <th scope="col" className="px-3 py-2 eyebrow text-muted-foreground">
@@ -152,7 +158,13 @@ export function CoursePlanner({
   const [editing, setEditing] = useState(false);
 
   return (
-    <form action={action} className="mt-8 space-y-8">
+    // 7.1 text-floor allowlist (Q113), same reason as `PlanTable` above: this is that
+    // table with the codes editable, and the hints and per-term verdicts beside them.
+    <form
+      action={action}
+      data-tiny-text="course codes, unit hints and term verdicts"
+      className="mt-8 space-y-8"
+    >
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-base font-semibold tracking-tight text-foreground">The terms</h2>

@@ -264,7 +264,14 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
                         loading={i < 3 ? "eager" : "lazy"}
                       />
                     </div>
-                    <figcaption className="tabular font-mono text-[0.62rem] text-muted-foreground">
+                    {/* 7.1 text-floor allowlist (Q113): a figure number under a 240px
+                        thumbnail. The real caption is the alt text and the surrounding
+                        prose; this is a reference marker, and at the floor it is louder
+                        than the figure it labels. */}
+                    <figcaption
+                      data-tiny-text="figure reference marker under a thumbnail"
+                      className="tabular font-mono text-[0.62rem] text-muted-foreground"
+                    >
                       Fig. {i + 1}
                     </figcaption>
                   </figure>

@@ -125,8 +125,15 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
         </span>
       </div>
 
+      {/* 7.1 text-floor allowlist (Q113) on the chips below: a course code, its term and its
+          grade, three or four to a row on a phone. The chip is an identifier to match against
+          the audit rather than something read as a sentence, and at the floor a requirement
+          with eight applied courses stops fitting in the panel. */}
       {requirement.applied.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
+        <ul
+          data-tiny-text="course chips: code, term and grade, several to a row"
+          className="mt-2 flex flex-wrap gap-1.5"
+        >
           {requirement.applied.map((course) => (
             <li
               key={`${course.course}-${course.term}`}
@@ -152,8 +159,15 @@ function RequirementCard({ requirement }: { requirement: Requirement }) {
         </ul>
       )}
 
+      {/* The §7.1 text-floor allowlist (Q113) on the disclosure below. A GE requirement can
+          list eighty course codes; they are reference material you open to check one thing,
+          not something read in sequence. At the floor the list stops fitting on a phone at
+          all, which is a worse answer than small type. */}
       {requirement.selectFrom.length > 0 && (
-        <details className="group mt-2">
+        <details
+          className="group mt-2"
+          data-tiny-text="course-code reference list behind a disclosure"
+        >
           <summary className="cursor-pointer list-none eyebrow text-muted-foreground transition-colors hover:text-foreground">
             <span className="mr-1 inline-block transition-transform group-open:rotate-90">
               &rsaquo;

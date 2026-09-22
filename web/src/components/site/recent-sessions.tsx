@@ -131,7 +131,12 @@ function SessionCard({
   const day = session.performedAt.toISOString().slice(0, 10);
 
   return (
-    <section className="rounded-lg border border-border bg-card/40 p-3">
+    // 7.1 text-floor allowlist (Q113). A session card: the title is `text-sm`, the date
+    // and set count under it are the stamp on it.
+    <section
+      data-tiny-text="session card stamp: date and set count under the title"
+      className="rounded-lg border border-border bg-card/40 p-3"
+    >
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm text-foreground">{session.title || "Session"}</h3>
