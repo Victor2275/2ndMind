@@ -17,6 +17,73 @@ useful part.
 
 ---
 
+## 2026-09-22 · The database, and an audit item that did not survive being measured — V4 §8.8, §8.12
+
+### D-331 · GIN indexes on the two `tags` columns
+
+**Decision.** `0015_tag_indexes.sql` adds `log_entries_tags_idx` and `tasks_tags_idx`, both
+`USING gin`.
+
+**Why.** `listEntries` and `listTasks` filter with `tags @> ARRAY[...]::text[]` (D-248), and
+**neither column had an index of any kind** — there was no `gin` anywhere in `drizzle/`. A
+B-tree cannot answer array containment, so this was a sequential scan over every row plus a
+per-row array comparison. The query that V4 §2.3 exists to serve — *"a recipe I want to try has
+nowhere to go"* — was the one query nothing indexed.
+
+**It is not slow today and that is the point.** At a few hundred rows the planner picks a
+sequential scan anyway and would be right to. This class of problem does not announce itself; it
+gets a little worse every week and is only ever noticed long after it became annoying. The index
+costs one migration now and an awkward diagnosis later.
+
+**What the test does and does not claim.** `tag-indexes.db.test.ts` asserts the indexes exist
+and are GIN, against the committed migration run into real Postgres, plus a control proving the
+reader discriminates. It deliberately does **not** assert a query plan: Postgres correctly
+chooses a sequential scan on a tiny table, so an `EXPLAIN` assertion would either fail against
+correct code or need an arbitrary number of seeded rows to force the planner's hand.
+
+**How to reverse.** `DROP INDEX log_entries_tags_idx, tasks_tags_idx;` and remove the two lines
+from `schema.ts`. There is no behavioural difference to undo — the correctness test beside them
+passes either way, which is exactly why the index needed its own test.
+
+### D-332 · The search handlers are **not** debounced, because the search costs 0.075ms
+
+**Decision.** No debounce is added to `exercise-list`, `pr-table` or `tag-input`. V4 §8.12's
+premise is withdrawn.
+
+**Why.** The audit item was reasonable in the abstract and wrong for this codebase. Measured on
+the real catalogue, 200 iterations per query:
+
+| query | ms per search |
+| --- | --- |
+| `bnch` | 0.144 |
+| `press` | 0.076 |
+| `bench press` | 0.070 |
+| `e` (worst case — matches nearly everything) | 0.104 |
+
+Typing `bench press` in full is **10 keystrokes and 0.75ms of search, total**. One frame at
+60fps is 16.67ms, so a keystroke spends **0.45% of a frame** in the matcher. Even on a phone ten
+times slower than this laptop it is under 5% of a frame.
+
+**Debouncing would make it worse, not better.** It would add 150–300ms of deliberate latency to
+a result that is already available in well under a millisecond — on a screen whose entire
+purpose is reaching a movement one-handed, mid-set (D-237). The cost is real and the benefit is
+zero.
+
+**The three inputs were also already memoised.** `PrTable` and `ExerciseList` both wrap their
+filtering in `useMemo` keyed on the query and the pool, so the work does not even repeat across
+unrelated re-renders.
+
+**What is still unmeasured, and is not being guessed at.** The *render* cost of the resulting
+list — 140 rows re-reconciled per keystroke — is a different question from the matcher's cost,
+and it needs a browser profile rather than a node benchmark. It is not being pre-emptively
+optimised on the strength of the same reasoning that this entry just refuted. If the screen ever
+feels slow while typing, profile it and reopen this.
+
+**How to reverse.** Nothing to reverse; nothing changed. This entry exists so the audit item is
+not silently dropped and not re-proposed on the same reasoning.
+
+---
+
 ## 2026-09-22 · The public bundle, measured and then halved — V4 §8.4, §8.5
 
 ### D-327 · `zod` is banned from the client-reachable error path, and a test enforces it

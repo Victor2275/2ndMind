@@ -444,6 +444,8 @@ export const tasks = pgTable(
     index("tasks_due_at_idx").on(t.dueAt),
     index("tasks_source_idx").on(t.source),
     index("tasks_server_seq_idx").on(t.serverSeq),
+    /** Same `@>` filter as `log_entries.tags`, same reason — see the note there (D-331). */
+    index("tasks_tags_idx").using("gin", t.tags),
   ],
 );
 
@@ -493,6 +495,18 @@ export const logEntries = pgTable(
     index("log_entries_category_idx").on(t.category),
     uniqueIndex("log_entries_client_id_idx").on(t.clientId),
     index("log_entries_server_seq_idx").on(t.serverSeq),
+    /**
+     * GIN, because `listEntries` filters tags with `@>` (V4 §8.8, D-331).
+     *
+     * A B-tree cannot answer "this array contains that element" at all, so without this the
+     * filter is a sequential scan over every row plus a per-row array comparison. The tag
+     * filter is the *whole* feature §2.3 added — "a recipe I want to try has nowhere to go" —
+     * so the one query this column exists to serve was the one query nothing indexed.
+     *
+     * It is invisible today at a few hundred rows and it does not announce itself when it
+     * stops being invisible; it just gets slower every week. Cheap now, awkward later.
+     */
+    index("log_entries_tags_idx").using("gin", t.tags),
   ],
 );
 
