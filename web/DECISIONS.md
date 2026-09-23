@@ -19,6 +19,31 @@ useful part.
 
 ## 2026-09-23 · The site stops explaining itself, and `/now` goes
 
+### D-345 · The footer loses the build stamp and the theme toggle
+
+**Decision.** The footer's second row is gone entirely — it held only
+`2026-09-23 · db129e1` (Q298's build date and the deployed commit) and the theme toggle
+(Q297), and with both removed there was no row left. The footer is now one line: name, then
+GitHub / LinkedIn / Email / phone / Source.
+
+**Why.** Victor asked, and it is the same judgement as D-343 one commit earlier. Neither told
+a reader anything about the work. The build stamp was worse than neutral: it is a date that
+gets older on its own, which is exactly the failure D-342 removed `/now` to avoid, and its
+second half rendered as the word `local` on any build Vercel did not produce.
+
+**What this costs, stated plainly.** A public visitor can no longer override their system
+theme. `next-themes` still reads `prefers-color-scheme`, so the site follows the OS and both
+themes are still reachable — but only by changing the OS, not the page. That is the trade, and
+it is the whole of it.
+
+**`ThemeToggle` is not dead code.** `private-tabbar.tsx` still mounts it, so the control and
+its tests stay; it is only off the public surface. `theme-picker.tsx` in private settings is a
+separate component and is untouched.
+
+**To reverse.** `git show <this commit>^ -- web/src/components/site/site-footer.tsx`. The
+`deployedCommit()` helper and the `BUILT` constant went with the row and would come back with
+it; the identical derivation still exists on the private settings screen.
+
 ### D-342 · `/now` is removed, and redirects to `/projects`
 
 **Decision.** `app/now/page.tsx` is deleted, "Now" is out of the header and the 404 page, out
@@ -67,10 +92,8 @@ A link is a destination; the sentence was an explanation.
 `justify-between` to `justify-end` — otherwise the build stamp and the theme toggle jump to
 the left edge.
 
-**Still there, deliberately, and worth a decision of its own if Victor wants it gone:** the
-`2026-09-23 · local` build stamp (Q298). It is not an explanation, but it is plumbing, and it
-has the same failure mode as `/now` — it is a date that gets older on its own. Left alone
-because removing it was not asked for.
+**The build stamp was left here and removed an hour later** — it was flagged as plumbing with
+`/now`'s failure mode, Victor agreed, and it went in D-345 along with the theme toggle.
 
 **To reverse.** Both strings are in this commit's diff.
 
