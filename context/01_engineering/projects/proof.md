@@ -8,7 +8,6 @@ title: Proof
 slug: proof
 order: 1
 status: done
-featured: true
 year: 2026
 category: software
 tags: [web, ai, pwa, full-stack]

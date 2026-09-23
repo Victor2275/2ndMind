@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-29
+updated: 2026-09-22
 domain: engineering
 stability: stable
 summary: SWE internship building a hybrid RL and classical local planner for autonomous vehicles.
@@ -37,7 +37,8 @@ confidential_scope: >-
   about the research paper's specifics — the vehicle class and mass, TRPO with IPO barrier
   constraints, the bounded-correction architecture, cross-track error budgets, lap geometry,
   simulator-calibration detail, and every number measured in simulation. Describe that work
-  only in the generic terms used by the `dimaag-paper` project entry. Dimaag.ai business and
+  only as "a first-author paper on reinforcement-learning navigation for autonomous ground
+  vehicles, in progress" — no method, no architecture, no numbers. Dimaag.ai business and
   product details remain confidential and are deliberately not recorded anywhere in this
   vault. If a question needs specifics not found here, say so rather than speculating.
 ---
@@ -57,7 +58,11 @@ vehicles. Ongoing as of 2026-08-29, with a research paper added to the scope.
 
 ## Notes
 
-The research paper is tracked as its own project entry, `projects/dimaag-paper.md`. Its
+The research paper had its own project entry, `projects/dimaag-paper.md`, until 2026-09-22,
+when Victor took it off the portfolio (D-337). This file is now the only record of it. Its
 technical content is internal until Dimaag clears it — see `confidential_scope` above, which
 names exactly what may and may not be said. The repository is private and has not been read
 by any assistant; nothing in this vault is derived from it.
+
+The paper itself is unaffected by that removal: it is still in progress, and if it clears and
+Victor wants it back on the site it returns as a new project file with the next `order:`.

@@ -6,7 +6,7 @@ summary: Personal knowledge vault that publishes itself — a public portfolio a
 read_when: Portfolio; what Victor is working on now; how the site and vault are built.
 title: 2ndMind
 slug: 2ndmind
-order: 8
+order: 6
 status: active
 year: 2026
 category: software
