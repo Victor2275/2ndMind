@@ -1,40 +1,19 @@
 import { ExternalLink } from "@/components/site/external-link";
-import { ThemeToggle } from "@/components/site/theme-toggle";
 import type { PublicProfile } from "@/lib/vault/public";
 
 /**
- * The public footer (V4 item 6.9, Q297–Q299, Q304, Q320).
+ * The public footer (V4 item 6.9, Q297–Q299, Q304, Q311).
  *
- * It used to be a name line and three links. Q297 asked for the theme toggle and a "last
- * updated"; Q298 for the build date; Q299 for a link to the site's own repository; Q320 for one
- * line naming 2ndMind, on the grounds that the reader is looking at it.
+ * A name line and five links, which is close to where it started. Q297's theme toggle, Q298's
+ * build date and Q320's line naming 2ndMind were all removed on 2026-09-23 (D-343, D-345): the
+ * footer of a portfolio is not a status page, and none of the three told a reader anything
+ * about the work. Q299's repository link survives as plain "Source".
  *
- * ## Two things that had nowhere else to go
- *
- * The **phone number** moved here from the About hero. Q311 keeps it public and Q310 asked the
- * hero's contact row to be reduced; those two only reconcile if the number lands somewhere, and
- * the footer is where a contact detail belongs. Dropping it from the hero without adding it here
- * would have taken it off the public site entirely, which Q311 forbids.
- *
- * The **build date** is evaluated when this module is first rendered. Every public route is
- * statically generated, so for them that is build time, which is what Q298 asked for. It is
- * deliberately a date and not a timestamp: the useful question is "is this current this week",
- * and a time to the second on a portfolio reads as a status page.
+ * The **phone number** lives here rather than in the About hero. Q311 keeps it public and Q310
+ * asked the hero's contact row to be reduced; those two only reconcile if the number lands
+ * somewhere, and the footer is where a contact detail belongs. Dropping it from the hero
+ * without adding it here would have taken it off the public site entirely, which Q311 forbids.
  */
-
-/**
- * The deployed commit, same derivation as the settings screen.
- *
- * Vercel sets `VERCEL_GIT_COMMIT_SHA`; a local `next dev` sets nothing, and "local" is more
- * honest than the alternatives — a build with no commit is not version zero, it is a build whose
- * version is not a commit.
- */
-function deployedCommit(): string {
-  const sha = process.env.VERCEL_GIT_COMMIT_SHA;
-  return sha ? sha.slice(0, 7) : "local";
-}
-
-const BUILT = new Date();
 
 /**
  * The repository this site is built from (Q299).
@@ -87,18 +66,6 @@ export function SiteFooter({ profile }: { profile: PublicProfile }) {
                 </a>
               ),
             )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-end">
-          <div className="flex items-center gap-4">
-            <span className="tabular font-mono">
-              <span className="sr-only">Last built </span>
-              {BUILT.toISOString().slice(0, 10)}
-              <span aria-hidden> · </span>
-              {deployedCommit()}
-            </span>
-            <ThemeToggle className="-mr-2" />
           </div>
         </div>
       </div>
