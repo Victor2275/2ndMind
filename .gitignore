@@ -37,3 +37,11 @@ DARS*.html
 
 # Playwright MCP scratch output — review screenshots, never artefacts
 .playwright-mcp/
+
+# Unprocessed source photographs and video, 33MB of 4032x3024 phone frames. The figures the
+# site actually serves are the cropped derivatives one level up, cut by
+# `scripts/crop_robot_photos.py` and committed; these are the negatives. Kept out of git
+# because the tracked half of `context/assets/` is 4.5MB and this would be eight times that,
+# forever, for files nothing reads at build time (D-338). They live on Victor's machine —
+# back them up somewhere that is not this repository.
+/context/assets/originals/
