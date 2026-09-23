@@ -17,6 +17,121 @@ useful part.
 
 ---
 
+## 2026-09-22 · Four years of FRC replace two unfinished entries
+
+### D-337 · Smart Bottle and the Dimaag paper are off the portfolio; the three robots are on it
+
+**Decision.** `projects/smart-bottle.md` and `projects/dimaag-paper.md` are deleted.
+`projects/airhead.md` (2023), `projects/slipknot.md` (2024) and `projects/lemonlight.md`
+(2025) take their place, one per season on FRC Team 1458, and `featured: true` moves from
+Proof to Slipknot.
+
+**Why.** Both removed entries were scaffolding rather than case studies. Smart Bottle was
+four `> **To write:**` prompts and an empty `bullets` list; the Dimaag paper was deliberately
+vague pending clearance (D-116) and could not be filled in without crossing
+`confidential_scope`. Between them they were the only two `status: active`
+projects other than 2ndMind, which means `/now` was leading with the two thinnest pages on
+the site. The FRC entries are the opposite problem: four years of work with three public
+repositories behind them and nothing in the vault pointing at any of it.
+
+**Why Slipknot leads.** The About hero and the two-column grid card both render whatever
+carries `featured: true` (D-220), and the eyebrow above them says "Robotics Engineer". Proof
+is a finished recipe PWA and was filling that slot because it was the only project good
+enough to; Slipknot is a competition robot that reached the World Championships, which is
+the same claim the eyebrow makes. Proof keeps `order: 1` and still leads the curated grid
+behind the hero card.
+
+**Ordering.** `2ndmind` moves 8 → 6 to close the hole the two deletions left, and the robots
+append at 7, 8, 9 in season order. `updated:` on `2ndmind.md` is deliberately *not* bumped:
+its sort position changed, not its content, and `updated:` feeds the staleness check in
+`scripts/audit_freshness.py`. Bumping it for a one-digit edit would reset a freshness signal
+that exists to catch prose going out of date.
+
+**The prose is half-written on purpose.** Each of the three files has "The problem" and
+"Architecture" written from the repositories — every mechanism named in them was read out of
+the Java — and leaves "What did not work" and "Measured results" as `> **To write:**`
+prompts. Those two sections need competition results and Victor's own memory of what broke,
+and D-069 is exactly the rule against an agent inventing them on a hiring-facing page.
+`scripts/case_study_status.py` now reports 6 sections outstanding, up from 0.
+
+**Resume.** None of the three are on it — see D-339, which is the measurement that decided
+that and not the assumption this entry originally carried.
+
+**To reverse.** Both deleted files are recoverable from git — find the commit that removed
+them with `git log --diff-filter=D -- context/01_engineering/projects/smart-bottle.md`, then
+`git show <that commit>^:<path>`. Moving the hero back is one line: delete `featured: true`
+from `slipknot.md` and restore it to `proof.md`. Putting a robot on the printed resume is
+adding `robotics` to its `resume_variants` and writing its `bullets` list.
+
+### D-339 · The robotics resume has no room for a fourth project, and that was measured
+
+**Decision.** All three FRC entries carry `resume_variants: []`. Slipknot keeps three written
+`bullets` anyway, so enabling it later is one field rather than a rewrite.
+
+**What was measured**, with `npm run shots`'s `measureResumes` against a production build
+(the ratio is sheet height over one page; the page count comes from the printed PDF, and it is
+the page count that gates, per D-117):
+
+| robotics variant | ratio | pages |
+| --- | --- | --- |
+| as it stands, no FRC project | 0.83 | 1 |
+| Slipknot at two bullets | 0.93 | **2** |
+| Slipknot at one bullet | 0.90 | **2** |
+| Slipknot at two bullets, `first-robotics` capped to two | 0.90 | **2** |
+
+**What that says.** The overflow is not the bullets, it is the entry. A project heading plus
+its rule and spacing costs more than a bullet saves, so paying for it by trimming the role
+entry does not work either — the third row and the fourth cost exactly the same. The variant
+is full at 0.83, and the next thing added to it, whatever it is, makes it two pages.
+
+**Why it stops here rather than cutting something.** Making room means removing a bullet from
+Proof, the solenoid reader or the Dimaag internship, all of which earned their place, to seat
+a fourth robotics entry beside a role entry that already describes the same four years. D-117
+is the precedent and says it plainly: trimming good content to fit produces a worse document
+than asking. So this is the asking.
+
+**Not a claim that the robots do not belong on a resume.** They are on the site, at full
+length, with the repositories linked; what is recorded here is that the one-page budget is
+spent, and which good content to spend it on instead is Victor's call.
+
+**To reverse.** Set `resume_variants: [robotics]` on `slipknot.md` and re-run `npm run shots`.
+If it still prints two pages, the decision above is the one that has to change, not this field.
+
+### D-338 · The phone photographs live in `context/assets/originals/`, which nothing publishes
+
+**Decision.** The six source photographs and the one video Victor dropped in
+`context/assets/` were moved to `context/assets/originals/`. The files the site actually
+serves are cropped, rotated, resized JPEGs written back into `context/assets/` next to them.
+
+**Why.** `scripts/sync-vault-assets.mjs` copies *every* top-level image in `context/assets/`
+into `public/assets/`, so anything left there becomes a public URL whether or not a page
+references it. The originals are 22 MB of 4032×3024 phone shots plus a 17 MB video — all of
+it published, none of it reachable, and the last three commits on this repository were spent
+taking weight off project pages. Subdirectories are never followed by that script (only
+`labs/` and `resumes/` have their own entries), so a folder is enough to keep them out.
+
+**They are not deleted**, because they are the source: every crop is a fraction of an original
+frame and can be recut from it. `scripts/crop_robot_photos.py` records those fractions and
+re-cuts all six.
+
+**They are also not committed.** `/context/assets/originals/` is gitignored: 33 MB against the
+4.5 MB the rest of `context/assets/` weighs, for files nothing reads at build time. The
+consequence is real and worth stating — on a fresh clone the crop script has no input, and
+the only copy of those photographs is on Victor's machine. **They need backing up somewhere
+that is not this repository.** Reverse by deleting the last block of `.gitignore` if the
+33 MB is the lesser problem.
+
+**The rotation is baked in.** All four JPEGs carry EXIF orientation 6 — portrait shots that
+only display upright because a viewer reads that tag. Browsers honour it; crop maths does
+not, and a crop box computed in display space against a sideways buffer takes the wrong
+region. The derivatives are rotated on disk and stripped of EXIF so nothing downstream has to
+know.
+
+**The video is not published at all.** `sync-vault-assets.mjs` only allows
+`png|jpe?g|webp|svg`, and no page renders video. It stays in `originals/` as a vault record.
+
+**To reverse.** Move the files back up one level and they are served again.
+
 ## 2026-09-22 · A correction: the bundle numbers were measured against a stale server
 
 ### D-336 · The first bundle baseline was ~22KB low, and `npm start` is why
@@ -7464,7 +7579,12 @@ have been there produces a worse document than asking.
 **How to reverse.** Delete the field from the schemas and the two `??` fallbacks in
 `resume.ts`; every entry returns to the global caps. Re-run `npm run shots` after.
 
-### D-116 · The Dimaag paper is published as a placeholder, deliberately
+### D-116 · The Dimaag paper is published as a placeholder, deliberately — **superseded 2026-09-22 by D-337**
+
+> The project file was deleted on 2026-09-22: Victor took the paper off the portfolio. The
+> `confidential_scope` boundary this entry set up is unaffected and still binding — it now
+> states the generic wording inline rather than pointing at a project entry. The rest of this
+> entry is kept for why the placeholder was shaped the way it was.
 
 **Decision.** `projects/dimaag-paper.md` exists, is `status: active` so it reaches `/now`, and
 says almost nothing: no vehicle class, no algorithm, no architecture, no numbers.
