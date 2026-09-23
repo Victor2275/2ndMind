@@ -16,7 +16,7 @@ read_when: Always — anything about current priorities or scheduling.
   `docs/V3_PLAN.md`. Milestone A (2026-09-18) is now moot; the whole plan shipped ahead of it.
   Nothing left on Victor except pasting three env values into Vercel (push notifications).
   **V4 is in its last phase** — scoped 2026-09-06 in `docs/V4_PLAN.md` by 484 questions,
-  **536 points, 472 done**, no deadline. **All four milestones are reached, and every phase
+  **529 points, 496 done**, no deadline. **All four milestones are reached, and every phase
   through 7 is done.** Done: Phase 0,
   **Phase 1 (Milestone A)** — every colour, size, space and motion value comes from one place and
   a test fails if it does not — the settings screen pulled forward, **Phase N** (the plane-wifi
@@ -28,7 +28,8 @@ read_when: Always — anything about current priorities or scheduling.
   2026-09-22** — the gates, the accessibility work, the before/after compare mode, and §7.6's
   review round.
 
-  **What is left is Phase 8 — 64 points, scoped 2026-09-22: speed, and the write path.**
+  **What is left is 33 points of Phase 8 — speed, and the write path.** Scoped 2026-09-22 and
+  **24 of its 57 points are already built the same day.**
   It came out of §7.6's review, which returned two complaints and nothing visual: the app is
   slow in places, and it is unclear when something is saved. Victor's hypothesis — that git is
   in the write path and a database plus a push button would be faster — was checked and is
@@ -37,13 +38,40 @@ read_when: Always — anything about current priorities or scheduling.
   rather than just deferring latency. The answer is **N9 unparked** (D-325): vault writes go
   through the sync outbox that already exists, so a save acks instantly and the commit pushes
   behind it, with git still the source of truth.
-  **The measured problem is elsewhere** (D-326): the public portfolio ships **220.7KB** of
-  gzipped JavaScript against a 90KB budget and **64.1KB of it is `zod`**, on a site that
-  validates nothing — reaching the bundle through the crash reporter in the root layout. Four
-  unused runtime dependencies, zero GIN indexes on the two tag columns, zero `next/dynamic` call
-  sites, one debounced input in the whole app, and three hero PNGs over half a megabyte. Four of
-  Victor's seventeen audit items were already true (Vercel's edge network, `next build`'s
-  minification, and `neon-http` having no pool) and are recorded as checked rather than dropped.
+  **The measured problem was elsewhere, and most of it is already fixed** (D-326 to D-335):
+
+  - **64.1KB of `zod` came off every public page** — on a site that validates nothing, reaching
+    the bundle through the crash reporter in the root layout. Verified by reading the chunk
+    before and after, not inferred from a total. Home now measures **168.9KB** against a 90KB
+    budget that is not reachable, so the gate is a per-route ratchet instead.
+    **A correction worth knowing (D-336):** the first figures reported for this — 220.7 → 146.8
+    — were measured against a `next start` left over from an earlier build, because `npm start`
+    exits silently when the port is held and the *old* server keeps answering. Three agreeing
+    runs later, the honest numbers are above. Of the 168.9KB, **112.7KB is genuinely fixed**
+    (react-dom + the App Router runtime) and **~56KB is the root layout's own client
+    components** — which is now the largest remaining public-bundle opportunity, and was hidden
+    for a few hours by a label calling all of it a "framework floor".
+  - **Project pages shipped 773KB nobody asked for.** The lightbox's full-size image sits in a
+    closed `<dialog>`, browsers fetch images inside `display:none`, and React 19 was preloading
+    it. **Project detail 812.7KB → 39.0KB.**
+  - **The vault read cache almost never hit.** A GitHub round trip averages 357ms and Today
+    reads two files, so a cold miss costs ~713ms — but `revalidate: 300` against an access
+    pattern of a few opens a day meant essentially every open paid it.
+  - Also: four unused dependencies removed (node_modules 988 → 826MB), and GIN indexes added to
+    the two tag columns, which had no index of any kind.
+
+  **Four of the seventeen audit items did not survive being measured** and are recorded as
+  checked rather than quietly dropped: `shadcn` is a build dependency not a stray CLI, the
+  debounce would have added latency to a 0.075ms search, the image work was aimed at source
+  files visitors never download, and payload compression is moot behind a 100-op batch cap.
+  Four more were already true (Vercel's edge network, `next build`'s minification, and
+  `neon-http` having no pool to size).
+
+  **The write path is designed and not built** (`SYNC_DESIGN.md` §4c). Writing it down first
+  found a wedge worth the delay: a vault op costs ~700ms of server time, a flush is capped at
+  100 ops with a 10s deadline, so ten queued vault writes would blow the deadline, retry the
+  whole batch, and blow it again — appearing only after a period offline, which is exactly when
+  the feature matters.
 
   **Phase 7's gates found things nothing else could.** The largest: **three of the five themes
   did nothing** — dark-magenta, light-teal and hc-dark all rendered as carbon, for anyone who
@@ -93,10 +121,11 @@ read_when: Always — anything about current priorities or scheduling.
   state; sync leads with how long something has waited; and every chart leads with its number.
   Decisions D-284 to D-309.
 
-  The plan now totals **536 points, 472 done**. **64 remain, and all 64 are Phase 8** — nothing
+  The plan now totals **529 points, 496 done**. **33 remain, and all 33 are Phase 8** — nothing
   is parked any more, because N9's 13 were the last parked row and they are now §8.1. The total
-  moved 489 → 536 on 2026-09-22, but only 47 of that is new: 7.3's remaining 4 points and N9's
-  13 moved into Phase 8 rather than being counted twice. All four milestones are reached.
+  moved 489 → 529 on 2026-09-22; only 40 of that is new, because 7.3's 4 points and N9's 13
+  moved in rather than being counted twice and **two rows were withdrawn at zero once measured**.
+  All four milestones are reached.
 - **Athletics:** The fall challenge is running — 76 days from 2026-09-20 to the 2026-11-07 race,
   plus the 50k/100k. Today's session, the routine and the ledger are on `/private` and
   `/private/athletics`; the day-by-day plan is at `/private/athletics/plan` and every day is

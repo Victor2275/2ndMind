@@ -17,6 +17,58 @@ useful part.
 
 ---
 
+## 2026-09-22 · A correction: the bundle numbers were measured against a stale server
+
+### D-336 · The first bundle baseline was ~22KB low, and `npm start` is why
+
+**What happened.** The budgets committed earlier today — home 147, now 142, and the claim that
+the zod split took home from 220.7KB to **146.8KB** — were measured against a `next start`
+process left over from an earlier build. `npm start` **fails silently when port 3000 is already
+held**: the new server exits, the old one keeps answering, and every number after that describes
+a build that is no longer on disk. The same trap had already wasted a cycle on §8.11, where a
+lightbox fix looked like it had done nothing.
+
+**The real numbers**, from three consecutive runs that agreed exactly, on a server started after
+the port was confirmed free:
+
+| route | measured | was recorded as |
+| --- | --- | --- |
+| home | **168.9 KB** | 146.8 |
+| now | **175.8 KB** | 141.5 |
+| projects | **175.8 KB** | 146.8 |
+| project-detail | **175.8 KB** | 148.2 |
+| resume | **168.9 KB** | 141.3 |
+
+**What survives unchanged, and it is the part that mattered.** `zod` was **64.1KB gzipped of
+the public bundle and is gone** — that was never an inference from a total, it was verified by
+reading the chunk both times (485 `zod` markers, `ZodError`, `invalid_union`, before; absent,
+after). D-327's mechanism and its reasoning stand. What was wrong was the arithmetic around it.
+
+**The "before" total of 220.7KB is also not trustworthy** and is withdrawn rather than
+corrected. It was taken with the pre-D-328 script, which exited early on some routes, against a
+server of unknown vintage. There is no honest before-and-after total to quote; there is a
+verified 64.1KB chunk removal and a verified current number.
+
+**And the "framework floor" label was wrong in a way that hid work.** The script called all
+168.9KB of shared chunks a floor "not reachable by app code". Only **112.7KB** of it is —
+react-dom at 69.9 and the RSC/App Router runtime at 42.8. The remaining **~56KB is the root
+layout's own client components**: `ErrorWatch`, `ThemeProvider`, `ServiceWorker` and
+`@vercel/analytics`, mounted on every page including the portfolio. Calling that a floor
+retired the largest remaining public-bundle opportunity by mislabelling it. Route-specific code
+really is near zero (0.0–6.9KB), which was the other half of the claim and is true.
+
+**The rule this leaves.** Before trusting a number from `npm run bundle`, `npm run images` or
+anything else that drives a browser at `localhost:3000`: confirm the port was free, and take a
+number only once two runs agree. D-323 reached the same conclusion for the contrast sweep — *the
+committed budget is the first pair of runs that agreed byte for byte* — and this is the second
+time in two days that a measurement harness lied more convincingly than it failed.
+
+**How to reverse.** Nothing to reverse; this corrects a record rather than changing behaviour.
+The commits carrying the wrong figures are left as they are, the way D-320 left 7.2's history
+alone and corrected the plan instead.
+
+---
+
 ## 2026-09-22 · The vault cache was tuned for a usage pattern nobody has — V4 §8.3
 
 ### D-335 · The deploy is part of the vault cache key, and the safety net goes 300s → 1 hour

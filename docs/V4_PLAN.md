@@ -2,7 +2,7 @@
 updated: 2026-09-22
 domain: engineering
 stability: volatile
-summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Eleven phases, 536 points, 472 done. Every phase through 7 is done and all four milestones are reached. What remains is Phase 8 — speed and the write path, scoped 2026-09-22, which absorbs 7.3's performance remainder and unparks N9.
+summary: V4 — the UI overhaul. Scoped by 484 questions on 2026-09-06. Eleven phases, 529 points, 496 done. Every phase through 7 is done and all four milestones are reached. What remains is 33 points of Phase 8 — speed and the write path, scoped and half-built 2026-09-22. Four of its rows did not survive being measured.
 read_when: Working on V4, or deciding what to do next in web/.
 ---
 
@@ -30,7 +30,7 @@ read-only text defeats the point"** (Q130).
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Goal**         | The app stops looking like a vault renderer and starts looking like an instrument. Both themes designed, both surfaces coherent, the two worst screens rebuilt.                                                                                                                                                                                                                                                                                                  |
 | **Scope**        | A UI overhaul **plus three features your answers require** — training logging, tags, and a settings screen. §2.1 explains why that is not scope creep. Plus **Phase N**, a bug found during V4 and not UI work at all.                                                                                                                                                                                                                                           |
-| **Budget**       | **536 points**, **472 done**. You said 120–140. The gap is real, it is §7 R2, and it has widened four times for the same reason each time — Phase 2++ (119), §2.14 (30), and now **Phase 8 (64)**, each scoped after Victor used the thing the previous phase built and said what was actually wrong with it. Phase 8 is only **47 new points**: 7.3's remaining 4 and N9's parked 13 moved into it rather than being counted twice. §4 has the authoritative table. |
+| **Budget**       | **529 points**, **496 done**. You said 120–140. The gap is real, it is §7 R2, and it has widened four times for the same reason each time — Phase 2++ (119), §2.14 (30), and now **Phase 8 (57)**, each scoped after Victor used the thing the previous phase built and said what was actually wrong with it. Phase 8 is only **40 new points**: 7.3's remaining 4 and N9's parked 13 moved into it rather than being counted twice, and two of its rows were withdrawn at zero after measurement. §4 has the authoritative table. |
 | **Order**        | Foundations → tokens → **degraded network** → training → tags → private shell → private screens → brand+public → gates → **speed**.<br>**Phase 0 done** (2026-09-06). **Phase 1 done** (2026-09-08) — **Milestone A**. **Settings (4.4) done** (2026-09-08). **Phase N done** (2026-09-08). **Phase 2 done** (2026-09-09) — **Milestone B**. **Phase 2+ done** (2026-09-09). **§2.12 done**. **Phase 2++ done** (2026-09-10) — the figure, the audit, the browser, the logger, routines, and Phase 5.6 pulled forward whole. **§2.13 done** (2026-09-10). **Phase 6 done** (2026-09-10) — **Milestone D**, taken out of order because the portfolio was otherwise untouched through peak application season (§7 R1). **7.2 done with it** (D-223): the projects grid's client boundary fell out of moving its filter into the URL. **Phase 3 done** (2026-09-13) — tags. **Phase 4 done** (2026-09-18) — the sidebar, the phone title bar, the tab bar, the glyph, two columns, and the accessibility floor. **Phase 5's foundations done** (2026-09-19) — the four shared states, the form vocabulary, the toast system mounted for the first time since V1, and the pressed state as a base rule. **§2.14 done** (2026-09-20) — the fall challenge on screen and the plan made editable, off-plan and logged here on 2026-09-21. **7.0 done** (2026-09-21) — `npm run shots` at 250s instead of 581s. **Phase 5 done** (2026-09-21) — **Milestone C**: Today, the log, academics, work, the calendar, hobbies, sync and every chart. **Phase 7 done** (2026-09-22) — the gates, the accessibility work, before/after compare, and §7.6's review round, whose findings became Phase 8.<br>Next: **Phase 8**, the only phase left — the write path through the outbox, the public bundle, the queries and the assets. Scoped 2026-09-22. Nothing is parked. |
 | **Milestone A**  | End of Phase 1 — every colour, size, space and motion value comes from one place, and a test fails if it does not.                                                                                                                                                                                                                                                                                                                                               |
 | **Milestone B**  | End of Phase 2 — you log a gym session on the phone, offline, the way Hevy does it.                                                                                                                                                                                                                                                                                                                                                                              |
@@ -906,7 +906,7 @@ edit:
 
 ---
 
-### Phase 8 · Speed, and the write path — **64 pts** — ⬜ **scoped 2026-09-22**
+### Phase 8 · Speed, and the write path — **57 pts** — 🟡 **24 done 2026-09-22**
 
 **Where it came from.** §7.6's review round. Victor's words: *"the performance of certain
 aspects of the website is slow, and it is unclear when something is logged/saved."* Plus a
@@ -932,28 +932,43 @@ against a production build, and the chunk identified by reading it (485 `zod` ma
 
 | #    | Item                                                                                                                                                                                                                                                                                                                              | Pts |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --: |
-| 8.1  | **N9, unparked — every write through the outbox, vault commits included** (D-325). The answer to *"it is unclear when something is saved"*, and it is the deferred half of N5 rather than new machinery. A save enqueues and acks locally; the commit pushes behind it, retries on failure, and survives a dead connection. Git stays the source of truth and there is no divergence window to reconcile |  13 |
-| 8.2  | **Save feedback everywhere the outbox now reaches.** `SaveState`'s `queued` (D-259 rule 4) stops being set by `lib/offline/write.ts` alone. The update composer's *"Committing…"* becomes a queued ack — it was honest about a 2-round-trip GitHub wait and that wait is what 8.1 removes. Every write path names its state          |   5 |
+| 8.1a | ✅ **Designed 2026-09-22** — `SYNC_DESIGN.md` **§4c**, written before building the way §0.3 wrote the model before §1.2 built it. **It found four problems the plan could not see**, and the second is the dangerous one: a vault op costs ~700 ms of server time, `pendingBatch` caps a flush at 100 ops and `httpPoster` has a 10 s deadline — so ten queued vault writes would blow the deadline, retry the whole batch, and blow it again. **A permanent wedge built out of two correct components**, appearing only after a period offline, which is exactly when the feature matters |   3 |
+| 8.1b | ⬜ **Build it.** Push-only entity, its own small per-flush cap, `bumpUpdated` taking the authored date rather than the flush date, and a third failure category for a GitHub 409 (*stale-retry* — re-read the SHA, resend the same content). Five new test cases, §4c's list 13–17. **Not started, deliberately**: this is the path where a bug loses the only copy of something Victor wrote, and it should not be written in the same pass that designed it |  10 |
+| 8.2  | ⬜ **Save feedback everywhere the outbox now reaches.** Blocked on 8.1b and meaningless before it. `SaveState`'s `queued` (D-259 rule 4) stops being set by `lib/offline/write.ts` alone; the update composer's *"Committing…"* becomes a queued ack |   5 |
 | 8.3  | ✅ **Done 2026-09-22** (D-335). Measured: a Contents API round trip averages **357 ms**, and Today reads two files serially — **~713 ms** cold, matching D-022's original 761 ms. The cache was real but **almost never hit**: `revalidate: 300` against an access pattern of a few opens a day meant essentially every open paid full price. The deploy sha is now a cache key — a direct vault push redeploys this same repo, so it busts the cache *immediately* rather than up to 300 s later — which makes the safety net affordable at **1 hour**. New: `npm run vault:cost` |   5 |
-| 8.4  | ✅ **Done 2026-09-22** (D-327). `zod` is out of the client-reachable error path — the schema moved to `lib/errors/schema.ts`, imported by the endpoint alone, with a two-way type pin and a guard test carrying a positive control. **Home 220.7 → 146.8 KB, `/now` 215.4 → 141.5 KB.** The guard's first version was itself wrong and is worth knowing: a naive `from "…"` regex reported that `client.ts` imports `"broken again"`, which is a doc comment |   5 |
+| 8.4  | ✅ **Done 2026-09-22** (D-327, corrected by D-336). `zod` is out of the client-reachable error path — the schema moved to `lib/errors/schema.ts`, imported by the endpoint alone, with a two-way type pin and a guard test carrying a positive control. **64.1 KB of gzipped `zod` removed from every public page**, verified by reading the chunk before and after. *The before/after totals first recorded here were measured against a stale `next start` and are withdrawn — see D-336.* Home now measures **168.9 KB**, thrice-verified. The guard's first version was itself wrong and is worth knowing: a naive `from "…"` regex reported that `client.ts` imports `"broken again"`, which is a doc comment |   5 |
 | 8.5  | ✅ **Done 2026-09-22** (D-330). Four removed — `@sentry/nextjs`, `recharts`, `react-hook-form`, `@hookform/resolvers`, all with zero import sites. **`node_modules` 988 → 826 MB.** **The `shadcn` half of this row was wrong**: `globals.css` imports `shadcn/tailwind.css`, so it is a build dependency, not a stray CLI. Written from the package's reputation instead of a grep |   3 |
-| 8.6  | ⚠️ **Re-scoped by §8.4's measurement, and mostly dissolved.** `npm run bundle` now reports the shared framework floor separately: **141.3 KB of every public route is react-dom plus the App Router runtime, and application code is 0.0–6.9 KB per route.** There is nothing on the public site left to split. What survives is **private-app** work — `session-logger`, `exercise-list`, `cached-app`, `course-planner` — which is real but is behind a passkey, precached, and used by one person on one phone, so it is the lowest-value row here. Nothing above the fold (D-171) |   4 |
+| 8.6  | ⬜ **Re-scoped twice, and it is back on.** §8.4's first reading said the public floor was all framework and nothing was left to split; **D-336 corrected that.** Of the 168.9 KB every public route shares, only **112.7 KB is fixed** (react-dom 69.9 + RSC/App Router runtime 42.8). The other **~56 KB is the root layout's own client components** — `ErrorWatch`, `ThemeProvider`, `ServiceWorker`, `@vercel/analytics` — on every page including the portfolio. *That* is the remaining public-bundle work, and it is larger than anything left elsewhere. Route-specific code really is near zero (0.0–6.9 KB). Private-app splitting stays the low-value half. Nothing above the fold (D-171) |   4 |
 | 8.7  | **7.3's remainder** — LCP on a mid-range phone over 4G, and the ambient-paint re-measure on the Samsung that §0.6 recorded as still owed (Q457, Q458, Q462). Both are device numbers this laptop structurally cannot produce                                                                                                        |   4 |
 | 8.8  | ✅ **Done 2026-09-22** (D-331). `0015_tag_indexes.sql` adds GIN on `log_entries.tags` and `tasks.tags` — the `@>` filter V4 §2.3 exists to serve had no index of any kind. The rest of the index audit came back clean: every synced table already carries `client_id`, `server_seq` and its own hot column. The test asserts the indexes exist and are GIN, with a control, and deliberately does **not** assert a query plan |   3 |
 | 8.9  | **Cache the derived-on-read queries.** D-025 makes records derived and never stored, which is right and is also the expensive path: `prs.ts` and `allEfforts()` recompute the whole record board per render. Cache the derivation, not the result — keyed so a new set invalidates it. **Do not store a PR** (D-025) |   5 |
 | 8.10 | **Pagination.** Every list query already takes a `.limit()`, so nothing is unbounded — but a limit is a truncation, not a page, and there is no cursor and no "load more" anywhere. The log timeline and the session history are the two that will hit it first |   5 |
 | 8.11 | ✅ **Done 2026-09-22, and the premise was wrong** (D-333, D-334). The source PNGs cost visitors nothing — `next/image` serves the 792 KB hero as a **39 KB WebP**. What measuring found instead: the lightbox's full-size `<img>` lives inside a closed `<dialog>`, browsers fetch images inside `display:none`, and React 19 was *preloading* it — so every project page shipped **773.7 KB** for a dialog nobody had opened. Mounts on first open now. **Project detail 812.7 → 39.0 KB.** New gate: `npm run images`. No re-encoding, no image pipeline |   4 |
 | 8.12 | ❌ **Withdrawn 2026-09-22 — the premise did not survive measurement** (D-332). The fuzzy search over the real 140-entry catalogue costs **0.075 ms per keystroke**; typing `bench press` in full is 0.75 ms of matching. One frame is 16.67 ms, so this is **0.45% of a frame**, and all three inputs were already `useMemo`d. Debouncing would add 150–300 ms of deliberate latency to a result that is already instant, on the screen whose whole job is one-handed reach mid-set (D-237). **Render cost is a separate question and is left unmeasured rather than guessed at** — it needs a browser profile |   0 |
-| 8.13 | **Request payload compression on `/api/sync`.** Vercel gzips *responses* at the edge already, so the pull half is covered and the push half is not — an outbox flush after a week offline is the case that matters                                                                                                                   |   2 |
-| 8.14 | **The four items that are already true, recorded rather than silently skipped.** Load balancing and the CDN are Vercel's edge network and need no work at $0. JS and CSS minification is `next build`, verified in this build's output. `neon-http` is stateless HTTP with no pool to size (`lib/db/client.ts` says so) — **connection pooling is a non-question on this driver**, and the answer changes only if the driver does |   1 |
+| 8.13 | ❌ **Withdrawn 2026-09-22.** Vercel gzips responses at the edge, so the **pull** half — the larger one, carrying every changed row — is already covered. The **push** half is bounded by `pendingBatch`'s 100-op cap, so a flush is tens of KB, not megabytes. Compressing it means a `CompressionStream` on the client and manual decompression in the route: a new failure mode on the one path that must never lose a write, for a saving measured in tens of KB on a rare reconnect. The batch cap is what makes it moot — and §4c problem 2 shows that cap is the thing that actually needs attention |   0 |
+| 8.14 | ✅ **Checked 2026-09-22, nothing to do — recorded rather than silently skipped.** Load balancing and the CDN are Vercel's edge network and need no work at $0. JS and CSS minification is `next build`, verified in this build's output. `neon-http` is stateless HTTP with no pool to size (`lib/db/client.ts` says so) — **connection pooling is a non-question on this driver**, and the answer changes only if the driver does |   1 |
 
 **Ends with:** the app is fast enough that nobody reaches for the laptop, and every save says
 what happened to it.
 
-**The honest risk (R8).** 8.1 is 13 points touching every form in the app, and it is parked
-*because* N5 deferred it for that reason. It is first here because 8.2 is meaningless without it
-and because "is it saved?" is the complaint Victor actually raised. If it slips, **8.4 and 8.5
-are 8 points that are pure profit and depend on nothing** — do those.
+**Done 2026-09-22 — 24 of 57 points**: 8.1a, 8.3, 8.4, 8.5, 8.8, 8.11, 8.14. Two rows withdrawn
+at 0 points (8.12, 8.13) and one re-scoped to near-nothing (8.6). **Remaining: 33** — 8.1b and
+8.2 (the write path, 15), 8.9 and 8.10 (queries and pagination, 10), 8.6 (private-app splitting,
+4), 8.7 (device measurements, 4).
+
+**What this phase has actually been.** Six of the fourteen rows were written from an audit list
+and **four of them did not survive being measured**: `shadcn` was a build dependency and not a
+stray CLI, the debounce would have added latency to a 0.075 ms search, the image work was aimed
+at source files that visitors never download, and payload compression is moot behind a 100-op
+cap. In three of those cases the measurement found something better underneath — most sharply in
+§8.11, where re-encoding the PNGs would have "succeeded" while leaving a 773 KB preload in place.
+**The list named real categories of problem and could not know which ones this codebase has.**
+
+**The honest risk (R8), updated.** 8.1 was always the large one. Writing its design first
+(§4c) found a **flush-deadline wedge** — ten queued vault writes exceeding `httpPoster`'s 10 s
+budget, retrying forever — that would have been built straight into the data-loss-critical path
+and would only have shown up after a period offline. That is the argument for not writing 8.1b
+in the same pass that designed it.
 
 **What this phase must not do.** Undo D-025 by storing a PR, undo D-159 by adding a third reader
 of training data, or put an entrance animation above the fold in the name of perceived speed
@@ -980,8 +995,8 @@ of training data, or put an entrance animation above the fold in the name of per
 | 7     | Gates and review                                    |      23 | ✅ done                |
 | 2.13  | The picker on a phone, and licensed art             |      11 | ✅ done                |
 | 2.14  | **The fall challenge** — on screen, and the plan editable | **30** | ✅ done            |
-| **8** | **Speed, and the write path** — outbox writes, the bundle, the queries | **64** | ⬜ scoped 2026-09-22 |
-|       | **Total**                                           | **536** |                        |
+| **8** | **Speed, and the write path** — outbox writes, the bundle, the queries | **57** | 🟡 24 done · 33 left |
+|       | **Total**                                           | **529** |                        |
 
 **489, not 286.** Seven rows were promoted out of footnotes or added after use rather than
 invented: N9 is the 13-point half of N5 the plan always carried as "3 (+13)", Phase 2+ is the
@@ -991,13 +1006,15 @@ the thing §2.12 fixed**, §2.14 is the fall challenge he started on move-in day
 sweep rewrite that 7.1 was going to need anyway — none of it scope creep, all of it the
 difference between a mechanism and a product becoming visible.
 
-**472 points are done** — every phase from 0 through 7. **64 remain, and all 64 are Phase 8**,
-scoped 2026-09-22 from §7.6's review round. Nothing is parked any more: N9's 13 points were the
-last parked row and they are §8.1.
+**496 points are done** — every phase from 0 through 7, plus 24 of Phase 8. **33 remain, and
+all 33 are Phase 8**: the write path's build half (8.1b, 8.2), the query work (8.9, 8.10),
+private-app splitting (8.6) and the device measurements (8.7). Nothing is parked any more —
+N9's 13 points were the last parked row and they are §8.1.
 
-**The total moved 489 → 536, and only 47 of that is new.** 7.3's 4 points and N9's 13 moved into
-Phase 8 rather than being counted twice, so Phase 8's 64 is 47 genuinely new points against a
-brief Victor extended deliberately — the same pattern as Phase 2++ and §2.14, and the same
+**The total moved 489 → 529, and only 40 of that is new.** 7.3's 4 points and N9's 13 moved into
+Phase 8 rather than being counted twice, and **two rows were withdrawn at zero** once measured
+(§8.12, §8.13), so Phase 8's 57 is 40 genuinely new points against a brief Victor extended
+deliberately — the same pattern as Phase 2++ and §2.14, and the same
 reason: a mechanism was built and the product complaint that followed was about something else.
 
 **7.2 moved from done to done**, which needs saying rather than quietly correcting: it was

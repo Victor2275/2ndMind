@@ -281,6 +281,91 @@ transaction.
 
 ---
 
+## 4c. Vault writes as a push-only op — **DESIGNED 2026-09-22 (V4 §8.1), NOT BUILT**
+
+> Written before building, the same way §0.3 wrote the whole model before §1.2 built it — and
+> for the same reason. That exercise found three problems the plan could not see, and this one
+> found four. **Nothing below is implemented.** D-325 is the decision; this is the design it
+> needs before it is safe to write.
+
+### What it is for
+
+Two write paths still commit to git: publishing a project update (`/private/now`) and saving the
+course plan. Both are synchronous Server Actions that do a GitHub **read-then-write** — read the
+blob SHA, then `createOrUpdateFileContents` — under an 8s deadline each. Measured 2026-09-22, one
+Contents API round trip averages **357 ms**, so a publish blocks the form for roughly 700 ms to
+2 s and the button says *"Committing…"* throughout.
+
+Victor's §7.6 review said **"it is unclear when something is logged/saved"**. D-325 chose the
+outbox over a Postgres buffer, because the outbox already owns that question: a queued state
+(`SaveState.queued`), a screen listing everything unsent and why (`/private/sync`, no delete
+button), an escalating badge, and automatic retry. A push button would have been a second way to
+find out whether something was saved, with different rules from the first.
+
+### Shape
+
+```ts
+// op: "create", entity: "vault_write"
+{
+  clientId: "<uuid>",
+  payload: { path: "context/…/thing.md", content: "<full file>", message: "<commit message>" },
+}
+```
+
+**Push-only.** There is no table, no `server_seq`, no tombstone and nothing to mirror. §7's pull
+is an explicit list of `push(entity, rows)` calls rather than a loop over `ENTITIES`, so a
+push-only entity needs no pull-side change at all — which is the single thing that makes this
+affordable.
+
+**Full content, not a diff.** The vault write is already last-write-wins by decision, and a diff
+would need a base revision the phone does not reliably have. Sending the whole file keeps the op
+self-describing and idempotent under retry.
+
+### The four problems found by writing this down
+
+**1. `STORE_FOR` is `satisfies Record<Entity, string>`, so every entity must name an IndexedDB
+store — and this one has no mirrored rows.** A store is still needed, because the outbox op must
+survive a restart and `/private/sync` must be able to describe it. The store holds the *queued
+writes*, not mirrored server rows, which makes it the first store in the app whose contents are
+not a mirror of a table. That asymmetry needs stating in `entities.ts` or the next person will
+try to pull into it.
+
+**2. A vault op is ~700 ms of server time, inside a batch of up to 100.** `pendingBatch` caps a
+flush at 100 ops and `httpPoster` has a 10 s deadline. Ten queued vault writes would blow that
+deadline, get classified `transient`, retry the whole batch, and blow it again — **a permanent
+wedge built out of two correct components**. Vault ops must be applied with their own small
+per-batch cap (2–3), or split into their own flush. This is the problem most likely to be missed,
+because it only appears after a period offline, which is exactly when the feature matters.
+
+**3. `writeVaultFile` bumps `updated:` frontmatter at write time, and "write time" has moved.**
+Today the timestamp is the moment of the commit, which is the moment of the click. Queued, it
+becomes the moment of the *flush* — so an update written on a plane on Monday and synced on
+Wednesday would claim Wednesday. The op must carry the authored date and `bumpUpdated` must take
+it, or the freshness audit starts lying in a way nothing checks.
+
+**4. Failure classification is different here and the existing taxonomy does not cover it.** §6
+splits failures into transient and permanent by HTTP status. A GitHub 409 (SHA conflict) is
+neither: it means someone else wrote the file, and the right response is to re-read the SHA and
+retry **with the same content** — which is a third category, *stale-retry*. Treated as transient
+it retries forever against the same stale SHA; treated as permanent it strands a real write on
+the "not sent" screen with no way forward but the button that will fail again.
+
+### What it does not change
+
+The public site still publishes by commit-and-rebuild, so a queued update reaches `/now` when
+the flush lands rather than when the button is pressed. That is the honest cost of D-325 and it
+is smaller than it sounds: the rebuild was always minutes behind the click.
+
+### Test list, extending §10
+
+13. A vault write queued offline reaches GitHub exactly once on reconnect.
+14. Ten queued vault writes do not exceed the flush deadline (problem 2).
+15. An op authored Monday and flushed Wednesday stamps `updated:` Monday (problem 3).
+16. A 409 re-reads the SHA and retries with the same content, and does not loop (problem 4).
+17. A vault op is never pulled — the mirror for its store stays empty after a full sync.
+
+---
+
 ## 5. The outbox
 
 IndexedDB store, in queue order:
