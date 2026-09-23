@@ -192,11 +192,6 @@ export default async function ResumePage({ params }: PageProps<"/resume/[variant
           ),
         )}
       </article>
-
-      <p className="mt-6 text-xs text-muted-foreground print:hidden">
-        Generated from the vault — every bullet above is the same text that feeds the project and
-        experience pages.
-      </p>
     </main>
   );
 }

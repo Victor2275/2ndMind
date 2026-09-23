@@ -36,7 +36,15 @@ function deployedCommit(): string {
 
 const BUILT = new Date();
 
-/** The repository this site is built from (Q299). */
+/**
+ * The repository this site is built from (Q299).
+ *
+ * It used to be reached through a sentence explaining that the site is a knowledge vault that
+ * publishes itself. That sentence went on 2026-09-23 (D-343) along with the rest of the copy
+ * describing the site's own plumbing to people who came to read about the work. The link stays,
+ * as a link, because "Source" on an engineer's portfolio is a destination rather than an
+ * explanation.
+ */
 const REPO = "https://github.com/Victor2275/2ndMind";
 
 export function SiteFooter({ profile }: { profile: PublicProfile }) {
@@ -49,6 +57,7 @@ export function SiteFooter({ profile }: { profile: PublicProfile }) {
       label: profile.contact.phone,
       external: false,
     },
+    { href: REPO, label: "Source", external: true },
   ];
 
   return (
@@ -81,19 +90,7 @@ export function SiteFooter({ profile }: { profile: PublicProfile }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          {/* Q320 — one line, naming the thing the reader is currently inside. */}
-          <p className="max-w-[52ch]">
-            This site is{" "}
-            <ExternalLink
-              href={REPO}
-              className="text-foreground transition-colors hover:text-primary"
-            >
-              2ndMind
-            </ExternalLink>
-            , a personal knowledge vault that publishes itself. The portfolio is the public half.
-          </p>
-
+        <div className="flex flex-col gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-end">
           <div className="flex items-center gap-4">
             <span className="tabular font-mono">
               <span className="sr-only">Last built </span>
