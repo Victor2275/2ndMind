@@ -17,6 +17,95 @@ useful part.
 
 ---
 
+## 2026-09-23 · The site stops explaining itself, and `/now` goes
+
+### D-342 · `/now` is removed, and redirects to `/projects`
+
+**Decision.** `app/now/page.tsx` is deleted, "Now" is out of the header and the 404 page, out
+of the sitemap, and out of every dev script that walks the public routes. `/now` returns a
+permanent redirect to `/projects`.
+
+**Why.** Victor's reason, and it is the right one: a page whose entire subject is "what I am
+working on at the moment" is only ever as good as its last update. It cannot be correct by
+default — every day that passes without an update makes it wronger, and a stale one reads
+worse than no page at all. That risk was not hypothetical: `/now` was down to a single active
+project after D-337 retired the other two, so it was already a page with one item on it.
+
+**Why a redirect rather than a 404.** The URL is in a sitemap Google has crawled, in the
+precache list of every installed copy of the PWA (the worker precaches from the sitemap), and
+in whatever links exist to it. 308 to `/projects`, where the same work lives.
+
+**What is not lost.** `## Updates` still publishes — on each project's own page, which is
+where it was always rendered as well, and where it is dated, so an old update looks like
+history instead of like a stale page. `status: active` still drives the badge on a card. No
+vault content changed, and nothing needed to.
+
+**To reverse.** `git show <this commit>^ -- web/src/app/now/` and put back the header entry,
+the sitemap line and the script entries; drop the `redirects()` block in `next.config.ts`.
+This supersedes the `/now` half of D-099 and V2 §9's nav decision.
+
+### D-343 · Public pages do not explain how the site is built
+
+**Decision.** Two pieces of copy are gone:
+
+- the resume's footnote, *"Generated from the vault — every bullet above is the same text that
+  feeds the project and experience pages"*;
+- the footer's *"This site is 2ndMind, a personal knowledge vault that publishes itself. The
+  portfolio is the public half."*
+
+**Why.** Victor's call, and it is about audience. A recruiter or an engineer arrives to read
+about the work; being told how the page they are on was generated is a detail about the tool,
+not the work, and it spends the reader's attention on the wrong subject. The resume line was
+also doing something slightly worse — explaining, on the document meant to be the most
+confident thing on the site, that it is machine-assembled.
+
+**The repository link survives as a link.** Q299 wanted the source reachable from the footer
+and the removed sentence was carrying it, so "Source" joins GitHub / LinkedIn / Email / phone.
+A link is a destination; the sentence was an explanation.
+
+**Layout.** The footer's bottom row lost its only left-hand element, so it moves from
+`justify-between` to `justify-end` — otherwise the build stamp and the theme toggle jump to
+the left edge.
+
+**Still there, deliberately, and worth a decision of its own if Victor wants it gone:** the
+`2026-09-23 · local` build stamp (Q298). It is not an explanation, but it is plumbing, and it
+has the same failure mode as `/now` — it is a date that gets older on its own. Left alone
+because removing it was not asked for.
+
+**To reverse.** Both strings are in this commit's diff.
+
+### D-344 · Curated leads with the three robots — and the sort control was not broken
+
+**Decision.** `order` becomes Slipknot 1, Lemonlight 2, Airhead 3, then Proof 4, Micromouse 5,
+5 Second Rule 6, Solenoid 7, TaskAble 8, 2ndMind 9. The software projects keep their relative
+sequence; the robots move above them. Slipknot is first because it is also `featured`, so it
+is lifted out as the hero card and the two remaining robots lead the grid under it.
+
+**This changes what `order` means for a new entry.** CLAUDE.md said a new project "appends to
+the bottom by taking the next number". That was true when the sequence was chronological-ish;
+it is not true of a curated one. The rule is now: take the number the project deserves and
+shift everything below it.
+
+**On "sort does not work properly" — it does, and here is the evidence.** Measured before
+changing anything, against a production build. Server-rendered order for each control:
+
+| control | result |
+| --- | --- |
+| Curated | hero + `order` ascending — correct |
+| Newest | `year` descending, ties broken by `order` — correct |
+| A–Z | `localeCompare` on title, digits first — correct |
+
+Then driven in a real browser, clicking each control in turn: Curated → Newest → A–Z →
+Curated all re-rendered in the right order, with `aria-current` landing on the right link and
+the URL updating. Category filters combine correctly (`?category=robotics&sort=newest` is
+Lemonlight, Slipknot, Micromouse, Airhead — year descending, then `order`), and `?sort=bogus`
+and `?sort=constructor` both fall back to Curated.
+
+**So the reordering above is the fix that was actually needed**, on the reading that the
+complaint was about the *curated sequence* putting the robots last rather than about the
+control. If something else looked wrong, it is still unfound and this entry is where to
+start — the sorts themselves are not it.
+
 ## 2026-09-23 · The FRC case studies are finished, and the vault has no drafts left
 
 ### D-340 · The draft guards stopped depending on a draft existing
@@ -152,6 +241,12 @@ than asking. So this is the asking.
 **Not a claim that the robots do not belong on a resume.** They are on the site, at full
 length, with the repositories linked; what is recorded here is that the one-page budget is
 spent, and which good content to spend it on instead is Victor's call.
+
+**Settled 2026-09-23.** Asked, Victor answered: the FRC entry on the resume is the **Robotics
+Programming Lead** role in `experience/first-robotics.md`. So this is no longer a budget
+question waiting on a decision — the four seasons are represented there on purpose, and the
+three project entries are portfolio-only by intent rather than by arithmetic. The measurements
+above stay because they are still the reason a fourth entry cannot simply be added later.
 
 **To reverse.** Set `resume_variants: [robotics]` on `slipknot.md` and re-run `npm run shots`.
 If it still prints two pages, the decision above is the one that has to change, not this field.
