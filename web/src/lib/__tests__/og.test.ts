@@ -39,10 +39,15 @@ describe("every published project has a current card", () => {
 
   it("includes the drafts, because they are published too", () => {
     // The first version of the renderer skipped `draft: true` and lost two cards. Q339 says a
-    // draft is not *marked* on the public site — not that it is unpublished — and both drafts
-    // carry `public: true`, so both have real pages that needed real images.
+    // draft is not *marked* on the public site — not that it is unpublished — and a draft
+    // carries `public: true`, so it has a real page that needs a real image.
+    //
+    // The vault holds no draft as of 2026-09-23 (D-340), which makes this vacuous rather than
+    // wrong: the sibling test above already asserts the manifest covers *exactly* what
+    // `publicProjects()` returns, and drafts are in that list. That is the assertion doing the
+    // work now. This one stays because it names the specific regression, and starts biting
+    // again the moment a draft comes back.
     const drafts = projects.filter((p) => p.draft).map((p) => p.slug);
-    expect(drafts.length).toBeGreaterThan(0);
     for (const slug of drafts) {
       expect(
         manifest.some((c) => c.slug === slug),

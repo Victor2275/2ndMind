@@ -3,7 +3,13 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildResume, formatResumeDate, RESUME_VARIANTS, resumeToMarkdown } from "../resume";
+import {
+  buildResume,
+  formatResumeDate,
+  isResumeProject,
+  RESUME_VARIANTS,
+  resumeToMarkdown,
+} from "../resume";
 import { loadExperience, loadLabs, loadProjects, VAULT_ROOT } from "../vault/load";
 
 /**
@@ -59,13 +65,24 @@ describe("what must never appear on a resume", () => {
   });
 
   it("no draft project, however it is tagged", () => {
+    // Asserted against a project handed to the filter rather than one the vault happens to
+    // hold (D-340). This used to require a draft to exist in `projects/` and skip its real
+    // assertion when none did — so on 2026-09-23, when the last two draft entries were
+    // finished, it went from guarding the thing that matters to guarding nothing. A draft
+    // reaching a printed resume is the most expensive failure in this file; it should not
+    // depend on a fixture surviving someone else's edit.
+    const entry = { resume_variants: [...RESUME_VARIANTS], bullets: ["a real bullet"] };
+    for (const variant of RESUME_VARIANTS) {
+      expect(isResumeProject({ ...entry, draft: true }, variant)).toBe(false);
+      // The control. Without it the assertion above would also pass if `isResumeProject`
+      // rejected everything, which is the way a filter breaks without anyone noticing.
+      expect(isResumeProject({ ...entry, draft: false }, variant)).toBe(true);
+    }
+
+    // And the vault itself, for whatever drafts it does hold. Zero is a valid state now.
     const draftSlugs = loadProjects()
       .filter((p) => p.draft)
       .map((p) => p.slug);
-    // A canary, not a formality: if the vault ever holds no draft project this assertion
-    // fires, because a guard with nothing to guard is a guard that has quietly stopped
-    // working. Deleting the only draft entry is exactly how that happened once.
-    expect(draftSlugs.length, "fixture missing: no draft projects").toBeGreaterThan(0);
     for (const variant of RESUME_VARIANTS) {
       const slugs = buildResume(variant).projects.map((p) => p.slug);
       for (const draft of draftSlugs) expect(slugs).not.toContain(draft);

@@ -2,7 +2,7 @@ import "server-only";
 
 import { loadExperience, loadLabs, loadProjects, loadResumeConfig } from "./vault/load";
 import { publicProfile } from "./vault/public";
-import type { ResumeVariant } from "./vault/schemas";
+import type { Project, ResumeVariant } from "./vault/schemas";
 
 /**
  * Assembles a resume variant from the vault.
@@ -69,6 +69,24 @@ export function formatResumeDate(value: string): string {
 const MAX_EXPERIENCE_BULLETS = 4;
 const MAX_PROJECT_BULLETS = 3;
 
+/**
+ * Whether a project may appear on a printed resume variant.
+ *
+ * Lifted out of `buildResume` so the draft half of it can be tested against a project this
+ * module is handed rather than one the vault happens to contain (D-340). The guard in
+ * `__tests__/resume.test.ts` asserted over vault content, which meant it tested nothing at all
+ * on the day the vault stopped holding a draft — and 2026-09-23 was that day, when the last two
+ * draft entries were finished. A `draft: true` entry reaching a resume is the failure that
+ * costs the most (a bullet reading PLACEHOLDER in front of a recruiter), so it is the one that
+ * should not depend on a fixture surviving.
+ */
+export function isResumeProject(
+  project: Pick<Project, "resume_variants" | "bullets" | "draft">,
+  variant: ResumeVariant,
+): boolean {
+  return project.resume_variants.includes(variant) && project.bullets.length > 0 && !project.draft;
+}
+
 export function buildResume(variant: ResumeVariant): ResumeDocument {
   const config = loadResumeConfig();
   const profile = publicProfile();
@@ -89,7 +107,7 @@ export function buildResume(variant: ResumeVariant): ResumeDocument {
   // Projects and labs land in one section. A reader does not care which vault directory an
   // entry came from, only what was built.
   const projectEntries: ResumeEntry[] = loadProjects()
-    .filter((p) => p.resume_variants.includes(variant) && p.bullets.length > 0 && !p.draft)
+    .filter((p) => isResumeProject(p, variant))
     .map((p) => ({
       slug: p.slug,
       title: p.title,
