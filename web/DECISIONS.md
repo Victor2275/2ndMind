@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 domain: engineering
 stability: volatile
 summary: Dated log of design and architecture decisions for the web app, each with its reason and how to reverse it.
@@ -14,6 +14,63 @@ and reverses things; this file exists so reversing is a lookup, not an archaeolo
 Newest first. When a decision is reversed, do not delete the entry — move it to
 [Reversed](#reversed) with a note. The history of what was tried and rejected is the
 useful part.
+
+---
+
+## 2026-09-23 · The FRC case studies are finished, and the vault has no drafts left
+
+### D-340 · The draft guards stopped depending on a draft existing
+
+**What happened.** Victor supplied the competition results and the failure accounts the three
+FRC entries were missing, so all four case-study sections are now written in each of them.
+`scripts/case_study_status.py` reports every project complete for the first time — nine of
+nine. `airhead` and `lemonlight` gained real `bullets` and lost `draft: true`, which was
+accurate for a day and stopped being accurate the moment the prose landed.
+
+**The consequence, which is the actual decision here.** That left the vault with **zero**
+`draft: true` projects, and two tests asserted one existed:
+
+- `lib/__tests__/resume.test.ts` — "no draft project, however it is tagged" opened with
+  `expect(draftSlugs.length).toBeGreaterThan(0)`, deliberately, as a canary. Its comment reads
+  "a guard with nothing to guard is a guard that has quietly stopped working."
+- `lib/__tests__/og.test.ts` — "includes the drafts, because they are published too", same
+  shape.
+
+The canary was right, and the fix is not to keep a fake draft in the vault to feed it. A
+project that is finished should say so, and a guard on resume output should not depend on
+vault content that Victor is free to change.
+
+**What was done instead.** The filter inside `buildResume` is extracted as
+`isResumeProject(project, variant)` and exported. The resume test now hands it a synthetic
+entry with `draft: true` and real bullets and asserts it is rejected, plus the same entry with
+`draft: false` as a control — without that second assertion the test would also pass if the
+filter rejected everything, which is precisely how a filter breaks unnoticed. The vault-level
+sweep stays underneath it, now correct when there are no drafts. `buildResume`'s behaviour is
+unchanged; this is the same predicate, addressable.
+
+The OG test keeps its loop but drops its `toBeGreaterThan(0)`. Its sibling already asserts the
+manifest covers *exactly* what `publicProjects()` returns, drafts included, so the coverage is
+not lost — and the named regression starts biting again the day a draft returns.
+
+**What this corrects in D-337.** That entry says the prose was "half-written on purpose" and
+that six sections were outstanding. True when written, false now.
+
+**To reverse.** Inline `isResumeProject` back into `buildResume` and restore the two
+`toBeGreaterThan(0)` assertions — but only alongside a real draft in `projects/`, or the suite
+goes red with nothing wrong.
+
+### D-341 · Slipknot's hero photograph was replaced the day a better one arrived
+
+**Decision.** `slipknot_image1.jpg` is now cut from `1458Robot.jpg`. The field shot that led
+before becomes Fig. 2, and `figure_count` goes 2 → 3. Nothing was deleted.
+
+**Why.** The old hero was 805×454 — the smallest source in the set, carrying the two-column
+featured card, which is the largest image slot on the site. The replacement is 847×476 and,
+more to the point, a side-on shot of the whole robot in motion with its LEDs lit and the
+bumper legible, rather than a three-robot scrum where 1458 is the middle one. The old shot is
+still the only photograph of this robot actually scoring, which is why it stays as a figure.
+
+**To reverse.** Swap the two output names in `scripts/crop_robot_photos.py` and re-run it.
 
 ---
 
@@ -47,12 +104,14 @@ its sort position changed, not its content, and `updated:` feeds the staleness c
 `scripts/audit_freshness.py`. Bumping it for a one-digit edit would reset a freshness signal
 that exists to catch prose going out of date.
 
-**The prose is half-written on purpose.** Each of the three files has "The problem" and
-"Architecture" written from the repositories — every mechanism named in them was read out of
-the Java — and leaves "What did not work" and "Measured results" as `> **To write:**`
-prompts. Those two sections need competition results and Victor's own memory of what broke,
-and D-069 is exactly the rule against an agent inventing them on a hiring-facing page.
-`scripts/case_study_status.py` now reports 6 sections outstanding, up from 0.
+**The prose is half-written on purpose.** — *completed 2026-09-23, see D-340.* Each of the
+three files had "The problem" and "Architecture" written from the repositories — every
+mechanism named in them was read out of the Java — and left "What did not work" and "Measured
+results" as `> **To write:**` prompts. Those two sections needed competition results and
+Victor's own memory of what broke, and D-069 is exactly the rule against an agent inventing
+them on a hiring-facing page. He supplied both the next day and they are now written; the
+approach is recorded here because it is the one to repeat, not because the prompts are still
+in the files.
 
 **Resume.** None of the three are on it — see D-339, which is the measurement that decided
 that and not the assumption this entry originally carried.
