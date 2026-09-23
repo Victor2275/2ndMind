@@ -35,12 +35,16 @@ JOBS = [
     # keeps the whole stack of pneumatic cylinders and the 1458 bumper, and drops the
     # ceiling truss above and the floor below.
     ("2023RobotImage.jpg", "airhead_image1.jpg", (0.0, 0.256, 1.0, 0.678), 1600),
-    # 2024 — Slipknot on the field at the Crescendo speaker. The only match-play photograph
-    # in the set, which is why it leads despite being the smallest source.
-    ("2024RobotImage1.png", "slipknot_image1.jpg", (0.0, 0.236, 1.0, 0.925), 1600),
+    # 2024 — Slipknot side-on and moving, LEDs lit, bumper legible. Added 2026-09-23 and
+    # promoted straight to the hero: the shot it replaced was 805px wide and carrying the
+    # featured card on the projects grid, which is the largest image slot on the site.
+    ("1458Robot.jpg", "slipknot_image1.jpg", (0.0, 0.128, 1.0, 0.932), 1600),
+    # 2024 — on the field at the Crescendo speaker. Was the hero until the shot above
+    # arrived; kept as a figure because it is the only one showing the robot scoring.
+    ("2024RobotImage1.png", "slipknot_image2.jpg", (0.0, 0.236, 1.0, 0.925), 1600),
     # 2024 — the same robot isolated on a red field. 391x306 source, so no crop and no
     # upscale; it is a gallery figure, and the gallery renders `contain`.
-    ("2024RobotImage2.png", "slipknot_image2.jpg", (0.0, 0.0, 1.0, 1.0), 800),
+    ("2024RobotImage2.png", "slipknot_image3.jpg", (0.0, 0.0, 1.0, 1.0), 800),
     # 2025 — Lemonlight beside the reef on the practice field. Reads as 16:9 and shows the
     # robot against the thing it scores on, so it is the hero.
     ("2025RobotImage2.jpg", "lemonlight_image1.jpg", (0.066, 0.325, 0.9, 0.676), 1600),
