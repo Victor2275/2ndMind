@@ -77,6 +77,5 @@ export default function NotFound() {
 const DESTINATIONS = [
   { href: "/", label: "About" },
   { href: "/projects", label: "Projects" },
-  { href: "/now", label: "Now" },
   { href: "/resume", label: "Resume" },
 ];

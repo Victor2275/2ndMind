@@ -46,8 +46,9 @@ const WIDTHS: Array<[prefix: string, width: Width]> = [
   ["/private/athletics", "wide"],
   ["/private/calendar", "wide"],
   ["/private/work", "wide"],
-  // The one screen that is genuinely a document: `/now` is the public "what I am working on",
-  // read start to finish rather than scanned.
+  // The one screen that is genuinely a document: the private "what I am working on", read
+  // start to finish rather than scanned. (The public `/now` this used to mirror was removed
+  // on 2026-09-23, D-342; this entry is and always was the private route.)
   ["/private/now", "prose"],
   // Everything else — the log form, the logger, settings, sync, Today — stays where it was.
 ];

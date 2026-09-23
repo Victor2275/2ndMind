@@ -63,6 +63,20 @@ const nextConfig: NextConfig = {
    * `Service-Worker-Allowed` lets the worker claim the whole origin, which is what the
    * manifest's `scope: "/"` promises.
    */
+  /**
+   * `/now` was a public page until 2026-09-23 (D-342). It is in the sitemap Google already
+   * crawled, in the precache list of every installed copy of the PWA, and in whatever links
+   * exist to it, so it redirects rather than 404s. Permanent, because the page is not coming
+   * back: the reason it went is that a "what I am working on" page is only ever as good as
+   * its last update, and a stale one reads worse than no page at all.
+   *
+   * `/projects` is the destination because it is where the same work lives — every project
+   * carries its own `## Updates` section, which is where the updates now surface.
+   */
+  async redirects() {
+    return [{ source: "/now", destination: "/projects", permanent: true }];
+  },
+
   async headers() {
     return [
       {

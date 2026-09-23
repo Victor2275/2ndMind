@@ -8,7 +8,6 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://victorgusev.com";
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
     "/",
-    "/now",
     "/projects",
     ...publicProjects().map((p) => `/projects/${p.slug}`),
     ...RESUME_VARIANTS.map((v) => `/resume/${v}`),

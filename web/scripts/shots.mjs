@@ -81,7 +81,6 @@ const WIDTHS = [360, 390, 768, 1280, 1440, 1920];
 
 const PAGES = [
   { name: "home", url: "/" },
-  { name: "now", url: "/now" },
   { name: "projects", url: "/projects" },
   { name: "project-detail", url: "/projects/solenoid-bit-reader" },
   { name: "resume", url: "/resume/swe" },

@@ -90,7 +90,6 @@ const ROUTE_BUDGET = {
  */
 const ROUTES = [
   { name: "home", url: "/" },
-  { name: "now", url: "/now" },
   { name: "projects", url: "/projects" },
   { name: "project-detail", url: "/projects/solenoid-bit-reader" },
   { name: "resume", url: "/resume/swe" },

@@ -42,7 +42,6 @@ const resumeVariants = ["robotics", "ml", "swe"];
 
 const PUBLIC_ROUTES = [
   "/",
-  "/now",
   "/projects",
   ...projectSlugs.map((s) => `/projects/${s}`),
   ...resumeVariants.map((v) => `/resume/${v}`),

@@ -20,7 +20,6 @@ const WIDTH = Number(process.argv[2] ?? 390);
 
 const PAGES = [
   { url: "/", private: false },
-  { url: "/now", private: false },
   { url: "/projects", private: false },
   { url: "/projects/solenoid-bit-reader", private: false },
   { url: "/resume/swe", private: false },

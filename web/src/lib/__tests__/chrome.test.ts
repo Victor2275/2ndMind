@@ -6,7 +6,6 @@ describe("hasPublicChrome", () => {
   it("keeps the header and footer on every public route", () => {
     for (const path of [
       "/",
-      "/now",
       "/projects",
       "/projects/proof",
       "/resume/robotics",
