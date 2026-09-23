@@ -39,6 +39,22 @@ export function ImageLightbox({
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
 
+  /**
+   * Whether the full-size image has ever been asked for (V4 §8.11, D-333).
+   *
+   * **A closed `<dialog>` is `display: none`, and a browser still downloads images inside it.**
+   * That is not an optimisation a renderer is allowed to make — the element is in the document,
+   * so its `src` is fetched — and it meant every project page pulled its full-size original on
+   * load, for a dialog almost nobody opens. Measured on `/projects/five-second-rule`: **773.7KB
+   * of raw PNG**, alongside the 39KB WebP thumbnail that was already being displayed. 95% of the
+   * page's image bytes were for something not on screen.
+   *
+   * Mounting the `<img>` only once the dialog has been opened is the whole fix. It stays mounted
+   * afterwards — latching rather than tracking `open` — so a second open is instant and the
+   * browser cache is not the only thing standing between the reader and a re-download.
+   */
+  const [everOpened, setEverOpened] = useState(false);
+
   const close = useCallback(() => {
     ref.current?.close();
   }, []);
@@ -57,7 +73,10 @@ export function ImageLightbox({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setEverOpened(true);
+          setOpen(true);
+        }}
         // `cursor-zoom-in` is the affordance. Without it the figure looks like the same
         // non-interactive image it was, and nobody discovers this.
         className={cn(
@@ -94,15 +113,26 @@ export function ImageLightbox({
               <XIcon className="icon-md" aria-hidden />
             </button>
           </div>
-          {/* A plain <img>, not next/image: the source is already an optimised asset and the
-              natural size is the point here. `next/image` would re-fit it to a layout box, which
-              is the very thing being escaped. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt={alt}
-            className="max-h-[calc(90dvh-3rem)] w-auto max-w-full object-contain"
-          />
+          {/* A plain <img>, not next/image: the natural size is the point here, and
+              `next/image` would re-fit it to a layout box, which is the very thing being
+              escaped.
+
+              The note that stood here also claimed "the source is already an optimised asset".
+              It was not: these are the original PNGs, and the largest is 792KB on disk. That
+              sentence is why nobody looked at what this element cost — see `everOpened` above
+              and D-333.
+
+              Rendered only after the first open. `loading="lazy"` is not a substitute: it
+              defers images that are off *screen*, and this one is inside a `display: none`
+              dialog, which browsers fetch eagerly regardless. */}
+          {everOpened && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={src}
+              alt={alt}
+              className="max-h-[calc(90dvh-3rem)] w-auto max-w-full object-contain"
+            />
+          )}
         </div>
       </dialog>
     </>

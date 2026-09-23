@@ -17,6 +17,71 @@ useful part.
 
 ---
 
+## 2026-09-22 · The image cost was real and was not where it looked — V4 §8.11
+
+### D-333 · The lightbox's full-size image mounts on first open, not on page load
+
+**Decision.** `ImageLightbox` renders its `<img>` only after the dialog has been opened once
+(`everOpened`, latched rather than tracking `open`). `npm run images` is a new gate.
+
+**Measured, before and after, on `/projects/five-second-rule`:**
+
+| | images transferred |
+| --- | --- |
+| before | **812.7 KB** — 773.7 KB raw PNG + 39.0 KB WebP thumbnail |
+| after | **39.0 KB** |
+
+**Why it happened.** A closed `<dialog>` is `display: none`, and **a browser downloads images
+inside `display: none` elements** — the element is in the document, so its `src` is fetched.
+React 19 made it worse by also emitting `<link rel="preload" as="image" href="…">` for it, so
+the full-size original was not merely fetched but fetched *eagerly, at high priority*, competing
+with the thumbnail actually on screen. 95% of the page's image bytes were for something nobody
+had asked to see.
+
+**`loading="lazy"` would not have fixed it** and is worth knowing: lazy defers images that are
+off *screen*, and this one is inside a hidden element rather than below the fold. Not rendering
+it is the only fix available.
+
+**The comment in that file actively prevented the discovery.** It read *"the source is already
+an optimised asset"* — which was false; these are the original PNGs and the largest is 792KB.
+A confident wrong comment is worse than no comment, because it answers the question that would
+otherwise have been asked. It has been replaced with what is actually true.
+
+### D-334 · §8.11's premise was wrong, and measuring is what found the real bug
+
+**Decision.** The three large source PNGs (792KB, 582KB, 542KB) are **not** re-encoded. No
+image pipeline is added.
+
+**Why.** §8.11 was scoped from a file listing — three heroes over half a megabyte — and the
+file listing is not what a visitor pays. `next/image` re-encodes on demand, and measured on the
+wire:
+
+| route | images transferred |
+| --- | --- |
+| home | 15.4 KB (1 image) |
+| projects | 84.7 KB (6 images, all WebP) |
+| project detail | 39.0 KB (1 image) |
+
+Every one of those is an optimised WebP at the width actually requested. **The 792KB source is
+served as 39KB.** Re-encoding the sources would have cost a build step and a dependency to save
+bytes nobody downloads — and it would have left D-333 in place, because compressing the PNG
+would have made the lightbox ship 300KB instead of 773KB and still looked like a win.
+
+**This is the third §8 item measuring has rewritten**, after §8.5's `shadcn` and §8.12's
+debounce, and the pattern is consistent enough to name: **the audit list describes real
+categories of problem and does not know which ones this codebase has.** Checking first has, each
+time, either dissolved the item or found something better underneath it.
+
+**What is left unaddressed, deliberately:** the source PNGs are still large *in git*, and the
+phone is served the same `w=640` variant as the desktop. The first is repository weight, not
+page weight. The second is a `sizes` question worth a look if LCP on a real phone (§8.7) says so
+— and that is a device measurement this laptop cannot produce, so it is not being guessed at.
+
+**How to reverse.** Nothing to reverse for §8.11's original scope; it was not done. To undo
+D-333, delete the `everOpened` gate and render the `<img>` unconditionally.
+
+---
+
 ## 2026-09-22 · The database, and an audit item that did not survive being measured — V4 §8.8, §8.12
 
 ### D-331 · GIN indexes on the two `tags` columns
