@@ -40,8 +40,38 @@ import { gzipSync } from "node:zlib";
 
 const BASE = process.env.BUNDLE_BASE ?? process.env.SHOTS_BASE ?? "http://localhost:3000";
 
-/** Q459: under 90KB gzipped, per public page. */
-const BUDGET_KB = Number(process.env.BUNDLE_BUDGET ?? 90);
+/**
+ * Q459's number: under 90KB gzipped, per public page. **It is not reachable and is kept as the
+ * aspiration, not the gate** (D-320, and now measured in detail — D-329).
+ *
+ * Two chunks account for 112.7KB of every public page and neither is application code:
+ * react-dom (69.9KB gzipped) and the React Server Components / App Router client runtime
+ * (42.8KB — identifiable by `resolved_model`, `server-action` and the `x-nextjs-*` header
+ * names inside it). Nothing this codebase does can remove either while it is a Next 16 + React
+ * 19 app, so 90 was a number set without measuring and the gate below would be permanently red
+ * against it — which is the state that trains everyone to ignore a gate.
+ */
+const ASPIRATION_KB = Number(process.env.BUNDLE_BUDGET ?? 90);
+
+/**
+ * What each route is **currently allowed**, in KB gzipped. A route over its number fails.
+ *
+ * Same mechanism and same reasoning as `TAP_BUDGET` and `CONTRAST_BUDGET` in `shots.mjs`: the
+ * honest position is a real number that ratchets, not a wish that stays red. **These only ever
+ * go down.** Re-measure with `npm run bundle -- --save` and paste the block it prints; a value
+ * that goes up needs a sentence in `DECISIONS.md` saying what bought it.
+ *
+ * Recorded 2026-09-22, after V4 §8.4 took `zod` off the public bundle (220.7 → 146.8 on home)
+ * and §8.5 removed four unused dependencies. The headroom over the measured value is
+ * deliberately zero — the point is to notice the next regression, not to leave room for one.
+ */
+const ROUTE_BUDGET = {
+  home: 147,
+  now: 142,
+  projects: 147,
+  "project-detail": 149,
+  resume: 142,
+};
 
 /**
  * The public routes, and only the public routes.
@@ -61,10 +91,18 @@ const ROUTES = [
   { name: "resume", url: "/resume/swe" },
 ];
 
+const SAVE = process.argv.includes("--save");
+
 const browser = await chromium.launch();
 let over = 0;
 
-console.log(`Public JavaScript, gzipped, against a ${BUDGET_KB}KB budget (Q459):\n`);
+/** route name -> Map(url -> gzipped bytes), kept so the shared floor can be computed after. */
+const perRoute = new Map();
+
+console.log(
+  `Public JavaScript, gzipped. Gate is the per-route budget; ${ASPIRATION_KB}KB is Q459's ` +
+    `aspiration and is not reachable (D-329).\n`,
+);
 
 for (const route of ROUTES) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -72,6 +110,21 @@ for (const route of ROUTES) {
 
   /** url -> gzipped bytes, so a chunk requested twice is counted once. */
   const chunks = new Map();
+
+  /**
+   * When the last *script* response landed — the signal `networkidle` could not give (D-328).
+   *
+   * Counting in-flight requests is what `networkidle` does and it is why this gate could not
+   * finish: `/projects` renders a link per project, Next prefetches every one of them, and the
+   * connection therefore never goes quiet for the required 500ms. The run died at the 60s
+   * timeout having measured two of five routes — so a gate that existed reported nothing about
+   * three of the pages it was written for, which is worse than not having it, because the two
+   * numbers it did print looked like a complete answer.
+   *
+   * Scripts are what this gate measures, so script quiet is the condition it should wait on.
+   * Prefetches are already filtered below and never touch this clock.
+   */
+  let lastScriptAt = Date.now();
 
   page.on("response", async (response) => {
     const url = response.url();
@@ -92,26 +145,42 @@ for (const route of ROUTES) {
       // `content-encoding` the local server happened to negotiate.
       const body = await response.body();
       chunks.set(url, gzipSync(body).length);
+      lastScriptAt = Date.now();
     } catch {
       // A response whose body is gone by the time this runs — a redirect, or a request the
       // page cancelled. Not counted rather than guessed at.
     }
   });
 
-  await page.goto(BASE + route.url, { waitUntil: "networkidle", timeout: 60_000 });
-  // `networkidle` fires before a late `import()` settles on some pages; one extra frame and a
-  // short settle catches the ones the first load kicks off.
-  await page.waitForTimeout(1500);
+  // `load`, not `networkidle` — see `lastScriptAt`. The document and its own subresources are
+  // what `load` waits for, and everything after that is settled by the quiet window below.
+  await page.goto(BASE + route.url, { waitUntil: "load", timeout: 60_000 });
+
+  // Wait for scripts to stop arriving, capped so a page that never settles fails loudly with a
+  // number rather than hanging. The cap is generous because it is only ever reached when
+  // something is wrong; the normal path exits after QUIET_MS.
+  const QUIET_MS = 1_500;
+  const CAP_MS = 20_000;
+  const startedAt = Date.now();
+  while (Date.now() - lastScriptAt < QUIET_MS && Date.now() - startedAt < CAP_MS) {
+    await page.waitForTimeout(100);
+  }
+  if (Date.now() - startedAt >= CAP_MS) {
+    console.log(`  ${route.name.padEnd(16)} scripts never stopped arriving after ${CAP_MS}ms`);
+  }
+
+  perRoute.set(route.name, chunks);
 
   const total = [...chunks.values()].reduce((a, b) => a + b, 0);
   const kb = total / 1024;
-  const bad = kb > BUDGET_KB;
+  const budget = ROUTE_BUDGET[route.name] ?? ASPIRATION_KB;
+  const bad = kb > budget;
   if (bad) over += 1;
 
   console.log(
-    `  ${route.name.padEnd(16)} ${kb.toFixed(1).padStart(7)} KB  ` +
+    `  ${route.name.padEnd(16)} ${kb.toFixed(1).padStart(7)} KB / ${String(budget).padStart(3)}  ` +
       `${String(chunks.size).padStart(3)} chunks` +
-      (bad ? `  <-- over by ${(kb - BUDGET_KB).toFixed(1)} KB` : ""),
+      (bad ? `  <-- over its budget by ${(kb - budget).toFixed(1)} KB` : ""),
   );
 
   // The four largest, so an overage is actionable rather than just known.
@@ -127,10 +196,45 @@ for (const route of ROUTES) {
 
 await browser.close();
 
+/**
+ * The framework floor: chunks every public route downloads.
+ *
+ * Printed separately because the total is not the actionable number and reading it as one is
+ * how the 90KB budget got set. What application work can move is the remainder — everything
+ * this site's own code adds on top of react-dom and the App Router runtime.
+ */
+const names = [...perRoute.keys()];
+if (names.length > 1) {
+  const first = perRoute.get(names[0]);
+  const shared = [...first].filter(([url]) => names.every((n) => perRoute.get(n).has(url)));
+  const floorKb = shared.reduce((a, [, size]) => a + size, 0) / 1024;
+
+  console.log(
+    `\n  Framework floor  ${floorKb.toFixed(1).padStart(7)} KB in ${shared.length} shared chunks`,
+  );
+  console.log(`  — react-dom plus the RSC / App Router client runtime. Not reachable by app code.`);
+  console.log(`  App code on top, per route:`);
+  for (const [name, chunks] of perRoute) {
+    const own = [...chunks].filter(([url]) => !shared.some(([s]) => s === url));
+    const ownKb = own.reduce((a, [, size]) => a + size, 0) / 1024;
+    console.log(`      ${name.padEnd(16)} ${ownKb.toFixed(1).padStart(6)} KB`);
+  }
+}
+
+if (SAVE) {
+  console.log(`\nconst ROUTE_BUDGET = {`);
+  for (const [name, chunks] of perRoute) {
+    const kb = [...chunks.values()].reduce((a, b) => a + b, 0) / 1024;
+    const key = /^[a-z][a-z0-9]*$/i.test(name) ? name : JSON.stringify(name);
+    console.log(`  ${key}: ${Math.ceil(kb)},`);
+  }
+  console.log(`};`);
+}
+
 console.log(
   over > 0
-    ? `\n${over} public route(s) over the ${BUDGET_KB}KB budget.`
-    : `\nEvery public route is inside the ${BUDGET_KB}KB budget.`,
+    ? `\n${over} public route(s) over budget.`
+    : `\nEvery public route is inside its budget.`,
 );
 
 if (over > 0) process.exitCode = 1;
