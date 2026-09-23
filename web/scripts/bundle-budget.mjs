@@ -61,16 +61,21 @@ const ASPIRATION_KB = Number(process.env.BUNDLE_BUDGET ?? 90);
  * go down.** Re-measure with `npm run bundle -- --save` and paste the block it prints; a value
  * that goes up needs a sentence in `DECISIONS.md` saying what bought it.
  *
- * Recorded 2026-09-22, after V4 §8.4 took `zod` off the public bundle (220.7 → 146.8 on home)
- * and §8.5 removed four unused dependencies. The headroom over the measured value is
- * deliberately zero — the point is to notice the next regression, not to leave room for one.
+ * Recorded 2026-09-22, after V4 §8.4 took `zod` off the public bundle and §8.5 removed four
+ * unused dependencies. The headroom over the measured value is deliberately zero — the point is
+ * to notice the next regression, not to leave room for one.
+ *
+ * **These numbers replace a set recorded hours earlier that were ~22KB too low** (D-336). The
+ * first measurement was taken against a `next start` left over from an earlier build, because
+ * `npm start` fails silently when the port is held and the *old* server answers. Re-record only
+ * from a run you have seen agree with itself at least twice — see the note on stability below.
  */
 const ROUTE_BUDGET = {
-  home: 147,
-  now: 142,
-  projects: 147,
-  "project-detail": 149,
-  resume: 142,
+  home: 169,
+  now: 176,
+  projects: 176,
+  "project-detail": 176,
+  resume: 169,
 };
 
 /**
@@ -197,11 +202,17 @@ for (const route of ROUTES) {
 await browser.close();
 
 /**
- * The framework floor: chunks every public route downloads.
+ * Chunks every public route downloads — the shared floor.
  *
- * Printed separately because the total is not the actionable number and reading it as one is
- * how the 90KB budget got set. What application work can move is the remainder — everything
- * this site's own code adds on top of react-dom and the App Router runtime.
+ * **Not the same thing as "the framework", and an earlier version of this label said it was**
+ * (D-336). Two of these chunks are react-dom (69.9KB) and the RSC / App Router client runtime
+ * (42.8KB), which application work genuinely cannot touch. The rest — about 56KB — is the root
+ * layout's own client components: `ErrorWatch`, `ThemeProvider`, `ServiceWorker` and
+ * `@vercel/analytics`, mounted on every page including the portfolio. That part *is* reachable,
+ * and calling the whole number a floor hid the largest remaining opportunity on the public site.
+ *
+ * Printed separately because the per-route total is not the actionable number, and reading it
+ * as one is how the 90KB budget got set in the first place.
  */
 const names = [...perRoute.keys()];
 if (names.length > 1) {
@@ -210,10 +221,11 @@ if (names.length > 1) {
   const floorKb = shared.reduce((a, [, size]) => a + size, 0) / 1024;
 
   console.log(
-    `\n  Framework floor  ${floorKb.toFixed(1).padStart(7)} KB in ${shared.length} shared chunks`,
+    `\n  Shared by every route  ${floorKb.toFixed(1).padStart(7)} KB in ${shared.length} chunks`,
   );
-  console.log(`  — react-dom plus the RSC / App Router client runtime. Not reachable by app code.`);
-  console.log(`  App code on top, per route:`);
+  console.log(`  — react-dom (69.9) and the RSC/App Router runtime (42.8) are fixed. The rest is`);
+  console.log(`    the root layout's own client components, and IS reachable. See D-336.`);
+  console.log(`  Route-specific code on top:`);
   for (const [name, chunks] of perRoute) {
     const own = [...chunks].filter(([url]) => !shared.some(([s]) => s === url));
     const ownKb = own.reduce((a, [, size]) => a + size, 0) / 1024;
