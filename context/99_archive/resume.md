@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-12
+updated: 2026-09-23
 domain: archive
 stability: stable
 summary: Generated resume, all three variants. Not canonical for any entry.

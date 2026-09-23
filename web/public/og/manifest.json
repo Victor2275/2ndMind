@@ -30,18 +30,23 @@
     "title": "TaskAble"
   },
   {
-    "file": "project-smart-bottle.png",
-    "slug": "smart-bottle",
-    "title": "Smart Bottle"
-  },
-  {
-    "file": "project-dimaag-paper.png",
-    "slug": "dimaag-paper",
-    "title": "Research Paper — RL for Autonomous Navigation"
-  },
-  {
     "file": "project-2ndmind.png",
     "slug": "2ndmind",
     "title": "2ndMind"
+  },
+  {
+    "file": "project-airhead.png",
+    "slug": "airhead",
+    "title": "Airhead"
+  },
+  {
+    "file": "project-slipknot.png",
+    "slug": "slipknot",
+    "title": "Slipknot"
+  },
+  {
+    "file": "project-lemonlight.png",
+    "slug": "lemonlight",
+    "title": "Lemonlight"
   }
 ]
