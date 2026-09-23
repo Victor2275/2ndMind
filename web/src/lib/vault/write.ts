@@ -118,12 +118,31 @@ export const VAULT_CACHE_TAG = "vault";
  */
 export const readVaultFileCached = unstable_cache(
   async (path: string) => readVaultFile(path),
-  ["vault-file"],
+  // The deploy is part of the cache key (V4 §8.3, D-335). See `revalidate` below — this is what
+  // lets the safety net be an hour instead of five minutes.
+  ["vault-file", process.env.VERCEL_GIT_COMMIT_SHA ?? "local"],
   {
     tags: [VAULT_CACHE_TAG],
-    // A safety net, not the mechanism. Writes invalidate immediately; this only bounds how
-    // long a change made outside the app (a direct git push) stays invisible.
-    revalidate: 300,
+    /**
+     * A safety net, not the mechanism — and it was set far too short for how this app is used.
+     *
+     * Writes still invalidate immediately by tag, so nothing about *this app's* edits depends on
+     * this number. It only ever bounded how long a change made **outside** the app stays
+     * invisible, and "outside the app" means a direct `git push` to `context/`.
+     *
+     * At 300s the cache almost never helped. Measured 2026-09-22, a Contents API round trip
+     * averages **357ms**, and Today reads two files serially — so a cold miss costs it ~713ms,
+     * which is D-022's original 761ms measurement almost exactly. Victor opens the app a few
+     * times a day, essentially always more than five minutes apart, so **essentially every open
+     * was a cold miss**: the cache was paying for itself only during a single browsing session.
+     *
+     * The key above is what makes a longer window safe, and it is better than the timer it
+     * replaces. The vault lives in **this same repository**, so a direct push to `context/`
+     * redeploys the app and changes `VERCEL_GIT_COMMIT_SHA` — which changes this cache key and
+     * drops the stale entry *immediately*, rather than up to 300s later. The one case left is a
+     * vault change that somehow does not deploy, and an hour bounds that.
+     */
+    revalidate: 3_600,
   },
 );
 

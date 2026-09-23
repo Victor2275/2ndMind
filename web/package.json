@@ -34,7 +34,8 @@
     "shots:save": "node scripts/shots-compare.mjs save",
     "shots:compare": "node scripts/shots-compare.mjs compare",
     "freeze": "node scripts/freeze.mjs",
-    "images": "node scripts/image-cost.mjs"
+    "images": "node scripts/image-cost.mjs",
+    "vault:cost": "node --env-file-if-exists=.env.local scripts/vault-cost.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -17,6 +17,57 @@ useful part.
 
 ---
 
+## 2026-09-22 · The vault cache was tuned for a usage pattern nobody has — V4 §8.3
+
+### D-335 · The deploy is part of the vault cache key, and the safety net goes 300s → 1 hour
+
+**Decision.** `readVaultFileCached` takes `VERCEL_GIT_COMMIT_SHA` as a key part and its
+`revalidate` rises from 300s to 3600s. `npm run vault:cost` is a new measurement script.
+
+**Why, measured 2026-09-22.** A GitHub Contents API round trip for a vault file:
+
+| file | round trip | size |
+| --- | --- | --- |
+| `fall_2026_challenge.md` | 470 ms | 28.7 KB |
+| `current_sprint.md` | 334 ms | 58.3 KB |
+| `training_blocks.md` | 437 ms | 4.1 KB |
+| `degree_audit.md` | 185 ms | 14.6 KB |
+| **average** | **357 ms** | |
+
+Today reads two of these serially, so a cold miss costs it **~713 ms** — which is D-022's
+original 761 ms measurement almost unchanged. The cache is doing real work *when it hits*.
+
+**The problem was that it almost never hit.** `revalidate: 300` means an entry is five minutes
+old at most. Victor opens this app a handful of times a day, essentially always more than five
+minutes apart, so **essentially every open paid the full cold miss**. The cache was earning its
+keep only within a single browsing session — which is the one case where the page is already
+warm and it matters least. A number set for a service with constant traffic, on a site with one
+user.
+
+**Why a longer window is not a correctness regression, and is in fact stricter.** Writes
+invalidate by tag and that is untouched, so nothing about this app's own edits depends on the
+timer. The timer only ever bounded how long a change made by **direct `git push`** stays
+invisible. But the vault is in **this same repository**, so such a push redeploys the app and
+changes `VERCEL_GIT_COMMIT_SHA` — which now changes the cache key and drops the stale entry
+*immediately*, instead of up to 300 seconds later. The remaining case is a vault change that
+somehow does not deploy, and an hour bounds that.
+
+**What this does not claim.** The gain is on a cold miss on Vercel, which this laptop cannot
+reproduce — `unstable_cache` hits Vercel's Data Cache in production and a local timing would
+mean nothing. What *is* measured is the cost being avoided (357 ms per file) and the reason it
+was being paid (a 300 s window against a multi-hour access pattern).
+
+**Found while measuring:** `context/01_engineering/course_plan.md` **returns 404** — the course
+planner's vault file has never been written. `/private/academics/plan` handles it (`emptyPlan`),
+so this is not a bug, but it does mean that screen's read path has never been exercised against
+a real file.
+
+**How to reverse.** Restore `revalidate: 300` and drop the sha from the key parts. If direct
+pushes ever stop redeploying — a separate vault repository, say — the sha key stops being a
+safety net and that reversal becomes necessary rather than optional.
+
+---
+
 ## 2026-09-22 · The image cost was real and was not where it looked — V4 §8.11
 
 ### D-333 · The lightbox's full-size image mounts on first open, not on page load
