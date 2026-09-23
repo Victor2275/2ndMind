@@ -6,7 +6,7 @@ summary: Full-stack recipe PWA with AI-assisted import and real-time cross-devic
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: Proof
 slug: proof
-order: 1
+order: 4
 status: done
 year: 2026
 category: software

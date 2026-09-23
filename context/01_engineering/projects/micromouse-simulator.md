@@ -6,7 +6,7 @@ summary: Java maze-solving simulator with Flood Fill pathfinding and a visualiza
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: Micromouse Simulator
 slug: micromouse-simulator
-order: 2
+order: 5
 status: done
 year: 2023
 category: robotics

@@ -6,7 +6,7 @@ summary: Unity game built in a 72-hour Ludum Dare jam, with combat and enemy AI.
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: 5 Second Rule
 slug: five-second-rule
-order: 3
+order: 6
 status: done
 year: 2025
 category: software

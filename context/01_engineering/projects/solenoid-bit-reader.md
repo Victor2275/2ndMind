@@ -6,7 +6,7 @@ summary: Macro-scale hard-disk-reader analog decoding falling magnetic bits at 1
 read_when: Portfolio, robotics resume bullets, or embedded/instrumentation questions.
 title: Solenoid Bit Reader
 slug: solenoid-bit-reader
-order: 4
+order: 7
 status: done
 year: 2026
 category: hardware

@@ -6,7 +6,7 @@ summary: Hackathon education app linking student and teacher views with AI task 
 read_when: Portfolio, resume bullets, or "what have you built" questions.
 title: TaskAble
 slug: taskable
-order: 5
+order: 8
 status: done
 year: 2026
 category: software

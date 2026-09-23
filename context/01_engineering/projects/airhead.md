@@ -6,7 +6,7 @@ summary: FRC 2023 robot whose arm and claw ran on pneumatics, gated by the shoul
 read_when: Portfolio, robotics resume bullets, or FRC and controls questions.
 title: Airhead
 slug: airhead
-order: 7
+order: 3
 status: done
 year: 2023
 category: robotics
@@ -121,11 +121,12 @@ pneumatics entirely, came in under the cap.
 Victor's 18 commits are concentrated in `Robot`, `Balancer`, `Limelight`, `Lidar` and the
 first autonomous routine.
 
-**Off the printed resume**, along with the other two robots — measured, not assumed: the
-robotics variant already prints at 0.83 of a page, and adding any project entry to it
-paginates to two (D-339). `experience/first-robotics.md` carries the 2021–2025 arc there
-instead. The `bullets` above are written and true, so enabling it is one field: add
-`robotics` to `resume_variants` and re-run `npm run shots` to see what it costs.
+**Off the printed resume**, along with the other two robots. Victor's decision, 2026-09-23:
+the FRC entry on the resume is the **Robotics Programming Lead** role in
+`experience/first-robotics.md`, which covers all four seasons in one place. The page budget
+says the same thing independently — the robotics variant prints at 0.83 and any added project
+entry takes it to two pages (D-339). The `bullets` above are written and true, so enabling
+this is one field if that ever changes.
 
 **The autonomous bug is now stated on the public page**, in "What did not work", rather than
 hidden here — it is a fair thing to own next to a commit that says "not tested", and the page

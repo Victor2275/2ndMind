@@ -6,7 +6,7 @@ summary: FRC 2024 robot that reached the World Championships on a four-note auto
 read_when: Portfolio, robotics resume bullets, or FRC, controls and state-machine questions.
 title: Slipknot
 slug: slipknot
-order: 8
+order: 1
 status: done
 featured: true
 year: 2024
@@ -23,13 +23,13 @@ image_fit: cover
 figure_count: 3
 event: FRC Team 1458
 group_size: 7
-# Empty, and measured rather than assumed. The robotics variant prints at 0.83 of a page
-# without this entry and 0.90 with it — and 0.90 paginates to two pages, which is the gate
-# D-117 set. One bullet overflows it as well (0.90), and so does trading two bullets off the
-# FIRST Robotics role entry to pay for it. Adding any project to that variant now costs more
-# room than the variant has, and which good content to cut for it is Victor's call, not a
-# guess (D-339). `bullets` below is written and true, so this is one field from the resume
-# the day there is room: set `resume_variants: [robotics]` and re-run `npm run shots`.
+# Empty by intent, confirmed by Victor 2026-09-23: the FRC entry on the printed resume is the
+# **Robotics Programming Lead** role in `experience/first-robotics.md`, which covers all four
+# seasons. The measurement behind it stands too — the robotics variant prints at 0.83 of a page
+# without this entry and 0.90 with it, and 0.90 paginates to two (D-117's gate). One bullet
+# overflows it as well, and so does trading two bullets off the role entry to pay for it
+# (D-339). `bullets` below is written and true, so this is still one field from the resume if
+# that ever changes: set `resume_variants: [robotics]` and re-run `npm run shots`.
 resume_variants: []
 public: true
 bullets:

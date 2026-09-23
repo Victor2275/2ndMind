@@ -6,7 +6,7 @@ summary: FRC 2025 robot with a Motion Magic elevator and runtime-generated April
 read_when: Portfolio, robotics resume bullets, or FRC and autonomy architecture questions.
 title: Lemonlight
 slug: lemonlight
-order: 9
+order: 2
 status: done
 year: 2025
 category: robotics
@@ -138,10 +138,11 @@ readout in `RobotContainer25`. Reading the code cold would suggest the bank was 
 **Competition placings, the weight comparison and the account of what the mechanical failures
 cost all come from Victor** (2026-09-23), not from the repository, which holds software only.
 
-**Off the printed resume**, along with the other two robots — the robotics variant has no
-room for another project entry (D-339, and the comment in `slipknot.md` has the numbers).
-The `bullets` above are written and true, so enabling it is one field: add `robotics` to
-`resume_variants` and re-run `npm run shots`.
+**Off the printed resume**, along with the other two robots. Victor's decision, 2026-09-23:
+the FRC entry on the resume is the **Robotics Programming Lead** role in
+`experience/first-robotics.md`. The variant also has no room for another project entry
+(D-339, and the comment in `slipknot.md` has the numbers). The `bullets` above are written and
+true, so enabling this is one field if that ever changes.
 
 There is a video of this robot at `context/assets/originals/2025RobotVideo.mp4`, on Victor's
 machine only — that folder is gitignored (D-338). The site has no video support and the asset
