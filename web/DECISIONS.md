@@ -17,6 +17,133 @@ useful part.
 
 ---
 
+## 2026-09-22 · The public bundle, measured and then halved — V4 §8.4, §8.5
+
+### D-327 · `zod` is banned from the client-reachable error path, and a test enforces it
+
+**Decision.** `lib/errors/report.ts` no longer imports `zod`. The runtime schema moved to
+`lib/errors/schema.ts`, which **only `app/api/errors/route.ts` imports**. `ErrorReportInput` is
+hand-written in `report.ts` rather than inferred, and `schema.ts` carries a two-way type-level
+pin so the schema and the type cannot drift.
+
+**Why.** `app/layout.tsx` mounts `ErrorWatch` so a stranger's crash on the public portfolio is
+reported at all — that is D-165 and it stays. But it makes everything `lib/errors/client.ts`
+imports part of **every public page's bundle**, and the chain ran
+`ErrorWatch → client.ts → report.ts → zod`. Measured: **64.1KB gzipped, 29% of the 220.7KB**
+the home page shipped, for a validation library the public site never executes.
+
+**Nothing about it was visible.** No error, no warning, no visual change, and `next build`'s own
+table does not break a route's JS down by package. It survived from V3 §2.4 to V4 §8.4 because
+the only way to see it is to measure the bundle and then read the chunk — which is what finally
+happened, and it took identifying 485 `zod` markers inside a hashed file.
+
+**Why the type is hand-written, which looks like a downgrade.** `z.infer` would keep the two
+definitions structurally welded, and it is a type-only construct that compiles away — so
+inference itself is not the problem. Keeping the *schema* in `report.ts` is: it puts a zod value
+one import away from every client module, and the next person to need validation in the browser
+will reach for it. Moving the schema out and pinning the type with a `Mutual<>` check keeps the
+guarantee and removes the temptation.
+
+**The scrubbing functions did not move**, and that matters: `scrub`, `safeRoute`, `coarseAgent`
+and `fingerprintOf` are what the client runs before sending, and they are still one import away
+from it. Only the validator — which was always server-side work — left.
+
+**Measured after:** home **220.7 → 146.8KB**, `/now` **215.4 → 141.5KB**. Both numbers are the
+real thing a browser downloads, from `npm run bundle` against a production build.
+
+**How to reverse.** Move `errorReportSchema` back into `report.ts` and delete `schema.ts` and
+its test. Do not do this. If a client module ever genuinely needs runtime validation, give it a
+hand-written guard rather than re-opening this path — 64KB is the price of the convenience.
+
+### D-328 · The bundle gate waits for script quiet, because `networkidle` never came
+
+**Decision.** `scripts/bundle-budget.mjs` navigates with `waitUntil: "load"` and then waits
+until no script response has arrived for 1500ms, capped at 20s.
+
+**Why.** It used `waitUntil: "networkidle"` and **could not finish a run**. `/projects` renders
+a link per project and Next prefetches every one of them, so the connection never goes quiet for
+the 500ms `networkidle` requires; the run died at the 60s timeout having measured two of five
+routes.
+
+**The failure mode is the interesting part.** It did not print an error and stop — it printed
+two perfectly good numbers and *then* crashed, so a glance at the output showed a working gate.
+A gate that silently covers 40% of its targets is the same class of problem as D-190's
+diagnostics-that-never-gated and D-315's checker-that-checks-nothing: it looks exactly like the
+healthy version.
+
+**Script quiet is the right condition** because scripts are what this gate measures. Prefetches
+were already filtered out of the accounting, so they never touch the clock either.
+
+**How to reverse.** Restore `waitUntil: "networkidle"` and delete the quiet loop. The gate will
+then measure home and `/now` and crash, which is what it did before.
+
+### D-329 · The 90KB budget is an aspiration; the gate is a per-route ratchet
+
+**Decision.** `npm run bundle` gates each public route against a committed `ROUTE_BUDGET` that
+**only ever goes down**. Q459's 90KB is kept in the file as the aspiration and is not what
+fails a run. `npm run bundle -- --save` prints an updated block.
+
+**Why, and this is now measured rather than asserted.** D-320 said the 90KB budget was set
+without measuring and was probably unreachable. It is unreachable, and the detail says why:
+
+| chunk | gzipped | what it is |
+| --- | --- | --- |
+| react-dom | 69.9KB | the renderer |
+| RSC / App Router client runtime | 42.8KB | `resolved_model`, `server-action`, `x-nextjs-*` |
+| **shared floor across all five routes** | **141.3KB** | neither is application code |
+
+**Application code is 0.0 to 6.9KB per route.** Home and `/projects` add 5.5KB, project detail
+6.9KB, `/now` 0.2KB, the resume 0.0KB. There is essentially nothing left to trim on the public
+site, and that reframes §8.6: **code splitting and lazy loading are private-app work**, because
+on the public side there is no application code to split.
+
+**Why a ratchet rather than a lower fixed number.** Same argument as `TAP_BUDGET` and
+`CONTRAST_BUDGET` (D-318, D-323). A gate that is permanently red is a gate everyone learns to
+ignore, and the 90KB gate would have been red forever through no fault of any change being
+reviewed. A per-route number recorded at today's measurement catches the next regression, which
+is the only thing a budget can usefully do here.
+
+**The headroom is deliberately zero.** Budgets are set at the ceiling of what was measured, so
+the next KB added is the one that fails.
+
+**How to reverse.** Set `BUNDLE_BUDGET=90` and the aspiration becomes the gate again — the
+mechanism supports it, the site does not.
+
+### D-330 · Four dependencies removed, and `shadcn` is not one of them
+
+**Decision.** `@sentry/nextjs`, `recharts`, `react-hook-form` and `@hookform/resolvers` are
+uninstalled. **`shadcn` stays in `dependencies`.**
+
+**Why the four went.** Each had **zero** import sites in `src/` or `scripts/`:
+
+- **`@sentry/nextjs`** — V3 §2.4 planned Sentry and Victor chose a first-party endpoint instead
+  (D-165, and the reasoning there still holds: a bad filtering rule would have put a GPA and a
+  phone number in a vendor's database). The decision was made, the endpoint was built, and the
+  package was never removed. No `sentry.*.config.ts` and no `instrumentation.ts` exist either.
+- **`recharts`** — `components/site/chart.tsx` already carried a comment saying it was in
+  `package.json` and never used, and that reaching for it would ship a charting library to
+  render hand-authored SVG (D-307).
+- **`react-hook-form`, `@hookform/resolvers`** — installed for a `ui/form.tsx` that **has never
+  existed in this repo's history** (D-200). Phase 5 built `components/site/field.tsx` instead,
+  which uses neither.
+
+**Why `shadcn` stayed, and this is the correction worth recording.** V4 §8.5 was written
+claiming `shadcn` is a CLI sitting in `dependencies` and belongs in dev or nowhere. That is
+wrong: `src/app/globals.css` line 2 is `@import "shadcn/tailwind.css"`, so the package ships a
+stylesheet the app's CSS entrypoint depends on at build time. Removing it breaks the build.
+The plan item was written from the package's reputation rather than from a grep, and the grep is
+what caught it.
+
+**Measured:** `node_modules` **988MB → 826MB**. The public bundle did not move much on its own
+— these were mostly not reaching the client — which is the honest result: this was install
+weight and supply-chain surface, not page weight. The page weight was D-327.
+
+**How to reverse.** `npm install @sentry/nextjs recharts react-hook-form @hookform/resolvers`.
+Before re-adding Sentry specifically, re-read D-165 — the reason it was declined was about where
+the data goes, not about the library.
+
+---
+
 ## 2026-09-22 · The write path, and what the speed complaint turned out to be — V4 Phase 8
 
 ### D-325 · Vault writes go through the outbox, not through a Postgres buffer and a push button
