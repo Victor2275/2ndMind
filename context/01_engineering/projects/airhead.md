@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 domain: engineering
 stability: stable
 summary: FRC 2023 robot whose arm and claw ran on pneumatics, gated by the shoulder encoder.
@@ -22,14 +22,18 @@ image_fit: cover
 event: FRC Team 1458
 group_size: 8
 resume_variants: []
-# `draft: true` because `bullets` is empty and two case-study sections are still
-# `> **To write:**` prompts. Its only effect is to keep the entry out of printed resume
-# output (Q339 leaves drafts unmarked on the public site), which is belt-and-braces next to
-# the empty `resume_variants` — and it keeps the two fixture guards in `resume.test.ts` and
-# `og.test.ts` armed, which need at least one draft in the vault to be testing anything.
-draft: true
 public: true
-bullets: []
+bullets:
+  - >-
+    Programmed a FIRST Robotics competition robot whose arm and claw ran on pneumatics,
+    gating every cylinder actuation on the shoulder joint's encoder so the arm could not
+    extend into the floor or the frame at full line pressure
+  - >-
+    Built an eight-state charge-station balancing routine driven by navX pitch, using
+    threshold and timeout transitions so a stall in any state advanced rather than hung
+  - >-
+    Integrated a Limelight vision pipeline and a duty-cycle LiDAR rangefinder for AprilTag
+    alignment and scoring-node approach
 ---
 
 # Airhead
@@ -82,15 +86,34 @@ node.
 
 ## What did not work
 
-> **To write:** the autonomous scoring routine never got past "not tested" — what actually
-> went wrong on the field, and what was chosen instead. Same for the Limelight translate
-> stage, which is commented out in `Aligner` rather than deleted.
+The robot ran out of air. Not once, as an accident — as a pattern, in the back half of
+matches, because too much of it was on pneumatics and a stored-air system does not refill on
+demand. What an on-board compressor may do during a match is limited by the rules, so the
+tank is a budget: every arm extension and every claw actuation spends from it, and by late in
+a match the pressure left was not enough to drive the arm reliably.
+
+That reframes the interlock this page opens with. Gating extension on the shoulder encoder
+solved the mechanical failure — the arm never fired at an angle that would break something —
+and did nothing about the resource failure, because the constraint that actually bit was not
+*when* the cylinder fired but *how many times*. Nothing in the software counted actuations or
+knew what pressure remained; there is no pressure sensor read anywhere in this codebase.
+
+The autonomous is the other unfinished piece. `Autonomous.scoreStart()` never got past its
+"not tested" commit and would not have run if it had: the `arm`, `swerve` and `lidar` fields
+it calls are never assigned, and its guard is written `if (finishedScoring = false)` — an
+assignment rather than a comparison, which makes the condition always false. The Limelight
+translate stage is in the same state, commented out in `Aligner` rather than deleted, leaving
+alignment as rotate-only.
+
+This is the direct reason the 2024 robot has no pneumatics at all.
 
 ## Measured results
 
-> **To write:** one number from competition. How often the balance routine actually got the
-> charge station level, or where the team placed. The code establishes the mechanism; this
-> section is what it did.
+23rd of 46 at the Sacramento Regional.
+
+The robot competed at the maximum allowed weight, as the 2025 robot did — a constraint the
+compressor, the tank and the air lines were all spending from. The 2024 robot, which dropped
+pneumatics entirely, came in under the cap.
 
 ## Notes
 
@@ -101,10 +124,13 @@ first autonomous routine.
 **Off the printed resume**, along with the other two robots — measured, not assumed: the
 robotics variant already prints at 0.83 of a page, and adding any project entry to it
 paginates to two (D-339). `experience/first-robotics.md` carries the 2021–2025 arc there
-instead. Reverse by adding `robotics` to `resume_variants` here, writing the `bullets` list,
-and re-running `npm run shots` to see what it costs.
+instead. The `bullets` above are written and true, so enabling it is one field: add
+`robotics` to `resume_variants` and re-run `npm run shots` to see what it costs.
 
-**Autonomous carries a real bug**, left as found: `Autonomous.scoreStart()` opens with
-`if (finishedScoring = false)`, an assignment rather than a comparison, and the `arm`,
-`swerve` and `lidar` fields it then calls are never assigned. Worth mentioning only because
-the commit that added it says "not tested", which is accurate.
+**The autonomous bug is now stated on the public page**, in "What did not work", rather than
+hidden here — it is a fair thing to own next to a commit that says "not tested", and the page
+is stronger for saying what shipped broken than for implying everything shipped.
+
+**Competition placing and the weight comparison come from Victor** (2026-09-23), not from the
+repository, which holds software only. No pressure sensor is read anywhere in the code, so
+the air-budget account is his too.

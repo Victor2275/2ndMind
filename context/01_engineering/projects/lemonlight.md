@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 domain: engineering
 stability: stable
 summary: FRC 2025 robot with a Motion Magic elevator and runtime-generated AprilTag approaches.
@@ -23,14 +23,19 @@ figure_count: 3
 event: FRC Team 1458
 group_size: 14
 resume_variants: []
-# `draft: true` because `bullets` is empty and two case-study sections are still
-# `> **To write:**` prompts. Its only effect is to keep the entry out of printed resume
-# output (Q339 leaves drafts unmarked on the public site), which is belt-and-braces next to
-# the empty `resume_variants` — and it keeps the two fixture guards in `resume.test.ts` and
-# `og.test.ts` armed, which need at least one draft in the vault to be testing anything.
-draft: true
 public: true
-bullets: []
+bullets:
+  - >-
+    Built the elevator subsystem for a FIRST Robotics competition robot as a Motion Magic
+    closed-loop position controller over a leader-follower Kraken pair, with eight named
+    scoring setpoints addressed by name across both teleoperated and autonomous control
+  - >-
+    Designed three independent safety interlocks — a time-of-flight range gate that refuses
+    motion while game material is in the intake, a safe-stop flag that holds position on
+    every enable, and a magnetic limit-switch bank backing the encoder at five heights
+  - >-
+    Implemented coral scoring actions and driver control bindings against a subsystem-and-
+    looper architecture, including runtime-generated AprilTag approach paths
 ---
 
 # Lemonlight
@@ -68,9 +73,10 @@ teleop and in autonomous. "At target" is a half-rotation tolerance read off a va
 the intake LaserCAN reads under 100 mm — a coral in the throat means the elevator does not
 go anywhere. A `mSafeStop` flag is raised on every enable, so a robot powered on mid-cycle
 holds position rather than driving to a target left over from the last match. A bank of
-magnetic switches on DIO 0–4 backs the encoder at ground, L2, L3, L4 and the algae position.
-Stator and supply current are both limited to 40 A, which is what turns a jam into a stall
-instead of a fire.
+magnetic switches on DIO 0–4 backs the encoder at ground, L2, L3, L4 and the algae position,
+and was live at competition — an encoder that has drifted still reports a plausible number,
+and these are the sensors that do not. Stator and supply current are both limited to 40 A,
+which is what turns a jam into a stall instead of a fire.
 
 **Autonomous routines are a string.** `AutoStringAuto` parses a small language into nested
 actions: bare tokens name field points and generate the trajectory between them, brackets
@@ -92,15 +98,30 @@ estimate.
 
 ## What did not work
 
-> **To write:** the elevator went "switched to PID based system (untested)" → "elevator pid" →
-> "Elevator Working" over four days in February. What was the open-loop version doing that
-> forced the change, and what did tuning it cost? The constants file still carries "occasionally
-> stalls at bottom" and "stalls at top" next to the ground and L4 heights.
+The binding constraint on this robot was not a control problem. It was time on the hardware.
+Mechanical failures — the arm broke, among others — took the robot out of service repeatedly
+during a six-week build, and every hour it spent being repaired was an hour the elevator
+could not be tuned on. Software that closes a loop around a physical mechanism cannot be
+finished away from it: the gains, the setpoint heights and the current limits are all numbers
+that only the real machine can tell you, and they were found in whatever windows the robot
+was actually assembled.
+
+What that cost is legible in the constants file, which still carries "occasionally stalls at
+bottom" beside the ground height and "stalls at top" beside L4. Both are the profile pushing
+against a hard stop it was never given time to be trimmed away from, and both were shipped
+rather than fixed, because the alternative was not shipping an elevator.
+
+The move to closed loop happened in that same compressed window — "switched to PID based
+system (untested)" on February 18, "elevator pid" the next day, "Elevator Working" on the
+22nd. Four days from an untested rewrite to a working mechanism is fast, and it is fast
+because there was no slower option available.
 
 ## Measured results
 
-> **To write:** one number from competition. Cycle time on the reef, autonomous scoring
-> reliability, or where the team finished.
+13th of 35 at the Pinnacles Regional and 19th of 41 at the San Francisco Regional.
+
+The robot ran at the maximum allowed weight, as the 2023 robot did. Of the team's three
+robots in this portfolio, only the 2024 one came in under the cap.
 
 ## Notes
 
@@ -109,16 +130,18 @@ the March 2025 competition. Victor's 51 commits are the third largest share and 
 entirely in `Elevator`, `Constants`, `RobotContainer25`, the teleop `Controller`, the coral
 shooter and the elevator autonomous actions.
 
-**Verify before publishing:** the magnetic-switch bank exists as `DigitalSensor` with five
-channels wired and read, but the SmartDashboard readout of it in `RobotContainer25` is
-commented out in the final state of the repository, and no other file calls `getSensor`. The
-sentence above describes the hardware as wired; whether the switches were live as an interlock
-at competition is Victor's to confirm.
+**The magnetic switches were live at competition**, confirmed by Victor 2026-09-23. Worth
+recording because the repository alone does not show it: `DigitalSensor` wires five channels,
+but the only call to `getSensor` left in the final tree is a commented-out SmartDashboard
+readout in `RobotContainer25`. Reading the code cold would suggest the bank was never used.
+
+**Competition placings, the weight comparison and the account of what the mechanical failures
+cost all come from Victor** (2026-09-23), not from the repository, which holds software only.
 
 **Off the printed resume**, along with the other two robots — the robotics variant has no
 room for another project entry (D-339, and the comment in `slipknot.md` has the numbers).
-Reverse by adding `robotics` to `resume_variants` here, writing the `bullets` list, and
-re-running `npm run shots`.
+The `bullets` above are written and true, so enabling it is one field: add `robotics` to
+`resume_variants` and re-run `npm run shots`.
 
 There is a video of this robot at `context/assets/originals/2025RobotVideo.mp4`, on Victor's
 machine only — that folder is gitignored (D-338). The site has no video support and the asset

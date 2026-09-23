@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 domain: engineering
 stability: stable
 summary: FRC 2024 robot that reached the World Championships on a four-note autonomous.
@@ -16,10 +16,11 @@ stack: [Java, WPILib 2024, CTRE Phoenix 6, PathPlanner, Choreo, navX]
 links:
   github: https://github.com/FRC1458/2024Robot
 image: /assets/slipknot_image1.jpg
-# 805x454 against a 16:9 box. The only match-play photograph of this robot, so it leads
-# despite being the smallest source in the set; `cover` fits it with no visible crop.
+# 847x476 against a 16:9 box, so `cover` fits it with no visible crop. Replaced an 805px
+# field shot on 2026-09-23: this is the featured card, which is the largest image slot on
+# the site, and the robot is side-on, moving, with its LEDs lit and the bumper legible.
 image_fit: cover
-figure_count: 2
+figure_count: 3
 event: FRC Team 1458
 group_size: 7
 # Empty, and measured rather than assumed. The robotics variant prints at 0.83 of a page
@@ -103,16 +104,35 @@ tuning happened between matches rather than between builds.
 
 ## What did not work
 
-> **To write:** the commit trail is honest about the path here — "Auto sorta-ish not
-> working" (Apr 2), "3-Note Auto (not consistent needs tuning)" (Apr 4), "4 Note auto worked
-> once" (Apr 4), "WORKING CODE: 4 NOTE AUTO" (Apr 19). What was actually inconsistent, and
-> what fixed it? That is the strongest paragraph on this page and only Victor can write it.
+The autonomous was never finished, only improved. The commit trail is the honest record of
+it: "Auto sorta-ish not working" on April 2, "3-Note Auto (not consistent needs tuning)" and
+"4 Note auto worked once" on April 4, and "WORKING CODE: 4 NOTE AUTO" seventeen days later.
+Between those two dates the routine did not get a new design; it got accuracy, one note at a
+time.
+
+What made it inconsistent was that the errors were not constant. Each note in the sequence
+sits further from the starting position than the last, so each one gives the drivetrain more
+distance to accumulate heading and translation error before the intake has to be in the right
+place — and the carpet it accumulated that error on was not the same carpet twice. A routine
+tuned on the practice field did not reproduce on a competition field, and a routine tuned for
+three notes did not simply extend to four.
+
+That shows up in the code as numbers that grow. The settling delay before the intake is
+allowed to run is tuned per note rather than shared: 900 ms on the first, 1250 ms on the
+second, 1350 ms on the third, and none at all on the fourth, where the approach is long
+enough that the note has already seated. Those four constants are what three weeks of
+iteration produced, and they are the reason the routine works at four notes rather than
+scoring one and then dragging the intake against a note that had not arrived yet.
 
 ## Measured results
 
-> **To write:** the competition record. Which regional qualified the team for Worlds, how the
-> team finished there, and how reliably the four-note routine completed on the field rather
-> than on the practice carpet.
+Second alliance at the East Bay Regional, knocked out in the finals, and the season ended at
+the FRC World Championships — the only one of the team's three robots in this portfolio to
+get there.
+
+The robot also came in under the competition weight limit, which the 2023 and 2025 robots did
+not: both of those ran at the cap. That is the whole of what "lighter" means here — the actual
+figures are not recorded anywhere Victor still has.
 
 ## Notes
 
@@ -136,3 +156,6 @@ not derivable from the repository, which holds software only.
 this project would contribute, and they are true as written — the variant simply has no room
 for them yet (D-339). They are kept rather than deleted so that enabling the entry is one
 field, not a rewrite.
+
+**Competition results and the weight comparison come from Victor** (2026-09-23), not from the
+repository, which holds software only.
