@@ -1,12 +1,23 @@
-import { z } from "zod";
-
 /**
  * What a crash report is, and what it is allowed to contain (V3 §2.4, D-165).
  *
  * Shared by the reporter in the browser, the service worker, and the endpoint that stores it —
- * one schema, so a field added on one side cannot silently fail to arrive on the other. This
- * module is in the client bundle, so **nothing sensitive may live in it**: shapes and rules
- * only.
+ * one vocabulary, so a field added on one side cannot silently fail to arrive on the other.
+ * This module is in the client bundle, so **nothing sensitive may live in it**: shapes and
+ * rules only.
+ *
+ * ## This module must not import `zod`, and that is a size rule, not a style one (V4 §8.4, D-327)
+ *
+ * `app/layout.tsx` mounts `ErrorWatch` so that a stranger's crash on the public portfolio gets
+ * reported at all, which is right and stays. But that makes this module's import graph part of
+ * **every public page's bundle**, and `zod` is 64.1KB gzipped — 29% of the 220.7KB the
+ * portfolio shipped before this split, on a site that validates nothing at runtime.
+ *
+ * The runtime schema lives in `./schema.ts` and is imported by the **endpoint only**. The type
+ * below is hand-written rather than inferred for exactly that reason: `z.infer` is a type-level
+ * import that `import type` would erase, but keeping the schema here at all invites the next
+ * person to import a value from it. `schema.test.ts` pins the two definitions together, so they
+ * cannot drift silently — which is the one real cost of not inferring.
  *
  * ## The rule that governs everything here
  *
@@ -34,17 +45,28 @@ export type Source = (typeof SOURCES)[number];
 export const MAX_STACK = 2_000;
 export const MAX_MESSAGE = 500;
 
-export const errorReportSchema = z.object({
-  source: z.enum(SOURCES),
-  name: z.string().max(120).default(""),
-  message: z.string().max(MAX_MESSAGE).default(""),
-  stack: z.string().max(MAX_STACK).default(""),
-  route: z.string().max(500).default(""),
-  buildId: z.string().max(64).default(""),
-  agent: z.string().max(120).default(""),
-});
+/** How long a route, build id or agent string may be. `schema.ts` enforces these. */
+export const MAX_NAME = 120;
+export const MAX_ROUTE = 500;
+export const MAX_BUILD_ID = 64;
+export const MAX_AGENT = 120;
 
-export type ErrorReportInput = z.infer<typeof errorReportSchema>;
+/**
+ * A report as it arrives, after parsing.
+ *
+ * Every field is required here because the schema gives each one a `""` default, so nothing is
+ * optional by the time it reaches `clean`. Hand-written rather than `z.infer`ed — see the note
+ * at the top of this file; `schema.test.ts` is what keeps the two in step.
+ */
+export type ErrorReportInput = {
+  source: Source;
+  name: string;
+  message: string;
+  stack: string;
+  route: string;
+  buildId: string;
+  agent: string;
+};
 
 /**
  * Text that looks like it identifies a person, replaced.

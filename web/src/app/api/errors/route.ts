@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { db, isDatabaseConfigured } from "@/lib/db/client";
-import { clean, errorReportSchema } from "@/lib/errors/report";
+import { clean } from "@/lib/errors/report";
+// The one importer of the zod schema, and it must stay that way (D-327): this module is
+// server-only, so `zod` stops here. Importing it from anything the browser runs puts 64.1KB
+// gzipped back on every public page.
+import { errorReportSchema } from "@/lib/errors/schema";
 import { recordError } from "@/lib/errors/queries";
 
 /**

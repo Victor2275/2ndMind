@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import {
   clean,
   coarseAgent,
-  errorReportSchema,
   fingerprintOf,
   MAX_MESSAGE,
   MAX_STACK,
   safeRoute,
   scrub,
 } from "@/lib/errors/report";
+import { errorReportSchema } from "@/lib/errors/schema";
 
 /**
  * What a crash report may contain (V3 §2.4, D-165).
