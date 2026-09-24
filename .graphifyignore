@@ -1,0 +1,17 @@
+# What the graphify skill must never read. Mirrors the reading rules in CLAUDE.md: the archive
+# holds full lab reports, transcripts and superseded resumes; assets are binary; private/ holds
+# saved DARS audits with a student ID. .gitignore already covers private/ and graphify-out/, this
+# makes the intent explicit and adds the tracked folders .gitignore cannot exclude.
+/context/99_archive/
+/context/assets/
+/private/
+/graphify-out/
+/.playwright-mcp/
+Mastermind.md
+DARS*.html
+
+# Web app build output and dependencies
+/web/node_modules/
+/web/.next/
+/web/out/
+/web/public/
