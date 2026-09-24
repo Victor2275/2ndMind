@@ -5,7 +5,7 @@ import { hasSystemDiagram, SystemDiagram } from "@/components/site/system-diagra
 import { publicProjects } from "@/lib/vault/public";
 
 /**
- * The hand-authored system diagrams (V4 item 6.7, Q224, Q225, D-231).
+ * The hand-authored system diagrams (V4 item 6.7, Q224, Q225, D-362).
  *
  * jsdom cannot lay out an SVG, so nothing here says a diagram *looks* right — that was checked in
  * a browser at 1440px, and the four drawings were reworked twice on the strength of it. What is

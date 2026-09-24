@@ -60,7 +60,7 @@ const ALLOWED: Array<[relative: string, why: string]> = [
   ],
   [
     "lib/mark.ts",
-    "The mark's luminance mask (D-215). `#fff` and `#000` here are not colours — they are the " +
+    "The mark's luminance mask (D-346). `#fff` and `#000` here are not colours — they are the " +
       "keep and drop values of an SVG mask, where white preserves a pixel and black discards " +
       "it. Theming them is meaningless: a mask painted in `var(--primary)` would cut the folds " +
       "at whatever luminance that colour happens to have. The mark's actual colour is " +

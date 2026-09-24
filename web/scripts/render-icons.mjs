@@ -12,7 +12,7 @@
  *                the safe circle. Android's One UI crops icons to a squircle; a maskable icon
  *                that fills its canvas gets its edges shaved off.
  *   badge      — the notification small icon. White on transparent, because Android reads
- *                nothing but its alpha channel (D-203). Since D-215 that needs no special
+ *                nothing but its alpha channel (D-203). Since D-346 that needs no special
  *                drawing: the mark is a stencil everywhere, so this is just the mark with no
  *                tile behind it.
  *   apple-icon — iOS ignores the manifest and reads `apple-touch-icon`. Keeps its tile.
@@ -46,7 +46,7 @@ const GROUND = "#0e0e0e";
 // The default theme's `accent`, same source and same treatment as GROUND above — the literal
 // exists because node cannot import the registry, and `__tests__/brand.test.ts` pins it.
 //
-// Added 2026-09-10 (D-215). Before this the mark carried its own magenta gradient, so the
+// Added 2026-09-10 (D-346). Before this the mark carried its own magenta gradient, so the
 // launcher icon stayed a V2-magenta brain for the two days after D-197 made carbon the default
 // and moved the tile underneath it to #0e0e0e. The mark is `currentColor` now, so the icon's
 // colour is stated once, here, and follows the default theme like everything else does.
@@ -87,7 +87,7 @@ const BOX = { x: 68, y: 102, w: 382, h: 302 };
  * therefore produces a solid white rounded square in the status bar, which is exactly what
  * was reported. Nothing about the file is wrong; it is being read as a stencil.
  *
- * **Since D-215 the badge needs no special drawing.** The mark knocks its grooves out of the
+ * **Since D-346 the badge needs no special drawing.** The mark knocks its grooves out of the
  * alpha in `brain.svg` itself, so it is a stencil everywhere and always; the badge is simply
  * the mark with no tile behind it. The two CSS rules that used to recolour the paths here are
  * gone, along with their dependence on the mark's internal structure — the only thing this
@@ -111,7 +111,7 @@ function page(body, fill, radius, badge = false) {
   // Scale about the mark's own centre, then park that centre on the tile's centre.
   const transform = `translate(256 256) scale(${scale.toFixed(4)}) translate(${-cx} ${-cy})`;
 
-  // The mark carries its own alpha (D-215): the silhouette is `currentColor` and the grooves are
+  // The mark carries its own alpha (D-346): the silhouette is `currentColor` and the grooves are
   // holes. So the only difference between an icon and a stencil is what sits behind it — a tile,
   // or nothing — and what `color` is set to. No masking is done here any more.
   const art = badge

@@ -75,7 +75,7 @@ describe("the ground colour is one colour", () => {
   });
 
   it("is joined by the accent the mark is drawn in", () => {
-    // Added 2026-09-10 (D-215). The mark is `currentColor` now, so the icon's colour is stated
+    // Added 2026-09-10 (D-346). The mark is `currentColor` now, so the icon's colour is stated
     // in the renderer rather than inside the drawing — which means it is a second hand-typed
     // literal in a file that cannot import, and it gets the same treatment as the first.
     //
@@ -89,7 +89,7 @@ describe("the ground colour is one colour", () => {
   });
 
   it("is joined by the four colours the OG cards are drawn in", () => {
-    // Added 2026-09-10 (D-218). `render-og.mjs` is plain ESM run by node, like the icon
+    // Added 2026-09-10 (D-349). `render-og.mjs` is plain ESM run by node, like the icon
     // renderer, so it carries literals for the same reason and gets the same pin.
     //
     // This caught a real mistake on the way in: `MUTED` had been written as `#a1a1a1`, a value
@@ -143,7 +143,7 @@ describe("the ground colour is one colour", () => {
 
   it("is not painted into the mark itself", () => {
     // The drawing must stay colourless. A `fill="#..."` or a gradient stop back in brain.svg is
-    // precisely the drift D-215 removed: it would override `currentColor` and the mark would
+    // precisely the drift D-346 removed: it would override `currentColor` and the mark would
     // stop following the theme, silently and only on a phone.
     const mark = read("public/icons/brain.svg");
     expect(mark).toMatch(/fill="currentColor"/);

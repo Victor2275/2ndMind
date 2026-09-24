@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { firstSentence, sectionId } from "@/lib/vault/case-study";
 
 /**
- * The opening summary block lifts one sentence per section (V4 item 6.6, Q333, D-226).
+ * The opening summary block lifts one sentence per section (V4 item 6.6, Q333, D-357).
  *
  * Lifting prose is fragile by nature, so these are mostly the ways it went wrong rather than the
  * ways it goes right. The first version shipped a visibly broken row on a real project page, and

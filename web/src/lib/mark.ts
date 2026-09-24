@@ -1,5 +1,5 @@
 /**
- * The mark's geometry, as values JavaScript can read (V4 item 6.1, D-215).
+ * The mark's geometry, as values JavaScript can read (V4 item 6.1, D-346).
  *
  * `public/icons/brain.svg` is the drawing of record and `scripts/render-icons.mjs` reads that
  * file directly, because it is plain ESM run by node and can. Three things inside the app need

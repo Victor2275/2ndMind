@@ -12,7 +12,7 @@ const brainSvg = readFileSync(path.join(root, "public/icons/brain.svg"), "utf8")
 const flat = (d: string) => d.replace(/\s+/g, " ").trim();
 
 /**
- * The mark exists twice and this is why that is allowed (D-215).
+ * The mark exists twice and this is why that is allowed (D-346).
  *
  * `brain.svg` is the drawing; `lib/mark.ts` is the same drawing as data, because the header
  * component and the OG routes cannot read a file at render time. Duplication without a test is
@@ -72,7 +72,7 @@ describe("markSvg", () => {
   });
 
   it("keeps the grooves as holes, never as paint", () => {
-    // The whole point of D-215. A groove painted in a ground colour is opaque, and opaque is all
+    // The whole point of D-346. A groove painted in a ground colour is opaque, and opaque is all
     // Android reads — which is the bug D-203 was raised for.
     const svg = markSvg("#fff");
     expect(svg).toContain('stroke="#000"');

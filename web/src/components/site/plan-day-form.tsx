@@ -15,7 +15,7 @@ import type { ChallengeDay, SessionType } from "@/lib/athletics/challenge";
  * **Exactly one of these is mounted at a time**, for the day named by `?edit=` in the URL. The
  * plan screen is 76 rows and every one of them is editable; rendering 76 client forms would put
  * a hydration boundary on each, which is the cost the projects grid was restructured to avoid
- * (D-223). A link sets the search param, the server renders this form inside that one row, and
+ * (D-354). A link sets the search param, the server renders this form inside that one row, and
  * the other 75 stay static HTML.
  *
  * **Every input is empty, with the vault's value as its placeholder.** That is the whole

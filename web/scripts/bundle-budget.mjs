@@ -6,7 +6,7 @@
  *
  * ## Why this exists even though the plan says 7.2 is done
  *
- * V4 item 7.2 is two things — "bundle gate + drop `ProjectGrid`'s client boundary" — and D-223
+ * V4 item 7.2 is two things — "bundle gate + drop `ProjectGrid`'s client boundary" — and D-354
  * shipped the second and recorded the item as complete, because moving the filter into the URL
  * happened to remove the boundary as a side effect. The gate itself was never built. Nothing
  * in this repo measured a bundle until now, which means the 90KB budget has been a number in a

@@ -5,7 +5,7 @@ import { ProjectGrid, parseSort, SORT_KEYS } from "@/components/site/project-gri
 import type { ProjectCard } from "@/lib/vault/public";
 
 /**
- * The grid's filter and sort are URL state now (V4 item 6.5, Q324, D-223), which is what makes
+ * The grid's filter and sort are URL state now (V4 item 6.5, Q324, D-354), which is what makes
  * this testable without a browser: the component is a pure function of its props.
  */
 function card(over: Partial<ProjectCard> = {}): ProjectCard {

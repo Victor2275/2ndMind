@@ -14,7 +14,7 @@ type Card = { file: string; slug: string | null; title: string };
 const manifest: Card[] = JSON.parse(fs.readFileSync(path.join(ogDir, "manifest.json"), "utf8"));
 
 /**
- * The OG cards are committed, so this is the test that keeps them honest (D-218).
+ * The OG cards are committed, so this is the test that keeps them honest (D-349).
  *
  * `scripts/render-og.mjs` renders them with Playwright rather than `next/og` — satori cannot read
  * WOFF2 and every face this site owns is WOFF2, so the alternative was a card set in Geist, which

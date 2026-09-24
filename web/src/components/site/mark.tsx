@@ -2,7 +2,7 @@ import { GROOVE_D, GROOVE_WIDTH, LOBE_D, MARK_VIEWBOX } from "@/lib/mark";
 import { cn } from "@/lib/utils";
 
 /**
- * The 2ndMind mark, inline (V4 item 6.1, Q32–Q36, D-215).
+ * The 2ndMind mark, inline (V4 item 6.1, Q32–Q36, D-346).
  *
  * Monochrome and tinted by context: the silhouette is `currentColor` and the folds are holes, so
  * this takes the colour of whatever it sits inside and shows the surface behind it through the

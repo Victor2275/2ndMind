@@ -258,7 +258,7 @@ const RADIUS: Array<[name: string, multiplier: number, why: string]> = [
  */
 const PHONE_REM = 40;
 const BREAKPOINTS: Array<[name: string, rem: number, alias: string | null, why: string]> = [
-  // Reinstated 2026-09-10 for V4 item 6.3 (D-216), and it is not a reversal of §1.7. What §1.7
+  // Reinstated 2026-09-10 for V4 item 6.3 (D-347), and it is not a reversal of §1.7. What §1.7
   // objected to was `min-[380px]` as an *arbitrary* value written at two call sites; the line
   // itself is real, and Q42 asks for it by name — under it the wordmark is dropped and the mark
   // stands alone, because the nav wins the space fight against a nine-character name at 360px.

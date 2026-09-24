@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { publicProjects } from "@/lib/vault/public";
 
 /**
- * Exactly one project leads (V4 items 6.4 and 6.5, Q309, Q330, D-220).
+ * Exactly one project leads (V4 items 6.4 and 6.5, Q309, Q330, D-351).
  *
  * `featured` decides two things a stranger sees first: the second call to action in the About
  * hero, and the two-column card at the top of the projects grid. Both are written assuming there

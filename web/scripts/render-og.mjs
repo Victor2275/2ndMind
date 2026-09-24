@@ -1,6 +1,6 @@
 /**
  * Renders the Open Graph cards — the image a recruiter sees when victorgusev.com is pasted into
- * LinkedIn, Slack, or an application form (V4 item 6.3, Q43–Q45, D-218).
+ * LinkedIn, Slack, or an application form (V4 item 6.3, Q43–Q45, D-349).
  *
  * ## Why this is not `next/og`
  *

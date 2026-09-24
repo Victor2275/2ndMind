@@ -27,7 +27,7 @@ const OUT = process.env.SHOTS_OUT ?? ".shots";
 
 /**
  * The `cramped` breakpoint, in pixels — below it the header drops the wordmark and shows the
- * mark alone (V4 6.3, Q42, D-216).
+ * mark alone (V4 6.3, Q42, D-347).
  *
  * Read out of the generated `scale.css` rather than typed here. The value exists in exactly one
  * place — `scripts/build-scale.mts` — and a gate that carries its own copy of a breakpoint is a

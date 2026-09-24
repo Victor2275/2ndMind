@@ -145,7 +145,7 @@ describe("icon-192.png", () => {
   });
 
   it("is drawn in the default theme's accent, not a colour of its own", () => {
-    // Rewritten 2026-09-10 (D-215). This assertion used to demand *magenta*, which is how the
+    // Rewritten 2026-09-10 (D-346). This assertion used to demand *magenta*, which is how the
     // launcher icon stayed a V2-magenta brain for two days after D-197 made carbon the default:
     // the mark carried its own gradient, the tile underneath it moved, and the test agreed with
     // the mark. Deriving the expected colour from the registry is the point — if the default
@@ -167,7 +167,7 @@ describe("icon-192.png", () => {
   });
 
   it("cuts its grooves as holes, so the tile shows through them", () => {
-    // The other half of D-215, and the thing that makes the badge work without a special
+    // The other half of D-346, and the thing that makes the badge work without a special
     // drawing. A groove is transparent in the mark; over the tile it therefore reads as exactly
     // the tile colour, and it cannot drift away from it the way `#140a10` did.
     //
