@@ -12,7 +12,9 @@ Per `context/00_meta/ai_directives.md` §6, every new software project is initia
 `context.md` stating expectations. This is that file.
 
 Design and architecture decisions are logged in `DECISIONS.md`, each with its reason and
-reversal steps. Add to it rather than explaining a choice only in a commit message.
+reversal steps. Add to it rather than explaining a choice only in a commit message. Entries are
+grouped by topic and IDs are never reused; a new entry takes the next free ID named at the top of
+the file, and a superseded one becomes a row in its Superseded table.
 
 ## What this is
 

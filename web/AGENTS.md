@@ -21,7 +21,9 @@ inventing a value to fill one is worse than the gap.
 Read `DECISIONS.md` before changing anything that looks deliberate. Every non-obvious choice
 is logged there with its reason and how to reverse it. If Victor asks for something to be
 undone, look it up first — several entries bundle a bug fix with a style choice and say
-explicitly which half must survive a reversal. Add an entry for every decision you make.
+explicitly which half must survive a reversal. Add an entry for every decision you make — in
+its topic section, under the next free ID named at the top of the file. When a decision is
+overtaken, turn its entry into a row in the Superseded table rather than deleting the ID.
 
 Five rules that are easy to violate by accident:
 
