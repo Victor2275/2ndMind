@@ -39,6 +39,7 @@ if the question is broad. It is not affordable to touch `99_archive/`.
 | Why the site looks/works the way it does; undoing a choice | `web/DECISIONS.md` |
 | Tokens, type scale, spacing, motion — what a value should be | `web/DESIGN.md` |
 | What V4 is doing and in what order | `docs/V4_PLAN.md` |
+| What comes after V4 — AI context, Today/Training cleanup, open audit items | `docs/V5_PLAN.md` |
 | Why the app stalls on a bad connection, and the fix | `docs/DEGRADED_NETWORK.md` |
 | How training logging and sync actually work | `docs/SYNC_DESIGN.md` (§4a is the aggregate op) |
 
