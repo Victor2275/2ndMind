@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-24
 domain: engineering
 stability: stable
 summary: SWE internship building a hybrid RL and classical local planner for autonomous vehicles.
@@ -10,8 +10,8 @@ slug: dimaag
 order: 1
 type: internship
 date_start: 2026-06
-date_end: 2026-08
-ongoing: true
+date_end: 2026-09
+ongoing: false
 resume_variants: [robotics, ml, swe]
 public: true
 bullets:

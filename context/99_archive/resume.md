@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-23
+updated: 2026-09-24
 domain: archive
 stability: stable
 summary: Generated resume, all three variants. Not canonical for any entry.
@@ -32,7 +32,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 ### Experience
 
-**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - September 2026
 
 - Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
 - Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
@@ -90,7 +90,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 ### Experience
 
-**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - September 2026
 
 - Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
 - Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
@@ -139,7 +139,7 @@ Expected June 2028 - GPA 3.64 / 4.00
 
 ### Experience
 
-**Software Engineering Intern** | *Dimaag.ai* - June 2026 - August 2026
+**Software Engineering Intern** | *Dimaag.ai* - June 2026 - September 2026
 
 - Developed a hybrid reinforcement-learning and classical local planner for autonomous vehicle trajectory tracking on complex paths
 - Validated and deployed autonomous navigation policies on physical hardware, achieving reliable tracking at >10 mph with sub-decimeter trajectory accuracy
